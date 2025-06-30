@@ -21,6 +21,7 @@ const addUser = () => {
     return;
   }
   blockedUsers.value = [userToAdd.value.trim(), ...blockedUsers.value];
+  userToAdd.value = '';
 };
 const deleteUser = (username: string) => {
   blockedUsers.value = blockedUsers.value.filter((user) => user !== username);
