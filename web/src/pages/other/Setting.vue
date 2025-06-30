@@ -160,6 +160,15 @@ const playSound = (source: string) => {
 
       <n-list-item>
         <n-flex vertical>
+          <b>黑名单</b>
+          <n-flex>
+            <user-block-button />
+          </n-flex>
+        </n-flex>
+      </n-list-item>
+
+      <n-list-item>
+        <n-flex vertical>
           <b>语言</b>
           简繁转换目前只覆盖web章节内容。
           <c-radio-group
