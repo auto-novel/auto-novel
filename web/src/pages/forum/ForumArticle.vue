@@ -57,13 +57,13 @@ const unblockUserComment = async (username: string) =>
           </c-a>
         </template>
         <n-button
-          type="primary"
           v-if="
             blockUserCommentRepository.ref.value.usernames.includes(
               article.user.username,
             )
           "
           text
+          type="primary"
           @click="unblockUserComment(article.user.username)"
         >
           解除屏蔽
