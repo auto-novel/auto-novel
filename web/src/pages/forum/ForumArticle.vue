@@ -2,11 +2,16 @@
 import { useWhoamiStore } from '@/stores';
 
 import { useArticleStore } from './ForumArticleStore';
+import { doAction } from '@/pages//util';
 
 const { articleId } = defineProps<{ articleId: string }>();
 
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
+
+const blockUserCommentRepository = Locator.blockUserCommentRepository();
+
+const message = useMessage();
 
 const store = useArticleStore(articleId);
 const { articleResult } = storeToRefs(store);
@@ -16,6 +21,24 @@ store.loadArticle().then((result) => {
     document.title = result.value.title;
   }
 });
+
+const blockUserComment = async (username: string) =>
+  doAction(
+    (async () => {
+      blockUserCommentRepository.add(username);
+    })(),
+    '屏蔽用户',
+    message,
+  );
+
+const unblockUserComment = async (username: string) =>
+  doAction(
+    (async () => {
+      blockUserCommentRepository.remove(username);
+    })(),
+    '解除屏蔽用户',
+    message,
+  );
 </script>
 
 <template>
@@ -33,6 +56,26 @@ store.loadArticle().then((result) => {
             编辑
           </c-a>
         </template>
+        <n-button
+          type="primary"
+          v-if="
+            blockUserCommentRepository.ref.value.usernames.includes(
+              article.user.username,
+            )
+          "
+          text
+          @click="unblockUserComment(article.user.username)"
+        >
+          解除屏蔽
+        </n-button>
+        <n-button
+          v-else
+          text
+          type="primary"
+          @click="blockUserComment(article.user.username)"
+        >
+          屏蔽
+        </n-button>
       </n-p>
       <n-divider />
 
