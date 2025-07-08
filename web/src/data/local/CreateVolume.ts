@@ -29,7 +29,7 @@ export const createVolume = async (
   } else if (myFile.type === 'epub') {
     for await (const item of myFile.iterDoc()) {
       const paragraphs = EpubParserV1.extractText(item.doc);
-      chapters.push({ chapterId: item.path, paragraphs });
+      chapters.push({ chapterId: item.href, paragraphs });
     }
   } else if (myFile.type === 'srt') {
     const lines = myFile.subtitles

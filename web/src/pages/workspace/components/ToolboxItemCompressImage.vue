@@ -52,7 +52,7 @@ const compressImagesForEpub = async (epub: Epub) => {
   for await (const item of epub.iterImage()) {
     const newBlob = await compressImage(item.blob);
     if (!newBlob)
-      throw new Error(`压缩失败\n文件:${epub.name}\n图片:${item.path}`);
+      throw new Error(`压缩失败\n文件:${epub.name}\n图片:${item.href}`);
     epub.updateImage(item.id, newBlob);
   }
 };
@@ -95,7 +95,7 @@ const getEpubDetailList = async () => {
         const blobCompressed = await compressImage(item.blob);
         detail.images.push({
           id: item.id,
-          href: item.path,
+          href: item.href,
           blob: item.blob,
           uri: URL.createObjectURL(item.blob),
           blobCompressed,
