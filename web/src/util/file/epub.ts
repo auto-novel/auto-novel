@@ -54,7 +54,7 @@ export class Epub extends BaseFile {
   type = 'epub' as const;
   packagePath: string = '';
   navigationPath: string | undefined;
-  ncxPath: string | undefined = undefined;
+  ncxPath: string | undefined;
   packageDoc!: Document;
   items = new Map<string, EpubItem>();
   itemrefs: EpubItemref[] = [];
@@ -136,9 +136,12 @@ export class Epub extends BaseFile {
       this.items.set(id, itemBase as EpubItem);
     }
 
-    this.navigationPath = Array.from(this.items.values()).find(
+    const navigationHref = Array.from(this.items.values()).find(
       ({ properties }) => properties?.includes('nav'),
     )?.href;
+    if (navigationHref) {
+      this.navigationPath = this.resolve(this.packageDir, navigationHref);
+    }
   }
 
   private parseSpine(el: Element) {
@@ -160,8 +163,9 @@ export class Epub extends BaseFile {
     const tocIdref = el.getAttribute('toc');
     if (tocIdref) {
       const tocItem = this.items.get(tocIdref);
-      if (tocItem?.href)
-        this.ncxPath = this.resolve(this.packageDir, tocItem?.href);
+      const tocItemHref = tocItem?.href;
+      if (tocItemHref)
+        this.ncxPath = this.resolve(this.packageDir, tocItemHref);
     }
   }
 
