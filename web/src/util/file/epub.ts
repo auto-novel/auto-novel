@@ -28,7 +28,7 @@ const MIME = {
 
 type EpubItemBase = {
   id: string;
-  href: string;
+  path: string;
   mediaType: string;
   overlay: string | null;
   properties: string[] | null;
@@ -123,7 +123,7 @@ export class Epub extends BaseFile {
 
       const itemBase: EpubItemBase = {
         id,
-        href,
+        path: href,
         mediaType,
         overlay,
         properties: this.parseProperties(properties),
@@ -134,7 +134,7 @@ export class Epub extends BaseFile {
 
     this.navigationPath = Array.from(this.items.values()).find(
       ({ properties }) => properties?.includes('nav'),
-    )?.href;
+    )?.path;
   }
 
   private parseSpine(el: Element) {
@@ -156,8 +156,7 @@ export class Epub extends BaseFile {
     const tocIdref = el.getAttribute('toc');
     if (tocIdref) {
       const tocItem = this.items.get(tocIdref);
-      if (tocItem?.href)
-        this.ncxPath = this.resolve(this.packageDir, tocItem?.href);
+      this.ncxPath = tocItem?.path;
     }
   }
 
@@ -250,7 +249,7 @@ export class Epub extends BaseFile {
     }
 
     for (const item of this.items.values()) {
-      const path = item.href;
+      const path = item.path;
 
       if (item.mediaType === 'application/xhtml+xml') {
         (item as EpubItemDoc).doc = await readDoc(path);
@@ -298,11 +297,11 @@ export class Epub extends BaseFile {
       const mime = item.mediaType;
       if (mime in mimeToExtensions) {
         const extensions = mimeToExtensions[mime];
-        const ext = getFileExtension(item.href);
+        const ext = getFileExtension(item.path);
         if (!extensions.includes(ext)) {
-          const newHref = item.href.replace(/\.([a-zA-Z0-9]+)$/, extensions[0]);
-          this.updateHref(item.href, newHref);
-          item.href = newHref;
+          const newHref = item.path.replace(/\.([a-zA-Z0-9]+)$/, extensions[0]);
+          this.updateHref(item.path, newHref);
+          item.path = newHref;
         }
       }
     }
@@ -313,7 +312,7 @@ export class Epub extends BaseFile {
     const items = [...this.items.values()].map((item) => {
       const itemEl = this.packageDoc.createElementNS(packageDocNs, 'item');
       itemEl.setAttribute('id', item.id);
-      itemEl.setAttribute('href', item.href);
+      itemEl.setAttribute('href', item.path);
       itemEl.setAttribute('media-type', item.mediaType);
       if (item.overlay) itemEl.setAttribute('media-overlay', item.overlay);
       if (item.properties)
@@ -351,7 +350,7 @@ export class Epub extends BaseFile {
     await writeDoc(this.packagePath, this.packageDoc);
 
     for (const item of this.items.values()) {
-      const path = this.resolve(this.packageDir, item.href);
+      const path = this.resolve(this.packageDir, item.path);
       if ('doc' in item) {
         await writeDoc(path, item.doc);
       } else {

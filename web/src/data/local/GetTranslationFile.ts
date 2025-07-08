@@ -79,8 +79,8 @@ export const getTranslationFile = async (
       ?.removeAttribute('page-progression-direction');
 
     for await (const item of myFile.iterDoc()) {
-      if (metadata.toc.some((it) => it.chapterId === item.href)) {
-        const { zhLinesList } = await getZhLinesList(item.href);
+      if (metadata.toc.some((it) => it.chapterId === item.path)) {
+        const { zhLinesList } = await getZhLinesList(item.path);
         if (zhLinesList.length > 0) {
           await EpubParserV1.injectTranslation(item.doc, mode, zhLinesList);
         }
