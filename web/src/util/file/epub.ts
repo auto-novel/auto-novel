@@ -1,5 +1,7 @@
+import { Entry } from '@zip.js/zip.js';
 import { BaseFile } from './base';
 import { StandardNovel } from './standard';
+import { FileNotFoundError } from '@/util/errors';
 
 const MIMETYPE_PATH = 'mimetype';
 const MIMETYPE_TEMPLATE = 'application/epub+zip';
@@ -52,6 +54,7 @@ interface EpubNavItem {
 
 export class Epub extends BaseFile {
   type = 'epub' as const;
+  entries = new Map<string, Entry>();
   packagePath: string = '';
   navigationPath: string | undefined;
   ncxPath: string | undefined;
@@ -65,7 +68,25 @@ export class Epub extends BaseFile {
       0,
       this.packagePath.lastIndexOf('/') + 1,
     );
-    return dir + path;
+
+    let ret = dir + path;
+    if (this.entries.has(ret)) {
+      return ret;
+    }
+
+    const baseURL = new URL(dir, 'http://example.com');
+    const newURL = new URL(path, baseURL);
+    ret = newURL.pathname.substring(1);
+    if (this.entries.has(ret)) {
+      return ret;
+    }
+
+    ret = path;
+    if (this.entries.has(path)) {
+      return path;
+    }
+
+    throw new FileNotFoundError(`File Not Found: ${path}`);
   }
 
   private updateHref(oldHref: string, newHref: string) {
@@ -106,8 +127,14 @@ export class Epub extends BaseFile {
     for (const itemEl of Array.from(el.getElementsByTagName('item'))) {
       const id = itemEl.getAttribute('id');
       if (!id) throw new Error('Manifest item does not have id');
-      const href = itemEl.getAttribute('href');
+      let href = itemEl.getAttribute('href');
       if (!href) throw new Error('Manifest item does not have href');
+      try {
+        href = this.resolve(href);
+      } catch (error) {
+        if (error instanceof FileNotFoundError) continue;
+        throw error;
+      }
       const mediaType = itemEl.getAttribute('media-type');
       if (!mediaType) throw new Error('Manifest item does not have media type');
       const overlay = itemEl.getAttribute('media-overlay');
@@ -205,7 +232,7 @@ export class Epub extends BaseFile {
       '@zip.js/zip.js'
     );
     const reader = new ZipReader(new BlobReader(file));
-    const entries = new Map(
+    this.entries = new Map(
       (await reader.getEntries()).map((obj) => [obj.filename, obj] as const),
     );
 
@@ -213,7 +240,7 @@ export class Epub extends BaseFile {
       path: string,
       type: DOMParserSupportedType,
     ) => {
-      const entry = entries.get(path);
+      const entry = this.entries.get(path);
       if (!entry) throw new Error(`Entry not found: ${path}`);
       const text = await entry.getData!(new TextWriter());
       const parser = new DOMParser();
@@ -226,7 +253,7 @@ export class Epub extends BaseFile {
       readDocWithType(path, 'text/html');
 
     const readBlob = async (path: string, type: string) => {
-      const entry = entries.get(path);
+      const entry = this.entries.get(path);
       if (!entry) throw new Error(`Entry not found: ${path}`);
       const data = await entry.getData!(new BlobWriter());
       return new Blob([data], { type });

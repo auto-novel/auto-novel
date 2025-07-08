@@ -31,6 +31,7 @@ object Epub {
             fs.readFileAsXHtml(opfPath)
                 .select("manifest item[media-type=application/xhtml+xml]")
                 .map { opfDir + "/" + it.attr("href") }
+                .filter { Files.exists(fs.getPath(it)) }
                 .forEach { block(it, fs.readFileAsXHtml(it)) }
         }
     }
