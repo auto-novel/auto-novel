@@ -1,7 +1,5 @@
-import { Entry } from '@zip.js/zip.js';
 import { BaseFile } from './base';
 import { StandardNovel } from './standard';
-import { FileNotFoundError } from '@/util/errors';
 
 const MIMETYPE_PATH = 'mimetype';
 const MIMETYPE_TEMPLATE = 'application/epub+zip';
@@ -54,39 +52,26 @@ interface EpubNavItem {
 
 export class Epub extends BaseFile {
   type = 'epub' as const;
-  entries = new Map<string, Entry>();
   packagePath: string = '';
   navigationPath: string | undefined;
-  ncxPath: string | undefined;
+  ncxPath: string | undefined = undefined;
   packageDoc!: Document;
   items = new Map<string, EpubItem>();
   itemrefs: EpubItemref[] = [];
   navItems: EpubNavItem[] = [];
 
-  private resolve(path: string) {
+  get packageDir(): string {
     const dir = this.packagePath.substring(
       0,
       this.packagePath.lastIndexOf('/') + 1,
     );
+    return dir;
+  }
 
-    let ret = dir + path;
-    if (this.entries.has(ret)) {
-      return ret;
-    }
-
-    const baseURL = new URL(dir, 'http://example.com');
+  private resolve(root: string, path: string) {
+    const baseURL = new URL(root, 'http://example.com');
     const newURL = new URL(path, baseURL);
-    ret = newURL.pathname.substring(1);
-    if (this.entries.has(ret)) {
-      return ret;
-    }
-
-    ret = path;
-    if (this.entries.has(path)) {
-      return path;
-    }
-
-    throw new FileNotFoundError(`File Not Found: ${path}`);
+    return newURL.pathname.substring(1);
   }
 
   private updateHref(oldHref: string, newHref: string) {
@@ -129,12 +114,7 @@ export class Epub extends BaseFile {
       if (!id) throw new Error('Manifest item does not have id');
       let href = itemEl.getAttribute('href');
       if (!href) throw new Error('Manifest item does not have href');
-      try {
-        href = this.resolve(href);
-      } catch (error) {
-        if (error instanceof FileNotFoundError) continue;
-        throw error;
-      }
+      href = this.resolve(this.packageDir, href);
       const mediaType = itemEl.getAttribute('media-type');
       if (!mediaType) throw new Error('Manifest item does not have media type');
       const overlay = itemEl.getAttribute('media-overlay');
@@ -176,7 +156,8 @@ export class Epub extends BaseFile {
     const tocIdref = el.getAttribute('toc');
     if (tocIdref) {
       const tocItem = this.items.get(tocIdref);
-      this.ncxPath = tocItem?.href;
+      if (tocItem?.href)
+        this.ncxPath = this.resolve(this.packageDir, tocItem?.href);
     }
   }
 
@@ -232,7 +213,7 @@ export class Epub extends BaseFile {
       '@zip.js/zip.js'
     );
     const reader = new ZipReader(new BlobReader(file));
-    this.entries = new Map(
+    const entries = new Map(
       (await reader.getEntries()).map((obj) => [obj.filename, obj] as const),
     );
 
@@ -240,7 +221,7 @@ export class Epub extends BaseFile {
       path: string,
       type: DOMParserSupportedType,
     ) => {
-      const entry = this.entries.get(path);
+      const entry = entries.get(path);
       if (!entry) throw new Error(`Entry not found: ${path}`);
       const text = await entry.getData!(new TextWriter());
       const parser = new DOMParser();
@@ -253,7 +234,7 @@ export class Epub extends BaseFile {
       readDocWithType(path, 'text/html');
 
     const readBlob = async (path: string, type: string) => {
-      const entry = this.entries.get(path);
+      const entry = entries.get(path);
       if (!entry) throw new Error(`Entry not found: ${path}`);
       const data = await entry.getData!(new BlobWriter());
       return new Blob([data], { type });
@@ -263,15 +244,13 @@ export class Epub extends BaseFile {
     this.parsePackage(await readDoc(this.packagePath));
 
     if (this.navigationPath) {
-      this.parseNavigationDocument(
-        await readDoc(this.resolve(this.navigationPath)),
-      );
+      this.parseNavigationDocument(await readDoc(this.navigationPath));
     } else if (this.ncxPath) {
-      this.parseNcx(await readDoc(this.resolve(this.ncxPath)));
+      this.parseNcx(await readDoc(this.ncxPath));
     }
 
     for (const item of this.items.values()) {
-      const path = this.resolve(item.href);
+      const path = item.href;
 
       if (item.mediaType === 'application/xhtml+xml') {
         (item as EpubItemDoc).doc = await readDoc(path);
@@ -372,7 +351,7 @@ export class Epub extends BaseFile {
     await writeDoc(this.packagePath, this.packageDoc);
 
     for (const item of this.items.values()) {
-      const path = this.resolve(item.href);
+      const path = this.resolve(this.packageDir, item.href);
       if ('doc' in item) {
         await writeDoc(path, item.doc);
       } else {
