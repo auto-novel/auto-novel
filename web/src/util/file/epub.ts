@@ -68,6 +68,11 @@ export class Epub extends BaseFile {
     return dir;
   }
 
+  // ========================
+  // NOTE(kuriko):
+  //  (a/b, c) => a/c
+  //  (a/b/, c) => a/b/c
+  // ========================
   private resolve(root: string, path: string) {
     const baseURL = new URL(root, 'http://example.com');
     const newURL = new URL(path, baseURL);
