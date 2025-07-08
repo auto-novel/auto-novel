@@ -136,12 +136,10 @@ export class Epub extends BaseFile {
       this.items.set(id, itemBase as EpubItem);
     }
 
-    const navigationHref = Array.from(this.items.values()).find(
-      ({ properties }) => properties?.includes('nav'),
+    const navHref = Array.from(this.items.values()).find(({ properties }) =>
+      properties?.includes('nav'),
     )?.href;
-    if (navigationHref) {
-      this.navigationPath = this.resolve(this.packageDir, navigationHref);
-    }
+    this.navigationPath = navHref && this.resolve(this.packageDir, navHref);
   }
 
   private parseSpine(el: Element) {
@@ -164,8 +162,7 @@ export class Epub extends BaseFile {
     if (tocIdref) {
       const tocItem = this.items.get(tocIdref);
       const tocItemHref = tocItem?.href;
-      if (tocItemHref)
-        this.ncxPath = this.resolve(this.packageDir, tocItemHref);
+      this.ncxPath = tocItemHref && this.resolve(this.packageDir, tocItemHref);
     }
   }
 
