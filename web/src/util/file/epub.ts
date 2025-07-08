@@ -117,9 +117,8 @@ export class Epub extends BaseFile {
     for (const itemEl of Array.from(el.getElementsByTagName('item'))) {
       const id = itemEl.getAttribute('id');
       if (!id) throw new Error('Manifest item does not have id');
-      let href = itemEl.getAttribute('href');
+      const href = itemEl.getAttribute('href');
       if (!href) throw new Error('Manifest item does not have href');
-      href = this.resolve(this.packageDir, href);
       const mediaType = itemEl.getAttribute('media-type');
       if (!mediaType) throw new Error('Manifest item does not have media type');
       const overlay = itemEl.getAttribute('media-overlay');
@@ -255,7 +254,7 @@ export class Epub extends BaseFile {
     }
 
     for (const item of this.items.values()) {
-      const path = item.href;
+      const path = this.resolve(this.packageDir, item.href);
 
       if (item.mediaType === 'application/xhtml+xml') {
         (item as EpubItemDoc).doc = await readDoc(path);
