@@ -60,22 +60,10 @@ export class Epub extends BaseFile {
   itemrefs: EpubItemref[] = [];
   navItems: EpubNavItem[] = [];
 
-  get packageDir(): string {
-    const dir = this.packagePath.substring(
-      0,
-      this.packagePath.lastIndexOf('/') + 1,
-    );
-    return dir;
-  }
-
-  // ========================
-  // NOTE(kuriko):
-  //  (a/b, c) => a/c
-  //  (a/b/, c) => a/b/c
-  // ========================
-  private resolve(root: string, path: string) {
-    const baseURL = new URL(root, 'http://example.com');
-    const newURL = new URL(path, baseURL);
+  private resolve(root: string, rpath: string) {
+    const rootUrl = new URL(root, 'files://books');
+    const rootDirUrl = new URL('.', rootUrl);
+    const newURL = new URL(rpath, rootDirUrl);
     return newURL.pathname.substring(1);
   }
 
@@ -139,7 +127,7 @@ export class Epub extends BaseFile {
     const navHref = Array.from(this.items.values()).find(({ properties }) =>
       properties?.includes('nav'),
     )?.href;
-    this.navigationPath = navHref && this.resolve(this.packageDir, navHref);
+    this.navigationPath = navHref && this.resolve(this.packagePath, navHref);
   }
 
   private parseSpine(el: Element) {
@@ -162,7 +150,7 @@ export class Epub extends BaseFile {
     if (tocIdref) {
       const tocItem = this.items.get(tocIdref);
       const tocItemHref = tocItem?.href;
-      this.ncxPath = tocItemHref && this.resolve(this.packageDir, tocItemHref);
+      this.ncxPath = tocItemHref && this.resolve(this.packagePath, tocItemHref);
     }
   }
 
@@ -255,7 +243,7 @@ export class Epub extends BaseFile {
     }
 
     for (const item of this.items.values()) {
-      const path = this.resolve(this.packageDir, item.href);
+      const path = this.resolve(this.packagePath, item.href);
 
       if (item.mediaType === 'application/xhtml+xml') {
         (item as EpubItemDoc).doc = await readDoc(path);
@@ -356,7 +344,7 @@ export class Epub extends BaseFile {
     await writeDoc(this.packagePath, this.packageDoc);
 
     for (const item of this.items.values()) {
-      const path = this.resolve(this.packageDir, item.href);
+      const path = this.resolve(this.packagePath, item.href);
       if ('doc' in item) {
         await writeDoc(path, item.doc);
       } else {
