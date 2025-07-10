@@ -133,6 +133,14 @@ li {
   opacity: 0.7;
 }
 
+.app-loading-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 0;
+  color: #999;
+}
+
 @supports (-webkit-touch-callout: none) {
   /* 仅在支持 -webkit-touch-callout 的设备上生效（iOS 特有） */
 

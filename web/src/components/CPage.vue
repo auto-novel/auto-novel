@@ -179,7 +179,7 @@ const loadMore = async () => {
     />
     <n-divider />
 
-    <div v-if="loading" class="loading-box">
+    <div v-if="loading" class="app-loading-box">
       <n-spin />
     </div>
     <c-result
@@ -210,7 +210,7 @@ const loadMore = async () => {
     >
       <slot :items="pageValue.items" />
     </c-result>
-    <div v-if="pageContent?.ok !== false" class="loading-box">
+    <div v-if="pageContent?.ok !== false" class="app-loading-box">
       <template v-if="loading">
         <n-spin />
       </template>
@@ -220,13 +220,3 @@ const loadMore = async () => {
     </div>
   </template>
 </template>
-
-<style scoped>
-.loading-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px 0;
-  color: #999;
-}
-</style>
