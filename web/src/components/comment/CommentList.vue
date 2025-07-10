@@ -91,7 +91,7 @@ const showInput = ref(false);
     <n-divider />
   </template>
 
-  <div v-if="loading" class="loading-box">
+  <div v-if="loading" class="app-loading-box">
     <n-spin />
   </div>
   <c-result
@@ -119,13 +119,3 @@ const showInput = ref(false);
     />
   </c-result>
 </template>
-
-<style scoped>
-.loading-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 48px 0;
-  color: #999;
-}
-</style>

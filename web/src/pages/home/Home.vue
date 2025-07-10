@@ -6,7 +6,7 @@ import {
   ReadMoreOutlined,
   StarBorderOutlined,
 } from '@vicons/material';
-
+import useSWRV from 'swrv';
 import { Locator } from '@/data';
 import { WebNovelRepository, WenkuNovelRepository } from '@/data/api';
 import bannerUrl from '@/image/banner.webp';
@@ -36,28 +36,27 @@ const query = (url: string) => {
   }
 };
 
-const favoriteList = ref<Result<WebNovelOutlineDto[]>>();
-const loadFavorite = async () => {
-  favoriteList.value = await runCatching(
-    Locator.favoredRepository()
-      .listFavoredWebNovel('default', {
-        page: 0,
-        pageSize: 8,
-        query: '',
-        provider: 'kakuyomu,syosetu,novelup,hameln,pixiv,alphapolis',
-        type: 0,
-        level: 0,
-        translate: 0,
-        sort: 'update',
-      })
-      .then((it) => it.items),
-  );
-};
-loadFavorite();
+const { data: favoriteList } = useSWRV(
+  () => (whoami.value.isSignedIn ? '/home/favorite' : null),
+  async () =>
+    runCatching(
+      Locator.favoredRepository()
+        .listFavoredWebNovel('default', {
+          page: 0,
+          pageSize: 8,
+          query: '',
+          provider: 'kakuyomu,syosetu,novelup,hameln,pixiv,alphapolis',
+          type: 0,
+          level: 0,
+          translate: 0,
+          sort: 'update',
+        })
+        .then((it) => it.items),
+    ),
+);
 
-const mostVisitedWeb = ref<Result<WebNovelOutlineDto[]>>();
-const loadWeb = async () => {
-  mostVisitedWeb.value = await runCatching(
+const { data: mostVisitedWeb } = useSWRV('/home/most-visited-web', async () =>
+  runCatching(
     WebNovelRepository.listNovel({
       page: 0,
       pageSize: 8,
@@ -65,21 +64,20 @@ const loadWeb = async () => {
       sort: 1,
       level: 1,
     }).then((it) => it.items),
-  );
-};
-loadWeb();
+  ),
+);
 
-const latestUpdateWenku = ref<Result<WenkuNovelOutlineDto[]>>();
-const loadWenku = async () => {
-  latestUpdateWenku.value = await runCatching(
-    WenkuNovelRepository.listNovel({
-      page: 0,
-      pageSize: 12,
-      level: 1,
-    }).then((it) => it.items),
-  );
-};
-loadWenku();
+const { data: latestUpdateWenku } = useSWRV(
+  '/home/last-update-wenku',
+  async () =>
+    runCatching(
+      WenkuNovelRepository.listNovel({
+        page: 0,
+        pageSize: 12,
+        level: 1,
+      }).then((it) => it.items),
+    ),
+);
 
 const showHowToUseModal = ref(false);
 const linkExample = [

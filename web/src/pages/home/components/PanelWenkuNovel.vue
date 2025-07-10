@@ -6,7 +6,11 @@ defineProps<{ listResult?: Result<WenkuNovelOutlineDto[]> }>();
 </script>
 
 <template>
+  <div v-if="!listResult" class="app-loading-box">
+    <n-spin />
+  </div>
   <c-result
+    v-else
     :result="listResult"
     :show-empty="(it: WenkuNovelOutlineDto[]) => it.length === 0"
     v-slot="{ value: list }"
