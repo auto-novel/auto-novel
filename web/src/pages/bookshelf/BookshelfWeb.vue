@@ -49,7 +49,9 @@ const options = computed(() => [
   },
   {
     label: '排序',
-    tags: ['更新时间', '收藏时间'],
+    tags: setting.value.favoriteCreateTimeFirst
+      ? ['收藏时间', '更新时间']
+      : ['更新时间', '收藏时间'],
   },
 ]);
 
