@@ -1,10 +1,8 @@
 package util.epub
 
-import org.slf4j.LoggerFactory;
-
 import com.google.common.jimfs.Configuration
 import com.google.common.jimfs.Jimfs
-import net.lingala.zip4j.io.inputstream.ZipInputStream;
+import net.lingala.zip4j.io.inputstream.ZipInputStream
 import java.nio.file.FileSystem
 import java.nio.file.Files
 import java.nio.file.Path
@@ -19,7 +17,7 @@ fun FileSystem.zipGetPath(path: String): Path {
     return if (!path.startsWith("/")) {
         getPath(Path.of("/").resolve(path).toString())
     } else {
-        getPath(path.toString())
+        getPath(path)
     }
 }
 
@@ -41,13 +39,17 @@ object ZipUtils {
      * @param fs 任意一个 filesytem 对象，例如 jimfs
      */
     private fun unzipToAnyfs(zipPath: Path, fs: FileSystem) {
+        // FIXME(kuriko): 请考虑把所有常量找个地方放一起。
+        val MAX_ALLOWED_EPUB_SIZE = 50 * 1024 * 1024  // 50MiB
+
+        var decSize = 0
         Files.newInputStream(zipPath).use { inputStream ->
             ZipInputStream(inputStream).use { zipInputStream ->
                 generateSequence { zipInputStream.nextEntry }.forEach { localFileHeader ->
                     var readLen: Int
                     val readBuffer = ByteArray(4096)
 
-                    val extractedFile = Path.of("/").resolve(localFileHeader.fileName);
+                    val extractedFile = Path.of("/").resolve(localFileHeader.fileName)
                     val extractedFilePath = fs.getPath(extractedFile.toString())
                     if (localFileHeader.isDirectory) {
                         Files.createDirectories(extractedFilePath)
@@ -57,6 +59,10 @@ object ZipUtils {
                         Files.newOutputStream(extractedFilePath).use { outputStream ->
                             while ((zipInputStream.read(readBuffer).also { readLen = it }) != -1) {
                                 outputStream.write(readBuffer, 0, readLen)
+                                decSize += readLen
+                                if (decSize > MAX_ALLOWED_EPUB_SIZE) {
+                                    throw IllegalStateException("Decompressed epub size exceeds the limit.")
+                                }
                             }
                         }
                     }
