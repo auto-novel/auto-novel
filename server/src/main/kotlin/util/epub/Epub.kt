@@ -13,8 +13,6 @@ import java.util.zip.ZipOutputStream
 import kotlin.io.path.*
 import kotlin.streams.asSequence
 
-import util.epub.ZipUtils
-
 
 private fun FileSystem.readFileAsXHtml(path: String): Document {
     return Jsoup.parse(zipGetPath(path).readText(), Parser.xmlParser())

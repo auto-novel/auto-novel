@@ -36,7 +36,7 @@ object ZipUtils {
 
     /**
      * @param zipPath zip 文件路径
-     * @param fs 任意一个 filesytem 对象，例如 jimfs
+     * @param fs 任意一个 filesystem 对象，例如 jimfs
      */
     private fun unzipToAnyfs(zipPath: Path, fs: FileSystem) {
         // FIXME(kuriko): 请考虑把所有常量找个地方放一起。
