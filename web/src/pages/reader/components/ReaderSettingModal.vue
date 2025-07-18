@@ -56,7 +56,7 @@ const setCustomFontColor = (color: string) =>
           <c-action-wrapper title="朗读语言">
             <c-radio-group
               :value="setting.speakLanguages[0]"
-              @update-value="(it) => (setting.speakLanguages = [it])"
+              @update-value="(it: any) => (setting.speakLanguages = [it])"
               :options="ReaderSetting.speakLanguagesOptions"
             />
           </c-action-wrapper>

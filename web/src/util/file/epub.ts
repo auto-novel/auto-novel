@@ -61,9 +61,8 @@ export class Epub extends BaseFile {
   navItems: EpubNavItem[] = [];
 
   private resolve(root: string, rpath: string) {
-    const rootUrl = new URL(root, 'files://books');
-    const rootDirUrl = new URL('.', rootUrl);
-    const newURL = new URL(rpath, rootDirUrl);
+    const rootUrl = new URL(root, 'file://book');
+    const newURL = new URL(rpath, rootUrl);
     return newURL.pathname.substring(1);
   }
 

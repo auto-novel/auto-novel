@@ -18,7 +18,7 @@ defineEmits<{
         quaternary
         size="small"
         @mousedown="
-          (e) => {
+          (e: any) => {
             $emit('action');
             e.preventDefault();
           }
