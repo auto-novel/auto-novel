@@ -8,12 +8,15 @@ import infra.wenku.WenkuNovelVolumeList
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.toKotlinInstant
 import kotlinx.serialization.json.Json
 import util.epub.Epub
 import util.serialName
 import java.nio.charset.Charset
 import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import kotlin.io.path.*
 
 sealed class VolumeCreateException(message: String, cause: Throwable? = null) : Exception(message, cause) {
@@ -37,13 +40,21 @@ class WenkuNovelVolumeDiskDataSource(
                     it.isRegularFile() && it.fileName.extension in listOf("epub", "txt")
                 }
                 .map {
-                    VolumeAccessor(volumesDir, it.fileName.toString())
+                    val lastModifiedTime = Files.getAttribute(it, "lastModifiedTime") as FileTime
+                    VolumeAccessor(
+                        volumesDir,
+                        it.fileName.toString(),
+                        it.fileSize(),
+                        lastModifiedTime.toInstant().toKotlinInstant().toEpochMilliseconds()
+                    )
                 }
                 .forEach {
                     if (it.unpacked) {
                         volumesJp.add(
                             WenkuNovelVolumeJp(
                                 volumeId = it.volumeId,
+                                fileSize = it.fileSize,
+                                lastModifiedTime = it.lastModifiedTime,
                                 total = it.listChapter().size,
                                 baidu = it.listTranslation(TranslatorId.Baidu).size,
                                 youdao = it.listTranslation(TranslatorId.Youdao).size,
@@ -75,7 +86,7 @@ class WenkuNovelVolumeDiskDataSource(
         val volumePath = volumesDir / volumeId
         val volumeOutputStream = try {
             volumePath.createFile().outputStream()
-        } catch (e: FileAlreadyExistsException) {
+        } catch (_: FileAlreadyExistsException) {
             throw VolumeCreateException.VolumeAlreadyExist()
         }
         val volumeTooLarge = volumeOutputStream.use { out ->
@@ -178,7 +189,12 @@ class WenkuNovelVolumeDiskDataSource(
 private fun String.escapePath() =
     replace('/', '.')
 
-class VolumeAccessor(val volumesDir: Path, val volumeId: String) {
+class VolumeAccessor(
+    val volumesDir: Path,
+    val volumeId: String,
+    val fileSize: Long = 0,
+    val lastModifiedTime: Long? = null,
+) {
     val unpacked
         get() = (volumesDir / "${volumeId}.unpack").exists()
 
@@ -278,7 +294,7 @@ private suspend fun getGlossary(path: Path) =
             null
         else try {
             Json.decodeFromString<WenkuChapterGlossary>(path.readText())
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             null
         }
     }

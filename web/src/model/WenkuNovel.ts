@@ -40,6 +40,8 @@ export interface WenkuVolumeDto {
 
 export interface VolumeJpDto {
   volumeId: string;
+  fileSize: number;
+  lastModifiedTime: number;
   total: number;
   baidu: number;
   youdao: number;

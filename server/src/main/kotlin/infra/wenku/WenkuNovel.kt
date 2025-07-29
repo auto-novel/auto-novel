@@ -80,6 +80,8 @@ data class WenkuNovelVolumeList(
 @Serializable
 data class WenkuNovelVolumeJp(
     val volumeId: String,
+    val fileSize: Long = 0,
+    val lastModifiedTime: Long? = null,
     val total: Int,
     val baidu: Int,
     val youdao: Int,
