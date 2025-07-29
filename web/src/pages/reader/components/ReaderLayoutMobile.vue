@@ -34,7 +34,7 @@ const onGlobalClick = (event: MouseEvent) => {
   };
 
   const scrollByIfNeed = (p: number) => {
-    const t = 0.15;
+    const t = 0.3;
     const distance = 0.8;
     if (p < t) {
       scrollBy(-distance);
