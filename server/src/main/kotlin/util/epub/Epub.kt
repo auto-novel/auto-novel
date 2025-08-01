@@ -29,7 +29,7 @@ object Epub {
 
             val opfDir = opfPath.substringBeforeLast("/", "")
             fs.readFileAsXHtml(opfPath)
-                .select("manifest item[media-type=application/xhtml+xml]")
+                .select("manifest item[media-type=application/xhtml+xml], manifest item[media-type=text/html]")
                 .map { opfDir + "/" + it.attr("href") }
                 .forEach { block(it, fs.readFileAsXHtml(it)) }
         }
