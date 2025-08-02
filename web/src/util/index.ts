@@ -123,6 +123,38 @@ export const parallelExec = async <T>(
   }
 };
 
+export const parallelExecInfinite = async (
+  next: () => Promise<any> | undefined,
+  concurrent: number,
+  signal: AbortSignal,
+) => {
+  let keepAlivePromise = false;
+  const promises: any[] = [];
+
+  while (!signal.aborted) {
+    let p = next();
+    if (p === undefined) {
+      if (!keepAlivePromise) {
+        keepAlivePromise = true;
+        p = delay(1000, signal).then(() => {
+          keepAlivePromise = false;
+        });
+      }
+    }
+
+    if (p !== undefined) {
+      p = p.finally(() => {
+        promises.splice(promises.indexOf(p), 1);
+      });
+      promises.push(p);
+    }
+
+    if (keepAlivePromise || promises.length >= concurrent) {
+      await Promise.race(promises);
+    }
+  }
+};
+
 export namespace RegexUtil {
   const englishChars = /[a-z]|[A-Z]/;
   export const hasEnglishChars = (str: string) => /[\u4E00-\u9FAF]/.test(str);
