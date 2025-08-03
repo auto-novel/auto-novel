@@ -14,23 +14,22 @@ interface AuthProfile {
   role: UserRole;
   createdAt: number;
   expiredAt: number;
+  issuedAt: number;
 }
 
 interface AuthData {
   profile?: AuthProfile;
-  issuedAt?: number;
-  manageMode: boolean;
+  adminMode: boolean;
 }
 
 export const createAuthRepository = () => {
   const authData = useSessionStorage<AuthData>(LSKey.Auth, {
     profile: undefined,
-    issuedAt: undefined,
-    manageMode: false,
+    adminMode: false,
   });
 
   const whoami = computed(() => {
-    const { profile, manageMode } = authData.value;
+    const { profile, adminMode } = authData.value;
 
     const isMaintainer = profile?.role === 'admin';
     const isSignedIn = profile !== undefined;
@@ -46,7 +45,7 @@ export const createAuthRepository = () => {
       createAt: profile?.createdAt,
       isMaintainer,
       isSignedIn,
-      asMaintainer: isMaintainer && manageMode,
+      asMaintainer: isMaintainer && adminMode,
       allowNsfw: createAtLeast(30),
       allowAdvancedFeatures: createAtLeast(30),
       isMe: (username: string) => profile?.username === username,
@@ -54,24 +53,25 @@ export const createAuthRepository = () => {
   });
 
   const toggleManageMode = () => {
-    authData.value.manageMode = !authData.value.manageMode;
+    authData.value.adminMode = !authData.value.adminMode;
   };
 
   let refreshTimer: number | undefined = undefined;
 
   const refresh = () =>
     AuthApi.refresh().then((token) => {
-      const { sub, exp, role, crat } = jwtDecode<{
+      const { sub, exp, role, iat, crat } = jwtDecode<{
         sub: string;
         exp: number;
+        iat: number;
         role: UserRole;
         crat: number;
       }>(token);
-      authData.value.issuedAt = Date.now();
       authData.value.profile = {
         token,
         username: sub,
         role,
+        issuedAt: iat,
         createdAt: crat,
         expiredAt: exp,
       };
@@ -81,14 +81,14 @@ export const createAuthRepository = () => {
     // 清空过期 Access Token
     if (
       authData.value.profile &&
-      Date.now() / 1000 > authData.value.profile.expiredAt
+      Date.now() > authData.value.profile.expiredAt * 1000
     ) {
       authData.value.profile = undefined;
     }
 
     // 刷新 Access Token，冷却时间为1小时
     const cooldown = 3600 * 1000;
-    const sinceIssuedAt = Date.now() - (authData.value.issuedAt ?? 0);
+    const sinceIssuedAt = Date.now() - (authData.value.profile?.issuedAt ?? 0);
     if (sinceIssuedAt < cooldown) {
       return;
     }
