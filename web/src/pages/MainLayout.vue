@@ -190,14 +190,6 @@ const menuKey = computed(() => {
   return path;
 });
 
-const roleToString = (role: UserRole) => {
-  if (role === 'admin') return '管理员';
-  else if (role === 'member') return '普通用户';
-  else if (role === 'restricted') return '受限用户';
-  else if (role === 'banned') return '封禁用户';
-  else return role satisfies never;
-};
-
 const userDropdownOptions = computed<MenuOption[]>(() => {
   const renderHeader = () =>
     h(
@@ -219,9 +211,7 @@ const userDropdownOptions = computed<MenuOption[]>(() => {
             NText,
             { depth: 2 },
             {
-              default: () =>
-                roleToString(whoami.value.role!) +
-                (whoami.value.asMaintainer ? '+' : ''),
+              default: () => whoami.value.user.role,
             },
           ),
         ]),
@@ -232,7 +222,7 @@ const userDropdownOptions = computed<MenuOption[]>(() => {
             {
               default: () =>
                 h(NTime, {
-                  time: whoami.value.createAt! * 1000,
+                  time: whoami.value.user.createAt * 1000,
                   type: 'date',
                 }),
             },
@@ -309,7 +299,7 @@ watch(
             @select="handleUserDropdownSelect"
           >
             <n-button :focusable="false" quaternary>
-              @{{ whoami.username }}
+              @{{ whoami.user.username }}
             </n-button>
           </n-dropdown>
 

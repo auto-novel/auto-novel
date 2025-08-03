@@ -82,7 +82,7 @@ const handleSelect = (key: string) => {
 const isDeletable = computed(() => {
   return (
     whoami.value.asMaintainer ||
-    (whoami.value.username === comment.user.username &&
+    (whoami.value.isMe(comment.user.username) &&
       Date.now() / 1000 - comment.createAt < 3600 * 24)
   );
 });

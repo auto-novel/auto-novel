@@ -31,7 +31,7 @@ export const createAuthRepository = () => {
   const whoami = computed(() => {
     const { profile, adminMode } = authData.value;
 
-    const isMaintainer = profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin';
     const isSignedIn = profile !== undefined;
 
     const createAtLeast = (days: number) => {
@@ -39,13 +39,30 @@ export const createAuthRepository = () => {
       return Date.now() / 1000 - profile.createdAt > days * 24 * 3600;
     };
 
+    const buildRoleLabel = (auth: AuthData) => {
+      if (!auth.profile) return '';
+
+      const roleToString = {
+        admin: '管理员',
+        member: '普通用户',
+        restricted: '受限用户',
+        banned: '封禁用户',
+      };
+      return (
+        roleToString[auth.profile.role] ??
+        '未知用户' + (auth.adminMode ? '+' : '')
+      );
+    };
+
     return {
-      username: profile?.username,
-      role: profile?.role,
-      createAt: profile?.createdAt,
-      isMaintainer,
+      user: {
+        username: profile?.username ?? '未登录',
+        role: buildRoleLabel(authData.value),
+        createAt: profile?.createdAt ?? Date.now() / 1000,
+      },
       isSignedIn,
-      asMaintainer: isMaintainer && adminMode,
+      isMaintainer: isAdmin,
+      asMaintainer: isAdmin && adminMode,
       allowNsfw: createAtLeast(30),
       allowAdvancedFeatures: createAtLeast(30),
       isMe: (username: string) => profile?.username === username,
