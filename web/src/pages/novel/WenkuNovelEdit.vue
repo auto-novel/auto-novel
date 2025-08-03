@@ -395,7 +395,7 @@ const levelOptions = [
             @action="populateNovelFromAmazon('', true)"
           />
           <c-button
-            v-if="whoami.isMaintainer"
+            v-if="whoami.isAdmin"
             type="error"
             secondary
             label="标记重复"

@@ -175,7 +175,7 @@ const menuOptions = computed<MenuOption[]>(() => {
       label: renderLabel('控制台', '/admin'),
       icon: renderIcon(CandlestickChartOutlined),
       key: '/admin',
-      show: whoami.value.asMaintainer,
+      show: whoami.value.asAdmin,
     },
   ];
 });
@@ -196,7 +196,7 @@ const userDropdownOptions = computed<MenuOption[]>(() => {
       'div',
       {
         onClick: () => {
-          if (whoami.value.isMaintainer) {
+          if (whoami.value.isAdmin) {
             authRepository.toggleManageMode();
           }
         },

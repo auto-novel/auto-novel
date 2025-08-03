@@ -32,7 +32,7 @@ const options = computed(() => {
       key: 'copy',
     },
   ];
-  if (whoami.value.asMaintainer) {
+  if (whoami.value.asAdmin) {
     if (comment.hidden) {
       options.push({
         label: '解除隐藏',
@@ -81,7 +81,7 @@ const handleSelect = (key: string) => {
 
 const isDeletable = computed(() => {
   return (
-    whoami.value.asMaintainer ||
+    whoami.value.asAdmin ||
     (whoami.value.isMe(comment.user.username) &&
       Date.now() / 1000 - comment.createAt < 3600 * 24)
   );

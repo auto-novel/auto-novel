@@ -198,7 +198,7 @@ const showWebNovelsModal = ref(false);
 
       <section-header title="目录" />
       <template v-if="whoami.isSignedIn">
-        <upload-button :allow-zh="whoami.isMaintainer" :novel-id="novelId" />
+        <upload-button :allow-zh="whoami.isAdmin" :novel-id="novelId" />
 
         <translate-options
           ref="translateOptions"
@@ -222,7 +222,7 @@ const showWebNovelsModal = ref(false);
           </n-list-item>
         </n-list>
 
-        <template v-if="whoami.isMaintainer">
+        <template v-if="whoami.isAdmin">
           <n-divider style="margin: 0" />
 
           <n-ul>
@@ -236,7 +236,7 @@ const showWebNovelsModal = ref(false);
               </n-a>
 
               <c-button-confirm
-                v-if="whoami.asMaintainer"
+                v-if="whoami.asAdmin"
                 :hint="`真的要删除《${volumeId}》吗？`"
                 label="删除"
                 text
@@ -257,7 +257,7 @@ const showWebNovelsModal = ref(false);
 
         <n-empty
           v-if="
-            !whoami.isMaintainer &&
+            !whoami.isAdmin &&
             metadata.volumeJp.length === 0 &&
             metadata.volumeZh.length > 0
           "

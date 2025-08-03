@@ -23,7 +23,7 @@ const draftId = `article-${articleId ?? 'new'}`;
 
 const store = articleId !== undefined ? useArticleStore(articleId) : undefined;
 
-const articleCategoryOptions = whoami.value.asMaintainer
+const articleCategoryOptions = whoami.value.asAdmin
   ? [
       { value: 'General', label: '小说交流' },
       { value: 'Guide', label: '使用指南' },

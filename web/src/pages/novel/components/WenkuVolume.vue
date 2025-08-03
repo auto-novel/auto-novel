@@ -117,7 +117,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
           @action="submitJob('sakura')"
         />
         <c-button-confirm
-          v-if="whoami.asMaintainer"
+          v-if="whoami.asAdmin"
           :hint="`真的要删除《${volume.volumeId}》吗？`"
           label="删除"
           type="error"

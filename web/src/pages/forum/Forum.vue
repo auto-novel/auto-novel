@@ -161,7 +161,7 @@ const deleteArticle = (article: ArticleSimplified) =>
                 by {{ article.user.username }}
               </n-text>
 
-              <n-flex v-if="whoami.asMaintainer" style="margin-top: 4px">
+              <n-flex v-if="whoami.asAdmin" style="margin-top: 4px">
                 <c-button
                   v-if="article.locked"
                   size="tiny"
