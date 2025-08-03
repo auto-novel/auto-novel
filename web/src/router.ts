@@ -17,20 +17,13 @@ const router = createRouter({
   routes: [
     {
       path: '/*',
-      component: () => import('./pages/auth/AuthLayout.vue'),
       children: [
         {
-          path: '/sign-in',
-          name: 'sign-in',
-          meta: { title: '登录' },
-          component: () => import('./pages/auth/SignIn.vue'),
+          path: '/auth',
+          name: 'auth',
+          meta: { title: '统一身份认证' },
+          component: () => import('./pages/Auth.vue'),
           props: (route) => ({ from: route.query.from }),
-        },
-        {
-          path: '/reset-password',
-          name: 'reset-password',
-          meta: { title: '重置密码' },
-          component: () => import('./pages/auth/ResetPassword.vue'),
         },
       ],
     },

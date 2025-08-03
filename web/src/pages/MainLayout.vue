@@ -191,10 +191,9 @@ const menuKey = computed(() => {
 });
 
 const roleToString = (role: UserRole) => {
-  if (role === 'normal') return '普通用户';
-  else if (role === 'trusted') return '信任用户';
-  else if (role === 'maintainer') return '维护者';
-  else if (role === 'admin') return '管理员';
+  if (role === 'admin') return '管理员';
+  else if (role === 'member') return '普通用户';
+  else if (role === 'restricted') return '受限用户';
   else if (role === 'banned') return '封禁用户';
   else return role satisfies never;
 };
@@ -253,14 +252,14 @@ const userDropdownOptions = computed<MenuOption[]>(() => {
     },
     {
       label: '退出账号',
-      key: 'sign-out',
+      key: 'logout',
       icon: renderIcon(LogOutOutlined),
     },
   ];
 });
 const handleUserDropdownSelect = (key: string | number) => {
-  if (key === 'sign-out') {
-    authRepository.signOut();
+  if (key === 'logout') {
+    authRepository.logout();
   }
 };
 
@@ -316,7 +315,7 @@ watch(
 
           <router-link
             v-else
-            :to="{ name: 'sign-in', query: { from: route.fullPath } }"
+            :to="{ name: 'auth', query: { from: route.fullPath } }"
           >
             <n-button quaternary>登录/注册</n-button>
           </router-link>

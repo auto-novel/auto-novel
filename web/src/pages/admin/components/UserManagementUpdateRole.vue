@@ -20,8 +20,9 @@ const showActionModal = ref(false);
 const message = useMessage();
 
 const userRoleOptions = [
-  { value: 'normal', label: '正常用户' },
-  { value: 'maintainer', label: '维护者' },
+  { value: 'member', label: '普通用户' },
+  { value: 'admin', label: '管理员' },
+  { value: 'restricted', label: '受限用户' },
   { value: 'banned', label: '封禁用户' },
 ];
 

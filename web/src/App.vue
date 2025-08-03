@@ -6,7 +6,7 @@ import { RegexUtil } from '@/util';
 
 // 激活权限
 const authRepository = Locator.authRepository();
-authRepository.activateAuth();
+authRepository.startRefreshAuth();
 
 const settingRepository = Locator.settingRepository();
 settingRepository.activateCC();

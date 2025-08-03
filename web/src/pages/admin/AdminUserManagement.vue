@@ -4,10 +4,11 @@ import { Result, runCatching } from '@/util/result';
 import { Page } from '@/model/Page';
 import { UserOutline, UserRole } from '@/model/User';
 
-const userRole = ref<UserRole>('normal');
+const userRole = ref<UserRole>('member');
 const userRoleOptions = [
-  { value: 'normal', label: '正常用户' },
-  { value: 'maintainer', label: '维护者' },
+  { value: 'member', label: '普通用户' },
+  { value: 'admin', label: '管理员' },
+  { value: 'restricted', label: '受限用户' },
   { value: 'banned', label: '封禁用户' },
 ];
 
@@ -40,10 +41,9 @@ watch(userRole, () => {
 });
 
 const roleToReadableText = (role: UserRole) => {
-  if (role === 'normal') return '普通用户';
-  else if (role === 'trusted') return '信任用户';
-  else if (role === 'maintainer') return '维护者';
+  if (role === 'member') return '普通用户';
   else if (role === 'admin') return '管理员';
+  else if (role === 'restricted') return '受限用户';
   else if (role === 'banned') return '封禁用户';
   else return '未知';
 };
