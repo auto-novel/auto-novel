@@ -14,10 +14,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
 import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
 import org.koin.ktor.ext.get
-import util.serialName
 import kotlin.time.Duration.Companion.days
+import kotlinx.datetime.Instant
 
 fun User.shouldBeAtLeast(role: UserRole) {
     if (!(this.role atLeast role)) {
@@ -35,29 +34,13 @@ fun User.shouldBeOldAss() {
     }
 }
 
-fun User.generateToken(
-    secret: String,
-): String = JWT
-    .create()
-    .apply {
-        withClaim("id", id)
-        withClaim("email", email)
-        withClaim("username", username)
-        withClaim("role", role.serialName())
-        withClaim("createAt", createdAt.epochSeconds)
-        withExpiresAt((Clock.System.now() + 30.days).toJavaInstant())
-    }
-    .sign(Algorithm.HMAC256(secret))
-
-
 fun Application.authentication(secret: String) = install(Authentication) {
     jwt {
         verifier(
             JWT.require(Algorithm.HMAC256(secret)).build()
         )
         validate { credential ->
-            val username = credential["username"] ?: credential["sub"]
-            if (username != null) {
+            if (credential.subject != null) {
                 JWTPrincipal(credential.payload)
             } else {
                 null
@@ -94,9 +77,19 @@ private val PostAuthenticationInterceptors = createRouteScopedPlugin(name = "Use
 
     on(AuthenticationChecked) { call ->
         call.principal<JWTPrincipal>()?.let { principal ->
-            val username = principal["username"] ?: principal["sub"]!!
-            val user = userRepo.getUserByUsername(username)
-                ?: userRepo.addUser("", username, "")
+            val user = User(
+                id = userRepo.getId(principal.subject!!),
+                username = principal.subject!!,
+                role = when (principal["role"]) {
+                    "admin" -> UserRole.Admin
+                    "member" -> UserRole.Member
+                    "restricted" -> UserRole.Restricted
+                    else -> UserRole.Banned
+                },
+                createdAt = Instant.fromEpochSeconds(
+                    principal.getClaim("crat", Long::class)!!
+                ),
+            )
             if (user.role === UserRole.Banned) {
                 call.respond(HttpStatusCode.Unauthorized, "用户已被封禁")
             } else {

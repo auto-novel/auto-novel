@@ -10,7 +10,6 @@ import infra.web.repository.WebNovelFavoredRepository
 import infra.wenku.repository.WenkuNovelFavoredRepository
 import infra.web.repository.WebNovelReadHistoryRepository
 import infra.user.UserRepository
-import infra.user.UserCodeRepository
 import infra.user.UserFavoredRepository
 import infra.web.datasource.WebNovelHttpDataSource
 import infra.web.repository.WebNovelChapterRepository
@@ -79,7 +78,6 @@ fun main() {
         }
 
         routing {
-            routeAuth()
             routeArticle()
             routeComment()
             routeOperationHistory()
@@ -97,13 +95,6 @@ fun main() {
 
 val appModule = module {
     // Data layer: Client
-    single {
-        EmailClient(
-            mailgunApiKey = env("MAILGUN_API_KEY"),
-            mailgunApiUrl = env("MAILGUN_API_URL"),
-            mailgunFromEmail = env("MAILGUN_FROM_EMAIL"),
-        )
-    }
     single {
         MongoClient(
             host = envDbHost("DB_HOST_MONGO"),
@@ -143,7 +134,6 @@ val appModule = module {
     singleOf(::OperationHistoryRepository)
 
     singleOf(::UserRepository)
-    singleOf(::UserCodeRepository)
     singleOf(::UserFavoredRepository)
     singleOf(::WebNovelMetadataRepository)
     singleOf(::WebNovelChapterRepository)
@@ -156,12 +146,6 @@ val appModule = module {
     singleOf(::WenkuNovelFavoredRepository)
 
     // App Layer
-    single {
-        AuthApi(
-            secret = envNotNull("JWT_SECRET"),
-            get(), get(), get()
-        )
-    }
     singleOf(::ArticleApi)
     singleOf(::CommentApi)
     singleOf(::OperationHistoryApi)

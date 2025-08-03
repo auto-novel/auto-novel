@@ -14,12 +14,6 @@ enum class UserRole {
     @SerialName("maintainer")
     Maintainer,
 
-    @SerialName("trusted")
-    Trusted,
-
-    @SerialName("normal")
-    Normal,
-
     @SerialName("member")
     Member,
 
@@ -31,7 +25,7 @@ enum class UserRole {
 
     private fun authLevel() = when (this) {
         Admin, Maintainer -> 3
-        Trusted, Normal, Member -> 2
+        Member -> 2
         Restricted -> 1
         Banned -> 0
     }
@@ -61,7 +55,6 @@ data class UserFavoredList(
 @Serializable
 data class User(
     val id: String,
-    val email: String,
     val username: String,
     val role: UserRole,
     @Contextual val createdAt: Instant,
@@ -71,15 +64,8 @@ data class User(
 @Serializable
 data class UserDbModel(
     @Contextual @SerialName("_id") val id: ObjectId,
-    val email: String,
     val username: String,
-    val salt: String,
-    val password: String,
-    val role: UserRole,
-    @Contextual val createdAt: Instant,
-    //
     val favoredWeb: List<UserFavored>,
     val favoredWenku: List<UserFavored>,
-    //
     val readHistoryPaused: Boolean = false,
 )
