@@ -1,10 +1,10 @@
 package api
 
+import api.plugins.User
 import api.plugins.authenticateDb
 import api.plugins.user
 import infra.common.FavoredNovelListSort
 import infra.common.Page
-import infra.user.User
 import infra.user.UserFavored
 import infra.user.UserFavoredRepository
 import infra.wenku.WenkuNovelListItem

@@ -3,7 +3,6 @@ package api.plugins
 import api.throwUnauthorized
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import infra.user.User
 import infra.user.UserRepository
 import infra.user.UserRole
 import io.ktor.http.*
@@ -17,6 +16,13 @@ import kotlinx.datetime.Clock
 import org.koin.ktor.ext.get
 import kotlin.time.Duration.Companion.days
 import kotlinx.datetime.Instant
+
+data class User(
+    val id: String,
+    val username: String,
+    val role: UserRole,
+    val createdAt: Instant,
+)
 
 fun User.shouldBeAtLeast(role: UserRole) {
     if (!(this.role atLeast role)) {

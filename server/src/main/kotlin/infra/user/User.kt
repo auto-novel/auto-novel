@@ -52,14 +52,6 @@ data class UserFavoredList(
     val favoredWenku: List<UserFavored>,
 )
 
-@Serializable
-data class User(
-    val id: String,
-    val username: String,
-    val role: UserRole,
-    @Contextual val createdAt: Instant,
-)
-
 // MongoDB
 @Serializable
 data class UserDbModel(

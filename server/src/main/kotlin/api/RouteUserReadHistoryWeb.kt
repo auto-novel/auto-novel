@@ -2,10 +2,10 @@ package api
 
 import api.model.WebNovelOutlineDto
 import api.model.asDto
+import api.plugins.User
 import api.plugins.authenticateDb
 import api.plugins.user
 import infra.common.Page
-import infra.user.User
 import infra.user.UserRepository
 import infra.web.repository.WebNovelReadHistoryRepository
 import infra.web.repository.WebNovelMetadataRepository

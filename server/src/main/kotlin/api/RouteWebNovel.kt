@@ -6,7 +6,6 @@ import api.plugins.*
 import infra.common.*
 import infra.oplog.Operation
 import infra.oplog.OperationHistoryRepository
-import infra.user.User
 import infra.user.UserFavoredRepository
 import infra.web.*
 import infra.web.datasource.providers.Hameln
@@ -18,7 +17,6 @@ import infra.wenku.repository.WenkuNovelMetadataRepository
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.resources.*
-import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.request.*
@@ -26,12 +24,10 @@ import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.*
-import io.ktor.server.util.*
 import io.ktor.util.*
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import org.koin.ktor.ext.inject
-import kotlin.text.contains
 
 @Resource("/novel")
 private class WebNovelRes {

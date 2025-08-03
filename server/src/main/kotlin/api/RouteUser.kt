@@ -2,7 +2,6 @@ package api
 
 import api.plugins.authenticateDb
 import api.plugins.user
-import infra.user.User
 import infra.user.UserFavoredList
 import infra.user.UserFavoredRepository
 import io.ktor.resources.*
@@ -23,9 +22,7 @@ fun Route.routeUser() {
         get<UserRes.Favored> {
             val user = call.user()
             call.tryRespond {
-                service.listFavored(
-                    user = user,
-                )
+                service.listFavored(user.id)
             }
         }
     }
@@ -34,8 +31,8 @@ fun Route.routeUser() {
 class UserApi(
     private val userFavoredRepo: UserFavoredRepository,
 ) {
-    suspend fun listFavored(user: User): UserFavoredList {
-        return userFavoredRepo.getFavoredList(user.id)
+    suspend fun listFavored(userId: String): UserFavoredList {
+        return userFavoredRepo.getFavoredList(userId)
             ?: throwNotFound("用户不存在")
     }
 }

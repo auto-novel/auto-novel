@@ -2,12 +2,12 @@ package api
 
 import api.model.WebNovelOutlineDto
 import api.model.asDto
+import api.plugins.User
 import api.plugins.authenticateDb
 import api.plugins.user
 import infra.common.FavoredNovelListSort
 import infra.common.Page
 import infra.common.emptyPage
-import infra.user.User
 import infra.user.UserFavored
 import infra.user.UserFavoredRepository
 import infra.web.repository.WebNovelFavoredRepository
