@@ -1,5 +1,6 @@
 package infra.user
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
@@ -14,6 +15,9 @@ enum class UserRole {
     @SerialName("maintainer")
     Maintainer,
 
+    @SerialName("trusted")
+    Trusted,
+
     @SerialName("member")
     Member,
 
@@ -24,7 +28,8 @@ enum class UserRole {
     Banned;
 
     private fun authLevel() = when (this) {
-        Admin, Maintainer -> 3
+        Admin, Maintainer -> 4
+        Trusted -> 3
         Member -> 2
         Restricted -> 1
         Banned -> 0

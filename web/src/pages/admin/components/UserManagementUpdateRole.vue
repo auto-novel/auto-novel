@@ -22,6 +22,7 @@ const message = useMessage();
 const userRoleOptions = [
   { value: 'member', label: '普通用户' },
   { value: 'admin', label: '管理员' },
+  { value: 'trusted', label: '信任用户' },
   { value: 'restricted', label: '受限用户' },
   { value: 'banned', label: '封禁用户' },
 ];

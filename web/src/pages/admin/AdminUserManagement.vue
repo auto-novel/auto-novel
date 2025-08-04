@@ -8,6 +8,7 @@ const userRole = ref<UserRole>('member');
 const userRoleOptions = [
   { value: 'member', label: '普通用户' },
   { value: 'admin', label: '管理员' },
+  { value: 'trusted', label: '信任用户' },
   { value: 'restricted', label: '受限用户' },
   { value: 'banned', label: '封禁用户' },
 ];
@@ -43,6 +44,7 @@ watch(userRole, () => {
 const roleToReadableText = (role: UserRole) => {
   if (role === 'member') return '普通用户';
   else if (role === 'admin') return '管理员';
+  else if (role === 'trusted') return '信任用户';
   else if (role === 'restricted') return '受限用户';
   else if (role === 'banned') return '封禁用户';
   else return '未知';

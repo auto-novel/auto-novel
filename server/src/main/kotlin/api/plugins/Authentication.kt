@@ -88,6 +88,7 @@ private val PostAuthenticationInterceptors = createRouteScopedPlugin(name = "Use
                 username = principal.subject!!,
                 role = when (principal["role"]) {
                     "admin" -> UserRole.Admin
+                    "trusted" -> UserRole.Trusted
                     "member" -> UserRole.Member
                     "restricted" -> UserRole.Restricted
                     else -> UserRole.Banned

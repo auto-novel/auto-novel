@@ -44,6 +44,7 @@ export const createAuthRepository = () => {
 
       const roleToString = {
         admin: '管理员',
+        trusted: '信任用户',
         member: '普通用户',
         restricted: '受限用户',
         banned: '封禁用户',
