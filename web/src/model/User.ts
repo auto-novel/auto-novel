@@ -2,7 +2,6 @@ export type UserRole = 'admin' | 'trusted' | 'member' | 'restricted' | 'banned';
 
 export interface UserReference {
   username: string;
-  role: UserRole;
 }
 
 export interface UserOutline {

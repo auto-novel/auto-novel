@@ -76,7 +76,6 @@ class ArticleRepository(
                                     ArticleListItem::numViews.field(),
                                     ArticleListItem::numComments.field(),
                                     ArticleListItem::user.field() + "." + UserOutline::username.field(),
-                                    ArticleListItem::user.field() + "." + UserOutline::role.field(),
                                     ArticleListItem::createAt.field(),
                                     ArticleListItem::updateAt.field(),
                                 )

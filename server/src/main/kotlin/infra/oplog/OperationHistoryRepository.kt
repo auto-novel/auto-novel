@@ -60,7 +60,6 @@ class OperationHistoryRepository(
                                 include(
                                     OperationHistory::id.field(),
                                     OperationHistory::operator.field() + "." + UserOutline::username.field(),
-                                    OperationHistory::operator.field() + "." + UserOutline::role.field(),
                                     OperationHistory::operation.field(),
                                     OperationHistory::createAt.field(),
                                 )

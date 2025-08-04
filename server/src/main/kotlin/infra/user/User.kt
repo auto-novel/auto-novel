@@ -42,7 +42,6 @@ enum class UserRole {
 @Serializable
 data class UserOutline(
     val username: String,
-    val role: UserRole,
 )
 
 @Serializable

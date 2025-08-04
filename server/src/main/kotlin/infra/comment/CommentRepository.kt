@@ -79,7 +79,6 @@ class CommentRepository(
                                     Comment::hidden.field(),
                                     Comment::numReplies.field(),
                                     Comment::user.field() + "." + UserOutline::username.field(),
-                                    Comment::user.field() + "." + UserOutline::role.field(),
                                     Comment::createAt.field(),
                                 )
                             )
