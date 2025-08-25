@@ -213,7 +213,7 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
         禁止使用脚本绕过翻译器提交翻译文本，哪怕你觉得自己提交的是正经翻译。
       </n-p>
       <n-p>
-        FishHawk长期996,网站开发速度大幅下降已成常态，论坛反馈目前没有精力维护，有问题加群@吧
+        FishHawk长期996，网站开发速度大幅下降已成常态，论坛反馈目前没有精力维护，有问题加群@吧
       </n-p>
     </bulletin>
 
