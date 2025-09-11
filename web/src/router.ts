@@ -193,7 +193,7 @@ const router = createRouter({
             {
               path: 'sakura',
               meta: { title: 'Sakura工作区' },
-              component: () => import('./pages/workspace/SakuraWorkspace.vue'),
+              component: () => import('./pages/workspace/SakuraWorkspaceX.vue'),
             },
             {
               path: 'interactive',
