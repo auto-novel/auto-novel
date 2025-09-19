@@ -52,14 +52,14 @@ const createWorkspaceRepository = <W extends GptWorker | SakuraWorker>(
   const deleteJob = (task: string) => {
     ref.value.jobs = ref.value.jobs.filter((j) => j.task !== task);
   };
-  const topJob = (job: TranslateJob) => {
+  const topJob = (task: string) => {
     ref.value.jobs.sort((a, b) => {
-      return a.task == job.task ? -1 : b.task == job.task ? 1 : 0;
+      return a.task == task ? -1 : b.task == task ? 1 : 0;
     });
   };
-  const bottomJob = (job: TranslateJob) => {
+  const bottomJob = (task: string) => {
     ref.value.jobs.sort((a, b) => {
-      return a.task == job.task ? 1 : b.task == job.task ? -1 : 0;
+      return a.task == task ? 1 : b.task == task ? -1 : 0;
     });
   };
 
