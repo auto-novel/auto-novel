@@ -1,5 +1,6 @@
+// import ky from 'ky';
+import { ky } from '@/util/useAddon';
 import type { Options } from 'ky';
-import ky from 'ky';
 
 const getHtml = async (url: string, options?: Options) => {
   const response = await ky.get(url, {

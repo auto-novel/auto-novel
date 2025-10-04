@@ -3,19 +3,20 @@
     "target": "ES2015",
     "useDefineForClassFields": true,
     "module": "ES2020",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "strict": true,
     "jsx": "preserve",
     "sourceMap": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "lib": ["DOM", "ES2021"],
+    "lib": ["DOM", "ES2021", "DOM.Iterable"],
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "types": ["chrome"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
 }
