@@ -5,6 +5,7 @@ import type { Result } from '@/util/result';
 import { Ok, runCatching } from '@/util/result';
 
 export interface ReaderChapter {
+  chapterId: string;
   titleJp: string;
   titleZh?: string;
   prevId?: string;
@@ -75,7 +76,12 @@ const getChapter = async (
   chapterId: string,
 ): Promise<ReaderChapter> => {
   if (gnid.type === 'web') {
-    return WebNovelApi.getChapter(gnid.providerId, gnid.novelId, chapterId);
+    const res = await WebNovelApi.getChapter(
+      gnid.providerId,
+      gnid.novelId,
+      chapterId,
+    );
+    return { ...res, chapterId };
   } else if (gnid.type === 'wenku') {
     throw '不支持文库';
   } else {
@@ -90,6 +96,7 @@ const getChapter = async (
 
     const currIndex = volume.toc.findIndex((it) => it.chapterId == chapterId);
     return <ReaderChapter>{
+      chapterId,
       titleJp: `${volumeId} - ${chapterId}`,
       titleZh: undefined,
       prevId: volume.toc[currIndex - 1]?.chapterId,

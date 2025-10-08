@@ -61,6 +61,13 @@ const setCustomFontColor = (color: string) =>
               :options="ReaderSetting.speakLanguagesOptions"
             />
           </c-action-wrapper>
+          <c-action-wrapper title="翻页模式">
+            <c-radio-group
+              :value="readerSetting.pageTurnMode"
+              @update-value="(it: any) => (readerSetting.pageTurnMode = it)"
+              :options="ReaderSetting.pageTurnModeOptions"
+            />
+          </c-action-wrapper>
           <c-action-wrapper v-if="isMobile" title="点按动画" align="center">
             <n-switch
               v-model:value="readerSetting.enableClickAnimition"
