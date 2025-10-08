@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onKeyDown } from '@vueuse/core';
+import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
@@ -17,6 +17,11 @@ import { useReaderStore } from './ReaderStore';
 import ReaderLayoutDesktop from './components/ReaderLayoutDesktop.vue';
 import ReaderLayoutMobile from './components/ReaderLayoutMobile.vue';
 import { useScrollDetector } from './components/useScrollDetector';
+
+const [DefineChapterLink, ReuseChapterLink] = createReusableTemplate<{
+  label: string;
+  id: string | undefined;
+}>();
 
 const route = useRoute();
 const router = useRouter();
@@ -256,6 +261,21 @@ onKeyDown(['Enter'], (e) => {
 </script>
 
 <template>
+  <DefineChapterLink v-slot="{ id, label }">
+    <c-button
+      :disabled="id === undefined"
+      :lable="label"
+      quaternary
+      :focusable="false"
+      :type="id ? 'primary' : 'default'"
+      @action="
+        () => {
+          navToChapter(id!);
+        }
+      "
+    />
+  </DefineChapterLink>
+
   <div class="content">
     <c-result :result="chapterResult" v-slot="{ value: chapter }">
       <component
@@ -272,10 +292,11 @@ onKeyDown(['Enter'], (e) => {
             :chapter-id="chapter.chapterId"
             :chapter="chapter"
           />
-
-          <template v-if="!chapter.nextId">
-            <div style="text-align: center; margin: 48px 0">暂无更多章节</div>
-          </template>
+          <n-divider />
+          <n-flex align="center" justify="space-between" style="width: 100%">
+            <ReuseChapterLink :id="chapter.prevId" label="上一章" />
+            <ReuseChapterLink :id="chapter.nextId" label="下一章" />
+          </n-flex>
         </template>
         <template
           v-else
