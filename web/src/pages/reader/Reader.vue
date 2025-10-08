@@ -158,7 +158,6 @@ watch(
 );
 
 useScrollDetector((payload) => {
-  console.log('scroll', payload);
   ReadPositionRepo.addPosition(gnid, {
     chapterId: payload.chapterId,
     scrollY: payload.y,
