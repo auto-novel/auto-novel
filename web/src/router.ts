@@ -291,7 +291,9 @@ const router = createRouter({
     },
   ],
 
-  scrollBehavior(to, _from, savedPosition) {
+  scrollBehavior(to, from, savedPosition) {
+    if (to.meta.isReader && from.meta.isReader) return;
+
     if (to.hash) {
       const decodedHash = encodeURIComponent(to.hash.substring(1));
       const element = document.getElementById(decodedHash);
