@@ -4,6 +4,13 @@ import { MD5 } from 'crypto-es/lib/md5';
 import type { Options } from 'ky';
 import ky from 'ky';
 
+import { Addon } from '@/util/useAddon';
+
+const client = ky.create({
+  fetch: Addon.tabFetch.bind(window.Addon, 'https://dict.youdao.com/'),
+  // fetch: Addon.spoofFetch.bind(Addon, 'https://dict.youdao.com/'),
+});
+
 const getBaseBody = (key: string) => {
   const c = 'fanyideskweb';
   const p = 'webfanyi';
@@ -42,7 +49,7 @@ const decode = (src: string) => {
 let key = 'fsdsogkndfokasodnaso';
 
 const rlog = () =>
-  ky.get('https://rlogs.youdao.com/rlog.php', {
+  client.get('https://rlogs.youdao.com/rlog.php', {
     searchParams: {
       _npid: 'fanyiweb',
       _ncat: 'pageview',
@@ -56,7 +63,7 @@ const rlog = () =>
   });
 
 const refreshKey = () =>
-  ky
+  client
     .get('https://dict.youdao.com/webtranslate/key', {
       searchParams: {
         keyid: 'webfanyi-key-getter',
@@ -70,7 +77,7 @@ const refreshKey = () =>
     .then((json: any) => (key = json['data']['secretKey']));
 
 const webtranslate = (query: string, from: string, options?: Options) =>
-  ky
+  client
     .post('https://dict.youdao.com/webtranslate', {
       body: new URLSearchParams({
         i: query,

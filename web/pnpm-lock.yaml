@@ -49,6 +49,9 @@ importers:
       '@zip.js/zip.js':
         specifier: ^2.7.73
         version: 2.7.73
+      bowser:
+        specifier: ^2.12.1
+        version: 2.12.1
       crypto-es:
         specifier: ^2.1.0
         version: 2.1.0
@@ -128,6 +131,12 @@ importers:
       '@eslint/js':
         specifier: ^9.35.0
         version: 9.35.0
+      '@types/chrome':
+        specifier: ^0.1.16
+        version: 0.1.16
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.5
+        version: 120.0.5
       '@types/node':
         specifier: ^20.19.13
         version: 20.19.13
@@ -1154,6 +1163,12 @@ packages:
         integrity: sha512-8kB30R7Hwqf40JPiKhVzodJs2Qc1ZJ5zuT3uzw5Hq/dhNCl3G3l83jfpdI1e20BP348+fV7VIL/+FxaXkqBmWg==,
       }
 
+  '@types/chrome@0.1.16':
+    resolution:
+      {
+        integrity: sha512-GvK2s58ElQ/1hJEHcdRj798VhVgBV1Xt0u8fOBG1dILV3ATTOc2qabr3P2SG39l3ISiWWFG6Glt4IkOXz6eDCw==,
+      }
+
   '@types/deep-eql@4.0.2':
     resolution:
       {
@@ -1170,6 +1185,30 @@ packages:
     resolution:
       {
         integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==,
+      }
+
+  '@types/filesystem@0.0.36':
+    resolution:
+      {
+        integrity: sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA==,
+      }
+
+  '@types/filewriter@0.0.33':
+    resolution:
+      {
+        integrity: sha512-xFU8ZXTw4gd358lb2jw25nxY9QAgqn2+bKKjKOYfNCzN4DKCFetK7sPtrlpg66Ywe3vWY9FNxprZawAh9wfJ3g==,
+      }
+
+  '@types/firefox-webext-browser@120.0.5':
+    resolution:
+      {
+        integrity: sha512-imn8ecga0HQWcOSvxy9i0lD+7vpHgkj1NVLvXS1lNHqHt03Z4QwazeEdoWe+C9JXpmVyKiRanb+z9D/w001tRg==,
+      }
+
+  '@types/har-format@1.2.16':
+    resolution:
+      {
+        integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==,
       }
 
   '@types/json-schema@7.0.15':
@@ -1700,6 +1739,12 @@ packages:
     resolution:
       {
         integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==,
+      }
+
+  bowser@2.12.1:
+    resolution:
+      {
+        integrity: sha512-z4rE2Gxh7tvshQ4hluIT7XcFrgLIQaw9X3A+kTTRdovCz5PMukm/0QC/BKSYPj3omF5Qfypn9O/c5kgpmvYUCw==,
       }
 
   brace-expansion@1.1.12:
@@ -4563,11 +4608,26 @@ snapshots:
     dependencies:
       '@types/deep-eql': 4.0.2
 
+  '@types/chrome@0.1.16':
+    dependencies:
+      '@types/filesystem': 0.0.36
+      '@types/har-format': 1.2.16
+
   '@types/deep-eql@4.0.2': {}
 
   '@types/diff@5.2.3': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/filesystem@0.0.36':
+    dependencies:
+      '@types/filewriter': 0.0.33
+
+  '@types/filewriter@0.0.33': {}
+
+  '@types/firefox-webext-browser@120.0.5': {}
+
+  '@types/har-format@1.2.16': {}
 
   '@types/json-schema@7.0.15': {}
 
@@ -4956,6 +5016,8 @@ snapshots:
       readable-stream: 3.6.2
 
   boolbase@1.0.0: {}
+
+  bowser@2.12.1: {}
 
   brace-expansion@1.1.12:
     dependencies:

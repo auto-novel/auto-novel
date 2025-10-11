@@ -100,7 +100,7 @@ const formRules: FormRules = {
   ],
 };
 
-const amazonUrl = ref('');
+const amazonUrl = ref('https://www.amazon.co.jp/dp/4098505789');
 
 if (novelId !== undefined) {
   WenkuNovelRepo.useWenkuNovel(novelId, false)
