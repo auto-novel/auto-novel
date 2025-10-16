@@ -3,7 +3,6 @@ import { Utf8 } from 'crypto-es/lib/core';
 import { MD5 } from 'crypto-es/lib/md5';
 import type { Options } from 'ky';
 import ky from 'ky';
-import { mapValues } from 'lodash-es';
 
 import { lazy } from '@/util';
 import { ensureCookie } from './util';
@@ -18,17 +17,8 @@ const getClient = lazy(async () => {
 
   const cookies = await ensureCookie(addon, url, domain, keys);
 
-  await addon.cookiesPatch({
-    url,
-    patches: mapValues(cookies, (cookie) => {
-      cookie.sameSite = 'no_restriction';
-      cookie.secure = true;
-      return cookie;
-    }),
-  });
-
   return ky.create({
-    fetch: addon.spoofFetch.bind(window.Addon, url),
+    fetch: Addon.fetch.bind(window.Addon),
   });
 });
 
