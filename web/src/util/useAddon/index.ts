@@ -7,7 +7,16 @@ export interface CookieStatus {
   sameSite: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
 }
 
+export type InfoResult = {
+  version: string; // extension version
+  homepage_url: string;
+};
+
 export interface AddonApi {
+  ping(): Promise<string>;
+
+  info(): Promise<InfoResult>;
+
   cookiesStatus(params: {
     url?: string;
     domain?: string;

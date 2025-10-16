@@ -18,7 +18,7 @@ const getClient = lazy(async () => {
   const cookies = await ensureCookie(addon, url, domain, keys);
 
   return ky.create({
-    fetch: Addon.fetch.bind(window.Addon),
+    fetch: addon.fetch.bind(window.Addon),
   });
 });
 
