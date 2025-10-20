@@ -129,18 +129,23 @@ const navToChapter = async (chapterId: string) => {
   }
 };
 
+const scrollToReadPosition = async () => {
+  const readPosition = ReadPositionRepo.getPosition(gnid);
+  if (readPosition && readPosition.chapterId === route.params.chapterId) {
+    // hacky: 等待段落显示完成
+    await nextTick();
+    await nextTick();
+    window.scrollTo({ top: readPosition.scrollY });
+  }
+};
+
+watch(chapterResult, scrollToReadPosition, { once: true });
 watch(
-  chapterResult,
+  () => readerSetting.value.pageTurnMode,
   async () => {
-    const readPosition = ReadPositionRepo.getPosition(gnid);
-    if (readPosition && readPosition.chapterId === route.params.chapterId) {
-      // hacky: 等待段落显示完成
-      await nextTick();
-      await nextTick();
-      window.scrollTo({ top: readPosition.scrollY });
-    }
+    await navToChapter(currentChapterId.value);
+    scrollToReadPosition();
   },
-  { once: true },
 );
 
 watch(
