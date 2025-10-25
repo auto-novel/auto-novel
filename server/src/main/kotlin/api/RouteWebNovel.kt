@@ -12,6 +12,8 @@ import infra.web.datasource.providers.Hameln
 import infra.web.datasource.providers.Kakuyomu
 import infra.web.datasource.providers.NovelIdShouldBeReplacedException
 import infra.web.datasource.providers.Pixiv
+import infra.web.datasource.providers.RemoteChapter
+import infra.web.datasource.providers.RemoteNovelMetadata
 import infra.web.datasource.providers.Syosetu
 import infra.web.repository.*
 import infra.wenku.repository.WenkuNovelMetadataRepository
@@ -67,6 +69,15 @@ private class WebNovelRes {
 
             @Resource("/chapter/{chapterId}")
             class Chapter(val parent: TranslateV2, val chapterId: String)
+        }
+
+        @Resource("/upload")
+        class Upload(val parent: Id, val providerId: String, val novelId: String) {
+            @Resource("/metadata")
+            class Metadata(val parent: Upload)
+
+            @Resource("/chapter/{chapterId}")
+            class Chapter(val parent: Upload, val chapterId: String)
         }
 
         @Resource("/file")
@@ -249,6 +260,21 @@ fun Route.routeWebNovel() {
                     paragraphsZh = body.paragraphsZh,
                     sakuraVersion = body.sakuraVersion,
                 )
+            }
+        }
+
+        // Upload
+        post<WebNovelRes.Id.Upload.Metadata> { loc ->
+            val body = call.receive<RemoteNovelMetadata>();
+            call.tryRespond {
+                "Unimplemented: $body"
+            }
+        }
+
+        post<WebNovelRes.Id.Upload.Chapter> { loc ->
+            val body = call.receive<RemoteChapter>();
+            call.tryRespond {
+                "Unimplemented: $body"
             }
         }
     }

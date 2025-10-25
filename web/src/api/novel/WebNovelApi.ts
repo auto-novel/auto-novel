@@ -10,6 +10,7 @@ import type {
   WebNovelOutlineDto,
 } from '@/model/WebNovel';
 import { client } from './client';
+import { Providers } from '@/domain/crawlers';
 
 const listNovel = ({
   page,
@@ -53,13 +54,34 @@ const listRank = (providerId: string, params: { [key: string]: string }) =>
     })
     .json<Page<WebNovelOutlineDto>>();
 
-const getNovel = (providerId: string, novelId: string) =>
-  client.get(`novel/${providerId}/${novelId}`).json<WebNovelDto>();
+const getNovel = async (providerId: string, novelId: string) => {
+  if (window.Addon) {
+    const provider = Providers[providerId];
+    const ret = await provider?.getMetadata(novelId);
+    console.log(ret);
+    // TODO(kuriko):
+    // Post the metadata to server and retrive the WebNovelDto
+  }
 
-const getChapter = (providerId: string, novelId: string, chapterId: string) =>
-  client
+  return client.get(`novel/${providerId}/${novelId}`).json<WebNovelDto>();
+};
+
+const getChapter = async (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+) => {
+  if (window.Addon) {
+    const provider = Providers[providerId];
+    const ret = await provider?.getChapter(novelId, chapterId);
+    console.log(ret);
+    // TODO(kuriko):
+    // Post the metadata to server and retrive the WebNovelDto
+  }
+  return client
     .get(`novel/${providerId}/${novelId}/chapter/${chapterId}`)
     .json<WebNovelChapterDto>();
+};
 
 const updateNovel = (
   providerId: string,

@@ -7,6 +7,7 @@ import { useWhoamiStore } from '@/stores';
 import { WebUtil } from '@/util/web';
 
 import { useIsWideScreen } from '@/pages/util';
+import { Pixiv } from '@/domain/crawlers/pixiv';
 
 const props = defineProps<{
   providerId: string;
@@ -79,6 +80,21 @@ const latestChapterCreateAt = computed(() => {
   if (createAtList.length === 0) return undefined;
   else return Math.max(...createAtList);
 });
+
+const update = async () => {
+  const p = new Pixiv();
+  {
+    const ret = await p.getMetadata(props.novelId);
+    console.log(ret);
+    if (ret.toc.length > 0) {
+      const promises = ret.toc
+        .filter((toc) => toc.chapterId !== null)
+        .map((toc) => p.getChapter(props.novelId, toc.chapterId!));
+      const chapters = await Promise.all(promises);
+      console.log(chapters);
+    }
+  }
+};
 </script>
 
 <template>
@@ -119,6 +135,8 @@ const latestChapterCreateAt = computed(() => {
       v-model:favored="novel.favored"
       :novel="{ type: 'web', providerId, novelId }"
     />
+
+    <c-button label="更新 " :icon="EditNoteOutlined" @click="update" />
 
     <router-link v-if="novel.wenkuId" :to="`/wenku/${novel.wenkuId}`">
       <c-button label="文库" :icon="BookOutlined" />
