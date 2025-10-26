@@ -96,7 +96,7 @@ const deleteFavored = () =>
 </script>
 
 <template>
-  <router-link :to="`/favorite/${type}/${id}`">
+  <RouterLink :to="`/favorite/${type}/${id}`">
     <n-flex align="center" justify="space-between">
       {{ title }}
       <n-dropdown
@@ -111,7 +111,7 @@ const deleteFavored = () =>
         </n-button>
       </n-dropdown>
     </n-flex>
-  </router-link>
+  </RouterLink>
 
   <c-modal v-model:show="showEditModal" title="编辑收藏夹">
     <n-form

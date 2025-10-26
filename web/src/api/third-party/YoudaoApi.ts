@@ -4,6 +4,24 @@ import { MD5 } from 'crypto-es/lib/md5';
 import type { Options } from 'ky';
 import ky from 'ky';
 
+import { lazy } from '@/util';
+import { ensureCookie } from './util';
+
+const getClient = lazy(async () => {
+  const addon = window.Addon;
+  if (!addon) return ky;
+
+  const url = 'https://dict.youdao.com/';
+  const domain = '.youdao.com';
+  const keys = ['OUTFOX_SEARCH_USER_ID'];
+
+  const cookies = await ensureCookie(addon, url, domain, keys);
+
+  return ky.create({
+    fetch: addon.fetch.bind(window.Addon),
+  });
+});
+
 const getBaseBody = (key: string) => {
   const c = 'fanyideskweb';
   const p = 'webfanyi';
@@ -41,8 +59,9 @@ const decode = (src: string) => {
 
 let key = 'fsdsogkndfokasodnaso';
 
-const rlog = () =>
-  ky.get('https://rlogs.youdao.com/rlog.php', {
+async function rlog() {
+  const client = await getClient();
+  client.get('https://rlogs.youdao.com/rlog.php', {
     searchParams: {
       _npid: 'fanyiweb',
       _ncat: 'pageview',
@@ -54,9 +73,11 @@ const rlog = () =>
     credentials: 'include',
     retry: 0,
   });
+}
 
-const refreshKey = () =>
-  ky
+async function refreshKey() {
+  const client = await getClient();
+  const resp: any = await client
     .get('https://dict.youdao.com/webtranslate/key', {
       searchParams: {
         keyid: 'webfanyi-key-getter',
@@ -65,12 +86,13 @@ const refreshKey = () =>
       credentials: 'include',
       retry: 0,
     })
-    .json()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .then((json: any) => (key = json['data']['secretKey']));
+    .json();
+  key = resp['data']['secretKey'];
+}
 
-const webtranslate = (query: string, from: string, options?: Options) =>
-  ky
+async function webtranslate(query: string, from: string, options?: Options) {
+  const client = await getClient();
+  const resp = await client
     .post('https://dict.youdao.com/webtranslate', {
       body: new URLSearchParams({
         i: query,
@@ -87,8 +109,9 @@ const webtranslate = (query: string, from: string, options?: Options) =>
       retry: 0,
       ...options,
     })
-    .text()
-    .then(decode);
+    .text();
+  return decode(resp);
+}
 
 export const YoudaoApi = {
   rlog,

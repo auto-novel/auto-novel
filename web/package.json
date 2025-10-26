@@ -67,10 +67,10 @@
     "unplugin-imagemin": "^0.5.20",
     "unplugin-vue-components": "^0.27.5",
     "uuid": "^10.0.0",
-    "vite": "^7.1.4",
+    "vite": "^7.1.9",
     "vite-plugin-html": "^3.2.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vue": "^3.5.21",
+    "vue": "^3.5.22",
     "vue-draggable-plus": "^0.5.6",
     "vue-router": "^4.5.1",
     "vue-tsc": "^2.2.12"

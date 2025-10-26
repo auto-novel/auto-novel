@@ -71,7 +71,7 @@ const startTranslateTask = (translatorId: 'baidu' | 'youdao') =>
       />
     </n-flex>
   </n-flex>
-  <translate-task
+  <TranslateTask
     ref="translateTask"
     style="margin-top: 20px"
     @update:baidu="(zh) => (baidu = zh)"

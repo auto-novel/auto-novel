@@ -33,10 +33,10 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
 
     <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
       <bookshelf-local-control
-        :selected-ids="bookshelfListRef!.selectedIds"
+        :selected-ids="bookshelfListRef?.selectedIds ?? []"
         :favored-id="favoredId"
-        @select-all="bookshelfListRef!.selectAll()"
-        @invert-selection="bookshelfListRef!.invertSelection()"
+        @select-all="bookshelfListRef?.selectAll()"
+        @invert-selection="bookshelfListRef?.invertSelection()"
       />
     </n-collapse-transition>
 

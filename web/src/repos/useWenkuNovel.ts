@@ -39,7 +39,12 @@ const useWenkuNovelFavoredList = (
   }>,
 ) =>
   useQuery({
-    key: () => [ListFavoredKey, toValue(option), toValue(page)],
+    key: () => [
+      ListFavoredKey,
+      toValue(favoredId),
+      toValue(option),
+      toValue(page),
+    ],
     query: () =>
       FavoredApi.listFavoredWenkuNovel(toValue(favoredId), {
         page: toValue(page) - 1,
