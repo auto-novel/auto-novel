@@ -1,18 +1,25 @@
 <script lang="ts" setup>
+import type { WebNovelChapterDto } from '@/model/WebNovel';
 import {
   FormatListBulletedOutlined,
   LibraryBooksOutlined,
   TuneOutlined,
+  ArrowUpwardOutlined,
+  ArrowDownwardOutlined,
 } from '@vicons/material';
 
 defineProps<{
   novelUrl?: string;
+  chapter: WebNovelChapterDto;
 }>();
 
 const emit = defineEmits<{
+  nav: [string];
   requireCatalogModal: [];
   requireSettingModal: [];
 }>();
+
+const router = useRouter();
 </script>
 
 <template>
@@ -27,9 +34,24 @@ const emit = defineEmits<{
         vertical
         style="margin-left: 20px; position: fixed; bottom: 20px"
       >
-        <router-link v-if="novelUrl" :to="novelUrl">
-          <side-button text="详情" :icon="LibraryBooksOutlined" />
-        </router-link>
+        <side-button
+          :disabled="!chapter.prevId"
+          text="上一章"
+          :icon="ArrowUpwardOutlined"
+          @click="emit('nav', chapter.prevId!)"
+        />
+        <side-button
+          :disabled="!chapter.nextId"
+          text="下一章"
+          :icon="ArrowDownwardOutlined"
+          @click="emit('nav', chapter.nextId!)"
+        />
+        <side-button
+          v-if="novelUrl"
+          text="详情"
+          :icon="LibraryBooksOutlined"
+          @click="router.push(novelUrl)"
+        />
         <side-button
           text="目录"
           :icon="FormatListBulletedOutlined"

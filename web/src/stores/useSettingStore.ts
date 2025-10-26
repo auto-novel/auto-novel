@@ -138,6 +138,7 @@ export interface ReaderSetting {
   translations: TranslatorId[];
   clickArea: 'default' | 'left-right' | 'up-down' | 'none';
   speakLanguages: string[];
+  pageTurnMode: 'page' | 'scroll';
   enableClickAnimition: boolean;
   trimLeadingSpaces: boolean;
   enableSourceLabel: boolean;
@@ -163,6 +164,7 @@ export namespace ReaderSetting {
     translations: ['sakura', 'gpt', 'youdao', 'baidu'],
     clickArea: 'default',
     speakLanguages: ['jp'],
+    pageTurnMode: 'page',
     enableClickAnimition: true,
     trimLeadingSpaces: false,
     enableSourceLabel: false,
@@ -232,6 +234,11 @@ export namespace ReaderSetting {
   export const speakLanguagesOptions = [
     { label: '中文', value: 'zh' },
     { label: '日文', value: 'jp' },
+  ];
+
+  export const pageTurnModeOptions = [
+    { label: '章节翻页', value: 'page' },
+    { label: '滚动翻页', value: 'scroll' },
   ];
 
   export const fontWeightOptions = [
