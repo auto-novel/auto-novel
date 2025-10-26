@@ -40,12 +40,19 @@ class Kakuyomu(
             "创作论·评论" to "criticism",
             "诗·童话·其他" to "others",
         )
+
+        private val statusIds = mapOf(
+            "全部" to "all",
+            "长篇" to "long",
+            "短篇" to "short",
+        )
     }
 
     override suspend fun getRank(options: Map<String, String>): Page<RemoteNovelListItem> {
         val genre = genreIds[options["genre"]] ?: return emptyPage()
         val range = rangeIds[options["range"]] ?: return emptyPage()
-        val url = "https://kakuyomu.jp/rankings/${genre}/${range}"
+        val status = statusIds[options["status"]] ?: return emptyPage()
+        val url = "https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}"
         val doc = client.get(url).document()
         val items = doc.select("div.widget-media-genresWorkList-right > div.widget-work").map { workCard ->
             val a = workCard.selectFirst("a.bookWalker-work-title")!!

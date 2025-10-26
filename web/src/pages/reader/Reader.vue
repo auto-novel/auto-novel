@@ -4,16 +4,19 @@ import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
 import type { TranslatorId } from '@/model/Translator';
-import { checkIsMobile, useIsWideScreen } from '@/pages/util';
+import { checkIsMobile } from '@/pages/util';
+import { ReadPositionRepo } from '@/repos';
 import {
   useLocalVolumeStore,
   useReaderSettingStore,
   useWhoamiStore,
 } from '@/stores';
 import type { Result } from '@/util/result';
-import { WebUtil } from '@/util/web';
 import type { ReaderChapter } from './ReaderStore';
 import { useReaderStore } from './ReaderStore';
+import ReaderLayoutDesktop from './components/ReaderLayoutDesktop.vue';
+import ReaderLayoutMobile from './components/ReaderLayoutMobile.vue';
+import { useScrollDetector } from './components/useScrollDetector';
 
 const [DefineChapterLink, ReuseChapterLink] = createReusableTemplate<{
   label: string;
@@ -22,7 +25,6 @@ const [DefineChapterLink, ReuseChapterLink] = createReusableTemplate<{
 
 const route = useRoute();
 const router = useRouter();
-const isWideScreen = useIsWideScreen(600);
 const isMobile = checkIsMobile();
 
 const whoamiStore = useWhoamiStore();
@@ -49,6 +51,9 @@ const store = useReaderStore(gnid);
 const targetChapterId = ref('');
 const currentChapterId = ref('');
 const chapterResult = shallowRef<Result<ReaderChapter>>();
+const chapterList = ref<
+  { chapterId: string; result?: Result<ReaderChapter> }[]
+>([]);
 const loadingBar = useLoadingBar();
 
 const novelUrl = (() => {
@@ -56,6 +61,44 @@ const novelUrl = (() => {
     return `/novel/${gnid.providerId}/${gnid.novelId}`;
   }
 })();
+
+const updateChapter = (
+  chapterId: string,
+  result: Result<ReaderChapter>,
+  replace = false,
+) => {
+  if (result.ok) {
+    document.title = result.value.titleJp;
+    if (gnid.type === 'web' && whoami.value.isSignedIn) {
+      ReadHistoryApi.updateReadHistoryWeb(
+        gnid.providerId,
+        gnid.novelId,
+        chapterId,
+      );
+    } else if (gnid.type === 'local') {
+      useLocalVolumeStore().then((it) => it.updateReadAt(gnid.volumeId));
+    }
+    if (result.value.nextId) {
+      store.preloadChapter(result.value.nextId);
+    }
+  }
+
+  let prefix: string;
+  if (gnid.type === 'web') {
+    prefix = `/novel/${gnid.providerId}/${gnid.novelId}`;
+  } else if (gnid.type === 'wenku') {
+    throw '不支持文库';
+  } else {
+    prefix = `/workspace/reader/${encodeURIComponent(gnid.volumeId)}`;
+  }
+  currentChapterId.value = chapterId;
+
+  if (replace) {
+    router.replace(`${prefix}/${chapterId}`);
+  } else {
+    router.push(`${prefix}/${chapterId}`);
+  }
+};
 
 const navToChapter = async (chapterId: string) => {
   targetChapterId.value = chapterId;
@@ -78,36 +121,32 @@ const navToChapter = async (chapterId: string) => {
   }
 
   chapterResult.value = result;
+  chapterList.value = [{ chapterId, result }];
+  window.scrollTo(0, 0);
 
   if (currentChapterId.value !== chapterId) {
-    if (result.ok) {
-      document.title = result.value.titleJp;
-      if (gnid.type === 'web' && whoami.value.isSignedIn) {
-        ReadHistoryApi.updateReadHistoryWeb(
-          gnid.providerId,
-          gnid.novelId,
-          chapterId,
-        );
-      } else if (gnid.type === 'local') {
-        useLocalVolumeStore().then((it) => it.updateReadAt(gnid.volumeId));
-      }
-      if (result.value.nextId) {
-        store.preloadChapter(result.value.nextId);
-      }
-    }
-
-    let prefix: string;
-    if (gnid.type === 'web') {
-      prefix = `/novel/${gnid.providerId}/${gnid.novelId}`;
-    } else if (gnid.type === 'wenku') {
-      throw '不支持文库';
-    } else {
-      prefix = `/workspace/reader/${encodeURIComponent(gnid.volumeId)}`;
-    }
-    currentChapterId.value = chapterId;
-    router.push(`${prefix}/${chapterId}`);
+    updateChapter(chapterId, result);
   }
 };
+
+const scrollToReadPosition = async () => {
+  const readPosition = ReadPositionRepo.getPosition(gnid);
+  if (readPosition && readPosition.chapterId === route.params.chapterId) {
+    // hacky: 等待段落显示完成
+    await nextTick();
+    await nextTick();
+    window.scrollTo({ top: readPosition.scrollY });
+  }
+};
+
+watch(chapterResult, scrollToReadPosition, { once: true });
+watch(
+  () => readerSetting.value.pageTurnMode,
+  async () => {
+    await navToChapter(currentChapterId.value);
+    scrollToReadPosition();
+  },
+);
 
 watch(
   route,
@@ -123,14 +162,44 @@ watch(
   },
 );
 
-const chapterHref = computed(() => {
-  const chapterId = currentChapterId.value;
-  if (gnid.type === 'web') {
-    return WebUtil.buildChapterUrl(gnid.providerId, gnid.novelId, chapterId);
-  } else if (gnid.type === 'wenku') {
-    throw '不支持文库';
-  } else {
-    return '/workspace';
+useScrollDetector((payload) => {
+  ReadPositionRepo.addPosition(gnid, {
+    chapterId: payload.chapterId,
+    scrollY: payload.y,
+  });
+
+  if (readerSetting.value.pageTurnMode === 'scroll') {
+    // 预加载下一章
+    if (
+      payload.percent > 0.8 &&
+      chapterResult.value?.ok &&
+      chapterResult.value.value.nextId
+    ) {
+      const id = chapterResult.value.value.nextId;
+      if (chapterList.value.every((it) => it.chapterId !== id)) {
+        chapterList.value.push({ chapterId: id });
+
+        (async () => {
+          const result = await store.loadChapter(id).promiseOrValue;
+          const chapter = chapterList.value.find((it) => it.chapterId === id)!;
+          chapter.result = result;
+        })();
+      }
+    }
+
+    if (payload.chapterId !== route.params.chapterId) {
+      // 更新标题/章节/链接
+      const chapter = chapterList.value.find(
+        (it) => it.chapterId === payload.chapterId,
+      );
+      if (!chapter || !chapter.result) return;
+
+      const chapterId = payload.chapterId;
+      currentChapterId.value = chapterId;
+      targetChapterId.value = chapterId;
+      chapterResult.value = chapter.result;
+      updateChapter(chapterId, chapter.result, true);
+    }
   }
 });
 
@@ -213,74 +282,45 @@ onKeyDown(['Enter'], (e) => {
 
   <div class="content">
     <c-result :result="chapterResult" v-slot="{ value: chapter }">
-      <n-flex
-        v-if="isWideScreen"
-        align="center"
-        justify="space-between"
-        :wrap="false"
-        style="width: 100%; margin-top: 20px"
-      >
-        <ReuseChapterLink :id="chapter.prevId" label="上一章" />
-        <n-h4 style="text-align: center; margin: 0">
-          <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
-          <br />
-          <n-text depth="3">{{ chapter.titleZh }}</n-text>
-        </n-h4>
-        <ReuseChapterLink :id="chapter.nextId" label="下一章" />
-      </n-flex>
-
-      <div v-else style="margin-top: 20px">
-        <n-h4 style="text-align: center; margin: 0 0 8px 0">
-          <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
-          <br />
-          <n-text depth="3">{{ chapter.titleZh }}</n-text>
-        </n-h4>
-        <n-flex
-          align="center"
-          justify="space-between"
-          :wrap="false"
-          style="width: 100%"
-        >
-          <ReuseChapterLink :id="chapter.prevId" label="上一章" />
-          <ReuseChapterLink :id="chapter.nextId" label="下一章" />
-        </n-flex>
-      </div>
-
-      <n-divider />
-
-      <reader-layout-mobile
-        v-if="isMobile"
+      <component
+        :is="isMobile ? ReaderLayoutMobile : ReaderLayoutDesktop"
         :novel-url="novelUrl"
         :chapter="chapter"
         @nav="navToChapter"
         @require-catalog-modal="showCatalogModal = true"
         @require-setting-modal="showSettingModal = true"
       >
-        <reader-content
-          :gnid="gnid"
-          :chapter-id="currentChapterId"
-          :chapter="chapter"
-        />
-      </reader-layout-mobile>
-      <reader-layout-desktop
-        v-else
-        :novel-url="novelUrl"
-        @require-catalog-modal="showCatalogModal = true"
-        @require-setting-modal="showSettingModal = true"
-      >
-        <reader-content
-          :gnid="gnid"
-          :chapter-id="currentChapterId"
-          :chapter="chapter"
-        />
-      </reader-layout-desktop>
+        <template v-if="readerSetting.pageTurnMode === 'page'">
+          <reader-content
+            :gnid="gnid"
+            :chapter-id="chapter.chapterId"
+            :chapter="chapter"
+          />
+          <n-divider />
+          <n-flex align="center" justify="space-between" style="width: 100%">
+            <ReuseChapterLink :id="chapter.prevId" label="上一章" />
+            <ReuseChapterLink :id="chapter.nextId" label="下一章" />
+          </n-flex>
+        </template>
+        <template
+          v-else
+          v-for="(item, idx) in chapterList"
+          :key="item.chapterId"
+        >
+          <c-result :result="item.result" v-slot="{ value: chapterItem }">
+            <n-divider v-if="idx > 0 && chapterList.length > 0" />
+            <reader-content
+              :gnid="gnid"
+              :chapter-id="chapterItem.chapterId"
+              :chapter="chapterItem"
+            />
 
-      <n-divider />
-
-      <n-flex align="center" justify="space-between" style="width: 100%">
-        <ReuseChapterLink :id="chapter.prevId" label="上一章" />
-        <ReuseChapterLink :id="chapter.nextId" label="下一章" />
-      </n-flex>
+            <template v-if="!chapterItem.nextId">
+              <div style="text-align: center; margin: 48px 0">暂无更多章节</div>
+            </template>
+          </c-result>
+        </template>
+      </component>
     </c-result>
 
     <reader-setting-modal v-model:show="showSettingModal" />
