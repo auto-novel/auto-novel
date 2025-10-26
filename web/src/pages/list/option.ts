@@ -144,6 +144,10 @@ const descriptorsKakuyomu: Record<string, Descriptor> = {
         type: 'select',
         tags: ['总计', '每年', '每月', '每周', '每日'],
       },
+      状态: {
+        type: 'select',
+        tags: ['全部', '长篇', '短篇'],
+      },
     },
   },
 };
@@ -262,6 +266,7 @@ export function parseRankListValue(
     return {
       genre: get('流派'),
       range: get('范围'),
+      status: get('状态'),
     };
   } else {
     return {};
