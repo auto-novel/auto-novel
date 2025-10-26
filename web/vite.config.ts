@@ -84,6 +84,12 @@ export default defineConfig(({ command, mode }) => {
               return false;
             }
           },
+          rewrite: (path) => {
+            if (apiUrl !== 'n.novelia.cc') {
+              path = path.replace(/^\/api/, '');
+            }
+            return path;
+          },
         },
         '/files-temp': {
           target: apiUrl,
