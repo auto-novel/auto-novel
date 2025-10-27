@@ -138,7 +138,7 @@ export const buildParagraphs = (
         }
       }
 
-      if (indentLongest && indentLongest.length < 2) {
+      if (indentLongest && indentLongest.length <= 2) {
         // 至少两个全角空格缩进
         indentLongest = '　　';
       }
