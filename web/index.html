@@ -85,6 +85,10 @@
     <div id="fallback-error" style="position: fixed; height: 100vh"></div>
     <script>
       window.onerror = function (msg, url, line, col) {
+        if (String(msg).includes('ResizeObserver loop')) {
+          return true;
+        }
+
         var div = document.createElement('div');
         div.innerText = `Error: ${line}:${col} ${msg} ${url}`;
         document.getElementById('fallback-error').appendChild(div);
