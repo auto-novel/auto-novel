@@ -133,7 +133,14 @@ export const buildParagraphs = (
         const paragraphText = style.paragraphs[i];
         const firstCharIndex = paragraphText.search(/\S|$/);
         const indent = paragraphText.slice(0, firstCharIndex);
-        if (indent) indentLongest = indent;
+        if (indentLongest.length < indent.length) {
+          indentLongest = indent;
+        }
+      }
+
+      if (indentLongest && indentLongest.length < 2) {
+        // 至少两个全角空格缩进
+        indentLongest = '　　';
       }
 
       for (const style of styles) {
