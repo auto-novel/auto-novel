@@ -15,7 +15,7 @@ const setCustomFontColor = (color: string) =>
   (readerSetting.value.theme.fontColor = color);
 const setIndentSize = (diff: number) => {
   readerSetting.value.indentSize = Math.min(
-    Math.max(readerSetting.value.indentSize + diff, 0),
+    Math.max(readerSetting.value.indentSize! + diff, 0),
     9,
   );
 };
@@ -90,11 +90,14 @@ const setIndentSize = (diff: number) => {
           <c-action-wrapper title="缩进修正" align="center">
             <n-flex size="large" align="center">
               <n-switch
-                v-model:value="readerSetting.enableIndentCorrection"
+                :value="readerSetting.indentSize !== undefined"
+                @update:value="
+                  (v) => (readerSetting.indentSize = v ? 2 : undefined)
+                "
                 size="small"
               />
               <c-action-wrapper
-                v-if="readerSetting.enableIndentCorrection"
+                v-if="readerSetting.indentSize !== undefined"
                 title="缩进值"
                 align="center"
               >

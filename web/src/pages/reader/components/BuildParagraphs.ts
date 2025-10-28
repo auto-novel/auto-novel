@@ -129,7 +129,7 @@ export const buildParagraphs = (
       merged.push({ imageUrl: curParagraph.slice(4) });
     } else {
       let indentLongest: string = '';
-      if (setting.enableIndentCorrection) {
+      if (setting.indentSize !== undefined) {
         indentLongest = '　'.repeat(setting.indentSize);
       } else {
         for (const style of styles) {
