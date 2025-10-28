@@ -140,7 +140,8 @@ export interface ReaderSetting {
   speakLanguages: string[];
   pageTurnMode: 'page' | 'scroll';
   enableClickAnimition: boolean;
-  trimLeadingSpaces: boolean;
+  enableIndentCorrection: boolean;
+  indentSize: number;
   enableSourceLabel: boolean;
   //
   fontWeight: number;
@@ -166,7 +167,8 @@ export namespace ReaderSetting {
     speakLanguages: ['jp'],
     pageTurnMode: 'page',
     enableClickAnimition: true,
-    trimLeadingSpaces: false,
+    enableIndentCorrection: false,
+    indentSize: 2,
     enableSourceLabel: false,
     //
     fontWeight: 400,
@@ -210,6 +212,13 @@ export namespace ReaderSetting {
           fontColor: '#000000',
         };
       }
+    }
+    if ('trimLeadingSpaces' in setting) {
+      if (setting.trimLeadingSpaces) {
+        setting.enableIndentCorrection = true;
+        setting.indentSize = 0;
+      }
+      delete setting.trimLeadingSpaces;
     }
   };
 

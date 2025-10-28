@@ -129,18 +129,17 @@ export const buildParagraphs = (
       merged.push({ imageUrl: curParagraph.slice(4) });
     } else {
       let indentLongest: string = '';
-      for (const style of styles) {
-        const paragraphText = style.paragraphs[i];
-        const firstCharIndex = paragraphText.search(/\S|$/);
-        const indent = paragraphText.slice(0, firstCharIndex);
-        if (indentLongest.length < indent.length) {
-          indentLongest = indent;
+      if (setting.enableIndentCorrection) {
+        indentLongest = '　'.repeat(setting.indentSize);
+      } else {
+        for (const style of styles) {
+          const paragraphText = style.paragraphs[i];
+          const firstCharIndex = paragraphText.search(/\S|$/);
+          const indent = paragraphText.slice(0, firstCharIndex);
+          if (indentLongest.length < indent.length) {
+            indentLongest = indent;
+          }
         }
-      }
-
-      if (indentLongest && indentLongest.length <= 2) {
-        // 至少两个全角空格缩进
-        indentLongest = '　　';
       }
 
       for (const style of styles) {

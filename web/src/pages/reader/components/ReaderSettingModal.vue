@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { checkIsMobile, useIsWideScreen } from '@/pages/util';
 import { ReaderSetting, useReaderSettingStore } from '@/stores';
+import { AddOutlined, MinusOutlined } from '@vicons/material';
 
 const isMobile = checkIsMobile();
 const isWideScreen = useIsWideScreen(600);
@@ -12,6 +13,12 @@ const setCustomBodyColor = (color: string) =>
   (readerSetting.value.theme.bodyColor = color);
 const setCustomFontColor = (color: string) =>
   (readerSetting.value.theme.fontColor = color);
+const setIndentSize = (diff: number) => {
+  readerSetting.value.indentSize = Math.min(
+    Math.max(readerSetting.value.indentSize + diff, 0),
+    9,
+  );
+};
 </script>
 
 <template>
@@ -80,11 +87,37 @@ const setCustomFontColor = (color: string) =>
               size="small"
             />
           </c-action-wrapper>
-          <c-action-wrapper title="去除缩进" align="center">
-            <n-switch
-              v-model:value="readerSetting.trimLeadingSpaces"
-              size="small"
-            />
+          <c-action-wrapper title="缩进修正" align="center">
+            <n-flex size="large" align="center">
+              <n-switch
+                v-model:value="readerSetting.enableIndentCorrection"
+                size="small"
+              />
+              <c-action-wrapper
+                v-if="readerSetting.enableIndentCorrection"
+                title="缩进值"
+                align="center"
+              >
+                <n-input-group>
+                  <n-button size="small" @click="setIndentSize(-1)">
+                    <template #icon>
+                      <n-icon><MinusOutlined /></n-icon>
+                    </template>
+                  </n-button>
+                  <n-input
+                    :value="readerSetting.indentSize + ' 字符'"
+                    size="small"
+                    style="text-align: center; width: 70px"
+                    readonly
+                  />
+                  <n-button size="small" @click="setIndentSize(1)">
+                    <template #icon>
+                      <n-icon><AddOutlined /></n-icon>
+                    </template>
+                  </n-button>
+                </n-input-group>
+              </c-action-wrapper>
+            </n-flex>
           </c-action-wrapper>
 
           <n-text depth="3" style="font-size: 12px">
