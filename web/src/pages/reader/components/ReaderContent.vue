@@ -78,7 +78,7 @@ const chapterHref = computed(() => {
           >
             {{ p.source }}
           </span>
-          <span v-if="!readerSetting.trimLeadingSpaces">
+          <span v-if="p.indent">
             {{ p.indent }}
           </span>
           <span :class="[p.secondary ? 'second' : 'first', 'text-content']">
