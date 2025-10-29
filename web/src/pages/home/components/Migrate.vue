@@ -76,8 +76,9 @@ if (inOldDomain && window.opener) {
       type="warning"
       secondary
       tag="a"
-      href="https://n.novelia.cc/files-extra/extension.v1.0.12.zip"
-      label="下载浏览器扩展（适配新域名）"
+      target="_blank"
+      href="https://github.com/auto-novel/addon#%E5%AE%89%E8%A3%85"
+      label="新版浏览器扩展"
       style="font-weight: 700"
     />
   </n-flex>
