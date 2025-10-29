@@ -1,8 +1,23 @@
 import ky from 'ky';
 
-export const AuthUrl = window.location.hostname.includes('fishhawk.top')
-  ? 'https://auth.fishhawk.top'
-  : 'https://auth.novelia.cc';
+export const AuthUrl = (() => {
+  const url = new URL(window.location.href);
+  const host = url.host;
+  const protocol = url.protocol;
+  const parts = host.split('.');
+  if (parts.length > 2) {
+    // e.g. n.novelia.cc
+    return `${protocol}//auth.${parts.slice(1).join('.')}`;
+  } else if (parts.length == 2) {
+    // e.g novelia.com
+    return `${protocol}//auth.${host}`;
+  } else if (host === 'localhost') {
+    // NOTE(kuriko): For auth developing, please run auth server at port 4000
+    return `${protocol}//localhost:4000`;
+  } else {
+    throw new Error('Unsupported hostname format');
+  }
+})();
 
 const client = ky.create({
   prefixUrl: AuthUrl + '/api/v1',
