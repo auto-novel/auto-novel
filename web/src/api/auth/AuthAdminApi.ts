@@ -2,9 +2,7 @@ import type { PageX } from '@/model/Page';
 import type { UserRole } from '@/model/User';
 import { client } from '../novel/client';
 
-export const AuthUrl = window.location.hostname.includes('fishhawk.top')
-  ? 'https://auth.fishhawk.top'
-  : 'https://auth.novelia.cc';
+import { AuthUrl } from '@/util/useUserData/api';
 
 const clientAuth = client.extend({
   prefixUrl: AuthUrl + '/api/v1/admin',
