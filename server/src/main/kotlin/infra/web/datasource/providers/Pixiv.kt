@@ -32,6 +32,8 @@ class Pixiv(
     }
 
     override suspend fun getMetadata(novelId: String): RemoteNovelMetadata {
+        // FIXME(kuriko): 测试用，完全屏蔽 server 的 pixiv 加载
+        throw NovelAccessDeniedException()
         if (novelId.startsWith("s")) {
             val chapterId = novelId.removePrefix("s")
             val url = "https://www.pixiv.net/ajax/novel/$chapterId"
@@ -229,6 +231,8 @@ class Pixiv(
     }
 
     override suspend fun getChapter(novelId: String, chapterId: String): RemoteChapter {
+        // FIXME(kuriko): 测试用，完全屏蔽 server 的 pixiv 加载
+        throw NovelAccessDeniedException()
         val url = "https://www.pixiv.net/ajax/novel/$chapterId"
         val body = client.get(url).json().obj("body")
 
