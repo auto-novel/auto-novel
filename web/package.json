@@ -35,6 +35,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@auto-novel/crawler": "link:../crawler",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",
@@ -53,7 +54,7 @@
     "diff": "^5.2.0",
     "idb": "^8.0.3",
     "jwt-decode": "^4.0.0",
-    "ky": "^1.11.0",
+    "ky": "^1.14.0",
     "lodash-es": "^4.17.21",
     "markdown-it": "^14.1.0",
     "markdown-it-anchor": "^9.2.0",
