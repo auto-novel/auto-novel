@@ -45,8 +45,14 @@ export interface WebNovelProvider {
 
 export type Page<T> = {
   items: T[];
-  hasNext: boolean;
+  pageNumber: number;
 };
+
+export const emptyPage = <T>() =>
+  <Page<T>>{
+    items: [],
+    pageNumber: 0,
+  };
 
 export type RemoteNovelListItem = {
   novelId: string;

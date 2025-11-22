@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      '@auto-novel/crawler':
+        specifier: link:../crawler
+        version: link:../crawler
       '@img-comparison-slider/vue':
         specifier: ^8.0.0
         version: 8.0.0
@@ -62,8 +65,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
       ky:
-        specifier: ^1.11.0
-        version: 1.11.0
+        specifier: ^1.14.0
+        version: 1.14.0
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -2862,10 +2865,10 @@ packages:
         integrity: sha512-xYSH7AvuQ6nXkq42x0v5S8/Iry+cfulBz/DJQzhIyESdLD7425jXsPy4vn5cCXU+HhRN2kVw51Vd1K6/By4BQg==,
       }
 
-  ky@1.11.0:
+  ky@1.14.0:
     resolution:
       {
-        integrity: sha512-NEyo0ICpS0cqSuyoJFMCnHOZJILqXsKhIZlHJGDYaH8OB5IFrGzuBpEwyoMZG6gUKMPrazH30Ax5XKaujvD8ag==,
+        integrity: sha512-Rczb6FMM6JT0lvrOlP5WUOCB7s9XKxzwgErzhKlKde1bEV90FXplV1o87fpt4PU/asJFiqjYJxAJyzJhcrxOsQ==,
       }
     engines: { node: '>=18' }
 
@@ -5643,7 +5646,7 @@ snapshots:
 
   knitwork@1.2.0: {}
 
-  ky@1.11.0: {}
+  ky@1.14.0: {}
 
   levn@0.4.1:
     dependencies:

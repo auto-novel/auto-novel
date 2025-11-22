@@ -17,9 +17,3 @@ storybook-static
 .vscode/*
 !.vscode/extensions.json
 .idea
-
-/src/generated/prisma
-
-/src/generated/prisma
-
-/src/generated/prisma
