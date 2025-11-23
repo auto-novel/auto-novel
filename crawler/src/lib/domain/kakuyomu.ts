@@ -15,7 +15,7 @@ import type { KyInstance } from 'ky';
 import { pipe } from 'fp-ts/lib/function.js';
 import * as O from 'fp-ts/lib/Option.js';
 import * as A from 'fp-ts/lib/Array.js';
-import { assertValid, removePrefix, stringToTagEnum } from './utils';
+import { assertValid, removePrefix, stringToAttentionEnum } from './utils';
 import z from 'zod';
 
 const rangeIds = {
@@ -91,7 +91,7 @@ export class Kakuyomu implements WebNovelProvider<Options> {
 
       const attentions: WebNovelAttention[] = $(workCard)
         .find('a.bookWalker-work-title')
-        .map((_, el) => stringToTagEnum($(el).text().trim()))
+        .map((_, el) => stringToAttentionEnum($(el).text().trim()))
         .get();
 
       const keywords: string[] = $(workCard)

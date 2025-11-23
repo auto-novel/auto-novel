@@ -18,7 +18,11 @@ import { range } from 'lodash-es';
 import PQueue from 'p-queue';
 import { pipe } from 'fp-ts/lib/function.js';
 import * as O from 'fp-ts/lib/Option.js';
-import { removeSuffix, stringToTagEnum, substringAfterLast } from './utils';
+import {
+  removeSuffix,
+  stringToAttentionEnum,
+  substringAfterLast,
+} from './utils';
 
 const rangeIds = {
   每日: 'daily',
@@ -151,9 +155,9 @@ export class Syosetu implements WebNovelProvider {
         ?.map((_, el) => $(el).text())
         ?.toArray()
         ?.forEach((tagStr) => {
-          const tag = stringToTagEnum(tagStr.trim());
-          if (tag !== null) {
-            attentions.push(tag);
+          const tagOrAttention = stringToAttentionEnum(tagStr.trim());
+          if (tagOrAttention !== null) {
+            attentions.push(tagOrAttention);
           } else {
             keywords.push(tagStr);
           }

@@ -1,5 +1,4 @@
 import { describe, afterEach, vi, test, beforeAll, expect } from 'vitest';
-import ky from 'ky';
 
 import { Kakuyomu } from '@/domain/kakuyomu.ts';
 import {
@@ -9,11 +8,14 @@ import {
   type RemoteChapter,
   type RemoteNovelMetadata,
 } from '@/domain/types.ts';
+import { buildClientForTest } from './utils.ts';
 
 describe('kakuyomu', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  const testTimeout = 10_000;
 
   // TS衛生兵さんの成り上がり
   // https://kakuyomu.jp/works/16818093075963348153
@@ -21,8 +23,9 @@ describe('kakuyomu', () => {
   let provider: Kakuyomu;
 
   beforeAll(() => {
-    const client = ky.create();
+    const client = buildClientForTest();
     provider = new Kakuyomu(client);
+    vi.setConfig({ testTimeout });
   });
 
   test('rank', async () => {

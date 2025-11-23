@@ -11,17 +11,24 @@ export const substringAfterLast = (delimiter: string) => (input: string) => {
   return index === -1 ? input : input.slice(index + delimiter.length);
 };
 
-export const stringToTagEnum = (tag: string): WebNovelAttention | null => {
+export const stringToAttentionEnum = (
+  tag: string,
+): WebNovelAttention | null => {
   switch (tag) {
     case 'R15':
+    case 'R-15':
       return WebNovelAttention.R15;
     case 'R18':
+    case 'R-18':
       return WebNovelAttention.R18;
     case '残酷描写有り':
+    case '残酷描写あり':
       return WebNovelAttention.Cruelty;
     case '暴力描写有り':
+    case '暴力描写あり':
       return WebNovelAttention.Violence;
     case '性描写有り':
+    case '性的表現あり':
       return WebNovelAttention.SexualContent;
     default:
       return null;
