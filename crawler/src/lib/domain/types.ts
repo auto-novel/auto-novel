@@ -1,4 +1,5 @@
 import { KyInstance } from 'ky';
+import z from 'zod';
 
 export type FetchType = (
   input: URL | string | RequestLike,
@@ -30,15 +31,13 @@ export type ResponseLike = {
   text: () => Promise<any>;
 };
 
-export interface WebNovelProvider {
+export interface WebNovelProvider<GetRankOptionsT = Record<string, string>> {
   readonly id: string;
   readonly version: string;
 
   client: KyInstance;
 
-  getRank(
-    options: Record<string, string>,
-  ): Promise<Page<RemoteNovelListItem> | null>;
+  getRank(options: GetRankOptionsT): Promise<Page<RemoteNovelListItem> | null>;
   getMetadata(novelId: string): Promise<RemoteNovelMetadata | null>;
   getChapter(novelId: string, chapterId: string): Promise<RemoteChapter | null>;
 }

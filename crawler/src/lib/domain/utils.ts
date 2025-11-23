@@ -27,3 +27,12 @@ export const stringToTagEnum = (tag: string): WebNovelAttention | null => {
       return null;
   }
 };
+
+export function assertValid<T>(
+  data: T | null | undefined,
+  msg: string = 'data is null or undefined',
+): asserts data is T {
+  if (data === null || data === undefined) {
+    throw new Error(msg);
+  }
+}

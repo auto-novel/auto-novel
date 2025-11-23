@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { ProxyManager } from '../src/app/services/proxy.ts';
+import { ProxyManager } from '@/services/proxy.ts';
 
 describe('ProxyManager', () => {
   afterEach(() => {

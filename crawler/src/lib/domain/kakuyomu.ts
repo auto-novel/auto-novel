@@ -15,14 +15,16 @@ import {
 import type { KyInstance } from 'ky';
 import { pipe } from 'fp-ts/lib/function.js';
 import * as O from 'fp-ts/lib/Option.js';
-import { removePrefix, stringToTagEnum } from './utils';
+import * as A from 'fp-ts/lib/Array.js';
+import { assertValid, removePrefix, stringToTagEnum } from './utils';
+import z from 'zod';
 
 const rangeIds = {
   每日: 'daily',
   每周: 'weekly',
   每月: 'monthly',
   每年: 'yearly',
-  总计: 'total',
+  总计: 'entire',
 } as const;
 
 const genreIds = {
@@ -47,7 +49,14 @@ const statusIds = {
   长篇: 'long',
 } as const;
 
-export class Kakuyomu implements WebNovelProvider {
+const rankSchema = z.object({
+  genre: z.enum(Object.values(genreIds)),
+  range: z.enum(Object.values(rangeIds)),
+  status: z.enum(Object.values(statusIds)),
+});
+
+type Options = z.input<typeof rankSchema>;
+export class Kakuyomu implements WebNovelProvider<Options> {
   readonly id = 'kakuyomu';
   readonly version = '1.0.0';
 
@@ -57,22 +66,16 @@ export class Kakuyomu implements WebNovelProvider {
     this.client = client;
   }
 
-  async getRank(
-    options: Record<string, string>,
-  ): Promise<Page<RemoteNovelListItem>> {
-    const genreFilter = options['genre'];
-    const rangeFilter = options['range'];
-    if (rangeFilter == null) {
-      return emptyPage();
-    }
-
-    const statusFilter = options['status'];
-    if (statusFilter == null) {
-      return emptyPage();
-    }
+  async getRank(options: Options): Promise<Page<RemoteNovelListItem>> {
+    // FIXME(kuriko): should we use safeParse to return emptyPage()?
+    const params = rankSchema.parse(options);
+    const genre = params.genre;
+    const range = params.range;
+    const status = params.status;
 
     // FIXME(kuriko): not working currently
-    const url = `https://kakuyomu.jp/rankings/${genreFilter}/${rangeFilter}?work_variation=${statusFilter}`;
+    const url = `https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}`;
+    console.log(url);
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 
@@ -120,7 +123,114 @@ export class Kakuyomu implements WebNovelProvider {
   }
 
   async getMetadata(novelId: string): Promise<RemoteNovelMetadata | null> {
-    throw new Error('Method not implemented.');
+    const url = `https://kakuyomu.jp/works/${novelId}`;
+    const doc = await this.client.get(url).text();
+    const $ = cheerio.load(doc);
+
+    const script = $('#__NEXT_DATA__');
+    if (script.length === 0) {
+      return null;
+    }
+
+    const apollo = JSON.parse(script.html() ?? '')?.props?.pageProps?.[
+      '__APOLLO_STATE__'
+    ];
+
+    assertValid(apollo, 'Failed to parse novel metadata');
+
+    const unref = (data: any) => {
+      if (data?.__ref) {
+        return apollo[data.__ref];
+      }
+      return null;
+    };
+
+    const work = apollo[`Work:${novelId}`];
+
+    const title = work?.alternativeTitle ?? work?.title;
+
+    const author = pipe(
+      O.fromNullable(work?.author),
+      O.map(unref),
+      O.map(
+        (it) =>
+          <WebNovelAuthor>{
+            name: it.activityName,
+            link: `https://kakuyomu.jp/users/${it.name}`,
+          },
+      ),
+      O.toNullable,
+    );
+
+    const typeMap: Record<string, WebNovelType> = {
+      COMPLETED: WebNovelType.Completed,
+      RUNNING: WebNovelType.Ongoing,
+    };
+
+    const status: string = work?.serialStatus;
+    const type = typeMap[status];
+    assertValid(type, `无法解析的小说类型：${status}`);
+
+    const attentions: WebNovelAttention[] = [];
+    if (work?.isCruel) attentions.push(WebNovelAttention.Cruelty);
+    if (work?.isViolent) attentions.push(WebNovelAttention.Violence);
+    if (work?.isSexual) attentions.push(WebNovelAttention.SexualContent);
+
+    const keywords = work?.tagLabels ?? [];
+
+    const points = work?.totalReviewPoint;
+
+    const totalCharacters = work?.totalCharacterCount;
+
+    const introduction = work?.introduction;
+
+    const toc = pipe(
+      O.fromNullable(work?.tableOfContents),
+      O.map(A.map(unref)),
+      O.map(
+        A.chain((it) => {
+          const chapter = pipe(
+            O.fromNullable(it?.chapter),
+            O.map(unref),
+            O.toNullable,
+          );
+          const episodes = pipe(
+            O.fromNullable(it?.episodeUnions),
+            O.map(A.map(unref)),
+            O.toNullable,
+          );
+          const ret: TocItem[] = [];
+          if (chapter) {
+            ret.push(<TocItem>{
+              title: chapter.title,
+            });
+          }
+          const episodeData =
+            episodes?.map(
+              (ep) =>
+                <TocItem>{
+                  title: ep.title,
+                  chapterId: ep.id,
+                  createAt: ep.publishedAt,
+                },
+            ) ?? [];
+          return [...ret, ...episodeData];
+        }),
+      ),
+      O.toNullable,
+    );
+
+    return <RemoteNovelMetadata>{
+      title,
+      authors: [author],
+      type,
+      attentions,
+      keywords,
+      points,
+      totalCharacters,
+      introduction,
+      toc,
+    };
   }
 
   async getChapter(novelId: string, chapterId: string): Promise<RemoteChapter> {
