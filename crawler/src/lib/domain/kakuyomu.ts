@@ -9,7 +9,6 @@ import {
   type WebNovelAuthor,
   type WebNovelProvider,
   WebNovelType,
-  emptyPage,
 } from './types';
 
 import type { KyInstance } from 'ky';
@@ -55,7 +54,8 @@ const rankSchema = z.object({
   status: z.enum(Object.values(statusIds)),
 });
 
-type Options = z.input<typeof rankSchema>;
+export type Options = z.input<typeof rankSchema>;
+
 export class Kakuyomu implements WebNovelProvider<Options> {
   readonly id = 'kakuyomu';
   readonly version = '1.0.0';
@@ -73,7 +73,6 @@ export class Kakuyomu implements WebNovelProvider<Options> {
     const range = params.range;
     const status = params.status;
 
-    // FIXME(kuriko): not working currently
     const url = `https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}`;
     console.log(url);
     const doc = await this.client.get(url).text();
