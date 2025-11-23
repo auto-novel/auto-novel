@@ -19,7 +19,7 @@
   "types": "./dist/lib/index.d.ts",
   "scripts": {
     "build": "rslib build",
-    "dev": "rslib build --watch",
+    "dev": "rslib dev --watch",
     "format": "prettier --write .",
     "lint": "eslint .",
     "test": "vitest run"
