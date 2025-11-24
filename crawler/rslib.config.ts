@@ -39,7 +39,7 @@ export default defineConfig({
   ],
   output: {
     cleanDistPath: true,
-    sourceMap: true,
+    sourceMap: !is_debug,
     minify: !is_debug,
   },
 });

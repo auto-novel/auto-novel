@@ -19,6 +19,7 @@ import * as A from 'fp-ts/lib/Array.js';
 import * as NA from 'fp-ts/lib/NonEmptyArray.js';
 import {
   assertValid,
+  numExtractor,
   removePrefix,
   stringToAttentionEnum,
   substringAfterLast,
@@ -109,18 +110,8 @@ export class Novelup implements WebNovelProvider {
       .map((_, el) => $(el).text().trim())
       .get();
 
-    const extractor = (tag: string) =>
-      pipe(
-        O.fromNullable(row(tag).text().trim()),
-        O.map((text) => text.replace(/[^0-9]/g, '')),
-        O.filter((text) => text.length > 0),
-        O.map(Number),
-        O.filter(Number.isFinite),
-        O.toNullable,
-      );
-
-    const points = extractor('応援ポイント');
-    const totalCharacters = extractor('文字数');
+    const points = numExtractor(row('応援ポイント').text().trim());
+    const totalCharacters = numExtractor(row('文字数').text().trim());
 
     const introduction = $('div.novel_synopsis').text().trim();
 

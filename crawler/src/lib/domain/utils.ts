@@ -1,3 +1,8 @@
+import { pipe } from 'fp-ts/lib/function.js';
+import * as O from 'fp-ts/lib/Option.js';
+import * as A from 'fp-ts/lib/Array.js';
+import * as NA from 'fp-ts/lib/NonEmptyArray.js';
+
 import { WebNovelAttention } from './types';
 
 export const removeSuffix = (suffix: string) => (input: string) =>
@@ -23,6 +28,7 @@ export const stringToAttentionEnum = (
       return WebNovelAttention.R18;
     case '残酷描写有り':
     case '残酷描写あり':
+    case '残酷な描写':
       return WebNovelAttention.Cruelty;
     case '暴力描写有り':
     case '暴力描写あり':
@@ -34,6 +40,16 @@ export const stringToAttentionEnum = (
       return null;
   }
 };
+
+export const numExtractor = (text: string) =>
+  pipe(
+    O.fromNullable(text),
+    O.map((text) => text.replace(/[^0-9]/g, '')),
+    O.filter((text) => text.length > 0),
+    O.map(Number),
+    O.filter(Number.isFinite),
+    O.toNullable,
+  );
 
 export function assertValid<T>(
   data: T | null | undefined,

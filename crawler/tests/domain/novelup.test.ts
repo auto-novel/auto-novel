@@ -1,5 +1,4 @@
 import { describe, afterEach, vi, test, beforeAll, expect } from 'vitest';
-import ky from 'ky';
 
 import { Novelup } from '@/domain/novelup.ts';
 import {
@@ -8,7 +7,7 @@ import {
 } from '@/domain/types.ts';
 import { buildClientForTest } from './utils.ts';
 
-describe('kakuyomu', () => {
+describe('novelup', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
