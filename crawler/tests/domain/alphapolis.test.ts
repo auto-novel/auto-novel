@@ -23,7 +23,7 @@ describe('alphapolis', () => {
 
   beforeAll(() => {
     vi.setConfig({ testTimeout });
-    console.warn('Alphapolis 有严格的反爬策略，请保证使用日本 IP 测试');
+    console.warn('⚠️ Alphapolis 有严格的反爬策略，请保证使用日本 IP 测试');
     const _client = buildClientForTest();
     const client = _client.extend({
       headers: {
@@ -56,7 +56,7 @@ describe('alphapolis', () => {
   });
 
   test('chapter', async () => {
-    console.warn('Alphapolis 有严格的反爬策略，爬取章节必须提供 cookies');
+    console.warn('️⚠️ Alphapolis 有严格的反爬策略，爬取章节必须提供 cookies');
     const chapterId = '9003705';
     const data: RemoteChapter = await provider.getChapter(novelId, chapterId);
     expect(data).toBeDefined();
