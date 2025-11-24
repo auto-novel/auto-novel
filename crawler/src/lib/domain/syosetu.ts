@@ -150,12 +150,12 @@ export class Syosetu implements WebNovelProvider {
 
       $(item)
         .find('div.p-ranklist-item__keyword')
-        ?.first()
-        ?.find('a')
-        ?.map((_, el) => $(el).text())
-        ?.toArray()
-        ?.forEach((tagStr) => {
-          const tagOrAttention = stringToAttentionEnum(tagStr.trim());
+        .first()
+        .find('a')
+        .toArray()
+        .map((el) => $(el).text().trim())
+        .forEach((tagStr) => {
+          const tagOrAttention = stringToAttentionEnum(tagStr);
           if (tagOrAttention !== null) {
             attentions.push(tagOrAttention);
           } else {
@@ -238,13 +238,12 @@ export class Syosetu implements WebNovelProvider {
       .text()
       .trim()
       .split(' ')
-      .map((maybeTags) => maybeTags.split(' '))
-      .flat()
+      .flatMap((maybeTags) => maybeTags.split(' ')) // non-breaking space
+      .flatMap((maybeTags) => maybeTags.split(' ')) // normal space
       .forEach((tag) => {
-        if (tag === 'R15') {
-          attentions.push(WebNovelAttention.R15);
-        } else if (tag === '残酷な描写あり') {
-          attentions.push(WebNovelAttention.Cruelty);
+        const tagOrAttention = stringToAttentionEnum(tag);
+        if (tagOrAttention !== null) {
+          attentions.push(tagOrAttention);
         } else {
           keywords.push(tag);
         }

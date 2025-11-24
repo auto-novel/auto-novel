@@ -31,6 +31,7 @@ export const stringToAttentionEnum = (
     case '残酷描写有り':
     case '残酷描写あり':
     case '残酷な描写':
+    case '残酷な描写あり': // syosetu
       return WebNovelAttention.Cruelty;
     case '暴力描写有り':
     case '暴力描写あり':
