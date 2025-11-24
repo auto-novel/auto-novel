@@ -2,29 +2,32 @@ import type ky from 'ky';
 
 import type { WebNovelProvider } from '@/domain/types';
 
+import { Alphapolis } from '@/domain/alphapolis';
+import { Hameln } from '@/domain/hameln';
+import { Kakuyomu } from '@/domain/kakuyomu';
+import { Novelup } from '@/domain/novelup';
 import { Pixiv } from '@/domain/pixiv';
 import { Syosetu } from '@/domain/syosetu';
-import { Kakuyomu } from '@/domain/kakuyomu';
-import { Novelup } from './domain/novelup';
-import { Hameln } from './domain/hameln';
 
 type ProviderInitFn = (_: typeof ky) => WebNovelProvider;
 
 export const PROVIDER_IDS = [
-  'pixiv',
-  'syosetu',
+  'alphapolis',
+  'hameln',
   'kakuyomu',
   'novelup',
-  'hameln',
+  'pixiv',
+  'syosetu',
 ] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 const providers: Record<ProviderId, ProviderInitFn> = {
-  pixiv: (ky) => new Pixiv(ky),
-  syosetu: (ky) => new Syosetu(ky),
-  kakuyomu: (ky) => new Kakuyomu(ky),
-  novelup: (ky) => new Novelup(ky),
+  alphapolis: (ky) => new Alphapolis(ky),
   hameln: (ky) => new Hameln(ky),
+  pixiv: (ky) => new Pixiv(ky),
+  novelup: (ky) => new Novelup(ky),
+  kakuyomu: (ky) => new Kakuyomu(ky),
+  syosetu: (ky) => new Syosetu(ky),
 };
 
 export const Providers = providers;

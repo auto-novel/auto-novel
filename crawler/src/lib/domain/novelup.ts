@@ -48,24 +48,20 @@ export class Novelup implements WebNovelProvider {
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 
-    const infoEl = $('table.storyMeta');
+    const $info = $('table.storyMeta');
 
-    const row = (label: string) => {
-      return (
-        infoEl
-          // .find(`th:containsOwn("${label}")`)
-          .find(`th`)
-          .filter((_, el) => {
-            const ownText = $(el)
-              .contents()
-              .filter((_, el) => el.type == 'text')
-              .text();
-            return ownText.includes(label);
-          })
-          .first()
-          .next()
-      );
-    };
+    const row = (label: string) =>
+      $info
+        .find(`th`)
+        .filter((_, el) => {
+          const ownText = $(el)
+            .contents()
+            .filter((_, el) => el.type == 'text')
+            .text();
+          return ownText.includes(label);
+        })
+        .first()
+        .next();
 
     const title = $('h1.storyTitle').text().trim();
 
@@ -113,7 +109,12 @@ export class Novelup implements WebNovelProvider {
     const points = numExtractor(row('応援ポイント').text().trim());
     const totalCharacters = numExtractor(row('文字数').text().trim());
 
-    const introduction = $('div.novel_synopsis').text().trim();
+    const introduction = pipe(
+      O.fromNullable($('div.novel_synopsis')),
+      O.filter(($el) => $el.length > 0),
+      O.map(($el) => $el.text().trim()),
+      O.toNullable,
+    );
 
     const totalPage = pipe(
       O.fromNullable($('ul.pagination').children().last()),
@@ -193,12 +194,12 @@ export class Novelup implements WebNovelProvider {
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 
-    const el = $('p#episode_content').first();
+    const $el = $('p#episode_content').first();
 
-    el.find('rp, rt').remove();
-    el.find('br').replaceWith('\n');
+    $el.find('rp, rt').remove();
+    $el.find('br').replaceWith('\n');
 
-    const texts = el.text();
+    const texts = $el.text();
     const lines = texts.split(/\r?\n/).map((line) => line.trim());
 
     return <RemoteChapter>{

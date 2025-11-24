@@ -5,6 +5,8 @@ import * as NA from 'fp-ts/lib/NonEmptyArray.js';
 
 import { WebNovelAttention } from './types';
 
+import type { Cheerio } from 'cheerio';
+
 export const removeSuffix = (suffix: string) => (input: string) =>
   input.endsWith(suffix) ? input.slice(0, -suffix.length) : input;
 
@@ -52,10 +54,17 @@ export const numExtractor = (text: string) =>
   );
 
 export function assertValid<T>(
-  data: T | null | undefined,
+  data: T | null | undefined | string,
   msg: string = 'data is null or undefined',
 ): asserts data is T {
   if (data === null || data === undefined) {
     throw new Error(msg);
   }
+}
+
+export function assertEl<T>(
+  data: Cheerio<T>,
+  msg: string = 'doc parse failed',
+) {
+  if (data.length === 0) throw new Error(msg);
 }

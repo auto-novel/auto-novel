@@ -134,7 +134,12 @@ export class Hameln implements WebNovelProvider {
     const points = numExtractor(row('総合評価').text().trim());
     const totalCharacters = numExtractor(row('合計文字数').text().trim());
 
-    const introduction = row('あらすじ').text().trim();
+    const introduction = pipe(
+      O.fromNullable(row('あらすじ')),
+      O.filter(($el) => $el.length > 0),
+      O.map(($el) => $el.text().trim()),
+      O.toNullable,
+    );
 
     const toc: TocItem[] =
       $1('span[itemprop=name]').length === 0

@@ -280,7 +280,12 @@ export class Syosetu implements WebNovelProvider {
       O.toNullable,
     );
 
-    const introduction = row('あらすじ').text().trim();
+    const introduction = pipe(
+      O.fromNullable(row('あらすじ')),
+      O.filter(($el) => $el.length > 0),
+      O.map(($el) => $el.text().trim()),
+      O.toNullable,
+    );
 
     const tocEl = $1('div.p-eplist').first();
     const worker = async () => {
