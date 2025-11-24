@@ -199,12 +199,13 @@ export class Hameln implements WebNovelProvider {
       .first()
       .find('p')
       .map((_, el) => {
-        $(el).find('rp').remove();
-        $(el).find('rt').remove();
-        return el;
+        const $el = $(el);
+        $el.find('rp, rt').remove();
+        $el.find('br').replaceWith('\n');
+        return $el;
       })
-      .filter((_, el) => Boolean($(el).attr('id')))
-      .map((_, el) => $(el).text().trim())
+      .filter((_, el) => Boolean(el.attr('id')))
+      .map((_, el) => el.text().trim())
       .get();
 
     return <RemoteChapter>{

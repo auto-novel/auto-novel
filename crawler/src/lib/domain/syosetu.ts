@@ -388,6 +388,7 @@ export class Syosetu implements WebNovelProvider {
     const $ = cheerio.load(docHtml);
 
     $('rp, rt').remove();
+    $('br').replaceWith('\n');
     const paragraphs = $('div.p-novel__body > div > p')
       .map((_, p) => {
         const pElement = $(p);

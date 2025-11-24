@@ -238,8 +238,8 @@ export class Kakuyomu implements WebNovelProvider<Options> {
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 
-    $('rp').remove();
-    $('rt').remove();
+    $('rp, rt').remove();
+    $('br').replaceWith('\n');
 
     const paragraphs = $('div.widget-episodeBody > p').map((_, el) =>
       $(el).text(),

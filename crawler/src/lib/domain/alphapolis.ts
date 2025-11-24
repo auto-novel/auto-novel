@@ -211,7 +211,7 @@ export class Alphapolis implements WebNovelProvider {
     }
     assertEl($els, 'doc parse failed');
 
-    $els.find('rp rt').remove();
+    $els.find('rp, rt').remove();
     $els.find('br').replaceWith('\n');
 
     const rawText = $els.text();
