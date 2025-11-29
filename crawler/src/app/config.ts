@@ -3,23 +3,12 @@ import fs from 'fs/promises';
 
 import * as z from 'zod';
 
-export const ProxyConfigSchema = z.object({
-  protocol: z.enum(['http', 'https', 'socks5']).default('http'),
-  host: z.string().min(1),
-  port: z.number().int().min(1).max(65535),
-  username: z.string().min(1).optional(),
-  password: z.string().optional(),
-});
-
-export const ProxiesSchema = z.array(ProxyConfigSchema).default([]);
-
 export const ConfigSchema = z.object({
   host: z.string().default('127.0.0.1'),
   port: z.number().default(3000),
-  proxies: ProxiesSchema,
+  proxyDbPath: z.string().default('crawler-proxies.db'),
 });
 
-export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
 export type AppConfig = z.infer<typeof ConfigSchema>;
 
 export const DEFAULT_CONFIG: AppConfig = ConfigSchema.parse({});

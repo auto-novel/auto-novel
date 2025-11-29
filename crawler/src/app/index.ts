@@ -2,9 +2,13 @@ import { Server } from 'node:http';
 import { Command } from 'commander';
 
 import manifest from '@/package.json';
-import { createCrawlerRouter } from '@/services/routes';
-import { ProxyManager } from '@/services/proxy';
-import { CrawlerService } from '@/services/crawler';
+import {
+  createCrawlerRouter,
+  createProxyRouter,
+  CrawlerService,
+  ProxyManager,
+  ProxyStore,
+} from '@/services';
 
 import { loadConfig } from './config';
 import { createApp } from './createApp';
@@ -22,17 +26,20 @@ async function main() {
 
   const config = await loadConfig(configPath);
 
-  const proxyManager = new ProxyManager({ proxies: config.proxies });
+  const proxyStore = new ProxyStore(config.proxyDbPath);
+  const proxyManager = new ProxyManager({ store: proxyStore });
   const crawlerService = new CrawlerService({ proxyManager });
 
   const router = createCrawlerRouter(crawlerService);
+  const proxyRouter = createProxyRouter(proxyManager);
   const app = createApp(config, { router });
+  app.use('/proxies', proxyRouter);
 
   const server = app.listen(config.port, config.host, () => {
     console.log(`Server is running on http://${config.host}:${config.port}`);
   });
 
-  const shutdown = createGracefulShutdown(server);
+  const shutdown = createGracefulShutdown(server, [() => proxyStore.close()]);
 
   try {
     await waitForServerClose(server);

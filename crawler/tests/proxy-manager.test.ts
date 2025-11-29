@@ -1,23 +1,21 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { ProxyManager } from '@/services/proxy.ts';
+import { ProxyManager } from '@/services/proxy/manager.ts';
+import { ProxyStore } from '@/services/proxy/store.ts';
 
 describe('ProxyManager', () => {
+  const stores: ProxyStore[] = [];
+
   afterEach(() => {
     vi.useRealTimers();
+    while (stores.length) {
+      const store = stores.pop();
+      store?.close();
+    }
   });
 
   test('picks proxies and honors cooldown on failure', async () => {
-    const manager = new ProxyManager({
-      failThreshold: 1,
-      cooldownMs: 20,
-      proxies: [
-        {
-          protocol: 'http',
-          host: 'proxy.test',
-          port: 8080,
-        },
-      ],
-    });
+    const manager = createManager({ failThreshold: 1, cooldownMs: 20 });
+    manager.add({ protocol: 'http', host: 'proxy.test', port: 8080 });
 
     const firstPick = manager.pick();
     expect(firstPick).not.toBeNull();
@@ -33,13 +31,9 @@ describe('ProxyManager', () => {
   });
 
   test('cycles through multiple proxies by weight', () => {
-    const manager = new ProxyManager({
-      failThreshold: 3,
-      proxies: [
-        { protocol: 'http', host: 'proxy.a', port: 8000 },
-        { protocol: 'http', host: 'proxy.b', port: 8001 },
-      ],
-    });
+    const manager = createManager({ failThreshold: 3 });
+    manager.add({ protocol: 'http', host: 'proxy.a', port: 8000 });
+    manager.add({ protocol: 'http', host: 'proxy.b', port: 8001 });
 
     const picks = new Set<string>();
     for (let i = 0; i < 5; i += 1) {
@@ -53,4 +47,17 @@ describe('ProxyManager', () => {
 
     expect(picks.size).toBeGreaterThanOrEqual(2);
   });
+
+  function createManager(options?: {
+    failThreshold?: number;
+    cooldownMs?: number;
+  }) {
+    const store = new ProxyStore(':memory:');
+    stores.push(store);
+    return new ProxyManager({
+      store,
+      failThreshold: options?.failThreshold,
+      cooldownMs: options?.cooldownMs,
+    });
+  }
 });

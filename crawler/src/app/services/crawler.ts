@@ -23,8 +23,8 @@ export class CrawlerService {
   private readonly proxyManager: ProxyManager;
   private readonly impitDefaults: Partial<ImpitOptions>;
 
-  constructor(options?: { proxyManager?: ProxyManager }) {
-    this.proxyManager = options?.proxyManager ?? new ProxyManager();
+  constructor(options: { proxyManager: ProxyManager }) {
+    this.proxyManager = options.proxyManager;
     this.impitDefaults = {
       timeout: 30_000,
       browser: 'chrome',

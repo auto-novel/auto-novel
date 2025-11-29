@@ -1,18 +1,5 @@
 {
 	"host": "0.0.0.0",
 	"port": 3000,
-	"proxies": [
-		{
-			"protocol": "http",
-			"host": "proxy1.example.com",
-			"port": 8080
-		},
-		{
-			"protocol": "socks5",
-			"host": "secure-proxy.example.com",
-			"port": 1080,
-			"username": "proxyuser",
-			"password": "secret"
-		}
-	]
+	"proxyDbPath": "crawler-proxies.db"
 }
