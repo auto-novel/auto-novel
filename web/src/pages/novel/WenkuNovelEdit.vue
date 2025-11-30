@@ -332,9 +332,11 @@ const togglePresetKeyword = (checked: boolean, keyword: string) => {
 };
 
 const levelOptions = [
-  { label: '一般向', value: '一般向' },
-  { label: '成人向', value: '成人向' },
-  { label: '严肃向', value: '严肃向' },
+  { label: '轻小说', value: '一般向' },
+  { label: '文学', value: '严肃向' },
+  { label: '非小说', value: '非小说' },
+  { label: 'R18男性向', value: '成人向' },
+  { label: 'R18女性向', value: '成人向女' },
 ];
 </script>
 
@@ -460,14 +462,6 @@ const levelOptions = [
           :options="levelOptions"
         />
       </n-form-item-row>
-      <n-p style="margin-top: -16px; margin-left: 32px">
-        <n-text type="warning" style="font-size: 12px">
-          <b>
-            *
-            由于管理员精力有限，严肃向目前以亚马逊文学分类为准，如果觉得分类有误请不要修改。等AI分类搞定会调整。
-          </b>
-        </n-text>
-      </n-p>
 
       <n-form-item-row path="content" label="简介">
         <n-input

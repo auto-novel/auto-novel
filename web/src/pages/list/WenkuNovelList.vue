@@ -32,10 +32,7 @@ const { data: novelPage, error } = WenkuNovelRepo.useWenkuNovelList(
   () => props.page,
   () => ({
     query: listValue.value.搜索,
-    level:
-      listValue.value.分级 == 0 || whoami.value.allowNsfw
-        ? listValue.value.分级 + 1
-        : listValue.value.分级 + 2,
+    level: listValue.value.分级,
   }),
 );
 

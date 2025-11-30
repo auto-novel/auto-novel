@@ -16,7 +16,7 @@ export interface WenkuNovelDto {
   publisher?: string;
   imprint?: string;
   latestPublishAt?: number;
-  level: '一般向' | '成人向' | '严肃向';
+  level: '一般向' | '严肃向' | '非小说' | '成人向' | '成人向女';
   introduction: string;
   webIds: string[];
   volumes: WenkuVolumeDto[];
