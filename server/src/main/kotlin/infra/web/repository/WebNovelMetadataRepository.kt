@@ -14,6 +14,7 @@ import infra.web.datasource.WebNovelHttpDataSource
 import infra.web.datasource.providers.Hameln
 import infra.web.datasource.providers.Pixiv
 import infra.web.datasource.providers.RemoteNovelListItem
+import infra.web.datasource.providers.RemoteNovelMetadata
 import infra.web.datasource.providers.Syosetu
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
@@ -142,41 +143,65 @@ class WebNovelMetadataRepository(
             .firstOrNull()
     }
 
+    private fun buildWebNovelFromMetadata(
+        providerId: String,
+        novelId: String,
+        metadata: RemoteNovelMetadata
+    ): WebNovel {
+        return WebNovel(
+            id = ObjectId(),
+            providerId = providerId,
+            novelId = novelId,
+            titleJp = metadata.title,
+            authors = metadata.authors.map { WebNovelAuthor(it.name, it.link) },
+            type = metadata.type,
+            keywords = metadata.keywords,
+            attentions = metadata.attentions,
+            points = metadata.points,
+            totalCharacters = metadata.totalCharacters,
+            introductionJp = metadata.introduction,
+            toc = metadata.toc.map { WebNovelTocItem(it.title, null, it.chapterId, it.createAt) },
+        )
+    }
+
     private suspend fun getRemote(
         providerId: String,
         novelId: String,
+        userProvidedMetadata: RemoteNovelMetadata? = null,
     ): Result<WebNovel> {
-        return provider
-            .getMetadata(providerId, novelId)
-            .map { remote ->
-                WebNovel(
-                    id = ObjectId(),
-                    providerId = providerId,
-                    novelId = novelId,
-                    titleJp = remote.title,
-                    authors = remote.authors.map { WebNovelAuthor(it.name, it.link) },
-                    type = remote.type,
-                    keywords = remote.keywords,
-                    attentions = remote.attentions,
-                    points = remote.points,
-                    totalCharacters = remote.totalCharacters,
-                    introductionJp = remote.introduction,
-                    toc = remote.toc.map { WebNovelTocItem(it.title, null, it.chapterId, it.createAt) },
-                )
-            }
+        val remoteResult = if (userProvidedMetadata != null) {
+            Result.success(userProvidedMetadata)
+        } else {
+            provider.getMetadata(providerId, novelId)
+        }
+        return remoteResult.map { remote ->
+            buildWebNovelFromMetadata(providerId, novelId, remote)
+        }
+    }
+
+    suspend fun updateNovelMetadata(
+        providerId: String,
+        novelId: String,
+        metadata: RemoteNovelMetadata
+    ): Result<WebNovel> {
+        val novel = buildWebNovelFromMetadata(providerId, novelId, metadata)
+        webNovelMetadataCollection.insertOne(novel)
+        es.syncNovel(novel)
+        return Result.success(novel);
     }
 
     suspend fun getNovelAndSave(
         providerId: String,
         novelId: String,
         expiredMinutes: Int? = null,
+        userProvidedMetadata: RemoteNovelMetadata? = null,
     ): Result<WebNovel> {
         val local = get(providerId, novelId)
 
         // 不在数据库中
         if (local == null) {
-            return getRemote(providerId, novelId)
-                .onSuccess {
+            return getRemote(providerId, novelId, userProvidedMetadata)
+                .onSuccess { it ->
                     webNovelMetadataCollection
                         .insertOne(it)
                     es.syncNovel(it)

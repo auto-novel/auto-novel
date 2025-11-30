@@ -9,13 +9,20 @@ import {
   type WebNovelAuthor,
   type WebNovelProvider,
   WebNovelType,
+  emptyPage,
 } from './types';
 
 import type { KyInstance } from 'ky';
 import { parseJapanDateString } from '@/utils';
 import { range } from 'lodash-es';
 import PQueue from 'p-queue';
-import { string } from 'zod';
+import { pipe } from 'fp-ts/lib/function.js';
+import * as O from 'fp-ts/lib/Option.js';
+import {
+  removeSuffix,
+  stringToAttentionEnum,
+  substringAfterLast,
+} from './utils';
 
 const rangeIds = {
   每日: 'daily',
@@ -74,7 +81,112 @@ export class Syosetu implements WebNovelProvider {
   async getRank(
     options: Record<string, string>,
   ): Promise<Page<RemoteNovelListItem>> {
-    throw new Error('Not implemented');
+    const genreFilter = options['genre'];
+    const rangeFilter = options['range'];
+    if (rangeFilter == null) {
+      return emptyPage();
+    }
+    const statusFilter = options['status'];
+    if (statusFilter == null) {
+      return emptyPage();
+    }
+
+    const rangeId = rangeIds[rangeFilter as keyof typeof rangeIds];
+    const statusId = statusIds[statusFilter as keyof typeof statusIds];
+
+    const page = Number(options['page']) || 1;
+
+    const typeMappingStrategy = {
+      流派: () =>
+        pipe(
+          O.fromNullable(genreIdsV1[genreFilter as keyof typeof genreIdsV1]),
+          O.map(
+            (genreId) => `genrelist/type/${rangeId}_${genreId}_${statusId}`,
+          ),
+        ),
+      综合: () => O.some(`list/type/${rangeId}_${statusId}`),
+      '异世界转生/转移': () =>
+        pipe(
+          O.fromNullable(genreIdsV2[genreFilter as keyof typeof genreIdsV2]),
+          O.map(
+            (genreId) => `isekailist/type/${rangeId}_${genreId}_${statusId}`,
+          ),
+        ),
+    };
+
+    const path = pipe(
+      O.fromNullable(
+        typeMappingStrategy[
+          options['type'] as keyof typeof typeMappingStrategy
+        ],
+      ),
+      O.chain((f) => f()),
+      O.toNullable,
+    );
+    if (path == null) {
+      return emptyPage();
+    }
+
+    const doc = await this.client
+      .get(`https://yomou.syosetu.com/rank/${path}/?p=${page}`)
+      .text();
+
+    const $ = cheerio.load(doc);
+
+    const pageNumber = $('.c-pager').first()?.children().length - 2;
+
+    const items = $('.p-ranklist-item').map((_, item) => {
+      const elTitle = $(item).find('div.p-ranklist-item__title > a').first();
+      const title = elTitle.text().trim();
+      const novelId = pipe(
+        O.fromNullable(elTitle.attr('href')),
+        O.map(removeSuffix('/')),
+        O.map(substringAfterLast('/')),
+        O.toNullable,
+      );
+
+      const attentions: WebNovelAttention[] = [];
+      const keywords: string[] = [];
+
+      $(item)
+        .find('div.p-ranklist-item__keyword')
+        .first()
+        .find('a')
+        .toArray()
+        .map((el) => $(el).text().trim())
+        .forEach((tagStr) => {
+          const tagOrAttention = stringToAttentionEnum(tagStr);
+          if (tagOrAttention !== null) {
+            attentions.push(tagOrAttention);
+          } else {
+            keywords.push(tagStr);
+          }
+        });
+
+      const elPoints = $(item).find('div.p-ranklist-item__points');
+      const elInformation = $(item)
+        .find('div.p-ranklist-item__infomation')
+        .first();
+      const seperators = $(elInformation)
+        .find('p-ranklist-item__separator')
+        .toArray();
+      const extra = [...elPoints.toArray(), ...seperators]
+        .map((el) => $(el).text().trim())
+        .join('/');
+
+      return <RemoteNovelListItem>{
+        novelId,
+        title,
+        attentions,
+        keywords,
+        extra,
+      };
+    });
+
+    return {
+      items: items.get(),
+      pageNumber,
+    };
   }
 
   async getMetadata(novelId: string): Promise<RemoteNovelMetadata | null> {
@@ -126,13 +238,12 @@ export class Syosetu implements WebNovelProvider {
       .text()
       .trim()
       .split(' ')
-      .map((maybeTags) => maybeTags.split(' '))
-      .flat()
+      .flatMap((maybeTags) => maybeTags.split(' ')) // non-breaking space
+      .flatMap((maybeTags) => maybeTags.split(' ')) // normal space
       .forEach((tag) => {
-        if (tag === 'R15') {
-          attentions.push(WebNovelAttention.R15);
-        } else if (tag === '残酷な描写あり') {
-          attentions.push(WebNovelAttention.Cruelty);
+        const tagOrAttention = stringToAttentionEnum(tag);
+        if (tagOrAttention !== null) {
+          attentions.push(tagOrAttention);
         } else {
           keywords.push(tag);
         }
@@ -149,25 +260,31 @@ export class Syosetu implements WebNovelProvider {
       }
     }
 
-    const pointsStr = row('総合評価')
-      .text()
-      .replace(/,/g, '')
-      .match(/(\d+)/)?.[1]
-      ?.trim();
-    const pointOrNaN = Number(pointsStr);
-    const points = isNaN(pointOrNaN) ? null : pointOrNaN;
+    const points = pipe(
+      () =>
+        row('総合評価').text().replace(/,/g, '').match(/(\d+)/)?.[1]?.trim(),
+      Number,
+      O.fromPredicate((n) => !isNaN(n)),
+      O.toNullable,
+    );
 
     const totalCharactersStr = row('文字数')
       .text()
       .replace(/,/g, '')
       .match(/(\d+)/)?.[1]
       ?.trim();
-    const totalCharactersOrNaN = Number(totalCharactersStr);
-    const totalCharacters = isNaN(totalCharactersOrNaN)
-      ? null
-      : totalCharactersOrNaN;
+    const totalCharacters = pipe(
+      Number(totalCharactersStr),
+      O.fromPredicate((n) => !isNaN(n)),
+      O.toNullable,
+    );
 
-    const introduction = row('あらすじ').text().trim();
+    const introduction = pipe(
+      O.fromNullable(row('あらすじ')),
+      O.filter(($el) => $el.length > 0),
+      O.map(($el) => $el.text().trim()),
+      O.toNullable,
+    );
 
     const tocEl = $1('div.p-eplist').first();
     const worker = async () => {
@@ -182,8 +299,11 @@ export class Syosetu implements WebNovelProvider {
         const pat = '/?p=';
         const href = $1('.c-pager__item--last').first().attr('href');
         const idx = href?.split(pat)?.[1]?.trim() || '';
-        const totalPagesOrNaN = Number(idx);
-        const totalPages = isNaN(totalPagesOrNaN) ? 1 : totalPagesOrNaN;
+        const totalPages = pipe(
+          Number(idx),
+          O.fromPredicate((n) => !isNaN(n)),
+          O.getOrElse(() => 1),
+        );
 
         const parseToc = ($: cheerio.CheerioAPI): TocItem[] =>
           $('div.p-eplist')
@@ -199,12 +319,13 @@ export class Syosetu implements WebNovelProvider {
               }
 
               const title = link.text().trim();
-              const chapterId =
-                link
-                  .attr('href')
-                  ?.split('/')
-                  ?.filter((e) => e.length !== 0)
-                  ?.pop() ?? null;
+              const chapterId = pipe(
+                O.fromNullable(link.attr('href')),
+                O.map(removeSuffix('/')),
+                O.map(substringAfterLast('/')),
+                O.toNullable,
+              );
+
               const createAtStr = $('div.p-eplist__update')
                 .contents()
                 .filter((_, el) => el.type === 'text')
@@ -267,6 +388,7 @@ export class Syosetu implements WebNovelProvider {
     const $ = cheerio.load(docHtml);
 
     $('rp, rt').remove();
+    $('br').replaceWith('\n');
     const paragraphs = $('div.p-novel__body > div > p')
       .map((_, p) => {
         const pElement = $(p);
