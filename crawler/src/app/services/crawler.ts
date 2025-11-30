@@ -81,9 +81,10 @@ export class CrawlerService {
   }
 
   private buildFetcher(proxy: ProxyState | null) {
+    const proxyUrl = proxy ? this.buildProxyUrl(proxy.config) : undefined;
     const client = new Impit({
       ...this.impitDefaults,
-      proxyUrl: proxy ? this.buildProxyUrl(proxy.config) : undefined,
+      proxyUrl,
     });
 
     const fetcher: Fetcher = async (input, init) => {
@@ -94,6 +95,13 @@ export class CrawlerService {
             body: init.body === null ? undefined : init.body,
           } as ImpitRequestInit)
         : undefined;
+
+      const method = requestInit?.method ?? 'GET';
+      const url = input instanceof Request ? input.url : input;
+      console.debug(
+        `[Crawler.Internal] ${method} ${url} via proxy: ${proxyUrl ?? 'none'}`,
+      );
+
       const response = await client.fetch(input, requestInit);
       if (!response.ok) {
         throw new Error(

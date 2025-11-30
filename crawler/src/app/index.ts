@@ -20,14 +20,21 @@ async function main() {
     .name('auto-novel-server-crawler')
     .description('Auto Novel Server Crawler')
     .version(manifest.version)
-    .option('-c, --config <path>', 'Path to config file', 'config.json');
+    .option(
+      '-c, --config <path>',
+      'Path to config file',
+      process.env.CONFIG_PATH || 'config.json',
+    );
 
   const { config: configPath } = program.parse().opts<{ config: string }>();
 
   const config = await loadConfig(configPath);
 
   const proxyStore = new ProxyStore(config.proxyDbPath);
-  const proxyManager = new ProxyManager({ store: proxyStore });
+  const proxyManager = new ProxyManager({
+    store: proxyStore,
+    defaultProxies: config.defaultProxies,
+  });
   const crawlerService = new CrawlerService({ proxyManager });
 
   const router = createCrawlerRouter(crawlerService);
@@ -40,6 +47,23 @@ async function main() {
   });
 
   const shutdown = createGracefulShutdown(server, [() => proxyStore.close()]);
+
+  app.post('/shutdown', async (req, res) => {
+    console.log('Shutdown requested via API');
+
+    res.status(202).json({
+      message: 'Server is shutting down...',
+      uptime: process.uptime(),
+      timestamp: Date.now(),
+    });
+
+    setImmediate(() => {
+      shutdown('api-request', 0).catch((err) => {
+        console.error('Error during API shutdown:', err);
+        process.exit(1);
+      });
+    });
+  });
 
   try {
     await waitForServerClose(server);

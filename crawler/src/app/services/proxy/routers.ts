@@ -1,17 +1,9 @@
 import Express, { Router } from 'express';
 import * as z from 'zod';
 
-import { ProxyManager } from './manager';
+import { ProxyConfigSchema, ProxyManager } from './manager';
 
-const proxyBodySchema = z
-  .object({
-    protocol: z.enum(['http', 'https', 'socks5']),
-    host: z.string().min(1),
-    port: z.number().int().min(1).max(65535),
-    username: z.string().min(1).optional(),
-    password: z.string().optional(),
-  })
-  .strict();
+const proxyBodySchema = ProxyConfigSchema.strict();
 
 export function createProxyRouter(proxyManager: ProxyManager): Router {
   const router = Express.Router({ mergeParams: true });

@@ -49,26 +49,36 @@ const MIGRATION_TABLES = [
         created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
       ) STRICT`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_unique ON proxies(protocol, host, port)`,
 ];
 const OPERATIONS = {
-  list: `SELECT
-        id, protocol, host, port, username, password,
-        fail_count, success_count, cooldown_until,
-        last_used_at, created_at, updated_at
-      FROM proxies
-      ORDER BY id ASC`,
-  getById: `SELECT
-        id, protocol, host, port, username, password,
-        fail_count, success_count, cooldown_until,
-        last_used_at, created_at, updated_at
-      FROM proxies
-      WHERE id = ?`,
-  insert: `INSERT INTO proxies (
-        protocol, host, port, username, password,
-        fail_count, success_count, cooldown_until,
-        last_used_at
-      )
-      VALUES (?, ?, ?, ?, ?, 0, 0, NULL, NULL)`,
+  list: `
+    SELECT
+      id, protocol, host, port, username, password,
+      fail_count, success_count, cooldown_until,
+      last_used_at, created_at, updated_at
+    FROM proxies
+    ORDER BY id ASC
+  `,
+  getById: `
+    SELECT
+      id, protocol, host, port, username, password,
+      fail_count, success_count, cooldown_until,
+      last_used_at, created_at, updated_at
+    FROM proxies
+    WHERE id = ?
+  `,
+  insert: `
+    INSERT INTO proxies (
+      protocol, host, port, username, password,
+      fail_count, success_count, cooldown_until,
+      last_used_at
+    )
+    VALUES (?, ?, ?, ?, ?, 0, 0, NULL, NULL)
+    ON CONFLICT(protocol, host, port) DO UPDATE SET
+      protocol = protocol -- 假更新，为了可以 RETURN ID
+    RETURNING id
+    `,
   delete: 'DELETE FROM proxies WHERE id = ?',
 } as const;
 
@@ -95,14 +105,17 @@ export class ProxyStore {
   }
 
   addSync(config: ProxyConfig): ProxyState {
-    const result = this.stmts.insert.run(
+    const result = this.stmts.insert.get(
       config.protocol,
       config.host,
       config.port,
       config.username ?? null,
       config.password ?? null,
     );
-    const id = Number(result.lastInsertRowid);
+    const id = Number(result?.id);
+    if (Number.isNaN(id)) {
+      throw new Error('Failed to insert proxy');
+    }
     const created = this.fetchById(id);
     if (!created) {
       throw new Error('Failed to load proxy after insert');

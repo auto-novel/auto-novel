@@ -2,11 +2,13 @@ import path from 'node:path';
 import fs from 'fs/promises';
 
 import * as z from 'zod';
+import { ProxyConfigSchema } from './services';
 
 export const ConfigSchema = z.object({
   host: z.string().default('127.0.0.1'),
   port: z.number().default(3000),
   proxyDbPath: z.string().default('crawler-proxies.db'),
+  defaultProxies: z.array(ProxyConfigSchema).default([]),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;

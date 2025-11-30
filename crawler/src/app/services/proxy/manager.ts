@@ -1,14 +1,16 @@
+import z from 'zod';
 import type { ProxyStore } from './store';
 
-export type ProxyProtocol = 'http' | 'https' | 'socks5';
+export const ProxyConfigSchema = z.object({
+  protocol: z.enum(['http', 'https', 'socks5']),
+  host: z.string(),
+  port: z.number().int().min(1).max(65535),
+  username: z.string().optional(),
+  password: z.string().optional(),
+});
 
-export type ProxyConfig = {
-  protocol: ProxyProtocol;
-  host: string;
-  port: number;
-  username?: string;
-  password?: string;
-};
+export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
+export type ProxyProtocol = ProxyConfig['protocol'];
 
 export type ProxyState = {
   id: number;
@@ -23,6 +25,7 @@ type ProxyManagerOptions = {
   store: ProxyStore;
   failThreshold?: number;
   cooldownMs?: number;
+  defaultProxies?: ProxyConfig[];
 };
 
 const BASE_SCORE = 100;
@@ -41,6 +44,13 @@ export class ProxyManager {
     this.store = options.store;
     this.failThreshold = options.failThreshold ?? DEFAULT_FAIL_THRESHOLD;
     this.cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS;
+
+    if (options.defaultProxies) {
+      for (const config of options.defaultProxies) {
+        console.debug('Add default proxy:', config);
+        this.add(config);
+      }
+    }
   }
 
   add(config: ProxyConfig): ProxyState {
@@ -128,10 +138,9 @@ export class ProxyManager {
     for (const candidate of candidates) {
       ticket -= candidate.weight;
       if (ticket <= 0) {
-        const updated =
-          this.store.updateStateSync(candidate.state.id, {
-            lastUsedAt: now,
-          }) ?? { ...candidate.state, lastUsedAt: now };
+        const updated = this.store.updateStateSync(candidate.state.id, {
+          lastUsedAt: now,
+        }) ?? { ...candidate.state, lastUsedAt: now };
         return updated;
       }
     }
@@ -148,7 +157,9 @@ export class ProxyManager {
 
   private calculateWeight(state: ProxyState): number {
     const score =
-      BASE_SCORE + state.successCount * SUCCESS_WEIGHT - state.failCount * FAILURE_WEIGHT;
+      BASE_SCORE +
+      state.successCount * SUCCESS_WEIGHT -
+      state.failCount * FAILURE_WEIGHT;
     return Math.max(score, MIN_SCORE);
   }
 }
