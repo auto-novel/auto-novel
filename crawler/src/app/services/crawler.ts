@@ -13,23 +13,48 @@ import type {
   RemoteNovelMetadata,
   WebNovelProvider,
 } from '@/domain/types';
-import { Providers, ProviderId } from '@/index';
+import { Providers, ProviderId, PROVIDER_IDS } from '@/index';
 import { ProxyConfig, ProxyManager, type ProxyState } from './proxy';
+import z from 'zod';
+import { CookieJar } from 'tough-cookie';
 
 type Fetcher = Options['fetch'];
 type ProviderHandler<T> = (provider: WebNovelProvider) => Promise<T>;
 
+// Record<ProviderId, Record<headerName, headerValue>>
+export const HeaderSchema = z.record(z.string(), z.string());
+export type HeaderArray = z.infer<typeof HeaderSchema>;
+
+export const HeadersConfigSchema = z.partialRecord(
+  z.enum(PROVIDER_IDS),
+  HeaderSchema,
+);
+export type HeadersConfig = z.infer<typeof HeadersConfigSchema>;
+
+export type CrawlerServiceOptions = {
+  proxyManager: ProxyManager;
+  headers?: HeadersConfig;
+};
+
 export class CrawlerService {
   private readonly proxyManager: ProxyManager;
   private readonly impitDefaults: Partial<ImpitOptions>;
+  private readonly headers: Map<ProviderId, HeaderArray> = new Map();
+  // TODO(kuriko): should we implement persistent cookie store?
+  //    dump the cookies back to config?
+  private readonly cookieJar = new Map<ProviderId, CookieJar>();
 
-  constructor(options: { proxyManager: ProxyManager }) {
+  constructor(options: CrawlerServiceOptions) {
     this.proxyManager = options.proxyManager;
     this.impitDefaults = {
       timeout: 30_000,
       browser: 'chrome',
       followRedirects: true,
     };
+
+    Object.entries(options.headers ?? {}).forEach(([providerId, headers]) => {
+      this.headers.set(providerId as ProviderId, headers);
+    });
   }
 
   async getMetadata(
@@ -66,7 +91,7 @@ export class CrawlerService {
   ): Promise<T> {
     const providerInit = this.requireProvider(providerId);
     const proxy = this.proxyManager.pick();
-    const { fetcher, finalize } = this.buildFetcher(proxy);
+    const { fetcher, finalize } = this.buildFetcher(providerId, proxy);
     const client = ky.create({ fetch: fetcher });
     const provider = providerInit(client);
 
@@ -80,11 +105,18 @@ export class CrawlerService {
     }
   }
 
-  private buildFetcher(proxy: ProxyState | null) {
+  private buildFetcher(providerId: ProviderId, proxy: ProxyState | null) {
+    const headers = this.headers.get(providerId);
     const proxyUrl = proxy ? this.buildProxyUrl(proxy.config) : undefined;
+    const cookieJar = this.cookieJar.get(providerId);
+
     const client = new Impit({
-      ...this.impitDefaults,
       proxyUrl,
+      cookieJar,
+      headers: {
+        ...(this.impitDefaults.headers ?? {}),
+        ...(headers ?? {}),
+      },
     });
 
     const fetcher: Fetcher = async (input, init) => {
@@ -101,9 +133,9 @@ export class CrawlerService {
       console.debug(
         `[Crawler.Internal] ${method} ${url} via proxy: ${proxyUrl ?? 'none'}`,
       );
-
       const response = await client.fetch(input, requestInit);
       if (!response.ok) {
+        console.debug('response:', await response.text());
         throw new Error(
           `Request failed: ${response.status} ${response.statusText}`,
         );

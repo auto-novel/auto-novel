@@ -3,13 +3,13 @@ import { describe, afterEach, vi, test, beforeAll, expect } from 'vitest';
 import { Alphapolis } from '@/domain/alphapolis.ts';
 
 import {
-  WebNovelAttention,
   type RemoteChapter,
   type RemoteNovelMetadata,
 } from '@/domain/types.ts';
 import { buildClientForTest } from './utils.js';
 
-describe('alphapolis', () => {
+const shouldSkip = !process.env.ALL_TEST;
+describe.skipIf(shouldSkip)('alphapolis', () => {
   afterEach(() => {
     vi.useRealTimers();
   });

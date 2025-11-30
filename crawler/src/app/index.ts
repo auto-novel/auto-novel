@@ -35,7 +35,10 @@ async function main() {
     store: proxyStore,
     defaultProxies: config.defaultProxies,
   });
-  const crawlerService = new CrawlerService({ proxyManager });
+  const crawlerService = new CrawlerService({
+    proxyManager,
+    headers: config.headers,
+  });
 
   const router = createCrawlerRouter(crawlerService);
   const proxyRouter = createProxyRouter(proxyManager);
