@@ -60,12 +60,13 @@ export class CrawlerService {
       if (providerId == 'default') {
         return;
       }
-      console.debug('Setting initial headers for provider:', providerId);
-      console.debug(headers);
-      this.headers.set(providerId as ProviderId, {
+      const finalHeader = {
         ...defaultHeaders,
         ...(headers ?? {}),
-      });
+      };
+      console.debug('Setting initial headers for provider:', providerId);
+      console.debug(finalHeader);
+      this.headers.set(providerId as ProviderId, finalHeader);
     });
   }
 
