@@ -1,3 +1,21 @@
+.vscode/
+.idea/
+
+data/
+dist/
+config.json
+.env
+.env.*
+
+.git
+.gitignore
+
+Dockefile
+docker-compose.yml
+.dockerignore
+
+*.log*
+
 
 .env
 config.json

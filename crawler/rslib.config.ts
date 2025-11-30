@@ -3,6 +3,8 @@ import { defineConfig } from '@rslib/core';
 const banner_str = `// @AutoNovel | (c) 2025 n.novelia.cc | GPL-3.0 License`;
 const banner = { js: banner_str, css: banner_str, dts: banner_str };
 
+const is_debug = process.env.NODE_ENV !== 'production';
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -37,5 +39,7 @@ export default defineConfig({
   ],
   output: {
     cleanDistPath: true,
+    sourceMap: is_debug,
+    minify: !is_debug,
   },
 });

@@ -1,0 +1,46 @@
+{
+  "host": "::",
+  "port": 3000,
+  "proxyDbPath": "data/crawler-proxies.db",
+  "defaultProxies": [
+    {
+      "protocol": "http",
+      "host": "127.0.0.1",
+      "port": 8899
+    },
+    {
+      "protocol": "http",
+      "host": "127.0.0.1",
+      "port": 7890
+    },
+    {
+      "protocol": "http",
+      "host": "192.168.3.1",
+      "port": 8899
+    }
+  ],
+  "providerConfig": {
+    "default": {
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+        "Accept-Language": "zh,zh-CN;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-TW;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br, zstd"
+      }
+    },
+    "alphapolis": {
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Cookie": "0iv47h3ctpk=; 87fe7ggqpgk=; aws-waf-token=e223dc59-539f-4b43-91d8-390484641454:AQoApD4RnTORAAAA:4GUjcEZnDewQb8SZcqCJ2JUkwGKS95xM0CK+bYcJ5g+ErndUhPbVIleYjt9N+iLBOx7hUqslQ/CWRYYKDO1wWJ9qqv0sOQ6tE6AyUITBDmOqB1jj+QAmTloAFVj4kKSx4UoPoCYrlLN5ndtkaBLMMgmIfZXRXYXIRqsYMgaTkt6RvBCp2jeikSye80wfIpWR3qvTxReedfymxnjM; krt_rewrite_uid=869387cf-c68b-463e-bb8d-f44378e56d4a; twtr_pixel_opt_in=N; XSRF-TOKEN=eyJpdiI6IkYzV3dPa2RWb1hVOWpWZU1lQlNMM1E9PSIsInZhbHVlIjoicmJtQjhNZW5YVmhsdkNEcGk5NFNnWVYwWEdQU0dFWlk5emFMVWIvOW5kSStnL3NnS0QvZERxOURENzdJb0FxZGVJQ01tNDZuWHV4YlhwWkNpVFl0eTJIWFVpaUpwSnJNTGM5VXFGTGQ4am5zQ3JYSzRzV1ZLdFhEUlNGd0JxeHEiLCJtYWMiOiIwMTYwYzYxMTU2OTEyZGU3NDNiYTQzNDZkNWY2NmM4YTlhNTYzNWFmNzhkYmY5NWMwMzMyMjQ0ZTcxMjVlMzliIiwidGFnIjoiIn0%3D; alpl_v2_front_session=eyJpdiI6IjhlWVVhbUJYMVoxNWk3Ujg1ZEplQlE9PSIsInZhbHVlIjoiUEhxZ3V3d0wrNlNVc2VrUHdRU1FXU0pPb29Cd2hCV1YwREVFTWF0VTJDaENzTnRITDkybytTUnV0RVNXU1hIZUZYYTVxdkdhbUZHSUFjTWJsaWZNTlZYaUNLMzY3RGVvWWE1UUY2b0NDZDdHSUdDQmhFajcySUVkN1dPanJnZjUiLCJtYWMiOiI4MTUyN2FjMmIwMzc5YzBhYjQwZjEzZmU5OTJiM2U1ZTZkMjA4NGU4MTBhZDg3NWQxOWM0YmU4ZWQ2NjBmMTQwIiwidGFnIjoiIn0%3D; a2cv2=eyJpdiI6ImkrajFuYlYydTJabE9peDNFUjJwdGc9PSIsInZhbHVlIjoiN0ZBeW9OVUp3cVgzNkNHbW5SeThXVVh2M3k4SnJGRmtFRytpUGo0NjZoY1djMDJjTVdhL1ppRE9DTkwzZmtQc3ovWWtOUURsaHpTb2hhK1BiTDhBVE9hbTE3WE55MDNCVmIyYUNWVENRMEE9IiwibWFjIjoiNWJlZWYyMzcyNGYwZWE3Nzc5YzJkOTdhNjFmMzM3N2YzNjhjNWUwMDVlZjRkNDkyYzc3OGRiYWZhZTk4Yjc0YiIsInRhZyI6IiJ9; device_uuid=eyJpdiI6IllTMDVkRFVnc2tpS1BJT2lESW5EcEE9PSIsInZhbHVlIjoiQk5xczlzK2pVZVdteDNkckFrSGhmNGxRa2x4U2p1MDIyMFFnUno3blpsem9Zem50QXJaMXczZmFZWjZSREN2ekZ5WmkrZDFKTEd2SkxEVGlUSnRqUytOQ3pGN1Qza0tNNm95L2twendqT0U9IiwibWFjIjoiMGMzOWEwYWU1YjVlNmNjZjdjMWVmY2ZhNWY1NzFiYjc1ZmIyMjA1ZjIwMjQ2MmUwMDUzMThiOGFjNWE5MDBjNSIsInRhZyI6IiJ9; AWSALB=kLHDekZFRyZ+s2WM2bTBDoJJSNMR4t+jNgK+luFCCiWldCddLiKi03vJNKxJ0d/ETq8p17aGo5Rn2JQKY6RezK8Zyn+J2jr0TGSiQBnERZoO7/qg9LVAtJBqZ+1e; AWSALBCORS=kLHDekZFRyZ+s2WM2bTBDoJJSNMR4t+jNgK+luFCCiWldCddLiKi03vJNKxJ0d/ETq8p17aGo5Rn2JQKY6RezK8Zyn+J2jr0TGSiQBnERZoO7/qg9LVAtJBqZ+1e"
+      }
+    },
+    "syosetu": {
+      "headers": {
+      }
+    },
+    "pixiv": {
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+      }
+    }
+  }
+}
