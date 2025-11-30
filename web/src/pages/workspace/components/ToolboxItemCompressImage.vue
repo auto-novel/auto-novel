@@ -218,7 +218,6 @@ const showPreview = (image: EpubImage) => {
           :src="compareImages.new"
         />
         <!-- eslint-enable -->
-        >
       </img-comparison-slider>
     </c-modal>
   </n-flex>
