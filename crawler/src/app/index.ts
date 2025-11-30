@@ -10,8 +10,9 @@ import {
   ProxyStore,
 } from '@/services';
 
-import { loadConfig } from './config';
-import { createApp } from './createApp';
+import { loadConfig } from '@/config';
+import { createApp } from '@/createApp';
+import { mapValues } from 'lodash-es';
 
 async function main() {
   const program = new Command();
@@ -37,7 +38,7 @@ async function main() {
   });
   const crawlerService = new CrawlerService({
     proxyManager,
-    headers: config.headers,
+    headers: mapValues(config.providerConfig, (c) => c?.headers ?? {}),
   });
 
   const router = createCrawlerRouter(crawlerService);

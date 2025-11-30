@@ -74,7 +74,6 @@ export class Kakuyomu implements WebNovelProvider<Options> {
     const status = params.status;
 
     const url = `https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}`;
-    console.log(url);
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 
@@ -234,7 +233,6 @@ export class Kakuyomu implements WebNovelProvider<Options> {
 
   async getChapter(novelId: string, chapterId: string): Promise<RemoteChapter> {
     const url = `https://kakuyomu.jp/works/${novelId}/episodes/${chapterId}`;
-    console.log(url);
     const doc = await this.client.get(url).text();
     const $ = cheerio.load(doc);
 

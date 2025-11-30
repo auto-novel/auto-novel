@@ -17,6 +17,7 @@ import { Providers, ProviderId, PROVIDER_IDS } from '@/index';
 import { ProxyConfig, ProxyManager, type ProxyState } from './proxy';
 import z from 'zod';
 import { CookieJar } from 'tough-cookie';
+import { forEach } from 'lodash-es';
 
 type Fetcher = Options['fetch'];
 type ProviderHandler<T> = (provider: WebNovelProvider) => Promise<T>;
@@ -25,15 +26,17 @@ type ProviderHandler<T> = (provider: WebNovelProvider) => Promise<T>;
 export const HeaderSchema = z.record(z.string(), z.string());
 export type HeaderArray = z.infer<typeof HeaderSchema>;
 
-export const HeadersConfigSchema = z.partialRecord(
+export const HeadersByProviderConfigSchema = z.partialRecord(
   z.enum(PROVIDER_IDS),
   HeaderSchema,
 );
-export type HeadersConfig = z.infer<typeof HeadersConfigSchema>;
+export type HeadersByProviderConfig = z.infer<
+  typeof HeadersByProviderConfigSchema
+>;
 
 export type CrawlerServiceOptions = {
   proxyManager: ProxyManager;
-  headers?: HeadersConfig;
+  headers?: HeadersByProviderConfig;
 };
 
 export class CrawlerService {
@@ -52,8 +55,10 @@ export class CrawlerService {
       followRedirects: true,
     };
 
-    Object.entries(options.headers ?? {}).forEach(([providerId, headers]) => {
-      this.headers.set(providerId as ProviderId, headers);
+    forEach(options.headers, (headers, providerId) => {
+      console.debug('Setting initial headers for provider:', providerId);
+      console.debug(headers);
+      this.headers.set(providerId as ProviderId, headers ?? {});
     });
   }
 
