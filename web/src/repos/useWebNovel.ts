@@ -2,6 +2,8 @@ import { useQuery, useQueryCache } from '@pinia/colada';
 
 import { FavoredApi, ReadHistoryApi, WebNovelApi } from '@/api';
 import { withOnSuccess } from './cache';
+import { Providers } from '@/domain/crawlers';
+import { WebNovelDto } from '@/model/WebNovel';
 
 const ItemKey = 'web-novel';
 const ListKey = 'web-novel-list';
