@@ -30,9 +30,9 @@ describe('kakuyomu', () => {
 
   test('rank', async () => {
     const data: Page<RemoteNovelListItem> = await provider.getRank({
-      genre: 'all',
-      range: 'entire',
-      status: 'all',
+      genre: '综合',
+      range: '总计',
+      status: '全部',
     });
     expect(data?.items).toBeDefined();
     expect(data.items.length).toBeGreaterThan(0);
