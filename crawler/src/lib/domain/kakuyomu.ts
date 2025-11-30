@@ -49,9 +49,9 @@ const statusIds = {
 } as const;
 
 const rankSchema = z.object({
-  genre: z.enum(Object.values(genreIds)),
-  range: z.enum(Object.values(rangeIds)),
-  status: z.enum(Object.values(statusIds)),
+  genre: z.enum(Object.keys(genreIds)),
+  range: z.enum(Object.keys(rangeIds)),
+  status: z.enum(Object.keys(statusIds)),
 });
 
 export type Options = z.input<typeof rankSchema>;
@@ -68,10 +68,15 @@ export class Kakuyomu implements WebNovelProvider<Options> {
 
   async getRank(options: Options): Promise<Page<RemoteNovelListItem>> {
     // FIXME(kuriko): should we use safeParse to return emptyPage()?
-    const params = rankSchema.parse(options);
-    const genre = params.genre;
-    const range = params.range;
-    const status = params.status;
+    const params = rankSchema.parse(options) as {
+      genre: keyof typeof genreIds;
+      range: keyof typeof rangeIds;
+      status: keyof typeof statusIds;
+    };
+    console.log(params);
+    const genre = genreIds[params.genre];
+    const range = rangeIds[params.range];
+    const status = statusIds[params.status];
 
     const url = `https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}`;
     const doc = await this.client.get(url).text();

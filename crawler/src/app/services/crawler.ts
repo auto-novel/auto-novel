@@ -55,10 +55,17 @@ export class CrawlerService {
       followRedirects: true,
     };
 
+    const defaultHeaders = options?.headers?.['default'] ?? {};
     forEach(options.headers, (headers, providerId) => {
+      if (providerId == 'default') {
+        return;
+      }
       console.debug('Setting initial headers for provider:', providerId);
       console.debug(headers);
-      this.headers.set(providerId as ProviderId, headers ?? {});
+      this.headers.set(providerId as ProviderId, {
+        ...defaultHeaders,
+        ...(headers ?? {}),
+      });
     });
   }
 

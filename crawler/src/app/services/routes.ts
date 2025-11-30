@@ -42,6 +42,7 @@ export function createCrawlerRouter(crawlerService: CrawlerService): Router {
           ([, value]) => value !== undefined,
         ),
       ) as Record<string, string>;
+      console.log(providerId, filteredQuery);
       const entity = await crawlerService.getRank(providerId, filteredQuery);
       res.json(entity);
     }),

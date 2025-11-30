@@ -15,7 +15,7 @@ class External(
     override suspend fun getRank(options: Map<String, String>): Page<RemoteNovelListItem> {
         return client.get(baseUrl) {
             url {
-                appendPathSegments(providerId, "rank")
+                appendPathSegments("rank", providerId)
                 options.forEach { (key, value) -> parameters.append(key, value)}
             }
 
@@ -25,7 +25,7 @@ class External(
     override suspend fun getMetadata(novelId: String): RemoteNovelMetadata {
         return client.get(baseUrl){
             url {
-                appendPathSegments(providerId, "novel", novelId)
+                appendPathSegments("metadata", providerId, novelId)
             }
         }.body();
     }
@@ -36,8 +36,9 @@ class External(
     ): RemoteChapter {
         return client.get(baseUrl){
             url {
-                appendPathSegments(providerId, "chapter", novelId, chapterId)
+                appendPathSegments("chapter", providerId, novelId, chapterId)
             }
         }.body();
     }
 }
+
