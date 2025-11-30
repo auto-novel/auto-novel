@@ -10,9 +10,9 @@ import type {
   WebNovelOutlineDto,
 } from '@/model/WebNovel';
 import { client } from './client';
-import { type RemoteNovelMetadata } from '@/domain/crawlers/types';
 
 import { Providers } from '@auto-novel/crawler';
+import type { RemoteNovelMetadata } from '@auto-novel/crawler';
 import ky from 'ky';
 
 export const isProviderAvailable = (
