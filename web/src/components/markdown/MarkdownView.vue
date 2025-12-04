@@ -6,6 +6,8 @@ import { container } from '@mdit/plugin-container';
 import { NRate } from 'naive-ui';
 import { render } from 'vue';
 
+import { PROVIDER_IDS, ProviderId } from '@auto-novel/crawler';
+
 const props = defineProps<{
   mode: 'article' | 'comment';
   source: string;
@@ -92,17 +94,64 @@ onMounted(() => {
   });
 });
 
-md.linkify.add('http:', {
-  validate: function (text, pos, self) {
-    const tail = text.slice(pos);
-    if (!self.re.customHTTP) {
-      self.re.customHTTP =
-        /(\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,6}(?:[/?][a-zA-Z0-9-_/?=&%*#+]+)?)/g;
-    }
+(() => {
+  // 测试页面：https://n.novelia.cc/forum/693160100d2585161e3c68d4
+  const entry = ['wenku', 'novel'];
+  const providers = PROVIDER_IDS;
+  const entryPattern = entry.join('|');
+  const providerPattern = providers.join('|');
 
-    return tail.match(self.re.customHTTP)?.[0].length || 0;
-  },
-});
+  // 注意：这里去掉了 ^ 和 $，因为我们要匹配文本中间的链接
+  const regexString = `https?:\\/\\/([^\\/]+)\\/(${entryPattern})\\/(${providerPattern})\\/([^\\/]+)(?:\\/([^\\/]+))?\\/?`;
+  const dynamicUrlPattern = new RegExp(regexString);
+
+  md.core.ruler.push('rewrite_novel_domains', (state) => {
+    const tokens = state.tokens;
+    const currentHost = window.location.host ?? 'n.novelia.cc';
+    const currentProtocol = window.location.protocol ?? 'https:';
+    // 遍历所有 Token
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      // 处理自动识别的链接 (linkify 生成的)
+      if (token.type === 'inline' && token.children) {
+        for (let j = 0; j < token.children.length; j++) {
+          const child = token.children[j];
+          // 标准 markdown-it linkify 产生的是： link_open -> text -> link_close
+          if (child.type === 'link_open') {
+            const hrefAttr = child.attrs?.find((attr) => attr[0] === 'href');
+            if (hrefAttr) {
+              const originalUrl = hrefAttr[1];
+              const match = originalUrl.match(dynamicUrlPattern);
+              if (match) {
+                try {
+                  const urlObj = new URL(originalUrl);
+                  urlObj.host = currentHost;
+                  urlObj.protocol = currentProtocol;
+
+                  const newUrl = urlObj.toString();
+                  hrefAttr[1] = newUrl; // 修改 href
+
+                  // 同时也修改链接显示的文本 (如果文本和链接一致)
+                  // link_open 的下一个 token 通常是 text
+                  const nextToken = token.children[j + 1];
+                  if (
+                    nextToken &&
+                    nextToken.type === 'text' &&
+                    nextToken.content === originalUrl
+                  ) {
+                    nextToken.content = newUrl;
+                  }
+                } catch (e) {
+                  console.error('URL Parse Error', e);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+})();
 
 const defaultRender =
   md.renderer.rules.link_open ||
