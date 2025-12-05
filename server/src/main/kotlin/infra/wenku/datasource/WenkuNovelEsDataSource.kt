@@ -50,9 +50,12 @@ class WenkuNovelEsDataSource(
                 // Filter level
                 when (filterLevel) {
                     WenkuNovelFilter.Level.全部 -> null
-                    WenkuNovelFilter.Level.一般向 -> WenkuNovelLevel.一般向
-                    WenkuNovelFilter.Level.成人向 -> WenkuNovelLevel.成人向
-                    WenkuNovelFilter.Level.严肃向 -> WenkuNovelLevel.严肃向
+                    WenkuNovelFilter.Level.轻小说 -> WenkuNovelLevel.轻小说
+                    WenkuNovelFilter.Level.轻文学 -> WenkuNovelLevel.轻文学
+                    WenkuNovelFilter.Level.文学 -> WenkuNovelLevel.文学
+                    WenkuNovelFilter.Level.R18男性向 -> WenkuNovelLevel.R18男性向
+                    WenkuNovelFilter.Level.R18女性向 -> WenkuNovelLevel.R18女性向
+                    WenkuNovelFilter.Level.非小说 -> WenkuNovelLevel.非小说
                 }?.let {
                     mustQueries.add(term(WenkuNovelMetadataEsModel::level, it.serialName()))
                 }

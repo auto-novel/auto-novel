@@ -2,6 +2,7 @@
 import { formatError } from '@/api';
 import { WebNovelRepo } from '@/repos';
 import { useIsWideScreen } from '@/pages/util';
+import { computedAsync } from '@vueuse/core';
 
 const { providerId, novelId } = defineProps<{
   providerId: string;
@@ -19,11 +20,15 @@ watch(novel, (novel) => {
   }
 });
 
-watch(error, async (error) => {
-  if (!error) return;
-  const message = await formatError(error);
-  if (message.includes('小说ID不合适，应当使用：')) {
-    const targetNovelPath = message.split('小说ID不合适，应当使用：')[1];
+const formatedError = computedAsync(async () => {
+  if (!error.value) return '';
+  const message = await formatError(error.value);
+  return message;
+});
+
+watch(formatedError, async (error) => {
+  if (error.includes('小说ID不合适，应当使用：')) {
+    const targetNovelPath = error.split('小说ID不合适，应当使用：')[1];
     router.push({ path: `/novel${targetNovelPath}` });
   }
 });
@@ -50,7 +55,7 @@ watch(error, async (error) => {
       v-else-if="error"
       status="error"
       title="加载错误"
-      :description="error.message"
+      :description="formatedError"
     />
   </div>
 </template>

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "composite": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "useDefineForClassFields": true,
+    "rootDir": "./src",
+    "paths": {
+      "@/*": ["./src/lib/*"]
+    }
+  },
+  "include": ["./src/lib/**/*"]
+}

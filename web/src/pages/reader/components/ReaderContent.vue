@@ -58,12 +58,13 @@ const chapterHref = computed(() => {
 
 <template>
   <div class="chapter" data-chapter :data-id="chapterId">
-    <div class="chapter-title">
+    <n-h4 class="chapter-title">
       <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
       <br />
       <n-text depth="3">{{ chapter.titleZh }}</n-text>
       <br />
-    </div>
+    </n-h4>
+    <n-divider />
 
     <div class="chapter-content">
       <template
@@ -77,7 +78,7 @@ const chapterHref = computed(() => {
           >
             {{ p.source }}
           </span>
-          <span v-if="!readerSetting.trimLeadingSpaces">
+          <span v-if="p.indent">
             {{ p.indent }}
           </span>
           <span :class="[p.secondary ? 'second' : 'first', 'text-content']">
@@ -100,18 +101,20 @@ const chapterHref = computed(() => {
 <style scoped>
 .chapter {
   font-size: v-bind('`${readerSetting.fontSize}px`');
-  color: v-bind('fontColor');
   font-weight: v-bind('readerSetting.fontWeight');
 }
 .chapter-title {
-  font-size: 1.3em;
-  padding: 36px 0;
-  font-weight: 500;
+  display: inline-block;
+  padding: 24px 0 0 0;
+  margin: 0;
+  text-align: center;
+  width: 100%;
 }
 .chapter-content {
   min-height: 65vh;
 }
 .chapter-content p {
+  color: v-bind('fontColor');
   margin: v-bind('`${readerSetting.fontSize * readerSetting.lineSpace}px 0`');
   font-size: 1em;
 }

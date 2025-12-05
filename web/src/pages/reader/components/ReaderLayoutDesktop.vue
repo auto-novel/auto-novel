@@ -29,11 +29,7 @@ const router = useRouter();
     </div>
 
     <div style="flex: 0 0 0">
-      <n-flex
-        size="large"
-        vertical
-        style="margin-left: 20px; position: fixed; bottom: 20px"
-      >
+      <n-flex size="large" vertical style="position: fixed; bottom: 20px">
         <side-button
           :disabled="!chapter.prevId"
           text="上一章"

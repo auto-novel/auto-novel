@@ -1,0 +1,61 @@
+{
+  "name": "@auto-novel/crawler",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "auto-novel-crawler": "./dist/app.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib.js"
+    }
+  },
+  "module": "./dist/lib.js",
+  "types": "./dist/lib/index.d.ts",
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib dev --watch",
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@rslib/core": "^0.18.2",
+    "@types/express": "^5.0.5",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^24.10.0",
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.6"
+  },
+  "private": true,
+  "dependencies": {
+    "async-mutex": "^0.5.0",
+    "cheerio": "^1.1.2",
+    "commander": "^14.0.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "express": "^5.1.0",
+    "fp-ts": "^2.16.11",
+    "impit": "^0.7.1",
+    "ky": "^1.14.0",
+    "lodash-es": "^4.17.21",
+    "p-queue": "^9.0.0",
+    "tough-cookie": "^6.0.0",
+    "zod": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

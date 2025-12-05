@@ -64,13 +64,10 @@ function useUserDataWithoutAuth(app: string) {
 }
 
 function useUserDataWithAuth(app: string) {
-  const userData = useLocalStorage<UserData>(
-    window.location.origin === 'https://n.novelia.cc' ? 'auth' : 'authInfo',
-    {
-      profile: undefined,
-      adminMode: false,
-    },
-  );
+  const userData = useLocalStorage<UserData>('auth', {
+    profile: undefined,
+    adminMode: false,
+  });
 
   // 迁移旧数据
   if (userData.value.profile?.issuedAt === undefined) {

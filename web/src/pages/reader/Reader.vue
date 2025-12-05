@@ -122,7 +122,7 @@ const navToChapter = async (chapterId: string) => {
 
   chapterResult.value = result;
   chapterList.value = [{ chapterId, result }];
-  window.scrollTo(0, 0);
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
   if (currentChapterId.value !== chapterId) {
     updateChapter(chapterId, result);
@@ -272,7 +272,7 @@ onKeyDown(['Enter'], (e) => {
       quaternary
       :focusable="false"
       :type="id ? 'primary' : 'default'"
-      @action="
+      @action.stop="
         () => {
           navToChapter(id!);
         }

@@ -70,6 +70,7 @@ export default defineConfig(({ command, mode }) => {
   if (command === 'serve') {
     const apiUrl = env.VITE_API_URL ?? 'https://n.novelia.cc';
     userConfig.server = {
+      allowedHosts: true,
       proxy: {
         '/api': {
           target: apiUrl,
@@ -92,6 +93,10 @@ export default defineConfig(({ command, mode }) => {
           },
         },
         '/files-temp': {
+          target: apiUrl,
+          changeOrigin: true,
+        },
+        '/files-extra': {
           target: apiUrl,
           changeOrigin: true,
         },

@@ -263,7 +263,7 @@ const findSimilarNovels = async () => {
       page: 0,
       pageSize: 6,
       query,
-      level: 0,
+      level: 99,
     }),
   );
   if (result.ok) {
@@ -332,9 +332,12 @@ const togglePresetKeyword = (checked: boolean, keyword: string) => {
 };
 
 const levelOptions = [
-  { label: '一般向', value: '一般向' },
-  { label: '成人向', value: '成人向' },
-  { label: '严肃向', value: '严肃向' },
+  { label: '轻小说', value: '一般向' },
+  { label: '轻文学', value: '轻文学' },
+  { label: '文学', value: '严肃向' },
+  { label: '非小说', value: '非小说' },
+  { label: 'R18男性向', value: '成人向' },
+  { label: 'R18女性向', value: '成人向女' },
 ];
 </script>
 

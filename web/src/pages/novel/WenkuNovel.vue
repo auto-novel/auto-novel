@@ -7,6 +7,7 @@ import coverPlaceholder from '@/image/cover_placeholder.png';
 import { GenericNovelId } from '@/model/Common';
 import { doAction, useIsWideScreen } from '@/pages/util';
 import { useSettingStore, useWhoamiStore } from '@/stores';
+import type { VolumeJpDto } from '@/model/WenkuNovel';
 
 const { novelId } = defineProps<{ novelId: string }>();
 
@@ -41,6 +42,25 @@ const deleteVolume = (volumeId: string) =>
 const buildSearchLink = (tag: string) => `/wenku?query="${tag}"`;
 
 const showWebNovelsModal = ref(false);
+
+function normalize(title: string) {
+  return title
+    .normalize('NFKC') // 归一化、全角转半角
+    .replace(/\((\d+)\)/g, (_, p1: string) => p1.padStart(2, '0')) // (\d+) -> \d+
+    .replace(/\[(\d+)\]/g, (_, p1: string) => p1.padStart(2, '0')) // [\d+] -> \d+
+    .replace(/\d+/g, (m) => m.padStart(2, '0')) // \d+ -> \d+
+    .replace(/\[[^\]]*\]/g, '') // 移除 [..]
+    .replace(/【[^】]*】/g, '') // 移除 【..】
+    .replace(/\([^\)]*\)/g, '') // 移除 (..)
+    .replace(/\s+/g, ''); // 去除空格
+}
+function sortJpVolumes(volumeJp: VolumeJpDto[]) {
+  return volumeJp.slice().sort((a, b) => {
+    const na = normalize(a.volumeId);
+    const nb = normalize(b.volumeId);
+    return na.localeCompare(nb, 'ja', { numeric: true, sensitivity: 'base' });
+  });
+}
 </script>
 
 <template>
@@ -201,7 +221,10 @@ const showWebNovelsModal = ref(false);
         <n-divider style="margin: 16px 0 0" />
 
         <n-list>
-          <n-list-item v-for="volume of novel.volumeJp" :key="volume.volumeId">
+          <n-list-item
+            v-for="volume of sortJpVolumes(novel.volumeJp)"
+            :key="volume.volumeId"
+          >
             <WenkuVolume
               :novel-id="novelId"
               :volume="volume"

@@ -23,6 +23,7 @@ import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import org.koin.ktor.ext.inject
@@ -81,9 +82,12 @@ fun Route.routeWenkuNovel() {
                     page = loc.page,
                     pageSize = loc.pageSize,
                     filterLevel = when (loc.level) {
-                        1 -> WenkuNovelFilter.Level.一般向
-                        2 -> WenkuNovelFilter.Level.成人向
-                        3 -> WenkuNovelFilter.Level.严肃向
+                        0 -> WenkuNovelFilter.Level.轻小说
+                        1 -> WenkuNovelFilter.Level.轻文学
+                        2 -> WenkuNovelFilter.Level.文学
+                        3 -> WenkuNovelFilter.Level.非小说
+                        4 -> WenkuNovelFilter.Level.R18男性向
+                        5 -> WenkuNovelFilter.Level.R18女性向
                         else -> WenkuNovelFilter.Level.全部
                     },
                 )
@@ -245,10 +249,10 @@ class WenkuNovelApi(
         validatePageSize(pageSize)
 
         val filterLevelAllowed = if (
-            filterLevel == WenkuNovelFilter.Level.成人向 &&
+            listOf(WenkuNovelFilter.Level.R18男性向, WenkuNovelFilter.Level.R18女性向).contains(filterLevel) &&
             (user == null || !user.isOldAss())
         ) {
-            WenkuNovelFilter.Level.一般向
+            WenkuNovelFilter.Level.轻小说
         } else {
             filterLevel
         }
@@ -292,7 +296,7 @@ class WenkuNovelApi(
         val metadata = metadataRepo.get(novelId)
             ?: throwNovelNotFound()
 
-        if (metadata.level == WenkuNovelLevel.成人向) {
+        if (listOf(WenkuNovelLevel.R18男性向, WenkuNovelLevel.R18女性向).contains(metadata.level)) {
             if (user == null) {
                 throwUnauthorized("请先登录")
             } else {

@@ -1,0 +1,37 @@
+.vscode/
+.idea/
+
+data/
+dist/
+config.json
+.env
+.env.*
+
+.git
+.gitignore
+
+Dockefile
+docker-compose.yml
+.dockerignore
+
+*.log*
+
+
+.env
+config.json
+tsconfig.lib.tsbuildinfo
+
+# Local
+.DS_Store
+*.local
+*.log*
+
+# Dist
+node_modules
+dist/
+storybook-static
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
