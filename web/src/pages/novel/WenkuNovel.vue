@@ -283,11 +283,6 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       />
     </template>
 
-    <n-result
-      v-else-if="error"
-      status="error"
-      title="加载错误"
-      :description="error.message"
-    />
+    <CResultX v-else :error="error" title="加载错误" />
   </div>
 </template>
