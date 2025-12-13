@@ -8,6 +8,16 @@ defineProps<{
 </script>
 
 <template>
+  <n-spin
+    v-if="!result"
+    size="large"
+    style="
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 36px 0;
+    "
+  />
   <template v-if="result?.ok">
     <n-empty v-if="showEmpty && showEmpty(result.value)" description="空列表" />
     <slot v-else :value="result.value" />
