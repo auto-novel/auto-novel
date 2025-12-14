@@ -39,6 +39,8 @@ fake_en = Faker('en_US')
 
 # 配置常量
 MAX_RETRY_MULTIPLIER = 3  # 生成收藏数据时的最大重试次数倍数
+NO_GLOSSARY_VALUE = 'no glossary'  # 默认术语表值
+MILLISECONDS_PER_SECOND = 1000  # 时间戳转换：秒到毫秒
 
 # 集合名称 (根据MongoCollectionNames定义)
 COLLECTION_NAMES = {
@@ -115,7 +117,7 @@ def generate_web_novels(count: int = 20) -> List[Dict[str, Any]]:
             'totalCharacters': random.randint(10000, 1000000) if fake_en.boolean(chance_of_getting_true=80) else None,
             'introductionJp': fake_ja.text(max_nb_chars=300),
             'introductionZh': fake_zh.text(max_nb_chars=300) if fake_en.boolean(chance_of_getting_true=60) else None,
-            'glossaryUuid': 'no glossary',
+            'glossaryUuid': NO_GLOSSARY_VALUE,
             'glossary': {},
             'toc': generate_toc(random.randint(5, 50)),
             'jp': random.randint(0, 100),
@@ -219,7 +221,7 @@ def generate_volumes(count: int) -> List[Dict[str, Any]]:
             'coverHires': f'https://example.com/volumes/{fake_en.uuid4()}_hires.jpg' if fake_en.boolean(chance_of_getting_true=60) else None,
             'publisher': fake_ja.company() if fake_en.boolean(chance_of_getting_true=80) else None,
             'imprint': fake_ja.word() if fake_en.boolean(chance_of_getting_true=60) else None,
-            'publishAt': int((datetime.now() - timedelta(days=random.randint(30, 3000))).timestamp() * 1000) if fake_en.boolean(chance_of_getting_true=80) else None,
+            'publishAt': int((datetime.now() - timedelta(days=random.randint(30, 3000))).timestamp() * MILLISECONDS_PER_SECOND) if fake_en.boolean(chance_of_getting_true=80) else None,
         }
         volumes.append(volume)
     return volumes
@@ -292,8 +294,8 @@ def generate_comments(users: List[Dict[str, Any]], articles: List[Dict[str, Any]
     return comments
 
 
-def generate_web_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, Any]], count: int = 30) -> List[Dict[str, Any]]:
-    """生成网络小说收藏测试数据"""
+def generate_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, Any]], count: int) -> List[Dict[str, Any]]:
+    """生成收藏测试数据的通用函数"""
     favorites = []
     used_pairs = set()
     
@@ -318,34 +320,16 @@ def generate_web_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, A
         attempts += 1
     
     return favorites
+
+
+def generate_web_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, Any]], count: int = 30) -> List[Dict[str, Any]]:
+    """生成网络小说收藏测试数据"""
+    return generate_favorites(users, novels, count)
 
 
 def generate_wenku_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, Any]], count: int = 20) -> List[Dict[str, Any]]:
     """生成文库小说收藏测试数据"""
-    favorites = []
-    used_pairs = set()
-    
-    attempts = 0
-    max_attempts = count * MAX_RETRY_MULTIPLIER  # 避免无限循环
-    while len(favorites) < count and attempts < max_attempts:
-        user = random.choice(users)
-        novel = random.choice(novels)
-        pair = (str(user['_id']), str(novel['_id']))
-        
-        if pair not in used_pairs:
-            now = datetime.now()
-            favorite = {
-                'userId': user['_id'],
-                'novelId': novel['_id'],
-                'favoredId': fake_en.uuid4(),
-                'createAt': now - timedelta(days=random.randint(1, 365)),
-                'updateAt': now - timedelta(hours=random.randint(0, 240)),
-            }
-            favorites.append(favorite)
-            used_pairs.add(pair)
-        attempts += 1
-    
-    return favorites
+    return generate_favorites(users, novels, count)
 
 
 def generate_web_read_history(users: List[Dict[str, Any]], novels: List[Dict[str, Any]], count: int = 40) -> List[Dict[str, Any]]:
