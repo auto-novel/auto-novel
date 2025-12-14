@@ -25,13 +25,20 @@ from pymongo import MongoClient
 
 # MongoDB配置
 MONGO_HOST = os.getenv('MONGO_HOST', 'localhost')
-MONGO_PORT = int(os.getenv('MONGO_PORT', '27017'))
+try:
+    MONGO_PORT = int(os.getenv('MONGO_PORT', '27017'))
+except ValueError:
+    print("⚠ 警告: MONGO_PORT 必须是数字，使用默认值 27017")
+    MONGO_PORT = 27017
 MONGO_DB = os.getenv('MONGO_DB', 'main')
 
 # 初始化Faker (使用中文和日文)
 fake_zh = Faker('zh_CN')
 fake_ja = Faker('ja_JP')
 fake_en = Faker('en_US')
+
+# 配置常量
+MAX_RETRY_MULTIPLIER = 3  # 生成收藏数据时的最大重试次数倍数
 
 # 集合名称 (根据MongoCollectionNames定义)
 COLLECTION_NAMES = {
@@ -291,7 +298,8 @@ def generate_web_favorites(users: List[Dict[str, Any]], novels: List[Dict[str, A
     used_pairs = set()
     
     attempts = 0
-    while len(favorites) < count and attempts < count * 3:
+    max_attempts = count * MAX_RETRY_MULTIPLIER  # 避免无限循环
+    while len(favorites) < count and attempts < max_attempts:
         user = random.choice(users)
         novel = random.choice(novels)
         pair = (str(user['_id']), str(novel['_id']))
@@ -318,7 +326,8 @@ def generate_wenku_favorites(users: List[Dict[str, Any]], novels: List[Dict[str,
     used_pairs = set()
     
     attempts = 0
-    while len(favorites) < count and attempts < count * 3:
+    max_attempts = count * MAX_RETRY_MULTIPLIER  # 避免无限循环
+    while len(favorites) < count and attempts < max_attempts:
         user = random.choice(users)
         novel = random.choice(novels)
         pair = (str(user['_id']), str(novel['_id']))
@@ -438,13 +447,18 @@ def insert_data(client: MongoClient, clear_existing: bool = False):
     
     # 更新用户的收藏列表
     print("🔄 更新用户收藏列表...")
+    
+    # 创建小说ID到标题的映射
+    web_novel_titles = {str(novel['_id']): novel['titleZh'] or novel['titleJp'] for novel in web_novels}
+    wenku_novel_titles = {str(novel['_id']): novel['titleZh'] for novel in wenku_novels}
+    
     for user in users:
         user_web_favorites = [
-            {'id': str(fav['novelId']), 'title': 'Web Novel'}
+            {'id': str(fav['novelId']), 'title': web_novel_titles.get(str(fav['novelId']), 'Unknown')}
             for fav in web_favorites if fav['userId'] == user['_id']
         ]
         user_wenku_favorites = [
-            {'id': str(fav['novelId']), 'title': 'Wenku Novel'}
+            {'id': str(fav['novelId']), 'title': wenku_novel_titles.get(str(fav['novelId']), 'Unknown')}
             for fav in wenku_favorites if fav['userId'] == user['_id']
         ]
         
