@@ -41,6 +41,7 @@ fake_en = Faker('en_US')
 MAX_RETRY_MULTIPLIER = 3  # 生成收藏数据时的最大重试次数倍数
 NO_GLOSSARY_VALUE = 'no glossary'  # 默认术语表值
 MILLISECONDS_PER_SECOND = 1000  # 时间戳转换：秒到毫秒
+ASIN_PATTERN = '??########'  # Amazon标准识别号格式
 
 # 集合名称 (根据MongoCollectionNames定义)
 COLLECTION_NAMES = {
@@ -213,15 +214,21 @@ def generate_volumes(count: int) -> List[Dict[str, Any]]:
     """生成卷"""
     volumes = []
     for i in range(count):
+        # 生成随机发布时间（毫秒时间戳）
+        publish_at = None
+        if fake_en.boolean(chance_of_getting_true=80):
+            publish_date = datetime.now() - timedelta(days=random.randint(30, 3000))
+            publish_at = int(publish_date.timestamp() * MILLISECONDS_PER_SECOND)
+        
         volume = {
-            'asin': fake_en.bothify(text='??########'),
+            'asin': fake_en.bothify(text=ASIN_PATTERN),
             'title': f'{fake_ja.sentence(nb_words=5)} 第{i+1}巻',
             'titleZh': f'{fake_zh.sentence(nb_words=6)} 第{i+1}卷' if fake_en.boolean(chance_of_getting_true=70) else None,
             'cover': f'https://example.com/volumes/{fake_en.uuid4()}.jpg',
             'coverHires': f'https://example.com/volumes/{fake_en.uuid4()}_hires.jpg' if fake_en.boolean(chance_of_getting_true=60) else None,
             'publisher': fake_ja.company() if fake_en.boolean(chance_of_getting_true=80) else None,
             'imprint': fake_ja.word() if fake_en.boolean(chance_of_getting_true=60) else None,
-            'publishAt': int((datetime.now() - timedelta(days=random.randint(30, 3000))).timestamp() * MILLISECONDS_PER_SECOND) if fake_en.boolean(chance_of_getting_true=80) else None,
+            'publishAt': publish_at,
         }
         volumes.append(volume)
     return volumes
