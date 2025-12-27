@@ -10,6 +10,7 @@ import type {
   WenkuVolumeDto,
 } from '@/model/WenkuNovel';
 import { client, uploadFile } from './client';
+import { Setting } from '@/stores/useSettingStore';
 
 const listNovel = ({
   page,
@@ -110,24 +111,28 @@ const createFileUrl = ({
   volumeId,
   mode,
   translationsMode,
+  opacityOrColor,
   translations,
 }: {
   novelId: string;
   volumeId: string;
   mode: 'zh' | 'zh-jp' | 'jp-zh';
   translationsMode: 'parallel' | 'priority';
+  opacityOrColor: Setting['downloadFormat']['opacityOrColor'];
   translations: ('sakura' | 'baidu' | 'youdao' | 'gpt')[];
 }) => {
   const filename = [
     mode,
     (translationsMode === 'parallel' ? 'B' : 'Y') +
       translations.map((it) => it[0]).join(''),
+    opacityOrColor === 'opacity' ? 'O' : 'C',
     volumeId,
   ].join('.');
 
   const params = new URLSearchParams({
     mode,
     translationsMode,
+    opacityOrColor,
     filename,
   });
   translations.forEach((it) => params.append('translations', it));
