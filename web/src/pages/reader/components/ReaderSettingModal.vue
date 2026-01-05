@@ -40,8 +40,8 @@ const setIndentSize = (diff: number) => {
             />
           </c-action-wrapper>
 
-          <c-action-wrapper title="翻译">
-            <n-flex size="large">
+          <c-action-wrapper title="翻译" align="center">
+            <n-flex size="large" :vertical="!isWideScreen">
               <c-radio-group
                 v-model:value="readerSetting.translationsMode"
                 :options="ReaderSetting.translationModeOptions"
