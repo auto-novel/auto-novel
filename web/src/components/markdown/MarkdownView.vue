@@ -94,6 +94,35 @@ onMounted(() => {
 
 (() => {
   // 测试页面：https://n.novelia.cc/forum/693160100d2585161e3c68d4
+  // 添加中文分隔符
+  const NEW_SEPARATORS = '）（！？。，【】［］「」、《》★、';
+  const LINKIFY_ORIG_SEPARATORS = '[><\uff5c]'; // 这玩意已经从2023年就没变过了
+  const LINKIFY_NEW_SEPARATORS = `[><\uff5c${NEW_SEPARATORS}]`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function patchSeparators(linkify: any) {
+    const re = linkify?.re;
+    if (!re) return;
+    for (const key of Object.keys(re)) {
+      const val = re[key];
+      if (typeof val === 'string') {
+        const replaced = val.replaceAll(
+          LINKIFY_ORIG_SEPARATORS,
+          LINKIFY_NEW_SEPARATORS,
+        );
+        if (replaced !== val) re[key] = replaced;
+      } else if (val instanceof RegExp) {
+        const src = val.source;
+        const flags = val.flags ?? undefined;
+        const newSrc = src.replaceAll(
+          LINKIFY_ORIG_SEPARATORS,
+          LINKIFY_NEW_SEPARATORS,
+        );
+        if (newSrc !== src) re[key] = new RegExp(newSrc, flags);
+      }
+    }
+  }
+  patchSeparators(md.linkify);
+
   const entry = ['wenku', 'novel'];
   const providers = [
     'default',
