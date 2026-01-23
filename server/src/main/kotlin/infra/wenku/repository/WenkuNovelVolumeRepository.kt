@@ -152,35 +152,54 @@ class WenkuNovelVolumeRepository(
                         bytesIn
                     } else {
                         val doc = Jsoup.parse(bytesIn.decodeToString(), Parser.xmlParser())
-                        doc.select("p")
-                            .filter { el -> el.text().isNotBlank() }
-                            .forEachIndexed { index, el ->
-                                when (mode) {
-                                    NovelFileMode.Jp -> throw RuntimeException("文库小说不允许日语下载")
-                                    NovelFileMode.Zh -> {
-                                        zhLinesList.forEach { lines ->
-                                            el.before("<p>${lines[index]}</p>")
-                                        }
-                                        el.remove()
-                                    }
 
-                                    NovelFileMode.JpZh -> {
-                                        zhLinesList.asReversed().forEach { lines ->
-                                            el.after("<p>${lines[index]}</p>")
-                                        }
-                                        el.attr("style", "opacity:0.4;")
-                                    }
+                        val jpEls = doc.select("p")
+                            .filter { el ->
+                                el.clone().apply {
+                                    // NOTE(kuriko): 非破坏性移除 rt 元素，与翻译阶段统一
+                                    // 见 WenkuNovelVolumeDiskDataSource.kt@unpackVolume
+                                    select("rt").remove()
+                                }.text().isNotBlank()
+                            };
 
-                                    NovelFileMode.ZhJp -> {
-                                        zhLinesList.forEach { lines ->
-                                            el.before("<p>${lines[index]}</p>")
-                                        }
-                                        el.attr("style", "opacity:0.4;")
+                        val jpSize = jpEls.size;
+                        zhLinesList.forEachIndexed { i, lines ->
+                            if (lines.size != jpSize) {
+                                throw RuntimeException(
+                                    "严重错误：章节 '$chapterId' 第 $i 份翻译行数 (${lines.size}) 与日文行数 ($jpSize) 不匹配")
+                            }
+                        }
+
+                        jpEls.forEachIndexed { index, el ->
+                            when (mode) {
+                                NovelFileMode.Jp -> throw RuntimeException("文库小说不允许日语下载")
+                                NovelFileMode.Zh -> {
+                                    zhLinesList.forEach { lines ->
+                                        val pNew = doc.createElement("p").text(lines[index])
+                                        el.before(pNew)
                                     }
+                                    el.remove()
+                                }
+
+                                NovelFileMode.JpZh -> {
+                                    zhLinesList.asReversed().forEach { lines ->
+                                        val pNew = doc.createElement("p").text(lines[index])
+                                        el.after(pNew)
+                                    }
+                                    el.attr("style", "opacity:0.4;")
+                                }
+
+                                NovelFileMode.ZhJp -> {
+                                    zhLinesList.forEach { lines ->
+                                        val pNew = doc.createElement("p").text(lines[index])
+                                        el.before(pNew)
+                                    }
+                                    el.attr("style", "opacity:0.4;")
                                 }
                             }
-                        doc.outputSettings().prettyPrint(true)
-                        doc.html().toByteArray()
+                        }
+                        doc.outputSettings().prettyPrint(false)
+                        doc.html().toByteArray(Charsets.UTF_8)
                     }
                 } else if (name.endsWith("opf")) {
                     val doc = Jsoup.parse(bytesIn.decodeToString(), Parser.xmlParser())
