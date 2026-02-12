@@ -20,7 +20,7 @@ import {
   type TranslateTaskParams,
 } from '@/model/Translator';
 import { useLocalVolumeStore, useWorkspaceStore } from '@/stores';
-import { RegexUtil } from '@/util';
+import { RegexUtil, translationAlert, hasActiveSegFailure } from '@/util';
 
 // ?????? Data Models ??????
 
@@ -565,6 +565,30 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       }
     }
 
+    function resetFailedSegments() {
+      for (const job of jobs.value) {
+        if (job.state === 'finished') continue;
+        let hadFailed = false;
+        for (const task of job.tasks) {
+          if (task.state === 'success') continue;
+          for (const seg of task.segs) {
+            if (seg.state === 'failed') {
+              seg.state = 'pending';
+              seg.dst = [];
+              seg.log = [];
+              hadFailed = true;
+            }
+          }
+          if (task.state === 'failed') {
+            task.state = 'processing';
+          }
+        }
+        if (hadFailed) {
+          job.retryRemaining = -1;
+        }
+      }
+    }
+
     // ?????? requestSeg ??????
     async function requestSeg(
       workerId: string,
@@ -688,6 +712,13 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       seg.dst = result.dst;
       seg.log.push(...result.log);
 
+      if (result.state === 'failed') {
+        hasActiveSegFailure.value = true;
+        if (translationAlert.value === 'none') {
+          translationAlert.value = 'warning';
+        }
+      }
+
       // Check if all segments in this task are done
       const allDone = task.segs.every(
         (s) => s.state === 'success' || s.state === 'failed',
@@ -730,11 +761,13 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       if (job.retryRemaining > 0) {
         // Move to back of queue, reset failed segs
         job.retryRemaining--;
+        claimedJobs.delete(job.descriptor);
         for (const task of failedTasks) {
           for (const seg of task.segs) {
             if (seg.state === 'failed') {
               seg.state = 'pending';
               seg.dst = [];
+              seg.log = [];
             }
           }
           task.state = 'processing';
@@ -748,6 +781,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       }
 
       // All retries exhausted — record failure
+      translationAlert.value = 'error';
       job.state = 'finished';
       moveToFinished(job);
     }
@@ -874,6 +908,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       requestSeg,
       postSeg,
       releaseWorkerClaims,
+      resetFailedSegments,
       getJobStats,
     };
   })();

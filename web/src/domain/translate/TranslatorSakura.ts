@@ -1,4 +1,4 @@
-import { createOpenAiApi } from '@/api';
+import { createOpenAiApi, OpenAiError } from '@/api';
 import type { Glossary } from '@/model/Glossary';
 
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
@@ -246,20 +246,22 @@ export class SakuraTranslator implements SegmentTranslator {
     }
 
     const maxNewToken = Math.max(Math.ceil(text.length * 1.7), 100);
-    const completion = await this.api.createChatCompletions(
-      {
-        model: '',
-        messages,
-        temperature: 0.1,
-        top_p: 0.3,
-        max_tokens: maxNewToken,
-        frequency_penalty: hasDegradation ? 0.2 : 0.0,
-      },
-      {
-        signal,
-        timeout: false,
-      },
-    );
+    const completion = await this.api
+      .createChatCompletions(
+        {
+          model: '',
+          messages,
+          temperature: 0.1,
+          top_p: 0.3,
+          max_tokens: maxNewToken,
+          frequency_penalty: hasDegradation ? 0.2 : 0.0,
+        },
+        {
+          signal,
+          timeout: false,
+        },
+      )
+      .catch(OpenAiError.handle);
 
     return {
       text: completion.choices[0].message.content!,

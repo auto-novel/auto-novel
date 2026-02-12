@@ -101,6 +101,7 @@ const clearCache = async () =>
             :jobs="store.jobs"
             :request-seg="store.requestSeg"
             :release-worker-claims="store.releaseWorkerClaims"
+            :reset-failed-segments="store.resetFailedSegments"
             :post-seg="store.postSeg"
           />
         </n-list-item>

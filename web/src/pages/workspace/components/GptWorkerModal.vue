@@ -186,7 +186,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         <n-input-number
           v-model:value="formValue.retryCount"
           :show-button="false"
-          :min="1"
+          :min="0"
         />
       </n-form-item-row>
 

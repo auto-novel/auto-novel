@@ -60,13 +60,6 @@ const hasActiveWork = computed(() =>
 
     <template #header>
       <job-task-link :task="job.descriptor" />
-      <n-text
-        v-if="job.name"
-        depth="3"
-        style="font-size: 12px; padding-left: 4px"
-      >
-        {{ job.name }}
-      </n-text>
     </template>
 
     <template #header-extra>
@@ -91,6 +84,7 @@ const hasActiveWork = computed(() =>
     </template>
 
     <template #description>
+      {{ job.name }}
       <n-flex vertical :size="8">
         <n-text depth="3">
           <template v-if="hasActiveWork">处理中 -</template>

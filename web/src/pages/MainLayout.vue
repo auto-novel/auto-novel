@@ -365,6 +365,8 @@ watch(
             'WebNovelList',
             'WebNovelRank',
             'WenkuNovelList',
+            'SakuraWorkspaceX',
+            'GptWorkspaceX',
           ]"
         >
           <component :is="Component" />

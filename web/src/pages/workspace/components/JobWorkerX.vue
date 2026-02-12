@@ -16,6 +16,12 @@ import type {
   TranslatorConfig,
 } from '@/domain/translate';
 import { createSegIndexedDbCache, Translator } from '@/domain/translate';
+import {
+  requestKeepAlive,
+  releaseKeepAlive,
+  translationAlert,
+  hasActiveSegFailure,
+} from '@/util';
 import { SakuraTranslator } from '@/domain/translate';
 import type { GptWorker, SakuraWorker } from '@/model/Translator';
 import { useWorkspaceStore } from '@/stores';
@@ -34,6 +40,7 @@ const props = defineProps<{
   jobs: WorkspaceJob[];
   requestSeg: (workerId: string) => Promise<SegRequestResult | undefined>;
   releaseWorkerClaims: (workerId: string) => void;
+  resetFailedSegments: () => void;
   postSeg: (
     jobDescriptor: string,
     taskIndex: number,
@@ -89,16 +96,21 @@ const hasStarted = ref(false);
 const statusText = ref('待启动');
 const activeCount = ref(0);
 const activeJobDescriptors = ref(new Set<string>());
+const frozenJobs = ref<WorkspaceJob[]>([]);
 
 const myJobs = computed(() =>
   props.jobs.filter((j) => activeJobDescriptors.value.has(j.descriptor)),
+);
+
+const displayJobs = computed(() =>
+  running.value && myJobs.value.length > 0 ? myJobs.value : frozenJobs.value,
 );
 
 const visibleTasks = computed(() => {
   const result: { job: WorkspaceJob; taskIndex: number; chapterNum: number }[] =
     [];
   let num = 0;
-  for (const job of myJobs.value) {
+  for (const job of displayJobs.value) {
     for (let ti = 0; ti < job.tasks.length; ti++) {
       num++;
       result.push({ job, taskIndex: ti, chapterNum: num });
@@ -112,7 +124,7 @@ const taskStats = computed(() => {
   let total = 0;
   let success = 0;
   let failed = 0;
-  for (const job of myJobs.value) {
+  for (const job of displayJobs.value) {
     for (const task of job.tasks) {
       total++;
       if (task.state === 'success') success++;
@@ -136,8 +148,14 @@ const startWorker = async () => {
   running.value = true;
   hasStarted.value = true;
   statusText.value = '启动中...';
+  translationAlert.value =
+    translationAlert.value === 'error' ? 'error' : 'none';
+  hasActiveSegFailure.value = false;
+  activeJobDescriptors.value = new Set();
   controller = new AbortController();
   const { signal } = controller;
+  props.resetFailedSegments();
+  await requestKeepAlive();
 
   try {
     const segTranslators: SegmentTranslator[] = [];
@@ -170,6 +188,8 @@ const startWorker = async () => {
       message.error(`翻译失败: ${e}`);
     }
   } finally {
+    releaseKeepAlive();
+    frozenJobs.value = JSON.parse(JSON.stringify(myJobs.value));
     running.value = false;
     statusText.value = '已停止';
     activeCount.value = 0;
@@ -617,32 +637,31 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
     "
   >
     <template v-if="modalSeg">
-      <n-flex vertical :size="12">
-        <div v-if="modalSeg.seg.log.length > 0">
-          <n-text strong>日志</n-text>
-          <n-code
-            :code="modalSeg.seg.log.join('\n')"
-            language="text"
-            style="margin-top: 4px; max-height: 200px; overflow: auto"
-          />
+      <n-scrollbar style="max-height: 400px; white-space: pre-wrap">
+        <div v-for="(line, i) of modalSeg.seg.log" :key="'log' + i">
+          {{ line }}
         </div>
-        <div v-if="modalSeg.seg.src.length > 0">
+        <div v-if="modalSeg.seg.src.length > 0" style="margin-top: 12px">
           <n-text strong>原文</n-text>
-          <n-code
-            :code="modalSeg.seg.src.join('\n')"
-            language="text"
-            style="margin-top: 4px; max-height: 200px; overflow: auto"
-          />
+          <n-p
+            v-for="(line, i) of modalSeg.seg.src"
+            :key="'src' + i"
+            style="white-space: pre-wrap"
+          >
+            {{ line }}
+          </n-p>
         </div>
-        <div v-if="modalSeg.seg.dst.length > 0">
+        <div v-if="modalSeg.seg.dst.length > 0" style="margin-top: 12px">
           <n-text strong>译文</n-text>
-          <n-code
-            :code="modalSeg.seg.dst.join('\n')"
-            language="text"
-            style="margin-top: 4px; max-height: 200px; overflow: auto"
-          />
+          <n-p
+            v-for="(line, i) of modalSeg.seg.dst"
+            :key="'dst' + i"
+            style="white-space: pre-wrap"
+          >
+            {{ line }}
+          </n-p>
         </div>
-      </n-flex>
+      </n-scrollbar>
     </template>
   </c-modal>
 

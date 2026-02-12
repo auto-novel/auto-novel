@@ -4,7 +4,7 @@ import type {
   TranslateJobRecord,
 } from '@/model/Translator';
 import { TranslateJob } from '@/model/Translator';
-import { lazy, useLocalStorage } from '@/util';
+import { lazy, useLocalStorage, clearTranslationError } from '@/util';
 
 import { LSKey } from './key';
 
@@ -60,14 +60,18 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
     });
   };
 
-  const addJobRecord = (job: TranslateJobRecord) => {
-    deleteJobRecord(job);
-    ref.value.uncompletedJobs.push(job);
-  };
-  const deleteJobRecord = (job: TranslateJobRecord) => {
+  const removeRecord = (job: TranslateJobRecord) => {
     ref.value.uncompletedJobs = ref.value.uncompletedJobs.filter(
       (j) => j.task !== job.task,
     );
+  };
+  const addJobRecord = (job: TranslateJobRecord) => {
+    removeRecord(job);
+    ref.value.uncompletedJobs.push(job);
+  };
+  const deleteJobRecord = (job: TranslateJobRecord) => {
+    removeRecord(job);
+    clearTranslationError();
   };
   const retryJobRecord = (job: TranslateJobRecord) => {
     addJob({
@@ -75,7 +79,8 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
       description: job.description,
       createAt: Date.now(),
     });
-    deleteJobRecord(job);
+    removeRecord(job);
+    clearTranslationError();
   };
   const retryAllJobRecords = () => {
     const newArray: TranslateJobRecord[] = [];
@@ -91,9 +96,11 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
       }
     }
     ref.value.uncompletedJobs = newArray;
+    clearTranslationError();
   };
   const deleteAllJobRecords = () => {
     ref.value.uncompletedJobs = [];
+    clearTranslationError();
   };
 
   return {
