@@ -173,7 +173,6 @@ const startWorker = async () => {
     running.value = false;
     statusText.value = '已停止';
     activeCount.value = 0;
-    activeJobDescriptors.value = new Set();
     controller = null;
     props.releaseWorkerClaims(props.worker.id);
   }
@@ -445,19 +444,23 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
                 <n-tooltip trigger="hover" :delay="300">
                   <template #trigger>
                     <div
-                      style="
-                        width: 14px;
-                        height: 14px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 10px;
-                        color: inherit;
-                        opacity: 0.45;
-                        font-variant-numeric: tabular-nums;
-                        user-select: none;
-                        cursor: default;
-                      "
+                      :style="{
+                        width: `${Math.max(1, String(chapterNum).length - 1) * 16 - 2}px`,
+                        gridColumn:
+                          chapterNum >= 100
+                            ? `span ${String(chapterNum).length - 1}`
+                            : undefined,
+                        height: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        color: 'inherit',
+                        opacity: 1,
+                        fontVariantNumeric: 'tabular-nums',
+                        userSelect: 'none',
+                        cursor: 'default',
+                      }"
                     >
                       {{ chapterNum }}
                     </div>
