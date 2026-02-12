@@ -364,6 +364,43 @@ const testWorker = async () => {
 
 const showEditWorkerModal = ref(false);
 
+const GRID_COLS = 50;
+
+const taskLayout = computed(() => {
+  const result: number[] = [];
+  let col = 0;
+  const tasks = visibleTasks.value;
+  for (let i = 0; i < tasks.length; i++) {
+    const { job, taskIndex: ti, chapterNum } = tasks[i];
+    const segs = job.tasks[ti].segs;
+    const firstSpan =
+      chapterNum >= 100 ? Math.max(1, String(chapterNum).length - 1) : 1;
+    const totalCols = firstSpan + (segs.length - 1);
+    col += totalCols;
+
+    let extra = 0;
+    if (i + 1 < tasks.length) {
+      const next = tasks[i + 1];
+      const nextFirstSpan =
+        next.chapterNum >= 100
+          ? Math.max(1, String(next.chapterNum).length - 1)
+          : 1;
+      const colInRow = col % GRID_COLS;
+      const remaining = GRID_COLS - colInRow;
+      if (colInRow > 0 && nextFirstSpan > remaining) {
+        extra = remaining;
+        col += remaining;
+      }
+    }
+    result.push(extra);
+  }
+  return result;
+});
+
+const segTextColor = (seg: WorkspaceSegment) => {
+  return seg.state === 'pending' ? '#333' : '#fff';
+};
+
 const segColor = (seg: WorkspaceSegment) => {
   switch (seg.state) {
     case 'success':
@@ -430,43 +467,17 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
           <template v-if="hasStarted">
             <div
               v-if="visibleTasks.length > 0"
-              style="
-                display: grid;
-                grid-template-columns: repeat(50, 14px);
-                gap: 2px;
-                overflow: hidden;
-              "
+              :style="{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${GRID_COLS}, 14px)`,
+                gap: '2px',
+                overflow: 'hidden',
+              }"
             >
               <template
-                v-for="{ job, taskIndex: ti, chapterNum } in visibleTasks"
+                v-for="({ job, taskIndex: ti, chapterNum }, vi) in visibleTasks"
                 :key="`${job.descriptor}:${ti}`"
               >
-                <n-tooltip trigger="hover" :delay="300">
-                  <template #trigger>
-                    <div
-                      :style="{
-                        width: `${Math.max(1, String(chapterNum).length - 1) * 16 - 2}px`,
-                        gridColumn:
-                          chapterNum >= 100
-                            ? `span ${String(chapterNum).length - 1}`
-                            : undefined,
-                        height: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '10px',
-                        color: 'inherit',
-                        opacity: 1,
-                        fontVariantNumeric: 'tabular-nums',
-                        userSelect: 'none',
-                        cursor: 'default',
-                      }"
-                    >
-                      {{ chapterNum }}
-                    </div>
-                  </template>
-                  {{ job.tasks[ti].chapterId }}
-                </n-tooltip>
                 <n-tooltip
                   v-for="(seg, si) in job.tasks[ti].segs"
                   :key="si"
@@ -475,15 +486,43 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
                 >
                   <template #trigger>
                     <div
-                      :style="{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '2px',
-                        backgroundColor: segColor(seg),
-                        cursor: seg.state !== 'pending' ? 'pointer' : 'default',
-                      }"
+                      :style="
+                        (() => {
+                          const segs = job.tasks[ti].segs;
+                          const isFirst = si === 0;
+                          const isLast = si === segs.length - 1;
+                          let span = 1;
+                          if (isFirst && chapterNum >= 100) {
+                            span = Math.max(1, String(chapterNum).length - 1);
+                          }
+                          if (isLast && taskLayout[vi] > 0) {
+                            span += taskLayout[vi];
+                          }
+                          return {
+                            width: span > 1 ? '100%' : '14px',
+                            gridColumn: span > 1 ? `span ${span}` : undefined,
+                            height: '14px',
+                            borderRadius: '2px',
+                            backgroundColor: segColor(seg),
+                            display: isFirst ? 'flex' : undefined,
+                            alignItems: isFirst ? 'center' : undefined,
+                            justifyContent: isFirst ? 'center' : undefined,
+                            fontSize: '10px',
+                            fontVariantNumeric: 'tabular-nums',
+                            color: isFirst ? segTextColor(seg) : undefined,
+                            cursor:
+                              seg.state !== 'pending' ? 'pointer' : 'default',
+                          };
+                        })()
+                      "
                       @click="onSegClick(si, seg)"
-                    />
+                    >
+                      <template v-if="si === 0">{{ chapterNum }}</template>
+                    </div>
+                  </template>
+                  <template v-if="si === 0">
+                    {{ job.tasks[ti].chapterId }}
+                    <br />
                   </template>
                   章节{{ chapterNum }} 分段{{ si + 1 }}
                   {{ stateLabel(seg.state) }}
