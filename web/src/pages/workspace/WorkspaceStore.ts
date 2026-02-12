@@ -24,12 +24,7 @@ import { RegexUtil } from '@/util';
 
 // ?????? Data Models ??????
 
-export type SegmentState =
-  | 'pending'
-  | 'processing'
-  | 'success'
-  | 'fallback-success'
-  | 'failed';
+export type SegmentState = 'pending' | 'processing' | 'success' | 'failed';
 
 export interface WorkspaceSegment {
   state: SegmentState;
@@ -638,10 +633,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
             const prevSegs: string[][] = [];
             for (let pi = 0; pi < si; pi++) {
               const prev = task.segs[pi];
-              if (
-                prev.state === 'success' ||
-                prev.state === 'fallback-success'
-              ) {
+              if (prev.state === 'success') {
                 prevSegs.push(prev.dst);
               }
             }
@@ -673,7 +665,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       taskIndex: number,
       segIndex: number,
       result: {
-        state: 'success' | 'fallback-success' | 'failed';
+        state: 'success' | 'failed';
         dst: string[];
         log: string[];
       },
@@ -693,10 +685,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
 
       // Check if all segments in this task are done
       const allDone = task.segs.every(
-        (s) =>
-          s.state === 'success' ||
-          s.state === 'fallback-success' ||
-          s.state === 'failed',
+        (s) => s.state === 'success' || s.state === 'failed',
       );
 
       if (allDone) {

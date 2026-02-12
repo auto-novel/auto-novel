@@ -39,7 +39,7 @@ const props = defineProps<{
     taskIndex: number,
     segIndex: number,
     result: {
-      state: 'success' | 'fallback-success' | 'failed';
+      state: 'success' | 'failed';
       dst: string[];
       log: string[];
     },
@@ -362,8 +362,6 @@ const segColor = (seg: WorkspaceSegment) => {
   switch (seg.state) {
     case 'success':
       return '#18a058';
-    case 'fallback-success':
-      return '#f0a020';
     case 'failed':
       return '#d03050';
     case 'processing':
@@ -378,7 +376,6 @@ const stateLabel = (state: string) => {
     pending: '等待中',
     processing: '翻译中',
     success: '成功',
-    'fallback-success': '降级成功',
     failed: '失败',
   };
   return map[state] ?? state;
@@ -540,13 +537,13 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
 
         <c-icon-button
           v-if="enableAutoMode"
-          tooltip="自动模式开启，任务为空时自动继续"
+          tooltip="自动翻译下个任务：已启动"
           :icon="FontDownloadOutlined"
           @action="enableAutoMode = false"
         />
         <c-icon-button
           v-else
-          tooltip="自动模式关闭，任务为空时暂停"
+          tooltip="自动翻译下个任务：已关闭"
           :icon="FontDownloadOffOutlined"
           @action="enableAutoMode = true"
         />
