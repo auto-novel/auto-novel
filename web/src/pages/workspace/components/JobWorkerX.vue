@@ -172,6 +172,7 @@ const startWorker = async () => {
     running.value = false;
     statusText.value = '已停止';
     activeCount.value = 0;
+    activeJobDescriptors.value = new Set();
     controller = null;
     props.releaseWorkerClaims(props.worker.id);
   }
