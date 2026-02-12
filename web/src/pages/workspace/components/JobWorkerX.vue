@@ -43,6 +43,7 @@ const props = defineProps<{
       dst: string[];
       log: string[];
     },
+    maxRetry?: number,
   ) => Promise<void>;
 }>();
 
@@ -213,11 +214,17 @@ const runLane = async (
         signal,
       );
 
-      await props.postSeg(jobDescriptor, taskIndex, segIndex, {
-        state: 'success',
-        dst,
-        log,
-      });
+      await props.postSeg(
+        jobDescriptor,
+        taskIndex,
+        segIndex,
+        {
+          state: 'success',
+          dst,
+          log,
+        },
+        maxRetry.value,
+      );
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') {
         seg.state = 'pending';
@@ -226,18 +233,17 @@ const runLane = async (
 
       log.push(`失败: ${e}`);
 
-      if (seg.retryCount < maxRetry.value) {
-        seg.retryCount++;
-        log.push(`重试 ${seg.retryCount}/${maxRetry.value}`);
-        seg.state = 'pending';
-        seg.log.push(...log);
-      } else {
-        await props.postSeg(jobDescriptor, taskIndex, segIndex, {
+      await props.postSeg(
+        jobDescriptor,
+        taskIndex,
+        segIndex,
+        {
           state: 'failed',
           dst: [],
           log,
-        });
-      }
+        },
+        maxRetry.value,
+      );
     } finally {
       activeCount.value--;
       if (activeCount.value > 0) {
@@ -594,9 +600,6 @@ const onSegClick = (segIndex: number, seg: WorkspaceSegment) => {
             style="margin-top: 4px; max-height: 200px; overflow: auto"
           />
         </div>
-        <n-text v-if="modalSeg.seg.retryCount > 0" depth="3">
-          已重试 {{ modalSeg.seg.retryCount }} 次
-        </n-text>
       </n-flex>
     </template>
   </c-modal>

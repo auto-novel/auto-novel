@@ -4,7 +4,6 @@ import {
   DragIndicatorOutlined,
   KeyboardDoubleArrowDownOutlined,
   KeyboardDoubleArrowUpOutlined,
-  RefreshOutlined,
 } from '@vicons/material';
 
 import type { WorkspaceJob } from '../WorkspaceStore';
@@ -22,7 +21,6 @@ const emit = defineEmits<{
   topJob: [];
   bottomJob: [];
   deleteJob: [];
-  retryTask: [taskIndex: number];
 }>();
 
 const percentage = computed(() => {
@@ -39,14 +37,6 @@ const jobStateLabel = computed(() => {
     finished: '已完成',
   };
   return map[props.job.state] ?? props.job.state;
-});
-
-const failedTaskIndices = computed(() => {
-  const result: number[] = [];
-  for (let ti = 0; ti < props.job.tasks.length; ti++) {
-    if (props.job.tasks[ti].state === 'failed') result.push(ti);
-  }
-  return result;
 });
 
 const hasActiveWork = computed(() =>
@@ -115,20 +105,6 @@ const hasActiveWork = computed(() =>
         <template v-if="percentage">
           <n-progress :percentage="percentage" style="max-width: 600px" />
         </template>
-
-        <n-flex v-if="failedTaskIndices.length > 0" :size="4" align="center">
-          <n-text type="error" style="font-size: 12px">
-            {{ failedTaskIndices.length }} 个章节失败
-          </n-text>
-          <n-icon
-            v-for="ti in failedTaskIndices"
-            :key="ti"
-            :component="RefreshOutlined"
-            :size="14"
-            style="cursor: pointer; color: #d03050"
-            @click="emit('retryTask', ti)"
-          />
-        </n-flex>
       </n-flex>
     </template>
   </n-thing>

@@ -31,7 +31,6 @@ export interface WorkspaceSegment {
   src: string[];
   dst: string[];
   log: string[];
-  retryCount: number;
 }
 
 export type TaskState =
@@ -96,6 +95,7 @@ export interface WorkspaceJob {
   taskDesc: TranslateTaskDesc;
   taskParams: TranslateTaskParams;
   error?: string;
+  retryRemaining: number;
 }
 
 export interface SegRequestResult {
@@ -549,7 +549,6 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
         src: segJp,
         dst: [],
         log: [],
-        retryCount: 0,
       }));
       console.log(
         '[buildSegments] task.segs.length after assign:',
@@ -669,9 +668,15 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
         dst: string[];
         log: string[];
       },
+      maxRetry?: number,
     ) {
       const job = jobs.value.find((j) => j.descriptor === jobDescriptor);
       if (!job) return;
+
+      // Set retryRemaining from worker config on first postSeg call
+      if (job.retryRemaining < 0 && maxRetry !== undefined) {
+        job.retryRemaining = maxRetry;
+      }
 
       const task = job.tasks[taskIndex];
       if (!task) return;
@@ -712,10 +717,39 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       const allTasksDone = job.tasks.every(
         (t) => t.state === 'success' || t.state === 'failed',
       );
-      if (allTasksDone) {
+      if (!allTasksDone) return;
+
+      const failedTasks = job.tasks.filter((t) => t.state === 'failed');
+      if (failedTasks.length === 0) {
+        // All succeeded
         job.state = 'finished';
         moveToFinished(job);
+        return;
       }
+
+      if (job.retryRemaining > 0) {
+        // Move to back of queue, reset failed segs
+        job.retryRemaining--;
+        for (const task of failedTasks) {
+          for (const seg of task.segs) {
+            if (seg.state === 'failed') {
+              seg.state = 'pending';
+              seg.dst = [];
+            }
+          }
+          task.state = 'processing';
+        }
+        const idx = jobs.value.indexOf(job);
+        if (idx >= 0) {
+          jobs.value.splice(idx, 1);
+          jobs.value.push(job);
+        }
+        return;
+      }
+
+      // All retries exhausted — record failure
+      job.state = 'finished';
+      moveToFinished(job);
     }
 
     // ?????? uploadTaskResult ??????
@@ -786,6 +820,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
         tasks: [],
         taskDesc: desc,
         taskParams: params,
+        retryRemaining: -1,
       };
 
       jobs.value.push(job);
@@ -815,25 +850,6 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       );
     }
 
-    // ?????? retryFailedSegments ??????
-    function retryFailedSegments(jobDescriptor: string, taskIndex: number) {
-      const job = jobs.value.find((j) => j.descriptor === jobDescriptor);
-      if (!job) return;
-
-      const task = job.tasks[taskIndex];
-      if (!task) return;
-
-      for (const seg of task.segs) {
-        if (seg.state === 'failed') {
-          seg.state = 'pending';
-          seg.dst = [];
-          seg.log = [];
-          seg.retryCount = 0;
-        }
-      }
-      task.state = 'processing';
-    }
-
     // ?????? Stats ??????
     function getJobStats(job: WorkspaceJob) {
       let totalTasks = 0;
@@ -858,7 +874,6 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       requestSeg,
       postSeg,
       releaseWorkerClaims,
-      retryFailedSegments,
       getJobStats,
     };
   })();

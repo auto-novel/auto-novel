@@ -188,7 +188,6 @@ const clearCache = async () =>
             @top-job="store.topJob(job.descriptor)"
             @bottom-job="store.bottomJob(job.descriptor)"
             @delete-job="deleteJob(job.descriptor)"
-            @retry-task="(ti) => store.retryFailedSegments(job.descriptor, ti)"
           />
         </n-list-item>
       </vue-draggable>
