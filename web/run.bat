@@ -1,1 +1,0 @@
-set VITE_API_MODE=remote && pnpm vite
