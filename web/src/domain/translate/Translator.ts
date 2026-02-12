@@ -181,7 +181,7 @@ export class Translator {
 }
 
 export namespace Translator {
-  const createSegmentTranslator = async (
+  export const createSegmentTranslator = async (
     log: Logger,
     config: TranslatorConfig,
   ): Promise<SegmentTranslator> => {

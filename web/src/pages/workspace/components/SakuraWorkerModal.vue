@@ -23,9 +23,15 @@ const initFormValue = () => {
       endpoint: '',
       segLength: 500,
       prevSegLength: 500,
+      concurrency: 1,
+      retryCount: 3,
     };
   } else {
-    return { ...worker };
+    return {
+      ...worker,
+      concurrency: worker.concurrency ?? 1,
+      retryCount: worker.retryCount ?? 3,
+    };
   }
 };
 
@@ -92,6 +98,23 @@ const submit = async () => {
   }
 };
 
+const isSakuraShare = computed(() => {
+  try {
+    const url = new URL(formValue.value.endpoint.trim());
+    return url.hostname === 'sakura-share.one';
+  } catch {
+    return false;
+  }
+});
+
+const concurrencyMax = computed(() => (isSakuraShare.value ? 6 : undefined));
+
+watch(isSakuraShare, (isShare) => {
+  if (isShare && formValue.value.concurrency > 6) {
+    formValue.value.concurrency = 6;
+  }
+});
+
 const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 </script>
 
@@ -136,6 +159,23 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           v-model:value="formValue.prevSegLength"
           :show-button="false"
           :min="0"
+        />
+      </n-form-item-row>
+
+      <n-form-item-row path="concurrency" label="并发数">
+        <n-input-number
+          v-model:value="formValue.concurrency"
+          :show-button="false"
+          :min="1"
+          :max="concurrencyMax"
+        />
+      </n-form-item-row>
+
+      <n-form-item-row path="retryCount" label="重试次数">
+        <n-input-number
+          v-model:value="formValue.retryCount"
+          :show-button="false"
+          :min="1"
         />
       </n-form-item-row>
 

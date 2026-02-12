@@ -20,6 +20,8 @@ const initFormValue = (): {
   model: string;
   endpoint: string;
   key: string;
+  concurrency: number;
+  retryCount: number;
 } => {
   const worker = props.worker;
   if (worker === undefined) {
@@ -28,6 +30,8 @@ const initFormValue = (): {
       model: 'deepseek-chat',
       endpoint: 'https://api.deepseek.com',
       key: '',
+      concurrency: 1,
+      retryCount: 3,
     };
   } else {
     return {
@@ -35,6 +39,8 @@ const initFormValue = (): {
       model: worker.model,
       endpoint: worker.endpoint,
       key: worker.key,
+      concurrency: worker.concurrency ?? 1,
+      retryCount: worker.retryCount ?? 3,
     };
   }
 };
@@ -99,13 +105,15 @@ const submit = async () => {
   });
   if (!validated) return;
 
-  const { id, model, endpoint, key } = formValue.value;
+  const { id, model, endpoint, key, concurrency, retryCount } = formValue.value;
   const worker = {
     id: id.trim(),
     type: 'api' as const,
     model: model.trim(),
     endpoint: endpoint.trim(),
     key: key.trim(),
+    concurrency,
+    retryCount,
   };
 
   if (props.worker === undefined) {
@@ -163,6 +171,22 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           v-model:value="formValue.key"
           placeholder="请输入Api key"
           :input-props="{ spellcheck: false }"
+        />
+      </n-form-item-row>
+
+      <n-form-item-row path="concurrency" label="并发数">
+        <n-input-number
+          v-model:value="formValue.concurrency"
+          :show-button="false"
+          :min="1"
+        />
+      </n-form-item-row>
+
+      <n-form-item-row path="retryCount" label="重试次数">
+        <n-input-number
+          v-model:value="formValue.retryCount"
+          :show-button="false"
+          :min="1"
         />
       </n-form-item-row>
 
