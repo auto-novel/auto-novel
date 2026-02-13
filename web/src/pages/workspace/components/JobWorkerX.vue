@@ -208,7 +208,10 @@ const runLane = async (
     const req = await props.requestSeg(props.worker.id);
 
     if (!req) {
-      if (props.jobs.length === 0) break;
+      const hasProcessingJobs = props.jobs.some(
+        (j) => j.state === 'processing',
+      );
+      if (!hasProcessingJobs) break;
       statusText.value = '等待任务...';
       if (!enableAutoMode.value) break;
       await delay(500, signal);
