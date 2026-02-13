@@ -189,12 +189,12 @@ const router = createRouter({
             {
               path: 'gpt',
               meta: { title: 'GPT工作区' },
-              component: () => import('./pages/workspace/GptWorkspace.vue'),
+              component: () => import('./pages/workspace/GptWorkspaceX.vue'),
             },
             {
               path: 'sakura',
               meta: { title: 'Sakura工作区' },
-              component: () => import('./pages/workspace/SakuraWorkspace.vue'),
+              component: () => import('./pages/workspace/SakuraWorkspaceX.vue'),
             },
             {
               path: 'interactive',

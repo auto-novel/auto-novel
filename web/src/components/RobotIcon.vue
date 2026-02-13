@@ -1,13 +1,33 @@
 <script lang="ts" setup>
+import { isTranslating, translationAlert } from '@/util';
+
 const vars = useThemeVars();
 const showGirl = ref(false);
+
+const iconColor = computed(() => {
+  switch (translationAlert.value) {
+    case 'warning':
+      return '#f0a020';
+    case 'error':
+      return '#d03050';
+    default:
+      return isTranslating.value ? '#2080f0' : vars.value.primaryColor;
+  }
+});
 </script>
 
 <template>
   <n-icon
     v-bind="$attrs"
-    :color="vars.primaryColor"
-    style="cursor: pointer"
+    :color="iconColor"
+    :class="{ 'robot-pulse': isTranslating || translationAlert === 'error' }"
+    style="
+      cursor: pointer;
+      transition:
+        color 0.5s ease,
+        transform 0.3s ease,
+        opacity 0.3s ease;
+    "
     @click="showGirl = !showGirl"
   >
     <svg
@@ -52,3 +72,21 @@ const showGirl = ref(false);
     "
   />
 </template>
+
+<style scoped>
+.robot-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.6;
+  }
+}
+</style>

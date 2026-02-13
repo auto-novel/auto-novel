@@ -286,7 +286,7 @@ export class OpenAiError extends Error {
       throw new OpenAiError(
         e.response.status,
         errJson?.['error']?.['code'],
-        errText,
+        errText?.trim() || e.message,
       );
     } else {
       throw e;
