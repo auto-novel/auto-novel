@@ -194,6 +194,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
     }
 
     function moveToFinished(job: WorkspaceJob) {
+      claimedJobs.delete(job.descriptor);
       const idx = jobs.value.indexOf(job);
       if (idx >= 0) {
         jobs.value.splice(idx, 1);
