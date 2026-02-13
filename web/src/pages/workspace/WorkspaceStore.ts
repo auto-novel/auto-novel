@@ -566,6 +566,14 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       }
     }
 
+    function hasAvailableWork(workerId: string): boolean {
+      return jobs.value.some((j) => {
+        if (j.state !== 'processing') return false;
+        const claimant = claimedJobs.get(j.descriptor);
+        return !claimant || claimant === workerId;
+      });
+    }
+
     function resetFailedSegments() {
       for (const job of jobs.value) {
         if (job.state === 'finished') continue;
@@ -909,6 +917,7 @@ export function useWorkspaceXStore(id: 'sakura' | 'gpt') {
       requestSeg,
       postSeg,
       releaseWorkerClaims,
+      hasAvailableWork,
       resetFailedSegments,
       getJobStats,
     };

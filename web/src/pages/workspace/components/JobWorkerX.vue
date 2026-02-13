@@ -40,6 +40,7 @@ const props = defineProps<{
   jobs: WorkspaceJob[];
   requestSeg: (workerId: string) => Promise<SegRequestResult | undefined>;
   releaseWorkerClaims: (workerId: string) => void;
+  hasAvailableWork: (workerId: string) => boolean;
   resetFailedSegments: () => void;
   postSeg: (
     jobDescriptor: string,
@@ -208,8 +209,7 @@ const runLane = async (
     const req = await props.requestSeg(props.worker.id);
 
     if (!req) {
-      const hasAvailableJobs = props.jobs.some((j) => j.state !== 'finished');
-      if (!hasAvailableJobs) break;
+      if (!props.hasAvailableWork(props.worker.id)) break;
       statusText.value = '等待任务...';
       if (!enableAutoMode.value) break;
       await delay(500, signal);
