@@ -166,5 +166,17 @@ const parseProductVolume = (doc: Document) => {
   };
 };
 
+export const resolveKindleAsin = async (isbn: string): Promise<string> => {
+  const doc = await AmazonApi.getProduct(isbn);
+  const kindleLink = doc
+    .getElementById('tmm-grid-swatch-KINDLE')
+    ?.querySelector('a');
+  if (kindleLink) {
+    const kindleAsin = extractAsin(kindleLink.getAttribute('href')!);
+    if (kindleAsin) return kindleAsin;
+  }
+  return isbn;
+};
+
 export const getProduct = (asin: string) =>
   AmazonApi.getProduct(asin).then(parseProduct);
