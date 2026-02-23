@@ -102,7 +102,8 @@ export const createGlossaryWrapper = (glossary: Glossary) => {
         const wordZh = tokenToWordZh[token];
         line = line
           .replaceAll('$' + token, wordZh)
-          .replaceAll('$ ' + token, wordZh);
+          .replaceAll('$ ' + token, wordZh)
+          .replaceAll(token, wordZh);
       }
       return line;
     });
