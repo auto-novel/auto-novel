@@ -127,8 +127,9 @@ export namespace Setting {
     { value: 'byId', label: '标题' },
   ];
   export const localeOptions = [
+    { label: '原文', value: 'origin' },
     { label: '简体中文', value: 'zh-cn' },
-    { label: '繁体中文', value: 'zh-tw' },
+    { label: '繁體中文', value: 'zh-tw' },
   ];
 }
 
