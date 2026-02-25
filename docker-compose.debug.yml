@@ -1,4 +1,9 @@
 services:
+  # 暂时不修改生产环境的配置，直接在 debug 环境中修改端口映射
+  web:
+    ports:
+      - 5000:80
+
   mongo:
     ports:
       - 5001:27017
