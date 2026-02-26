@@ -135,6 +135,7 @@ private fun generateWriteInfoFromChapter(
             TranslatorId.Youdao -> chapter.youdaoParagraphs
             TranslatorId.Gpt -> chapter.gptParagraphs
             TranslatorId.Sakura -> chapter.sakuraParagraphs
+            TranslatorId.Murasaki -> chapter.murasakiParagraphs
         }.also {
             if (it == null) missingTranslations.add(id)
         }
