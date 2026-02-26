@@ -16,6 +16,9 @@ enum class TranslatorId {
 
     @SerialName("sakura")
     Sakura,
+
+    @SerialName("murasaki")
+    Murasaki,
 }
 
 data class Glossary(
