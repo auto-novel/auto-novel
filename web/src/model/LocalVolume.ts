@@ -16,6 +16,7 @@ export interface LocalVolumeMetadata {
     youdao?: string;
     gpt?: string;
     sakura?: string;
+    murasaki?: string;
   }[];
   glossaryId: string;
   glossary: Glossary;
@@ -30,4 +31,5 @@ export interface LocalVolumeChapter {
   youdao?: ChapterTranslation;
   gpt?: ChapterTranslation;
   sakura?: ChapterTranslation;
+  murasaki?: ChapterTranslation;
 }
