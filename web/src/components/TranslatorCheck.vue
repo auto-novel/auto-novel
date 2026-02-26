@@ -15,6 +15,7 @@ const translationOptions: { label: string; value: TranslatorId }[] = [
   { label: '有道', value: 'youdao' },
   { label: 'GPT', value: 'gpt' },
   { label: 'Sakura', value: 'sakura' },
+  { label: 'Murasaki', value: 'murasaki' },
 ];
 
 const toggleTranslator = (id: TranslatorId) => {

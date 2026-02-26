@@ -12,13 +12,18 @@ import {
 
 import type { TranslatorConfig } from '@/domain/translate';
 import { Translator } from '@/domain/translate';
-import type { GptWorker, SakuraWorker } from '@/model/Translator';
+import type {
+  GptWorker,
+  MurasakiWorker,
+  SakuraWorker,
+} from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import { useWorkspaceStore } from '@/stores';
 
 const props = defineProps<{
   worker:
     | ({ translatorId: 'sakura' } & SakuraWorker)
+    | ({ translatorId: 'murasaki' } & MurasakiWorker)
     | ({ translatorId: 'gpt' } & GptWorker);
   getNextJob: () =>
     | { task: string; description: string; createAt: number }
@@ -47,9 +52,16 @@ const translatorConfig = computed(() => {
       endpoint: worker.endpoint,
       key: worker.key,
     };
-  } else {
+  } else if (worker.translatorId === 'sakura') {
     return <TranslatorConfig & { id: 'sakura' }>{
       id: 'sakura',
+      endpoint: worker.endpoint,
+      segLength: worker.segLength,
+      prevSegLength: worker.prevSegLength,
+    };
+  } else {
+    return <TranslatorConfig & { id: 'murasaki' }>{
+      id: 'murasaki',
       endpoint: worker.endpoint,
       segLength: worker.segLength,
       prevSegLength: worker.prevSegLength,
@@ -66,7 +78,7 @@ const endpointPrefix = computed(() => {
       return `${worker.model}[${worker.key.slice(-4)}]@`;
     }
   } else {
-    return `${worker.segLength ?? 500}@`;
+    return `${worker.segLength ?? (worker.translatorId === 'murasaki' ? 1000 : 500)}@`;
   }
 });
 
@@ -150,11 +162,15 @@ const testWorker = async () => {
     if (worker.translatorId === 'gpt') {
       message.success(`原文：${lineJp}\n译文：${lineZh}`);
     } else {
+      const model =
+        worker.translatorId === 'murasaki'
+          ? translator.murasakiModel()
+          : translator.sakuraModel();
       message.success(
         [
           `原文：${lineJp}`,
           `译文：${lineZh}`,
-          `模型：${translator.sakuraModel()} ${
+          `模型：${model} ${
             translator.allowUpload() ? '允许上传' : '禁止上传'
           }`,
         ].join('\n'),
@@ -251,6 +267,11 @@ const showEditWorkerModal = ref(false);
 
   <sakura-worker-modal
     v-if="worker.translatorId === 'sakura'"
+    v-model:show="showEditWorkerModal"
+    :worker="worker"
+  />
+  <murasaki-worker-modal
+    v-else-if="worker.translatorId === 'murasaki'"
     v-model:show="showEditWorkerModal"
     :worker="worker"
   />

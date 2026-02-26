@@ -140,6 +140,10 @@ const menuOptions = computed<MenuOption[]>(() => {
           key: '/workspace/sakura',
         },
         {
+          label: renderLabel('Murasaki工作区', '/workspace/murasaki'),
+          key: '/workspace/murasaki',
+        },
+        {
           label: renderLabel('交互翻译', '/workspace/interactive'),
           key: '/workspace/interactive',
         },

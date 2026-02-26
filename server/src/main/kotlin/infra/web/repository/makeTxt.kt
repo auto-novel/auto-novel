@@ -58,7 +58,7 @@ private class TxtWriter(
 
     private fun BufferedWriter.writeTranslateStatus(novel: WebNovel){
         with(novel) {
-            write("总计: $jp / 百度: $baidu / 有道: $youdao / GPT: $gpt / Sakura: $sakura")
+            write("总计: $jp / 百度: $baidu / 有道: $youdao / GPT: $gpt / Sakura: $sakura / Murasaki: $murasaki")
         }
     }
 

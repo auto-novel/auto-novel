@@ -51,7 +51,7 @@ export function getWebFavoredListOptions(
     },
     翻译: {
       type: 'select',
-      tags: ['全部', 'GPT', 'Sakura'],
+      tags: ['全部', 'GPT', 'Sakura', 'Murasaki'],
     },
     排序: {
       type: 'select',

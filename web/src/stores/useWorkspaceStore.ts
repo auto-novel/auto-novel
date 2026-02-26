@@ -1,5 +1,6 @@
 import type {
   GptWorker,
+  MurasakiWorker,
   SakuraWorker,
   TranslateJobRecord,
 } from '@/model/Translator';
@@ -15,7 +16,9 @@ interface Workspace<T> {
   uncompletedJobs: TranslateJobRecord[];
 }
 
-const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
+const createWorkspaceStore = <
+  W extends GptWorker | SakuraWorker | MurasakiWorker,
+>(
   id: string,
   workers: W[],
   migrate?: (ref: Ref<Workspace<W>>) => void,
@@ -170,14 +173,57 @@ const createSakuraWorkspaceStore = () =>
     },
   );
 
+const createMurasakiWorkspaceStore = () =>
+  createWorkspaceStore<MurasakiWorker>(
+    LSKey.WorkspaceMurasaki,
+    [
+      { id: '本机', endpoint: 'http://127.0.0.1:8080' },
+      { id: 'AutoDL', endpoint: 'http://127.0.0.1:6006' },
+    ],
+    (workspace) => {
+      // Migrate old local preset: 本机(8000) -> 本机(8080) for llmGUI daemon.
+      workspace.value.workers.forEach((it: MurasakiWorker) => {
+        if (it.id === '本机' && it.endpoint === 'http://127.0.0.1:8000') {
+          it.endpoint = 'http://127.0.0.1:8080';
+        }
+      });
+
+      // Migrate old preset: 局域网(8080) -> AutoDL(6006).
+      workspace.value.workers.forEach((it: MurasakiWorker) => {
+        if (it.id === '局域网') {
+          it.id = 'AutoDL';
+          if (it.endpoint === 'http://127.0.0.1:8080') {
+            it.endpoint = 'http://127.0.0.1:6006';
+          }
+        }
+      });
+      workspace.value.workers = workspace.value.workers.filter(
+        (it, idx, arr) =>
+          arr.findIndex((x) => x.id === it.id && x.endpoint === it.endpoint) ===
+          idx,
+      );
+
+      workspace.value.workers.forEach((it: MurasakiWorker) => {
+        if (it.segLength === undefined) {
+          it.segLength = 1000;
+        }
+        // Force no previous-context window for Murasaki workers.
+        it.prevSegLength = 0;
+      });
+    },
+  );
+
 export const useGptWorkspaceStore = lazy(createGptWorkspaceStore);
 export const useSakuraWorkspaceStore = lazy(createSakuraWorkspaceStore);
+export const useMurasakiWorkspaceStore = lazy(createMurasakiWorkspaceStore);
 
-export function useWorkspaceStore(type: 'gpt' | 'sakura') {
+export function useWorkspaceStore(type: 'gpt' | 'sakura' | 'murasaki') {
   if (type === 'gpt') {
     return useGptWorkspaceStore();
   } else if (type === 'sakura') {
     return useSakuraWorkspaceStore();
+  } else if (type === 'murasaki') {
+    return useMurasakiWorkspaceStore();
   } else {
     return type satisfies never;
   }

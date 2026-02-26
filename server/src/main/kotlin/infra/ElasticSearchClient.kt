@@ -29,6 +29,7 @@ fun elasticSearchClient(host: String, port: Int?) =
                         number<Int>("visited")
                         bool("hasGpt")
                         bool("hasSakura")
+                        bool("hasMurasaki")
                         date("updateAt")
                     }
                 }

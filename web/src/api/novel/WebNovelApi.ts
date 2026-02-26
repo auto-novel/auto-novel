@@ -111,13 +111,20 @@ const createTranslationApi = (
       glossaryId?: string;
       paragraphsZh: string[];
     },
-  ) =>
-    client
+  ) => {
+    const versionPayload =
+      translatorId === 'sakura'
+        ? { sakuraVersion: '0.9' }
+        : translatorId === 'murasaki'
+          ? { murasakiVersion: '0.2' }
+          : {};
+    return client
       .post(`${endpointV2}/chapter/${chapterId}`, {
-        json: { ...json, sakuraVersion: '0.9' },
+        json: { ...json, ...versionPayload },
         signal,
       })
       .json<{ jp: number; zh: number }>();
+  };
 
   return {
     getTranslateTask,
@@ -141,7 +148,7 @@ const createFileUrl = ({
   novelId: string;
   mode: 'jp' | 'zh' | 'zh-jp' | 'jp-zh';
   translationsMode: 'parallel' | 'priority';
-  translations: ('sakura' | 'baidu' | 'youdao' | 'gpt')[];
+  translations: ('sakura' | 'baidu' | 'youdao' | 'gpt' | 'murasaki')[];
   type: 'epub' | 'txt';
   title: string;
 }) => {

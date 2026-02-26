@@ -49,6 +49,7 @@ class WenkuNovelVolumeDiskDataSource(
                                 youdao = it.listTranslation(TranslatorId.Youdao).size,
                                 gpt = it.listTranslation(TranslatorId.Gpt).size,
                                 sakura = it.listTranslation(TranslatorId.Sakura).size,
+                                murasaki = it.listTranslation(TranslatorId.Murasaki).size,
                             )
                         )
                     } else {
@@ -260,6 +261,7 @@ class VolumeAccessor(val volumesDir: Path, val volumeId: String) {
         glossaryUuid: String?,
         glossary: Map<String, String>,
         sakuraVersion: String?,
+        murasakiVersion: String?,
     ) = setGlossary(
         path = chapterGlossaryPath(
             translatorId = translatorId,
@@ -268,6 +270,7 @@ class VolumeAccessor(val volumesDir: Path, val volumeId: String) {
         glossaryUuid = glossaryUuid,
         glossary = glossary,
         sakuraVersion = sakuraVersion,
+        murasakiVersion = murasakiVersion,
     )
 
 }
@@ -288,6 +291,7 @@ private suspend fun setGlossary(
     glossaryUuid: String?,
     glossary: Map<String, String>,
     sakuraVersion: String?,
+    murasakiVersion: String?,
 ) = withContext(Dispatchers.IO) {
     if (path.parent.notExists()) {
         path.parent.createDirectories()
@@ -297,7 +301,8 @@ private suspend fun setGlossary(
             WenkuChapterGlossary(
                 uuid = glossaryUuid,
                 glossary = glossary,
-                sakuraVersion = sakuraVersion
+                sakuraVersion = sakuraVersion,
+                murasakiVersion = murasakiVersion,
             )
         )
     )

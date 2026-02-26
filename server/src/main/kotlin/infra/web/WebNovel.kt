@@ -19,7 +19,7 @@ object WebNovelFilter {
         val isNsfw get() = this != 一般向
     }
 
-    enum class Translate { 全部, GPT3, Sakura }
+    enum class Translate { 全部, GPT3, Sakura, Murasaki }
     enum class Sort { 更新, 点击, 相关 }
 }
 
@@ -73,6 +73,7 @@ data class WebNovelListItem(
     val youdao: Long = 0,
     val gpt: Long = 0,
     val sakura: Long,
+    val murasaki: Long = 0,
     val extra: String? = null,
     @Contextual val updateAt: Instant? = null,
 )
@@ -103,6 +104,7 @@ class WebNovel(
     val youdao: Long = 0,
     val gpt: Long = 0,
     val sakura: Long = 0,
+    val murasaki: Long = 0,
     // Misc
     val visited: Long = 0,
     val pauseUpdate: Boolean = false,
@@ -163,6 +165,11 @@ data class WebNovelChapter(
     val sakuraGlossaryUuid: String? = null,
     val sakuraGlossary: Map<String, String>? = emptyMap(),
     val sakuraParagraphs: List<String>? = null,
+
+    val murasakiVersion: String? = null,
+    val murasakiGlossaryUuid: String? = null,
+    val murasakiGlossary: Map<String, String>? = emptyMap(),
+    val murasakiParagraphs: List<String>? = null,
 ) {
     companion object {
         fun byId(providerId: String, novelId: String, chapterId: String): Bson {
@@ -188,6 +195,7 @@ data class WebNovelChapterTranslationState(
     val glossaryUuid: String?,
     val translated: Boolean,
     val sakuraVersion: String? = null,
+    val murasakiVersion: String? = null,
 )
 
 // MongoDB

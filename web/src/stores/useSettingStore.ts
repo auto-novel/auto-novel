@@ -2,6 +2,11 @@ import type { TranslatorId } from '@/model/Translator';
 import { defaultConverter, useLocalStorage, useOpenCC } from '@/util';
 import { LSKey } from './key';
 
+const ensureTranslatorLast = (
+  translators: TranslatorId[],
+  target: TranslatorId,
+): TranslatorId[] => [...translators.filter((item) => item !== target), target];
+
 export interface Setting {
   theme: 'light' | 'dark' | 'system';
   enabledTranslator: TranslatorId[];
@@ -37,9 +42,17 @@ export interface Setting {
 }
 
 export namespace Setting {
+  const defaultTranslationOrder: TranslatorId[] = [
+    'sakura',
+    'gpt',
+    'youdao',
+    'baidu',
+    'murasaki',
+  ];
+
   export const defaultValue: Setting = {
     theme: 'system',
-    enabledTranslator: ['baidu', 'youdao', 'gpt', 'sakura'],
+    enabledTranslator: ['baidu', 'youdao', 'gpt', 'sakura', 'murasaki'],
     tocSortReverse: false,
     //
     tocCollapseInNarrowScreen: true,
@@ -57,7 +70,7 @@ export namespace Setting {
     downloadFormat: {
       mode: 'zh-jp',
       translationsMode: 'priority',
-      translations: ['sakura', 'gpt', 'youdao', 'baidu'],
+      translations: [...defaultTranslationOrder],
       type: 'epub',
     },
     workspaceSound: false,
@@ -79,8 +92,33 @@ export namespace Setting {
       delete setting.isDark;
     }
     if (setting.enabledTranslator === undefined) {
-      setting.enabledTranslator = ['baidu', 'youdao', 'gpt', 'sakura'];
+      setting.enabledTranslator = [
+        'baidu',
+        'youdao',
+        'gpt',
+        'sakura',
+        'murasaki',
+      ];
     }
+    setting.enabledTranslator = ensureTranslatorLast(
+      setting.enabledTranslator,
+      'murasaki',
+    );
+    if (setting.downloadFormat === undefined) {
+      setting.downloadFormat = {
+        mode: 'zh-jp',
+        translationsMode: 'priority',
+        translations: [...defaultTranslationOrder],
+        type: 'epub',
+      };
+    }
+    if (setting.downloadFormat?.translations === undefined) {
+      setting.downloadFormat.translations = [...defaultTranslationOrder];
+    }
+    setting.downloadFormat.translations = ensureTranslatorLast(
+      setting.downloadFormat.translations,
+      'murasaki',
+    );
     if ((setting.downloadFormat.mode as string) === 'mix') {
       setting.downloadFormat.mode = 'zh-jp';
     } else if ((setting.downloadFormat.mode as string) === 'mix-reverse') {
@@ -158,10 +196,18 @@ export interface ReaderSetting {
 }
 
 export namespace ReaderSetting {
+  const defaultTranslationOrder: TranslatorId[] = [
+    'sakura',
+    'gpt',
+    'youdao',
+    'baidu',
+    'murasaki',
+  ];
+
   export const defaultValue: ReaderSetting = {
     mode: 'zh-jp',
     translationsMode: 'priority',
-    translations: ['sakura', 'gpt', 'youdao', 'baidu'],
+    translations: [...defaultTranslationOrder],
     clickArea: 'default',
     speakLanguages: ['jp'],
     pageTurnMode: 'page',
@@ -216,6 +262,13 @@ export namespace ReaderSetting {
       }
       delete setting.trimLeadingSpaces;
     }
+    if (setting.translations === undefined) {
+      setting.translations = [...defaultTranslationOrder];
+    }
+    setting.translations = ensureTranslatorLast(
+      setting.translations,
+      'murasaki',
+    );
   };
 
   export const modeOptions = [

@@ -365,6 +365,7 @@ private fun RemoteNovelListItem.toOutline(
         youdao = novel?.youdao ?: 0,
         gpt = novel?.gpt ?: 0,
         sakura = novel?.sakura ?: 0,
+        murasaki = novel?.murasaki ?: 0,
         extra = extra,
         updateAt = novel?.updateAt,
     )
@@ -391,6 +392,7 @@ fun WebNovel.toOutline(
         youdao = youdao,
         gpt = gpt,
         sakura = sakura,
+        murasaki = murasaki,
         extra = null,
         updateAt = updateAt,
     )

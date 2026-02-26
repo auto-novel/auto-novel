@@ -2,8 +2,17 @@
 import type { TranslatorConfig } from '@/domain/translate';
 import { Translator } from '@/domain/translate';
 import type { Glossary } from '@/model/Glossary';
-import type { GptWorker, SakuraWorker, TranslatorId } from '@/model/Translator';
-import { useGptWorkspaceStore, useSakuraWorkspaceStore } from '@/stores';
+import type {
+  GptWorker,
+  MurasakiWorker,
+  SakuraWorker,
+  TranslatorId,
+} from '@/model/Translator';
+import {
+  useGptWorkspaceStore,
+  useMurasakiWorkspaceStore,
+  useSakuraWorkspaceStore,
+} from '@/stores';
 
 const message = useMessage();
 
@@ -16,6 +25,7 @@ const translationOptions: { label: string; value: TranslatorId }[] = [
   { label: '有道', value: 'youdao' },
   { label: 'GPT', value: 'gpt' },
   { label: 'Sakura', value: 'sakura' },
+  { label: 'Murasaki', value: 'murasaki' },
 ];
 
 watch(textJp, () => {
@@ -30,6 +40,8 @@ const selectedGptWorkerId = ref(gptWorkspaceRef.value.workers[0]?.id);
 
 const sakuraWorkspaceRef = useSakuraWorkspaceStore().ref;
 const selectedSakuraWorkerId = ref(sakuraWorkspaceRef.value.workers[0]?.id);
+const murasakiWorkspaceRef = useMurasakiWorkspaceStore().ref;
+const selectedMurasakiWorkerId = ref(murasakiWorkspaceRef.value.workers[0]?.id);
 
 interface SavedTranslation {
   id: TranslatorId;
@@ -44,7 +56,7 @@ const glossary = ref<Glossary>({});
 
 const translate = async () => {
   let config: TranslatorConfig;
-  let selectedWorker: GptWorker | SakuraWorker | undefined;
+  let selectedWorker: GptWorker | SakuraWorker | MurasakiWorker | undefined;
   const id = translatorId.value;
   if (id === 'gpt') {
     const worker = gptWorkspaceRef.value.workers.find(
@@ -68,6 +80,21 @@ const translate = async () => {
     );
     if (worker === undefined) {
       message.error('未选择Sakura翻译器');
+      return;
+    }
+    selectedWorker = worker;
+    config = {
+      id,
+      endpoint: worker.endpoint,
+      segLength: worker.segLength,
+      prevSegLength: worker.prevSegLength,
+    };
+  } else if (id === 'murasaki') {
+    const worker = murasakiWorkspaceRef.value.workers.find(
+      (it) => it.id === selectedMurasakiWorkerId.value,
+    );
+    if (worker === undefined) {
+      message.error('未选择Murasaki翻译器');
       return;
     }
     selectedWorker = worker;
@@ -155,6 +182,24 @@ const clearSavedTranslation = () => {
             <n-flex vertical>
               <n-radio
                 v-for="worker of sakuraWorkspaceRef.workers"
+                :key="worker.id"
+                :value="worker.id"
+              >
+                {{ worker.id }}
+                <n-text depth="3">
+                  {{ worker.endpoint }}
+                </n-text>
+              </n-radio>
+            </n-flex>
+          </n-radio-group>
+
+          <n-radio-group
+            v-if="translatorId === 'murasaki'"
+            v-model:value="selectedMurasakiWorkerId"
+          >
+            <n-flex vertical>
+              <n-radio
+                v-for="worker of murasakiWorkspaceRef.workers"
                 :key="worker.id"
                 :value="worker.id"
               >
