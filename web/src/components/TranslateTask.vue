@@ -15,6 +15,7 @@ const emit = defineEmits<{
   'update:youdao': [number];
   'update:gpt': [number];
   'update:sakura': [number];
+  'update:murasaki': [number];
 }>();
 
 const message = useMessage();
@@ -57,6 +58,7 @@ const startTask = async (
       youdao: '有道',
       gpt: 'GPT',
       sakura: 'Sakura',
+      murasaki: 'Murasaki',
     };
     let label = `${idToLaber[translatorDesc.id]}翻译`;
     const suffixParts: string[] = [];
@@ -109,6 +111,8 @@ const startTask = async (
             emit('update:youdao', zh);
           } else if (translatorDesc.id === 'gpt') {
             emit('update:gpt', zh);
+          } else if (translatorDesc.id === 'murasaki') {
+            emit('update:murasaki', zh);
           } else {
             emit('update:sakura', zh);
           }

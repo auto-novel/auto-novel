@@ -56,6 +56,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
       v-model:youdao="novel.youdao"
       v-model:gpt="novel.gpt"
       :sakura="novel.sakura"
+      :murasaki="novel.murasaki"
       :glossary="novel.glossary"
     />
 

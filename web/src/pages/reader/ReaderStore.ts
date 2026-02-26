@@ -15,6 +15,7 @@ export interface ReaderChapter {
   youdaoParagraphs?: string[];
   gptParagraphs?: string[];
   sakuraParagraphs?: string[];
+  murasakiParagraphs?: string[];
 }
 
 interface ReaderChapterState {
@@ -106,6 +107,7 @@ const getChapter = async (
       youdaoParagraphs: chapter.youdao?.paragraphs,
       gptParagraphs: chapter.gpt?.paragraphs,
       sakuraParagraphs: chapter.sakura?.paragraphs,
+      murasakiParagraphs: chapter.murasaki?.paragraphs,
     };
   }
 };
