@@ -32,6 +32,7 @@ class WebNovelEsDataSource(
         val visited: Int,
         val hasGpt: Boolean,
         val hasSakura: Boolean,
+        val hasMurasaki: Boolean = false,
         @Contextual val updateAt: Instant,
     )
 
@@ -92,6 +93,9 @@ class WebNovelEsDataSource(
 
                     WebNovelFilter.Translate.Sakura ->
                         mustQueries.add(ESQuery("term", JsonDsl().apply { put("hasSakura", true) }))
+
+                    WebNovelFilter.Translate.Murasaki ->
+                        mustQueries.add(ESQuery("term", JsonDsl().apply { put("hasMurasaki", true) }))
 
                     else -> Unit
                 }
@@ -190,6 +194,7 @@ class WebNovelEsDataSource(
                 visited = novel.visited.toInt(),
                 hasGpt = novel.gpt > 0,
                 hasSakura = novel.sakura > 0,
+                hasMurasaki = novel.murasaki > 0,
                 updateAt = novel.updateAt,
             ),
             refresh = Refresh.WaitFor,
