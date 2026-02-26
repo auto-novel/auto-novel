@@ -12,6 +12,7 @@ import infra.wenku.datasource.VolumeCreateException
 import infra.wenku.repository.WenkuNovelFavoredRepository
 import infra.wenku.repository.WenkuNovelMetadataRepository
 import infra.wenku.repository.WenkuNovelVolumeRepository
+import infra.web.repository.WebNovelMetadataRepository
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.resources.*
@@ -64,6 +65,9 @@ private class WenkuNovelRes {
             val translations: List<TranslatorId>,
             val filename: String,
         )
+
+        @Resource("/link-web")
+        class LinkWeb(val parent: Id)
     }
 }
 
@@ -127,6 +131,17 @@ fun Route.routeWenkuNovel() {
             val body = call.receive<Map<String, String>>()
             call.tryRespond {
                 service.updateGlossary(user = user, novelId = loc.parent.novelId, glossary = body)
+            }
+        }
+
+        put<WenkuNovelRes.Id.LinkWeb> { loc ->
+            @Serializable
+            class Body(val webIds: List<String>)
+
+            val user = call.user()
+            val body = call.receive<Body>()
+            call.tryRespond {
+                service.linkWeb(user = user, novelId = loc.parent.novelId, webIds = body.webIds)
             }
         }
 
@@ -237,6 +252,7 @@ class WenkuNovelApi(
     private val volumeRepo: WenkuNovelVolumeRepository,
     private val favoredRepo: WenkuNovelFavoredRepository,
     private val operationHistoryRepo: OperationHistoryRepository,
+    private val webMetadataRepo: WebNovelMetadataRepository,
 ) {
     suspend fun list(
         user: User?,
@@ -455,6 +471,48 @@ class WenkuNovelApi(
                 new = glossary,
             )
         )
+    }
+
+    suspend fun linkWeb(
+        user: User,
+        novelId: String,
+        webIds: List<String>,
+    ) {
+        user.requireNovelAccess()
+        val novel = metadataRepo.get(novelId)
+            ?: throwNovelNotFound()
+
+        val oldWebIds = novel.webIds.toSet()
+        val newWebIds = webIds.toSet()
+
+        val toAdd = newWebIds - oldWebIds
+        val toRemove = oldWebIds - newWebIds
+
+        for (webId in toAdd) {
+            val parts = webId.split("/", limit = 2)
+            if (parts.size != 2) continue
+            val (providerId, webNovelId) = parts
+
+            // 检查 web novel 是否存在
+            val webNovel = webMetadataRepo.get(providerId, webNovelId)
+                ?: continue
+
+            // 如果已关联到其他 wenku，先从旧 wenku 移除
+            if (webNovel.wenkuId != null && webNovel.wenkuId != novelId) {
+                metadataRepo.removeWebId(webNovel.wenkuId, webId)
+            }
+
+            webMetadataRepo.updateWenkuId(providerId, webNovelId, novelId)
+            metadataRepo.addWebId(novelId, webId)
+        }
+
+        for (webId in toRemove) {
+            val parts = webId.split("/", limit = 2)
+            if (parts.size != 2) continue
+            val (providerId, webNovelId) = parts
+            webMetadataRepo.updateWenkuId(providerId, webNovelId, null)
+            metadataRepo.removeWebId(novelId, webId)
+        }
     }
 
     private suspend fun validateNovelId(novelId: String) {
