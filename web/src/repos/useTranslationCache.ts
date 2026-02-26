@@ -11,12 +11,19 @@ interface TranslationCacheDBSchema extends DBSchema {
     key: string;
     value: { hash: string; text: string[] };
   };
+  'murasaki-seg-cache': {
+    key: string;
+    value: { hash: string; text: string[] };
+  };
 }
 
-type TranslationCacheType = 'gpt-seg-cache' | 'sakura-seg-cache';
+type TranslationCacheType =
+  | 'gpt-seg-cache'
+  | 'sakura-seg-cache'
+  | 'murasaki-seg-cache';
 
 const createDb = lazy(() => {
-  return openDB<TranslationCacheDBSchema>('test', 3, {
+  return openDB<TranslationCacheDBSchema>('test', 4, {
     upgrade(db, _oldVersion, _newVersion, _transaction, _event) {
       try {
         db.createObjectStore('gpt-seg-cache', { keyPath: 'hash' });
@@ -25,6 +32,11 @@ const createDb = lazy(() => {
       }
       try {
         db.createObjectStore('sakura-seg-cache', { keyPath: 'hash' });
+      } catch (e) {
+        console.error(e);
+      }
+      try {
+        db.createObjectStore('murasaki-seg-cache', { keyPath: 'hash' });
       } catch (e) {
         console.error(e);
       }

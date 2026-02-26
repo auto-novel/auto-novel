@@ -177,7 +177,7 @@ export interface SegmentCache {
 }
 
 export const createSegIndexedDbCache = async (
-  storeName: 'gpt-seg-cache' | 'sakura-seg-cache',
+  storeName: 'gpt-seg-cache' | 'sakura-seg-cache' | 'murasaki-seg-cache',
 ) => {
   return <SegmentCache>{
     cacheKey: (seg: string[], extra?: unknown): string =>
