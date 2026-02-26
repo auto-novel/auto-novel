@@ -191,6 +191,16 @@ const showDownloadModal = ref(false);
         </c-action-wrapper>
 
         <c-action-wrapper
+          title="使用半透明/浅色字体显示日文原文"
+          v-if="gnid.type === 'web' && setting.downloadFormat.type == 'epub'"
+        >
+          <c-radio-group
+            v-model:value="setting.downloadFormat.opacityOrColor"
+            :options="Setting.epubOpacityOrColorOptions"
+          />
+        </c-action-wrapper>
+
+        <c-action-wrapper
           v-if="gnid.type === 'web'"
           title="中文文件名"
           align="center"

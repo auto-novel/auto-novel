@@ -56,7 +56,7 @@ const files = computed(() => {
   const title =
     setting.value.downloadFilenameType === 'jp' ? titleJp : titleZh ?? titleJp;
 
-  const { mode, translationsMode, translations, type } =
+  const { mode, translationsMode, translations, type, opacityOrColor } =
     setting.value.downloadFormat;
 
   return {
@@ -65,6 +65,7 @@ const files = computed(() => {
       novelId,
       mode: 'jp',
       translationsMode,
+      opacityOrColor,
       translations: [],
       type,
       title,
@@ -74,6 +75,7 @@ const files = computed(() => {
       novelId,
       mode: mode,
       translationsMode,
+      opacityOrColor,
       translations,
       type,
       title,

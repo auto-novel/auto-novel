@@ -24,6 +24,7 @@ export interface Setting {
     translationsMode: 'parallel' | 'priority';
     translations: TranslatorId[];
     type: 'epub' | 'txt';
+    opacityOrColor: 'opacity' | 'color';
   };
   workspaceSound: boolean;
   paginationMode: 'pagination' | 'scroll';
@@ -59,6 +60,7 @@ export namespace Setting {
       translationsMode: 'priority',
       translations: ['sakura', 'gpt', 'youdao', 'baidu'],
       type: 'epub',
+      opacityOrColor: 'opacity',
     },
     workspaceSound: false,
     paginationMode: 'pagination',
@@ -110,6 +112,11 @@ export namespace Setting {
   export const downloadTypeOptions = [
     { label: 'EPUB', value: 'epub' },
     { label: 'TXT', value: 'txt' },
+  ];
+
+  export const epubOpacityOrColorOptions = [
+    { label: '半透明', value: 'opacity' },
+    { label: '浅色', value: 'color' },
   ];
 
   export const themeOptions = [
