@@ -9,13 +9,20 @@ import io.ktor.client.statement.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.toKotlinInstant
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.atomic.AtomicLong
 
+@Serializable
+data class UserProvidedData(
+    val metadata: RemoteNovelMetadata? = null,
+    val chapters: Map<String, RemoteChapter>? = null,
+)
+
+@Serializable
 data class RemoteNovelMetadata(
     val title: String,
     val authors: List<WebNovelAuthor>,
@@ -27,6 +34,7 @@ data class RemoteNovelMetadata(
     val introduction: String,
     val toc: List<TocItem>,
 ) {
+    @Serializable
     data class TocItem(
         val title: String,
         val chapterId: String? = null,
@@ -34,10 +42,12 @@ data class RemoteNovelMetadata(
     )
 }
 
+@Serializable
 data class RemoteChapter(
     val paragraphs: List<String>,
 )
 
+@Serializable
 data class RemoteNovelListItem(
     val novelId: String,
     val title: String,

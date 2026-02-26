@@ -10,6 +10,8 @@ import type {
   WebNovelOutlineDto,
 } from '@/model/WebNovel';
 import { client } from './client';
+import { Providers } from '@/domain/crawlers';
+import { type RemoteNovelMetadata } from '@/domain/crawlers/types';
 
 const listNovel = ({
   page,
@@ -53,13 +55,137 @@ const listRank = (providerId: string, params: { [key: string]: string }) =>
     })
     .json<Page<WebNovelOutlineDto>>();
 
-const getNovel = (providerId: string, novelId: string) =>
-  client.get(`novel/${providerId}/${novelId}`).json<WebNovelDto>();
+const getMetadataFromAddonOrNull = async (
+  providerId: string,
+  novelId: string,
+  ignoreRateLimit = false,
+): Promise<RemoteNovelMetadata | null> => {
+  if (!window.Addon) return null;
 
-const getChapter = (providerId: string, novelId: string, chapterId: string) =>
-  client
+  type LastAccessData = Record<string, LastAccessItem>;
+  type LastAccessItem = {
+    time: Date;
+    data: object | null;
+  };
+
+  const primaryKey = `addon-getMetadata-lastAccess`;
+  const key = `${providerId}-${novelId}`;
+
+  const empty: LastAccessItem = {
+    time: new Date(0),
+    data: null,
+  };
+
+  const lastAccessData: LastAccessData = (() => {
+    if (ignoreRateLimit) return {};
+
+    const _lastAccessData = localStorage.getItem(primaryKey);
+    if (!_lastAccessData) {
+      localStorage.setItem(primaryKey, JSON.stringify(<LastAccessData>{}));
+      return {};
+    }
+
+    const lastAccessData = JSON.parse(_lastAccessData) as LastAccessData;
+    return lastAccessData;
+  })();
+
+  const lastAccess = lastAccessData[key] ?? empty;
+
+  // NOTE(kuriko): only access metadata within 1 hour
+  if (
+    new Date().getTime() - new Date(lastAccess.time).getTime() <
+    1000 * 60 * 60
+  ) {
+    return null; // Use metadata from server
+  }
+
+  const provider = Providers[providerId];
+  const metadata = await provider?.getMetadata(novelId);
+  lastAccessData[key] = {
+    time: new Date(),
+    data: metadata,
+  };
+  localStorage.setItem(primaryKey, JSON.stringify(lastAccessData));
+  return metadata;
+};
+
+const getNovel = async (providerId: string, novelId: string) => {
+  try {
+    if (window.Addon) {
+      const metadata = await getMetadataFromAddonOrNull(providerId, novelId);
+      if (metadata !== null) {
+        const resp = await client.post(
+          `novel/${providerId}/${novelId}/upload/metadata`,
+          { json: metadata },
+        );
+        const ret = await resp.json<WebNovelDto>();
+        return ret;
+      }
+    }
+  } catch (e) {
+    console.debug(`Error: ${e}, fallback to server mode`);
+  }
+
+  // 有任何问题，则 fallback 到直接从服务器获取。
+  return client.get(`novel/${providerId}/${novelId}`).json<WebNovelDto>();
+};
+
+const uploadChapters = async (providerId: string, novelId: string) => {
+  if (!window.Addon) return;
+  const metadata = await getMetadataFromAddonOrNull(providerId, novelId, true);
+  if (!metadata) return null;
+
+  const provider = Providers[providerId];
+  const promises = metadata.toc
+    .filter((tocItem) => tocItem.chapterId != null)
+    .map(async (tocItem) => [
+      tocItem.chapterId,
+      await provider?.getChapter(novelId, tocItem.chapterId!),
+    ]);
+
+  const chapterEntries = await Promise.all(promises);
+  const chapterEntriesNotNull = chapterEntries.filter(
+    ([, chapter]) => chapter != null,
+  );
+  const chapters = Object.fromEntries(chapterEntriesNotNull);
+
+  return client.post(`novel/${providerId}/${novelId}/upload/chapters`, {
+    json: {
+      metadata,
+      chapters,
+    },
+  });
+};
+
+const getChapter = async (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+) => {
+  // FIXME(kuriko):
+  // 这个地方有点麻烦，按逻辑来说，章节不存在的话，应该是 server 或者 addon 主动爬取章节。
+  // 但是目前 getChapter 会在 server 那边自动爬取内容，相当于 get 是有副作用的。
+  // 或者 Addon 的更新只能由用户手动触发？
+
+  // if (window.Addon) {
+  //   const metadata = await getMetadataFromAddonOrNull(providerId, novelId);
+  //   if (!metadata) return;
+
+  //   const provider = Providers[providerId];
+  //   const chapter = await provider?.getChapter(novelId, chapterId);
+  //   if (chapter) {
+  //     console.debug(`Upload Chapter from Addon: ${chapterId});`)
+  //     await client.post(`novel/${providerId}/${novelId}/upload/chapters`, { json: {
+  //       metadata,
+  //       chapters: { chapterId: chapter!},
+  //     }});
+  //   }
+  // }
+
+  return client
     .get(`novel/${providerId}/${novelId}/chapter/${chapterId}`)
     .json<WebNovelChapterDto>();
+};
 
 const updateNovel = (
   providerId: string,
@@ -88,8 +214,16 @@ const createTranslationApi = (
 ) => {
   const endpointV2 = `novel/${providerId}/${novelId}/translate-v2/${translatorId}`;
 
-  const getTranslateTask = () =>
-    client.get(endpointV2, { signal }).json<WebTranslateTask>();
+  const getTranslateTask = async () => {
+    // TODO(kuriko): add a trigger for uploadChapters here?
+    try {
+      await uploadChapters(providerId, novelId);
+    } catch (e) {
+      console.debug(`Error: ${e}, fallback to server mode`);
+    }
+
+    return client.get(endpointV2, { signal }).json<WebTranslateTask>();
+  };
 
   const getChapterTranslateTask = (chapterId: string) =>
     client
@@ -178,6 +312,8 @@ export const WebNovelApi = {
 
   updateNovel,
   updateGlossary,
+
+  uploadChapters,
 
   createTranslationApi,
 

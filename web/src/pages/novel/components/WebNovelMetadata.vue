@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { BookOutlined, EditNoteOutlined } from '@vicons/material';
+import { BookOutlined, EditNoteOutlined, WindowFilled } from '@vicons/material';
 import { NA, NText } from 'naive-ui';
 
 import type { WebNovelDto } from '@/model/WebNovel';
@@ -7,6 +7,7 @@ import { useWhoamiStore } from '@/stores';
 import { WebUtil } from '@/util/web';
 
 import { useIsWideScreen } from '@/pages/util';
+import { WebNovelApi } from '@/api/novel/WebNovelApi';
 
 const props = defineProps<{
   providerId: string;
@@ -79,6 +80,20 @@ const latestChapterCreateAt = computed(() => {
   if (createAtList.length === 0) return undefined;
   else return Math.max(...createAtList);
 });
+
+const isAddonExists = computed(() => {
+  return window.Addon !== null;
+});
+
+const message = useMessage();
+const update = async () => {
+  try {
+    await WebNovelApi.uploadChapters(props.providerId, props.novelId);
+    message.info(`小说元数据和章节已更新`);
+  } catch (e) {
+    message.error(`更新小说元数据和章节失败: ${e}`);
+  }
+};
 </script>
 
 <template>
@@ -118,6 +133,13 @@ const latestChapterCreateAt = computed(() => {
     <favorite-button
       v-model:favored="novel.favored"
       :novel="{ type: 'web', providerId, novelId }"
+    />
+
+    <c-button
+      v-show="isAddonExists"
+      label="更新 "
+      :icon="EditNoteOutlined"
+      @click="update"
     />
 
     <router-link v-if="novel.wenkuId" :to="`/wenku/${novel.wenkuId}`">
