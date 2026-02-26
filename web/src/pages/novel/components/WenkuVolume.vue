@@ -35,6 +35,11 @@ const startTranslateTask = (translatorId: 'baidu' | 'youdao') => {
   );
 };
 
+const hasTranslation = computed(() => {
+  const { translations } = setting.value.downloadFormat;
+  return translations.some((t) => (volume[t] ?? 0) > 0);
+});
+
 const file = computed(() => {
   const { mode, translationsMode, translations } = setting.value.downloadFormat;
 
@@ -129,7 +134,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
       label="下载"
       :icon="FileDownloadOutlined"
       tag="a"
-      :href="file.url"
+      :href="hasTranslation ? file.url : undefined"
       :download="file.filename"
       target="_blank"
     />
