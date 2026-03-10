@@ -18,6 +18,7 @@ import { doAction, useIsWideScreen } from '@/pages/util';
 import { useWhoamiStore } from '@/stores';
 import { RegexUtil, delay } from '@/util';
 import { runCatching } from '@/util/result';
+import { SmartImportResult } from '@/domain/smart-import/SmartImport';
 
 const { novelId } = defineProps<{
   novelId: string | undefined;
@@ -197,7 +198,7 @@ const populateNovelFromAmazon = async (
     duration: 0,
   });
 
-  await smartImport(
+  const smartImportResult = await smartImport(
     urlOrQuery.trim(),
     formValue.value.volumes,
     forcePopulateVolumes,
@@ -239,9 +240,11 @@ const populateNovelFromAmazon = async (
     },
   );
 
-  formValue.value.cover = formValue.value.volumes[0]?.cover;
-  msgReactive.content = msgReactive.content ?? '智能导入完成';
-  msgReactive.type = 'info';
+  if (smartImportResult === SmartImportResult.Success) {
+    formValue.value.cover = formValue.value.volumes[0]?.cover;
+    msgReactive.content = '智能导入完成';
+    msgReactive.type = 'info';
+  }
   delay(3000).then(() => msgReactive.destroy());
 };
 
