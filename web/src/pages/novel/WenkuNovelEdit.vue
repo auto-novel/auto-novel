@@ -240,7 +240,7 @@ const populateNovelFromAmazon = async (
   );
 
   formValue.value.cover = formValue.value.volumes[0]?.cover;
-  msgReactive.content = '智能导入完成';
+  msgReactive.content = msgReactive.content ?? '智能导入完成';
   msgReactive.type = 'info';
   delay(3000).then(() => msgReactive.destroy());
 };

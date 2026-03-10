@@ -203,7 +203,7 @@ const getVolume = async (asin: string) => {
     asin,
     title: realTitle,
     cover: prettyCover(cover),
-    coverHires: prettyCover(coverHires),
+    coverHires: coverHires ? prettyCover(coverHires) : null,
     publisher,
     imprint,
     publishAt,
