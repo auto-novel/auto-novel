@@ -78,22 +78,10 @@ const parseProductSet = (doc: Document) => {
 };
 
 const parseProductVolume = (doc: Document) => {
-  const tryParse = <T>(taskName: string, fn: () => T): T => {
-    try {
-      return fn();
-    } catch (error) {
-      throw new Error(`解析错误：${taskName} 过程失败`);
-    }
-  };
+  const title = doc.getElementById('productTitle')?.textContent;
+  if (!title) throw new Error('解析错误：未找到标题');
 
-  const title = tryParse(
-    '标题',
-    () => doc.getElementById('productTitle')!.textContent!,
-  );
-  const subtitle = tryParse(
-    '副标题',
-    () => doc.getElementById('productSubtitle')?.textContent ?? '',
-  );
+  const subtitle = doc.getElementById('productSubtitle')?.textContent ?? '';
   const r18 = subtitle.includes('成人') || subtitle.includes('アダルト');
 
   const { authors, artists } = parseAuthor(
@@ -108,21 +96,13 @@ const parseProductVolume = (doc: Document) => {
     .map((el) => el.innerHTML.replaceAll('<br>', '\n'))
     .join('\n');
 
-  const cover = tryParse(
-    '封面',
-    () => doc.getElementById('landingImage')!.getAttribute('src')!,
-  );
+  const cover = doc.getElementById('landingImage')?.getAttribute('src');
+  if (!cover) throw new Error('解析错误：未找到封面');
 
-  const coverHires = tryParse('高分辨率封面', () => {
-    try {
-      return doc
-        .querySelector('img[data-old-hires]')!
-        .getAttribute('data-old-hires')!;
-    } catch (e) {
-      console.warn('未找到高分辨率封面');
-      return null;
-    }
-  });
+  const coverHires =
+    doc.querySelector('img[data-old-hires]')?.getAttribute('data-old-hires') ??
+    '';
+  if (!coverHires) console.warn('解析错误：未找到高分辨率封面');
 
   const getElementContain = (tag: string, content: string) => {
     return doc.evaluate(

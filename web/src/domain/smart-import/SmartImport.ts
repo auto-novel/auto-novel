@@ -203,24 +203,19 @@ const getVolume = async (asin: string) => {
     asin,
     title: realTitle,
     cover: prettyCover(cover),
-    coverHires: coverHires ? prettyCover(coverHires) : null,
+    coverHires: coverHires ? prettyCover(coverHires) : undefined,
     publisher,
     imprint,
     publishAt,
   };
 };
 
-export enum SmartImportResult {
-  Success,
-  Failed,
-}
-
 export const smartImport = async (
   urlOrQuery: string,
   volumes: WenkuVolumeDto[],
   forcePopulateVolumes: boolean,
   callback: SmartImportCallback,
-): Promise<SmartImportResult> => {
+) => {
   const { log, populateNovel, populateVolume } = callback;
 
   if (urlOrQuery.length > 0) {
@@ -235,8 +230,7 @@ export const smartImport = async (
       }
     } catch (e) {
       log(`导入小说失败：${e}`);
-      console.error('导入小说失败：', e);
-      return SmartImportResult.Failed;
+      return false;
     }
     const volumesNew = novel.volumes.filter(
       (newV) => !volumes.some((oldV) => oldV.asin === newV.asin),
@@ -284,5 +278,5 @@ export const smartImport = async (
   );
 
   log('\n结束');
-  return SmartImportResult.Success;
+  return true;
 };
