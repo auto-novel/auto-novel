@@ -87,14 +87,15 @@ class WebNovelHttpDataSource(
         }
     }
 
-    val providers = mapOf(
-        Alphapolis.id to Alphapolis(client),
-        Hameln.id to Hameln(client, useProxy = hamelnToken != null),
-        Kakuyomu.id to Kakuyomu(client),
-        Novelup.id to Novelup(client),
-        Pixiv.id to Pixiv(client),
-        Syosetu.id to Syosetu(client),
-    )
+    val providers = listOf(
+        Alphapolis.id,
+        Hameln.id,
+        Kakuyomu.id,
+        Novelup.id,
+        Pixiv.id,
+        Syosetu.id
+    ).associateWith { External(it, client) };
+
     val limiters = mapOf(
         // Alphapolis.id to TokenBucketRateLimiter(20, 0.1),
         Hameln.id to TokenBucketRateLimiter(20, 0.1),
