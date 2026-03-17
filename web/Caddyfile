@@ -19,7 +19,7 @@
 	}
 
 	handle_path /api* {
-		reverse_proxy server:8081
+		reverse_proxy api:8081
 	}
 
 	handle_path /files-temp* {

@@ -1,5 +1,6 @@
 import { AmazonApi } from '@/api';
 import { extractAsin } from './Common';
+import { resolveKindleAsin } from './ApiGetProduct';
 
 const parseSerial = (doc: Document) => {
   const authorsSet = new Set<string>();
@@ -46,5 +47,15 @@ const parseSerial = (doc: Document) => {
   return { authors, artists, volumes };
 };
 
-export const getSerial = (asin: string, total: string) =>
-  AmazonApi.getSerial(asin, total).then(parseSerial);
+export const getSerial = async (asin: string, total: string) => {
+  const result = await AmazonApi.getSerial(asin, total).then(parseSerial);
+  result.volumes = await Promise.all(
+    result.volumes.map(async (v) => {
+      if (!v.asin.startsWith('B')) {
+        return { ...v, asin: await resolveKindleAsin(v.asin) };
+      }
+      return v;
+    }),
+  );
+  return result;
+};

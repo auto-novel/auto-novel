@@ -1,44 +1,54 @@
-# 贡献代码
+# 贡献指南
 
-感谢您有兴趣为这个项目做出贡献！为了高效协作，请遵循以下规范。
+欢迎为本项目贡献！为了确保高效协作，我们有以下建议。
 
-- 在编写代码前，请先通过 Issue 或群组讨论你的变更计划，确保与现有开发方向一致。
-- 提交 Pull Request 时，请保持内容精简，每次聚焦一个独立的修改点，以便快速检视和合入。
-- 如果对当前代码设计有疑问，可以在群组里 @FishHawk 提问。
-- 如果使用 AI 辅助编写，请务必自己检视一遍。
+- 如果您计划实现较大的功能或变更，请先通过 Issue 或聊天群联系管理员先行讨论。
+- 请保持 Pull Request 的内容精简，聚焦于一个独立的修改点，以便快速检视和合入。
 
-## 如何参与前端开发
+## 以调试模式启动服务
 
-网站基于 Vue3 + TypeScript + Vite + [Naive ui](https://www.naiveui.com/zh-CN) 开发。
-
-首先准备开发环境：
+在开发前，建议执行以下命令，以调试模式启动服务。
 
 ```bash
-git clone git@github.com:auto-novel/auto-novel.git
+# ElasticSearch只能非root用户运行，需要专门配置权限
+mkdir -p -m 777 ./data/es/data ./data/es/plugins
+
+export COMPOSE_FILE="docker-compose.yml:docker-compose.debug.yml"
+docker compose up -d
+```
+
+服务启动后，可通过以下地址访问：
+
+- Web: localhost:5000
+- Api: localhost:5000/api
+- Mongo: localhost:5001
+- ElasticSearch: localhost:5002
+- Redis: localhost:5003
+
+## 前端开发
+
+基于 Vue3 / TypeScript / Vite / [Naive UI](https://www.naiveui.com/zh-CN) 构建。
+
+```bash
 cd web
-pnpm install --frozen-lockfile # 安装依赖
-pnpm prepare                   # 设置Git钩子
+pnpm install
+pnpm prepare
+
+pnpm dev     # 启动开发服务器
+pnpm build   # 编译项目
 ```
 
-然后根据你的需要，选择合适的方式启动开发服务器：
+启动时可根据需要连接不同的后端服务：
 
-```bash
-pnpm dev        # 启动开发服务器，连接到机翻站 生产环境 后端服务器
-pnpm dev:local  # 启动开发服务器，连接到 本地启动 的后端服务器，http://localhost:8081
-pnpm dev --host # 启动开发服务器，连接到机翻站 生产环境 后端服务器，同时允许局域网访问，支持使用手机访问调试
-```
+- `pnpm dev` 或 `pnpm dev:remote`:对接线上后端 API，适合纯前端修改，请勿污染线上数据，默认禁用翻译上传。
+- `pnpm dev:local`:对接本地 Docker 后端 API，需修改后端数据时使用。
+- `pnpm dev:native`:对接本地原生启动的后端 API，用于前后端联调。
 
-注意，如果开发服务器连接到机翻站**生产环境**后端，请避免在开发过程中污染网站数据库。出于安全考虑，开发环境中屏蔽了上传章节翻译请求。
+若需要在手机等设备调试，可添加 `--host` 参数启动服务。
 
-## 如何参与后端开发
+## 后端开发
 
-后端基于 JVM17 + Kotlin + Ktor 开发，推荐使用 IntelliJ IDEA 打开项目。
-
-如果你的修改涉及数据库，你需要自己[部署数据库](https://github.com/auto-novel/auto-novel/blob/main/README.md#部署)并设置环境变量：
-
-```bash
-DB_HOST_TEST=127.0.0.1 # 数据库 IP 地址
-```
+基于 JVM17 / Kotlin / Ktor 开发，推荐使用 IntelliJ IDEA 打开项目。
 
 如果你的修改不涉及 Http API，可以使用 kotest 编写单元测试调试，推荐安装 kotest 插件。
 

@@ -28,7 +28,7 @@ const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
 const listOptions = getWebFavoredListOptions(
-  whoami.value.allowNsfw,
+  whoami.value.hasNsfwAccess,
   setting.value.favoriteCreateTimeFirst,
 );
 

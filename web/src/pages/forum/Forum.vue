@@ -91,7 +91,7 @@ const deleteArticle = (article: ArticleSimplified) =>
   <div class="layout-content">
     <n-h1>论坛</n-h1>
 
-    <router-link to="/forum-edit">
+    <router-link v-if="whoami.hasForumAccess" to="/forum-edit">
       <c-button
         label="发布文章"
         :icon="PlusOutlined"

@@ -32,7 +32,11 @@ const setIndentSize = (diff: number) => {
       style="width: 100%"
     >
       <n-tab-pane name="signin" tab="内容">
-        <n-flex vertical size="large" style="width: 100%; padding: 20px">
+        <n-flex
+          vertical
+          size="large"
+          style="width: 100%; padding: 20px; box-sizing: border-box"
+        >
           <c-action-wrapper title="语言">
             <c-radio-group
               v-model:value="readerSetting.mode"
@@ -92,7 +96,7 @@ const setIndentSize = (diff: number) => {
               <n-switch
                 :value="readerSetting.indentSize !== undefined"
                 @update:value="
-                  (v) => (readerSetting.indentSize = v ? 2 : undefined)
+                  (v: any) => (readerSetting.indentSize = v ? 2 : undefined)
                 "
                 size="small"
               />

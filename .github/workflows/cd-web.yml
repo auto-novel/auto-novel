@@ -35,7 +35,8 @@ jobs:
 
       - uses: docker/build-push-action@v5
         with:
-          context: web
+          context: .
+          file: web/Dockerfile
           push: true
           provenance: false
           tags: ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}:latest

@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { formatError } from '@/api';
-import { WebNovelRepo } from '@/repos';
-import { useIsWideScreen } from '@/pages/util';
 import { computedAsync } from '@vueuse/core';
+
+import { formatError } from '@/api';
+import { useIsWideScreen } from '@/pages/util';
+import { WebNovelRepo } from '@/repos';
 
 const { providerId, novelId } = defineProps<{
   providerId: string;
@@ -51,11 +52,6 @@ watch(formatedError, async (error) => {
       />
     </template>
 
-    <n-result
-      v-else-if="error"
-      status="error"
-      title="加载错误"
-      :description="formatedError"
-    />
+    <CResultX v-else :error="error" title="加载错误" />
   </div>
 </template>

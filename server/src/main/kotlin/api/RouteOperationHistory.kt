@@ -5,7 +5,6 @@ import infra.common.Page
 import infra.oplog.OperationHistoryRepository
 import infra.oplog.Operation
 import infra.user.UserOutline
-import infra.user.UserRole
 import infra.web.WebNovelTocItem
 import io.ktor.resources.*
 import io.ktor.server.resources.*
@@ -110,7 +109,7 @@ class OperationHistoryApi(
         user: User,
         id: String,
     ) {
-        user.shouldBeAtLeast(UserRole.Admin)
+        user.requireAdmin()
         operationHistoryRepo.delete(id)
     }
 
@@ -158,7 +157,7 @@ class OperationHistoryApi(
         user: User,
         id: String,
     ) {
-        user.shouldBeAtLeast(UserRole.Admin)
+        user.requireAdmin()
         operationHistoryRepo.deleteMergeHistory(id)
     }
 }

@@ -56,6 +56,12 @@ private class WebNovelRes {
 
     @Resource("/{providerId}/{novelId}")
     class Id(val parent: WebNovelRes, val providerId: String, val novelId: String) {
+        @Resource("/translation")
+        class Translation(val parent: Id)
+
+        @Resource("/wenku-id")
+        class WenkuId(val parent: Id)
+
         @Resource("/glossary")
         class Glossary(val parent: Id)
 
@@ -169,29 +175,46 @@ fun Route.routeWebNovel() {
 
     authenticateDb {
         // Update
-        post<WebNovelRes.Id> { loc ->
+        put<WebNovelRes.Id.Translation> { loc ->
             @Serializable
             class Body(
                 val title: String,
                 val introduction: String,
-                val wenkuId: String,
                 val toc: Map<String, String>,
             )
 
             val user = call.user()
             val body = call.receive<Body>()
             call.tryRespond {
-                service.updateMetadata(
+                service.updateMetadataTranslation(
                     user = user,
-                    providerId = loc.providerId,
-                    novelId = loc.novelId,
+                    providerId = loc.parent.providerId,
+                    novelId = loc.parent.novelId,
                     title = body.title,
                     introduction = body.introduction,
-                    wenkuId = body.wenkuId,
                     toc = body.toc,
                 )
             }
         }
+
+        put<WebNovelRes.Id.WenkuId> { loc ->
+            @Serializable
+            class Body(
+                val wenkuId: String,
+            )
+
+            val user = call.user()
+            val body = call.receive<Body>()
+            call.tryRespond {
+                service.updateMetadataWenkuId(
+                    user = user,
+                    providerId = loc.parent.providerId,
+                    novelId = loc.parent.novelId,
+                    wenkuId = body.wenkuId,
+                )
+            }
+        }
+
         put<WebNovelRes.Id.Glossary> { loc ->
             val user = call.user()
             val body = call.receive<Map<String, String>>()
@@ -329,6 +352,7 @@ private val disgustingFascistNovelList = mapOf(
         "n9603hk",
         "n5149kv",
         "n3756im",
+        "n4899kw",
     ),
     Kakuyomu.id to listOf(
         "16816927860373250234",
@@ -338,6 +362,8 @@ private val disgustingFascistNovelList = mapOf(
         "16817330661737648260",
         "16818622170290655590",
         "16818093088081078289",
+        "16818093081362454969",
+        "16818792437522674922",
     ),
     Hameln.id to listOf(
         "291561",
@@ -365,9 +391,9 @@ class WebNovelApi(
     private val metadataRepo: WebNovelMetadataRepository,
     private val chapterRepo: WebNovelChapterRepository,
     private val fileRepo: WebNovelFileRepository,
-    private val userFavoredRepo: UserFavoredRepository,
     private val favoredRepo: WebNovelFavoredRepository,
     private val historyRepo: WebNovelReadHistoryRepository,
+    private val oplogRepo: WebNovelOplogRepository,
     private val wenkuMetadataRepo: WenkuNovelMetadataRepository,
     private val operationHistoryRepo: OperationHistoryRepository,
 ) {
@@ -384,17 +410,12 @@ class WebNovelApi(
     ): Page<WebNovelOutlineDto> {
         validatePageNumber(page)
         validatePageSize(pageSize)
+        if (filterLevel.isNsfw) user.requireNsfwAccess()
 
         val filterProviderParsed = if (filterProvider.isEmpty()) {
             return emptyPage()
         } else {
             filterProvider.split(",")
-        }
-
-        val filterLevelAllowed = if (user != null && user.isOldAss()) {
-            filterLevel
-        } else {
-            WebNovelFilter.Level.一般向
         }
 
         return metadataRepo
@@ -403,7 +424,7 @@ class WebNovelApi(
                 userQuery = queryString,
                 filterProvider = filterProviderParsed,
                 filterType = filterType,
-                filterLevel = filterLevelAllowed,
+                filterLevel = filterLevel,
                 filterTranslate = filterTranslate,
                 filterSort = filterSort,
                 page = page,
@@ -576,20 +597,54 @@ class WebNovelApi(
     }
 
     // Update
-    suspend fun updateMetadata(
+    suspend fun updateMetadataWenkuId(
+        user: User,
+        providerId: String,
+        novelId: String,
+        wenkuId: String,
+    ) {
+        user.requireNovelAccess()
+
+        if (wenkuId.isNotBlank() && wenkuMetadataRepo.get(wenkuId) == null) {
+            throwNotFound("文库版不存在")
+        }
+
+        val metadata = metadataRepo.get(providerId, novelId)
+            ?: throwNovelNotFound()
+
+        val originWenkuId = metadata.wenkuId
+        val targetWenkuId = wenkuId.takeIf { it.isNotBlank() }
+        if (originWenkuId == targetWenkuId) return
+
+        metadataRepo.updateWenkuId(
+            providerId = providerId,
+            novelId = novelId,
+            wenkuId = wenkuId.takeIf { it.isNotBlank() },
+        )
+        val webId = "${providerId}/${novelId}"
+        if (originWenkuId != null) {
+            wenkuMetadataRepo.removeWebId(originWenkuId, webId)
+        }
+        if (targetWenkuId != null) {
+            wenkuMetadataRepo.addWebId(targetWenkuId, webId)
+        }
+        oplogRepo.create(
+            providerId = providerId,
+            novelId = novelId,
+            operator = user.username,
+            operation = WebNovelOperation.UpdateWenkuId,
+        )
+    }
+
+    suspend fun updateMetadataTranslation(
         user: User,
         providerId: String,
         novelId: String,
         title: String,
         introduction: String,
-        wenkuId: String,
         toc: Map<String, String>,
     ) {
-        user.shouldBeOldAss()
-
-        if (wenkuId.isNotBlank() && wenkuMetadataRepo.get(wenkuId) == null) {
-            throwNotFound("文库版不存在")
-        }
+        user.requireNovelAccess()
 
         val metadata = metadataRepo.get(providerId, novelId)
             ?: throwNovelNotFound()
@@ -610,23 +665,6 @@ class WebNovelApi(
             }
         }
 
-        val originWenkuId = metadata.wenkuId
-        val targetWenkuId = wenkuId.takeIf { it.isNotBlank() }
-        if (originWenkuId != targetWenkuId) {
-            metadataRepo.updateWenkuId(
-                providerId = providerId,
-                novelId = novelId,
-                wenkuId = wenkuId.takeIf { it.isNotBlank() },
-            )
-            val webId = "${providerId}/${novelId}"
-            if (originWenkuId != null) {
-                wenkuMetadataRepo.removeWebId(originWenkuId, webId)
-            }
-            if (targetWenkuId != null) {
-                wenkuMetadataRepo.addWebId(targetWenkuId, webId)
-            }
-        }
-
         metadataRepo.updateTranslation(
             providerId = providerId,
             novelId = novelId,
@@ -634,22 +672,11 @@ class WebNovelApi(
             introductionZh = introduction.takeIf { it.isNotBlank() },
             tocZh = tocZh,
         )
-
-        operationHistoryRepo.create(
-            operator = ObjectId(user.id),
-            operation = Operation.WebEdit(
-                providerId = providerId,
-                novelId = novelId,
-                old = Operation.WebEdit.Data(
-                    titleZh = metadata.titleZh,
-                    introductionZh = metadata.introductionZh,
-                ),
-                new = Operation.WebEdit.Data(
-                    titleZh = title,
-                    introductionZh = introduction,
-                ),
-                toc = tocRecord,
-            )
+        oplogRepo.create(
+            providerId = providerId,
+            novelId = novelId,
+            operator = user.username,
+            operation = WebNovelOperation.UpdateTranslation,
         )
     }
 
@@ -659,7 +686,7 @@ class WebNovelApi(
         novelId: String,
         glossary: Map<String, String>,
     ) {
-        user.shouldBeOldAss()
+        user.requireNovelAccess()
         val novel = metadataRepo.get(providerId, novelId)
             ?: throwNovelNotFound()
         if (novel.glossary == glossary)

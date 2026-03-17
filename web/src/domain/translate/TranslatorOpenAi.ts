@@ -222,7 +222,7 @@ export class OpenAiTranslator implements SegmentTranslator {
             }
             return { message: e.message };
           } else {
-            throw e;
+            return { message: e instanceof Error ? e.message : String(e) };
           }
         });
     } else {
@@ -291,7 +291,7 @@ export class OpenAiTranslator implements SegmentTranslator {
       return;
     } else {
       this.log('发生错误：' + message + '，退出');
-      throw 'quit';
+      throw new Error('quit');
     }
   }
 }

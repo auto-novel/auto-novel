@@ -1,0 +1,53 @@
+{
+  "name": "@auto-novel/crawler",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib dev --watch",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@rslib/core": "^0.18.2",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^4.0.6"
+  },
+  "dependencies": {
+    "async-mutex": "^0.5.0",
+    "cheerio": "^1.1.2",
+    "commander": "^14.0.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "fp-ts": "^2.16.11",
+    "impit": "^0.7.1",
+    "ky": "^1.14.0",
+    "lodash-es": "^4.17.21",
+    "p-queue": "^9.0.0",
+    "tough-cookie": "^6.0.0",
+    "zod": "^4.1.12"
+  }
+}

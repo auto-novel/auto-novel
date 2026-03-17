@@ -73,7 +73,6 @@ export class Kakuyomu implements WebNovelProvider<Options> {
       range: keyof typeof rangeIds;
       status: keyof typeof statusIds;
     };
-    console.log(params);
     const genre = genreIds[params.genre];
     const range = rangeIds[params.range];
     const status = statusIds[params.status];

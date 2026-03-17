@@ -1,4 +1,4 @@
-# 轻小说机翻机器人
+# AutoNovel 轻小说机翻机器人
 
 [![GPL-3.0](https://img.shields.io/github/license/auto-novel/auto-novel)](https://github.com/auto-novel/auto-novel#license)
 [![cd-web](https://github.com/auto-novel/auto-novel/actions/workflows/cd-web.yml/badge.svg)](https://github.com/auto-novel/auto-novel/actions/workflows/cd-web.yml)
@@ -6,51 +6,37 @@
 
 > 重建巴别塔！！
 
-[轻小说机翻机器人](https://books.fishhawk.top/)是一个自动生成轻小说机翻并分享的网站。在这里，你可以浏览日文网络小说/文库小说，或者上传你自己的 EPUB/TXT 文件，然后生成机翻版本。
-
-## 功能
-
-- 浏览日本网络小说，支持的网站有：[Kakuyomu](https://kakuyomu.jp/)、[小説家になろう](https://syosetu.com/)、[Novelup](https://novelup.plus/)、[Hameln](https://syosetu.org/)、[Pixiv](https://www.pixiv.net/)、[Alphapolis](https://www.alphapolis.co.jp/)。
-- 生成多种机翻，支持的翻译器有：百度、有道、OpenAI-like API（例如 DeepSeek API）、[Sakura](https://huggingface.co/SakuraLLM/Sakura-14B-Qwen2.5-v1.0-GGUF)。
-- 支持术语表。
-- 支持多种格式，包括日文、中文以及中日对比。
-- 支持生成 EPUB 和 TXT 文件。
-- 支持翻译 EPUB 和 TXT 文件。
-- 支持在线阅读。
+[轻小说机翻机器人](https://n.novelia.top/)是一个自动生成轻小说机翻并分享的网站。
 
 ## 贡献
 
-请参考 [CONTRIBUTING.md](https://github.com/auto-novel/auto-novel/blob/main/CONTRIBUTING.md)
-
-<a href="https://next.ossinsight.io/widgets/official/compose-recent-top-contributors?repo_id=559577341" target="_blank" style="display: block" align="left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-recent-top-contributors/thumbnail.png?repo_id=559577341&image_size=auto&color_scheme=dark" width="280">
-    <img alt="Top Contributors of ant-design/ant-design - Last 28 days" src="https://next.ossinsight.io/widgets/official/compose-recent-top-contributors/thumbnail.png?repo_id=559577341&image_size=auto&color_scheme=light" width="280">
-  </picture>
-</a>
+请务必在编写代码前阅读[贡献指南](https://github.com/auto-novel/auto-novel/blob/main/CONTRIBUTING.md)，感谢所有为本项目做出贡献的人们！
 
 ## 部署
 
 > [!WARNING]
 > 注意：本项目并不是为了个人部署设计的，不保证所有功能可用和前向兼容。
 
-下载项目：
-
 ```bash
-> git clone https://github.com/auto-novel/auto-novel.git
-> cd auto-novel
+# 1. 克隆仓库
+git clone https://github.com/auto-novel/auto-novel.git
+cd auto-novel
+
+# 2. 生成环境变量配置
+cat > .env << EOF
+HTTPS_PROXY=              # web 小说代理，可以为空
+PIXIV_COOKIE_PHPSESSID=   # Pixiv Cookie，用于爬取P站小说，可以为空
+
+# 以下字段个人部署不需要填写
+ACCESS_TOKEN_SECRET=
+MAILGUN_API_KEY=
+MAILGUN_API_URL=https://api.eu.mailgun.net/v3/verify.fishhawk.top/messages
+MAILGUN_FROM_EMAIL=postmaster@verify.fishhawk.top
+EOF
+
+# 3. 启动服务
+mkdir -p -m 777 ./data/es/data ./data/es/plugins
+docker compose up -d
 ```
 
-创建并编辑 `.env` 文件，内容如下:
-
-```bash
-DATA_PATH=./data                      # 数据的存储位置
-HTTPS_PROXY=https://127.0.0.1:7890    # web 小说代理，可以为空
-PIXIV_COOKIE_PHPSESSID=               # Pixiv cookies，不使用 Pixiv 可以不填
-```
-
-打开 `docker-compose.yml` 文件，酌情修改。
-
-运行 `docker compose up [-d]` (`-d` 为后台运行)。
-
-访问 `http://localhost` 即可。
+启动后，访问 http://localhost 即可。

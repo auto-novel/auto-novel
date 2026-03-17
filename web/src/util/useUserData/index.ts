@@ -39,11 +39,13 @@ function parseJwt(token: string): UserProfile {
   };
 }
 
-function useUserDataWithoutAuth(app: string) {
+function useUserDataWithoutAuth(_app: string) {
+  const noAuthToken =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiLmnKzlnLDnlKjmiLciLCJyb2xlIjoiYWRtaW4iLCJjcmF0IjowLCJpYXQiOjB9.U6CwIExYZE7ls8jNeMPCkV8r2h6lOj6F7b3wJ_Ja5iY';
   const userData = ref<UserData>({
     profile: {
-      token: '',
-      username: 'user',
+      token: noAuthToken,
+      username: '本地用户',
       role: 'admin',
       issuedAt: 0,
       createdAt: 0,
@@ -120,7 +122,8 @@ function useUserDataWithAuth(app: string) {
 }
 
 export function useUserData(app: string) {
-  if (import.meta.env.VITE_NO_AUTH === 'true') {
+  const mode = import.meta.env.VITE_API_MODE;
+  if (mode === 'local' || mode === 'native') {
     return useUserDataWithoutAuth(app);
   } else {
     return useUserDataWithAuth(app);

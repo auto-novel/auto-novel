@@ -94,12 +94,12 @@ object MongoCollectionNames {
     const val ARTICLE = "article"
     const val COMMENT = "comment-alt"
     const val OPERATION_HISTORY = "operation-history"
-    const val SAKURA_WEB_INCORRECT_CASE = "sakura-incorrect-case"
     const val USER = "user"
 
     const val WEB_NOVEL = "metadata"
     const val WEB_FAVORITE = "web-favorite"
     const val WEB_READ_HISTORY = "web-read-history"
+    const val WEB_OPLOG = "web-oplog"
 
     const val WENKU_NOVEL = "wenku-metadata"
     const val WENKU_FAVORITE = "wenku-favorite"
@@ -124,78 +124,3 @@ fun arrayElemAt(path: String, index: Int = 0): Bson =
 
 fun toString(path: String): Bson =
     Document("\$toString", "\$" + path)
-
-//            // Common
-//            articleCollection.ensureIndex(
-//                Article::updateAt,
-//                indexOptions = IndexOptions().partialFilterExpression(
-//                    Filters.eq(Article::pinned.path(), true)
-//                )
-//            )
-//            articleCollection.ensureIndex(
-//                Article::pinned,
-//                Article::updateAt,
-//            )
-//            commentCollection.ensureIndex(
-//                Comment::site,
-//                Comment::parent,
-//                Comment::id,
-//            )
-//
-//            operationHistoryCollection.ensureIndex(
-//                OperationHistoryModel::createAt,
-//            )
-//
-//            // User
-//            userCollection.ensureUniqueIndex(User::email)
-//            userCollection.ensureUniqueIndex(User::username)
-//
-//            userFavoredWebCollection.ensureUniqueIndex(
-//                UserFavoredWebNovelModel::userId,
-//                UserFavoredWebNovelModel::novelId,
-//            )
-//            userFavoredWebCollection.ensureIndex(
-//                UserFavoredWebNovelModel::userId,
-//                UserFavoredWebNovelModel::createAt,
-//            )
-//            userFavoredWebCollection.ensureIndex(
-//                UserFavoredWebNovelModel::userId,
-//                UserFavoredWebNovelModel::updateAt,
-//            )
-//
-//            userReadHistoryWebCollection.ensureUniqueIndex(
-//                UserReadHistoryWebModel::userId,
-//                UserReadHistoryWebModel::novelId,
-//            )
-//            userReadHistoryWebCollection.ensureIndex(
-//                UserReadHistoryWebModel::userId,
-//                UserReadHistoryWebModel::createAt,
-//            )
-//            userReadHistoryWebCollection.ensureIndex(
-//                UserReadHistoryWebModel::createAt,
-//                indexOptions = IndexOptions().expireAfter(100, TimeUnit.DAYS),
-//            )
-//
-//            userFavoredWenkuCollection.ensureUniqueIndex(
-//                UserFavoredWenkuNovelModel::userId,
-//                UserFavoredWenkuNovelModel::novelId,
-//            )
-//            userFavoredWenkuCollection.ensureIndex(
-//                UserFavoredWenkuNovelModel::userId,
-//                UserFavoredWenkuNovelModel::createAt,
-//            )
-//            userFavoredWenkuCollection.ensureIndex(
-//                UserFavoredWenkuNovelModel::userId,
-//                UserFavoredWenkuNovelModel::updateAt,
-//            )
-//
-//            // Web novel
-//            webNovelMetadataCollection.ensureUniqueIndex(
-//                WebNovelMetadata::providerId,
-//                WebNovelMetadata::novelId,
-//            )
-//            webNovelChapterCollection.ensureUniqueIndex(
-//                WebNovelChapter::providerId,
-//                WebNovelChapter::novelId,
-//                WebNovelChapter::chapterId,
-//            )

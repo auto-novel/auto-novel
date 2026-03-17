@@ -7,7 +7,6 @@ import infra.common.Page
 import infra.common.TranslatorId
 import infra.oplog.Operation
 import infra.oplog.OperationHistoryRepository
-import infra.user.UserRole
 import infra.wenku.*
 import infra.wenku.datasource.VolumeCreateException
 import infra.wenku.repository.WenkuNovelFavoredRepository
@@ -23,6 +22,7 @@ import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import org.koin.ktor.ext.inject
@@ -81,9 +81,13 @@ fun Route.routeWenkuNovel() {
                     page = loc.page,
                     pageSize = loc.pageSize,
                     filterLevel = when (loc.level) {
-                        1 -> WenkuNovelFilter.Level.一般向
-                        2 -> WenkuNovelFilter.Level.成人向
-                        3 -> WenkuNovelFilter.Level.严肃向
+                        0 -> WenkuNovelFilter.Level.全部
+                        1 -> WenkuNovelFilter.Level.轻小说
+                        2 -> WenkuNovelFilter.Level.轻文学
+                        3 -> WenkuNovelFilter.Level.文学
+                        4 -> WenkuNovelFilter.Level.非小说
+                        5 -> WenkuNovelFilter.Level.R18男性向
+                        6 -> WenkuNovelFilter.Level.R18女性向
                         else -> WenkuNovelFilter.Level.全部
                     },
                 )
@@ -243,15 +247,7 @@ class WenkuNovelApi(
     ): Page<WenkuNovelListItem> {
         validatePageNumber(page)
         validatePageSize(pageSize)
-
-        val filterLevelAllowed = if (
-            filterLevel == WenkuNovelFilter.Level.成人向 &&
-            (user == null || !user.isOldAss())
-        ) {
-            WenkuNovelFilter.Level.一般向
-        } else {
-            filterLevel
-        }
+        if (filterLevel.isNsfw) user.requireNsfwAccess()
 
         return metadataRepo
             .search(
@@ -259,7 +255,7 @@ class WenkuNovelApi(
                 userQuery = queryString,
                 page = page,
                 pageSize = pageSize,
-                filterLevel = filterLevelAllowed,
+                filterLevel = filterLevel,
             )
     }
 
@@ -292,13 +288,7 @@ class WenkuNovelApi(
         val metadata = metadataRepo.get(novelId)
             ?: throwNovelNotFound()
 
-        if (metadata.level == WenkuNovelLevel.成人向) {
-            if (user == null) {
-                throwUnauthorized("请先登录")
-            } else {
-                user.shouldBeOldAss()
-            }
-        }
+        if (metadata.level.isNsfw) user.requireNsfwAccess()
 
         if (user != null) {
             metadataRepo.increaseVisited(
@@ -358,7 +348,7 @@ class WenkuNovelApi(
         user: User,
         body: MetadataCreateBody,
     ): String {
-        user.shouldBeOldAss()
+        user.requireNovelAccess()
         val novelId = metadataRepo.create(
             title = body.title,
             titleZh = body.titleZh,
@@ -392,7 +382,7 @@ class WenkuNovelApi(
         novelId: String,
         body: MetadataCreateBody,
     ) {
-        user.shouldBeOldAss()
+        user.requireNovelAccess()
         val novel = metadataRepo.get(novelId)
             ?: throwNovelNotFound()
 
@@ -405,7 +395,7 @@ class WenkuNovelApi(
                 }
             }
         if (!noVolumeDeleted) {
-            user.shouldBeAtLeast(UserRole.Maintainer)
+            user.requireAdmin()
         }
 
         metadataRepo.update(
@@ -448,7 +438,7 @@ class WenkuNovelApi(
         novelId: String,
         glossary: Map<String, String>,
     ) {
-        user.shouldBeOldAss()
+        user.requireNovelAccess()
         val novel = metadataRepo.get(novelId)
             ?: throwNovelNotFound()
         if (glossary == novel.glossary)
@@ -513,7 +503,7 @@ class WenkuNovelApi(
         novelId: String,
         volumeId: String,
     ) {
-        user.shouldBeAtLeast(UserRole.Maintainer)
+        user.requireAdmin()
 
         validateNovelId(novelId)
         validateVolumeId(volumeId)

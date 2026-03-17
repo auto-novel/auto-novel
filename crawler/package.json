@@ -1,14 +1,11 @@
 {
-  "name": "@auto-novel/crawler",
+  "name": "@auto-novel/crawler-app",
   "version": "1.0.0",
   "type": "module",
   "license": "GPL-3.0-only",
   "files": [
     "dist"
   ],
-  "bin": {
-    "auto-novel-crawler": "./dist/app.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/lib/index.d.ts",
@@ -17,6 +14,7 @@
   },
   "module": "./dist/lib.js",
   "types": "./dist/lib/index.d.ts",
+  "main": "./dist/index.js",
   "scripts": {
     "build": "rslib build",
     "dev": "rslib dev --watch",

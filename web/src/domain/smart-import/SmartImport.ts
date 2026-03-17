@@ -203,7 +203,7 @@ const getVolume = async (asin: string) => {
     asin,
     title: realTitle,
     cover: prettyCover(cover),
-    coverHires: prettyCover(coverHires),
+    coverHires: coverHires ? prettyCover(coverHires) : undefined,
     publisher,
     imprint,
     publishAt,
@@ -230,7 +230,7 @@ export const smartImport = async (
       }
     } catch (e) {
       log(`导入小说失败：${e}`);
-      return;
+      return false;
     }
     const volumesNew = novel.volumes.filter(
       (newV) => !volumes.some((oldV) => oldV.asin === newV.asin),
@@ -278,4 +278,5 @@ export const smartImport = async (
   );
 
   log('\n结束');
+  return true;
 };

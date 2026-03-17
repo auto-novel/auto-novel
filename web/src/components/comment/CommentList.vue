@@ -2,7 +2,7 @@
 import { CommentOutlined } from '@vicons/material';
 
 import { CommentRepo } from '@/repos';
-import { useDraftStore } from '@/stores';
+import { useDraftStore, useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
   site: string;
@@ -14,6 +14,9 @@ const { data: commentPage, error } = CommentRepo.useCommentList(
   page,
   () => props.site,
 );
+
+const whoamiStore = useWhoamiStore();
+const { whoami } = storeToRefs(whoamiStore);
 
 const draftStore = useDraftStore();
 const draftId = `comment-${props.site}`;
@@ -31,6 +34,13 @@ function onReplied() {
 }
 
 const showInput = ref(false);
+
+const canReply = computed(() => {
+  const hasAccess = props.site.startsWith('article-')
+    ? whoami.value.hasForumAccess
+    : whoami.value.hasNovelAccess;
+  return hasAccess && !props.locked;
+});
 </script>
 
 <template>
@@ -41,7 +51,7 @@ const showInput = ref(false);
     style="margin-bottom: 32px"
   >
     <c-button
-      v-if="!locked"
+      v-if="canReply"
       label="发表评论"
       :icon="CommentOutlined"
       require-login
@@ -65,7 +75,7 @@ const showInput = ref(false);
   <CPage v-model:page="page" :page-number="commentPage?.pageNumber" disable-top>
     <template v-if="commentPage">
       <template v-for="comment in commentPage.items" :key="comment.id">
-        <CommentThread :site="site" :comment="comment" :locked="locked" />
+        <CommentThread :site="site" :comment="comment" :can-reply="canReply" />
         <n-divider />
       </template>
       <n-empty

@@ -14,6 +14,7 @@ const props = defineProps<{
   site: string;
   parentId?: string;
   comment: Comment1;
+  canReply: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -132,7 +133,7 @@ const isBlocked = computed(() => {
     <div style="flex: 1" />
 
     <c-button
-      v-if="parentId === undefined && whoami.allowAdvancedFeatures"
+      v-if="parentId === undefined && canReply"
       label="回复"
       :icon="CommentOutlined"
       require-login

@@ -1,16 +1,14 @@
 {
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
-    "target": "ESNext",
-    "module": "ESNext",
-    "composite": true,
+    "target": "ES2015",
+    "module": "ES2020",
+    "moduleResolution": "Bundler",
     "strict": true,
-    "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "moduleResolution": "bundler",
+    "lib": ["DOM", "ES2021"],
+    "skipLibCheck": true,
     "useDefineForClassFields": true,
-    "rootDir": "./src",
     "paths": {
       "@/*": ["./src/lib/*"]
     }

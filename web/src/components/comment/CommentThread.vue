@@ -6,7 +6,7 @@ import { useDraftStore } from '@/stores';
 const props = defineProps<{
   site: string;
   comment: Comment1;
-  locked: boolean;
+  canReply: boolean;
 }>();
 
 const draftStore = useDraftStore();
@@ -42,6 +42,7 @@ const showInput = ref(false);
   <CommentItem
     :site="site"
     :comment="comment"
+    :can-reply="canReply"
     @reply="showInput = !showInput"
   />
 
@@ -72,6 +73,7 @@ const showInput = ref(false);
             :site="site"
             :parent-id="comment.id"
             :comment="replyComment"
+            :can-reply="canReply"
           />
         </div>
       </template>
