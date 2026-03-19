@@ -13,6 +13,7 @@ import infra.web.WebNovelChapter
 import infra.web.WebNovelChapterTranslationState
 import infra.web.WebNovel
 import infra.web.datasource.WebNovelHttpDataSource
+import infra.web.datasource.providers.RemoteChapter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
@@ -85,17 +86,21 @@ class WebNovelChapterRepository(
         providerId: String,
         novelId: String,
         chapterId: String,
+        userProvidedChapter: RemoteChapter? = null,
     ): Result<WebNovelChapter> {
-        return provider
-            .getChapter(providerId, novelId, chapterId)
-            .map {
-                WebNovelChapter(
-                    providerId = providerId,
-                    novelId = novelId,
-                    chapterId = chapterId,
-                    paragraphs = it.paragraphs,
-                )
-            }
+        val remoteResult = if (userProvidedChapter != null) {
+            Result.success(userProvidedChapter)
+        } else {
+            provider.getChapter(providerId, novelId, chapterId)
+        }
+        return remoteResult.map {
+            WebNovelChapter(
+                providerId = providerId,
+                novelId = novelId,
+                chapterId = chapterId,
+                paragraphs = it.paragraphs,
+            )
+        }
     }
 
     suspend fun getOrSyncRemote(
@@ -103,13 +108,14 @@ class WebNovelChapterRepository(
         novelId: String,
         chapterId: String,
         forceSync: Boolean = false,
+        userProvidedChapter: RemoteChapter? = null,
     ): Result<WebNovelChapter> {
         val local = get(providerId, novelId, chapterId)
         if (!forceSync && local != null) {
             return Result.success(local)
         }
 
-        val remote = getRemote(providerId, novelId, chapterId)
+        val remote = getRemote(providerId, novelId, chapterId, userProvidedChapter)
             .getOrElse { return Result.failure(it) }
 
         if (local == null) {
