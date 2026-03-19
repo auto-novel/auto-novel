@@ -89,13 +89,20 @@ const createTranslationApi = (
   const updateChapterTranslation = (
     chapterId: string,
     json: { glossaryId: string | undefined; paragraphsZh: string[] },
-  ) =>
-    client
+  ) => {
+    const versionPayload =
+      translatorId === 'sakura'
+        ? { sakuraVersion: '0.9' }
+        : translatorId === 'murasaki'
+          ? { murasakiVersion: '0.2' }
+          : {};
+    return client
       .post(`${endpointV2}/chapter/${chapterId}`, {
-        json: { ...json, sakuraVersion: '0.9' },
+        json: { ...json, ...versionPayload },
         signal,
       })
       .json<number>();
+  };
 
   return {
     getTranslateTask,
@@ -116,7 +123,7 @@ const createFileUrl = ({
   volumeId: string;
   mode: 'zh' | 'zh-jp' | 'jp-zh';
   translationsMode: 'parallel' | 'priority';
-  translations: ('sakura' | 'baidu' | 'youdao' | 'gpt')[];
+  translations: ('sakura' | 'baidu' | 'youdao' | 'gpt' | 'murasaki')[];
 }) => {
   const filename = [
     mode,

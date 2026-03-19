@@ -25,6 +25,7 @@ const props = defineProps<{
   youdao: number;
   gpt: number;
   sakura: number;
+  murasaki: number;
   glossary: { [key: string]: string };
 }>();
 
@@ -35,6 +36,7 @@ const emit = defineEmits<{
   'update:baidu': [number];
   'update:youdao': [number];
   'update:gpt': [number];
+  'update:murasaki': [number];
 }>();
 
 const message = useMessage();
@@ -108,7 +110,7 @@ const importToWorkspace = async () => {
 };
 
 const pressControl = useKeyModifier('Control');
-const submitJob = (id: 'gpt' | 'sakura') => {
+const submitJob = (id: 'gpt' | 'sakura' | 'murasaki') => {
   const { startIndex, endIndex, level, forceMetadata } =
     translateOptions.value!.getTranslateTaskParams();
   const taskNumber = translateOptions.value!.getTaskNumber();
@@ -183,7 +185,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
   <n-flex vertical style="margin-top: 16px">
     <n-text>
       总计 {{ total }} / 百度 {{ baidu }} / 有道 {{ youdao }} / GPT {{ gpt }} /
-      Sakura {{ sakura }}
+      Sakura {{ sakura }} / Murasaki {{ murasaki }}
     </n-text>
 
     <template v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0">
@@ -211,6 +213,12 @@ const submitJob = (id: 'gpt' | 'sakura') => {
           label="排队Sakura"
           :round="false"
           @action="submitJob('sakura')"
+        />
+        <c-button
+          v-if="setting.enabledTranslator.includes('murasaki')"
+          label="排队Murasaki"
+          :round="false"
+          @action="submitJob('murasaki')"
         />
       </n-button-group>
     </template>
@@ -252,6 +260,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     @update:baidu="(zh) => emit('update:baidu', zh)"
     @update:youdao="(zh) => emit('update:youdao', zh)"
     @update:gpt="(zh) => emit('update:gpt', zh)"
+    @update:murasaki="(zh) => emit('update:murasaki', zh)"
     style="margin-top: 20px"
   />
 </template>

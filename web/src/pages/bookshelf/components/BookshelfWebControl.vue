@@ -94,7 +94,7 @@ const first5 = ref(false);
 const reverseOrder = ref(false);
 const shouldTopJob = useKeyModifier('Control');
 
-const queueJobs = (type: 'gpt' | 'sakura') => {
+const queueJobs = (type: 'gpt' | 'sakura' | 'murasaki') => {
   let novels = props.selectedNovels;
   if (novels.length === 0) {
     message.info('没有选中小说');
@@ -206,7 +206,8 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
     <n-list-item
       v-if="
         setting.enabledTranslator.includes('gpt') ||
-        setting.enabledTranslator.includes('sakura')
+        setting.enabledTranslator.includes('sakura') ||
+        setting.enabledTranslator.includes('murasaki')
       "
     >
       <n-flex vertical>
@@ -267,6 +268,12 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             label="排队Sakura"
             :round="false"
             @action="queueJobs('sakura')"
+          />
+          <c-button
+            v-if="setting.enabledTranslator.includes('murasaki')"
+            label="排队Murasaki"
+            :round="false"
+            @action="queueJobs('murasaki')"
           />
         </n-button-group>
       </n-flex>

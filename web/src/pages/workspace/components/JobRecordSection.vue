@@ -10,7 +10,7 @@ import { useBookshelfLocalStore } from '@/pages/bookshelf/BookshelfLocalStore';
 import { useWorkspaceStore } from '@/stores';
 
 const props = defineProps<{
-  id: 'gpt' | 'sakura';
+  id: 'gpt' | 'sakura' | 'murasaki';
 }>();
 
 const message = useMessage();

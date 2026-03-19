@@ -25,6 +25,7 @@ data class WebNovelOutlineDto(
     val youdao: Long,
     val gpt: Long,
     val sakura: Long,
+    val murasaki: Long,
     val updateAt: Long?,
 )
 
@@ -46,6 +47,7 @@ fun WebNovelListItem.asDto() =
         youdao = youdao,
         gpt = gpt,
         sakura = sakura,
+        murasaki = murasaki,
         updateAt = updateAt?.epochSeconds,
     )
 

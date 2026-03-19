@@ -11,4 +11,5 @@ export const LSKey = {
   SettingReader: 'setting-reader',
   WorkspaceGpt: 'workspace-gpt',
   WorkspaceSakura: 'workspace-sakura',
+  WorkspaceMurasaki: 'workspace-murasaki',
 } as const;

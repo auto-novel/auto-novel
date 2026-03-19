@@ -5,7 +5,7 @@ import { DeleteOutlineOutlined } from '@vicons/material';
 import type { TranslatorConfig } from '@/domain/translate';
 import { Translator } from '@/domain/translate';
 import { Glossary } from '@/model/Glossary';
-import { useSakuraWorkspaceStore } from '@/stores';
+import { useMurasakiWorkspaceStore, useSakuraWorkspaceStore } from '@/stores';
 
 const props = defineProps<{
   files: ParsedFile[];
@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const message = useMessage();
 const sakuraWorkspace = useSakuraWorkspaceStore().ref;
+const murasakiWorkspace = useMurasakiWorkspaceStore().ref;
 
 const countKatakana = (content: string) => {
   const regexp = /[\u30A0-\u30FF]{2,}/g;
@@ -95,17 +96,25 @@ const copyTranslationJson = async () => {
 
 const showSakuraSelectModal = ref(false);
 const selectedSakuraWorkerId = ref(sakuraWorkspace.value.workers[0]?.id);
+const showMurasakiSelectModal = ref(false);
+const selectedMurasakiWorkerId = ref(murasakiWorkspace.value.workers[0]?.id);
 
 const katakanaTranslations = ref<{ [key: string]: string }>({});
-const translateKatakanas = async (id: 'baidu' | 'youdao' | 'sakura') => {
+const translateKatakanas = async (
+  id: 'baidu' | 'youdao' | 'sakura' | 'murasaki',
+) => {
   const jpWords = [...katakanas.value.keys()];
   let config: TranslatorConfig;
-  if (id === 'sakura') {
-    const worker = sakuraWorkspace.value.workers.find(
-      (it) => it.id === selectedSakuraWorkerId.value,
-    );
+  if (id === 'sakura' || id === 'murasaki') {
+    const workspace =
+      id === 'sakura' ? sakuraWorkspace.value : murasakiWorkspace.value;
+    const selectedWorkerId =
+      id === 'sakura'
+        ? selectedSakuraWorkerId.value
+        : selectedMurasakiWorkerId.value;
+    const worker = workspace.workers.find((it) => it.id === selectedWorkerId);
     if (worker === undefined) {
-      message.error('未选择Sakura翻译器');
+      message.error(`未选择${id === 'sakura' ? 'Sakura' : 'Murasaki'}翻译器`);
       return;
     }
     config = {
@@ -186,6 +195,19 @@ const translateKatakanas = async (id: 'baidu' | 'youdao' | 'sakura') => {
           />
         </n-button-group>
 
+        <n-button-group size="small">
+          <c-button
+            :label="`Murasaki翻译-${selectedMurasakiWorkerId ?? '未选中'}`"
+            :round="false"
+            @action="translateKatakanas('murasaki')"
+          />
+          <c-button
+            label="选择翻译器"
+            :round="false"
+            @action="showMurasakiSelectModal = true"
+          />
+        </n-button-group>
+
         <n-flex align="center" :wrap="false">
           <c-button
             :disabled="katakanaDeleted.length === 0"
@@ -251,6 +273,23 @@ const translateKatakanas = async (id: 'baidu' | 'youdao' | 'sakura') => {
       <n-flex vertical>
         <n-radio
           v-for="worker of sakuraWorkspace.workers"
+          :key="worker.id"
+          :value="worker.id"
+        >
+          {{ worker.id }}
+          <n-text depth="3">
+            {{ worker.endpoint }}
+          </n-text>
+        </n-radio>
+      </n-flex>
+    </n-radio-group>
+  </c-modal>
+
+  <c-modal title="选择Murasaki翻译器" v-model:show="showMurasakiSelectModal">
+    <n-radio-group v-model:value="selectedMurasakiWorkerId">
+      <n-flex vertical>
+        <n-radio
+          v-for="worker of murasakiWorkspace.workers"
           :key="worker.id"
           :value="worker.id"
         >

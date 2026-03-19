@@ -41,6 +41,7 @@ class WebNovelChapterRepository(
             TranslatorId.Youdao -> Pair(WebNovelChapter::youdaoGlossaryUuid, WebNovelChapter::youdaoParagraphs)
             TranslatorId.Gpt -> Pair(WebNovelChapter::gptGlossaryUuid, WebNovelChapter::gptParagraphs)
             TranslatorId.Sakura -> Pair(WebNovelChapter::sakuraGlossaryUuid, WebNovelChapter::sakuraParagraphs)
+            TranslatorId.Murasaki -> Pair(WebNovelChapter::murasakiGlossaryUuid, WebNovelChapter::murasakiParagraphs)
         }
         return webNovelChapterCollection
             .aggregate<WebNovelChapterTranslationState>(
@@ -49,6 +50,7 @@ class WebNovelChapterRepository(
                     fields(
                         include(
                             WebNovelChapterTranslationState::sakuraVersion.field(),
+                            WebNovelChapterTranslationState::murasakiVersion.field(),
                         ),
                         computed(
                             WebNovelChapterTranslationState::chapterId.field(),
@@ -143,6 +145,9 @@ class WebNovelChapterRepository(
             if (local.sakuraParagraphs != null){
                 updateChapterTranslateState(providerId, novelId, TranslatorId.Sakura)
             }
+            if (local.murasakiParagraphs != null){
+                updateChapterTranslateState(providerId, novelId, TranslatorId.Murasaki)
+            }
             return Result.success(remote)
         } else {
             // 本地存在，且已是最新
@@ -185,6 +190,13 @@ class WebNovelChapterRepository(
                 set(WebNovelChapter::sakuraGlossary.field(), glossaryContent),
                 set(WebNovelChapter::sakuraParagraphs.field(), paragraphsZh)
             )
+
+            TranslatorId.Murasaki -> combine(
+                set(WebNovelChapter::murasakiVersion.field(), "0.2"),
+                set(WebNovelChapter::murasakiGlossaryUuid.field(), glossaryUuid),
+                set(WebNovelChapter::murasakiGlossary.field(), glossaryContent),
+                set(WebNovelChapter::murasakiParagraphs.field(), paragraphsZh)
+            )
         }
         webNovelChapterCollection
             .updateOne(
@@ -209,6 +221,7 @@ class WebNovelChapterRepository(
             TranslatorId.Youdao -> WebNovelChapter::youdaoParagraphs
             TranslatorId.Gpt -> WebNovelChapter::gptParagraphs
             TranslatorId.Sakura -> WebNovelChapter::sakuraParagraphs
+            TranslatorId.Murasaki -> WebNovelChapter::murasakiParagraphs
         }
         val novel = webNovelMetadataCollection.find(WebNovel.byId(providerId, novelId)).firstOrNull()!!
         val chapterIdList = novel.toc.mapNotNull { it.chapterId }
@@ -226,6 +239,7 @@ class WebNovelChapterRepository(
             TranslatorId.Youdao -> WebNovel::youdao
             TranslatorId.Gpt -> WebNovel::gpt
             TranslatorId.Sakura -> WebNovel::sakura
+            TranslatorId.Murasaki -> WebNovel::murasaki
         }
         webNovelMetadataCollection
             .updateOne(

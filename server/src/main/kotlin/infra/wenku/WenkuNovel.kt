@@ -100,13 +100,15 @@ data class WenkuNovelVolumeJp(
     val youdao: Int,
     val gpt: Int,
     val sakura: Int,
+    val murasaki: Int,
 )
 
 @Serializable
 data class WenkuChapterGlossary(
     val uuid: String?,
     val glossary: Map<String, String>,
-    val sakuraVersion: String?,
+    val sakuraVersion: String? = null,
+    val murasakiVersion: String? = null,
 )
 
 // MongoDB
