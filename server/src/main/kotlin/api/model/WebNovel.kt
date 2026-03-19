@@ -15,6 +15,7 @@ data class WebNovelOutlineDto(
     val attentions: List<WebNovelAttention>,
     val keywords: List<String>,
     val extra: String?,
+    val wenkuId: String?,
     //
     val favored: String?,
     val lastReadAt: Long?,
@@ -38,6 +39,7 @@ fun WebNovelListItem.asDto() =
         attentions = attentions,
         keywords = keywords,
         extra = extra,
+        wenkuId = wenkuId,
         favored = favored,
         lastReadAt = lastReadAt?.epochSeconds,
         total = total,

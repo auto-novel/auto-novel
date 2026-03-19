@@ -1,10 +1,17 @@
 <script lang="ts" setup>
-import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
+import {
+  EditNoteOutlined,
+  LanguageOutlined,
+  LinkOutlined,
+} from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
+import { WebNovelApi } from '@/api';
+import { buildNovelUrl } from '@/util/web/url';
 import { WenkuNovelRepo } from '@/repos';
 import coverPlaceholder from '@/image/cover_placeholder.png';
 import { GenericNovelId } from '@/model/Common';
+import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { doAction, useIsWideScreen } from '@/pages/util';
 import { useSettingStore, useWhoamiStore } from '@/stores';
 import type { VolumeJpDto } from '@/model/WenkuNovel';
@@ -42,6 +49,63 @@ const deleteVolume = (volumeId: string) =>
 const buildSearchLink = (tag: string) => `/wenku?query="${tag}"`;
 
 const showWebNovelsModal = ref(false);
+
+const showLinkWebModal = ref(false);
+const linkSearchQuery = ref('');
+const linkSearchLoading = ref(false);
+const linkSearchResults = ref<WebNovelOutlineDto[]>([]);
+const linkSelectedIds = ref<Set<string>>(new Set());
+const linkSubmitting = ref(false);
+
+const allProviders = 'kakuyomu,syosetu,novelup,hameln,pixiv,alphapolis';
+
+async function openLinkWebModal() {
+  if (!novel.value) return;
+  showLinkWebModal.value = true;
+  linkSearchQuery.value = novel.value.title;
+  linkSelectedIds.value = new Set(novel.value.webIds);
+  await searchWebNovels();
+}
+
+async function searchWebNovels() {
+  if (!linkSearchQuery.value.trim()) return;
+  linkSearchLoading.value = true;
+  try {
+    const result = await WebNovelApi.listNovel({
+      query: linkSearchQuery.value,
+      page: 0,
+      pageSize: 20,
+      provider: allProviders,
+      sort: 2,
+    });
+    linkSearchResults.value = result.items;
+  } catch {
+    linkSearchResults.value = [];
+  } finally {
+    linkSearchLoading.value = false;
+  }
+}
+
+function toggleSelect(webId: string) {
+  const ids = new Set(linkSelectedIds.value);
+  if (ids.has(webId)) {
+    ids.delete(webId);
+  } else {
+    ids.add(webId);
+  }
+  linkSelectedIds.value = ids;
+}
+
+async function confirmLinkWeb() {
+  linkSubmitting.value = true;
+  await doAction(
+    WenkuNovelRepo.linkWeb(novelId, { webIds: [...linkSelectedIds.value] }),
+    '关联',
+    message,
+  );
+  linkSubmitting.value = false;
+  showLinkWebModal.value = false;
+}
 
 function normalize(title: string) {
   return title
@@ -156,6 +220,13 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
           @action="showWebNovelsModal = true"
         />
 
+        <c-button
+          v-if="whoami.hasNovelAccess"
+          label="关联网络小说"
+          :icon="LinkOutlined"
+          @action="openLinkWebModal()"
+        />
+
         <c-modal
           title="相关网络小说"
           v-model:show="showWebNovelsModal"
@@ -168,6 +239,120 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               </c-a>
             </n-li>
           </n-ul>
+        </c-modal>
+
+        <c-modal
+          title="搜索关联网络小说"
+          v-model:show="showLinkWebModal"
+          :extra-height="100"
+        >
+          <n-flex vertical :size="12">
+            <n-input-group>
+              <n-input
+                v-model:value="linkSearchQuery"
+                placeholder="输入关键字搜索"
+                clearable
+                @keyup.enter="searchWebNovels()"
+              />
+              <n-button
+                type="primary"
+                :loading="linkSearchLoading"
+                @click="searchWebNovels()"
+              >
+                搜索
+              </n-button>
+            </n-input-group>
+
+            <n-spin :show="linkSearchLoading">
+              <n-empty
+                v-if="linkSearchResults.length === 0 && !linkSearchLoading"
+                description="无搜索结果"
+              />
+              <n-list v-else bordered clickable>
+                <n-list-item
+                  v-for="item of linkSearchResults"
+                  :key="`${item.providerId}/${item.novelId}`"
+                  @click="toggleSelect(`${item.providerId}/${item.novelId}`)"
+                >
+                  <n-flex align="center" :size="8" :wrap="false">
+                    <n-checkbox
+                      :checked="
+                        linkSelectedIds.has(
+                          `${item.providerId}/${item.novelId}`,
+                        )
+                      "
+                      @update:checked="
+                        toggleSelect(`${item.providerId}/${item.novelId}`)
+                      "
+                      @click.stop
+                    />
+                    <n-flex vertical :size="2" style="min-width: 0">
+                      <router-link
+                        :to="`/novel/${item.providerId}/${item.novelId}`"
+                        target="_blank"
+                        @click.stop
+                        style="
+                          font-weight: bold;
+                          color: inherit;
+                          text-decoration: none;
+                        "
+                      >
+                        {{ item.titleJp }}
+                      </router-link>
+                      <n-text
+                        v-if="item.titleZh"
+                        depth="3"
+                        style="font-size: 13px"
+                      >
+                        {{ item.titleZh }}
+                      </n-text>
+                      <n-flex :size="4" align="center">
+                        <n-a
+                          :href="buildNovelUrl(item.providerId, item.novelId)"
+                          target="_blank"
+                          @click.stop
+                          style="
+                            font-size: 12px;
+                            color: inherit;
+                            text-decoration: none;
+                          "
+                        >
+                          {{ item.providerId }}/{{ item.novelId }}
+                        </n-a>
+                        <n-tag size="small" :bordered="false">
+                          {{ item.total }}话
+                        </n-tag>
+                        <n-tag
+                          v-if="item.wenkuId"
+                          size="small"
+                          :bordered="false"
+                          :type="
+                            item.wenkuId === novelId ? 'success' : 'warning'
+                          "
+                        >
+                          {{
+                            item.wenkuId === novelId
+                              ? '已关联本页'
+                              : '已关联其他'
+                          }}
+                        </n-tag>
+                      </n-flex>
+                    </n-flex>
+                  </n-flex>
+                </n-list-item>
+              </n-list>
+            </n-spin>
+          </n-flex>
+
+          <template #action>
+            <n-button
+              type="primary"
+              :loading="linkSubmitting"
+              @click="confirmLinkWeb()"
+            >
+              确认关联
+            </n-button>
+          </template>
         </c-modal>
       </n-flex>
 
