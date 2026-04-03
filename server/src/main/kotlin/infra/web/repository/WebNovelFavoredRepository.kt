@@ -168,6 +168,7 @@ class WebNovelFavoredRepository(
         when (filterTranslate) {
             WebNovelFilter.Translate.GPT3 -> novelFilters.add(Filters.gt("novel.${WebNovel::gpt.field()}", 0L))
             WebNovelFilter.Translate.Sakura -> novelFilters.add(Filters.gt("novel.${WebNovel::sakura.field()}", 0L))
+            WebNovelFilter.Translate.Murasaki -> novelFilters.add(Filters.gt("novel.${WebNovel::murasaki.field()}", 0L))
             else -> {}
         }
 

@@ -59,6 +59,8 @@ export const buildParagraphs = (
         return ['百度', chapter.baiduParagraphs];
       } else if (t === 'gpt') {
         return ['GPT', chapter.gptParagraphs];
+      } else if (t === 'murasaki') {
+        return ['Murasaki', chapter.murasakiParagraphs];
       } else {
         return ['Sakura', chapter.sakuraParagraphs];
       }

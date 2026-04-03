@@ -49,7 +49,7 @@ const file = computed(() => {
 });
 
 const shouldTopJob = useKeyModifier('Control');
-const submitJob = (id: 'gpt' | 'sakura') => {
+const submitJob = (id: 'gpt' | 'sakura' | 'murasaki') => {
   const task = TranslateTaskDescriptor.wenku(
     novelId,
     volume.volumeId,
@@ -80,7 +80,8 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 
       <n-text depth="3">
         总计 {{ volume.total }} / 百度 {{ volume.baidu }} / 有道
-        {{ volume.youdao }} / GPT {{ volume.gpt }} / Sakura {{ volume.sakura }}
+        {{ volume.youdao }} / GPT {{ volume.gpt }} / Sakura
+        {{ volume.sakura }} / Murasaki {{ volume.murasaki }}
       </n-text>
 
       <n-flex :size="8">
@@ -113,6 +114,13 @@ const submitJob = (id: 'gpt' | 'sakura') => {
           secondary
           @action="submitJob('sakura')"
         />
+        <c-button
+          v-if="setting.enabledTranslator.includes('murasaki')"
+          label="排队Murasaki"
+          size="tiny"
+          secondary
+          @action="submitJob('murasaki')"
+        />
         <c-button-confirm
           v-if="whoami.asAdmin"
           :hint="`真的要删除《${volume.volumeId}》吗？`"
@@ -141,6 +149,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     @update:youdao="(zh) => (volume.youdao = zh)"
     @update:gpt="(zh) => (volume.gpt = zh)"
     @update:sakura="(zh) => (volume.sakura = zh)"
+    @update:murasaki="(zh) => (volume.murasaki = zh)"
     style="margin-top: 20px"
   />
 </template>

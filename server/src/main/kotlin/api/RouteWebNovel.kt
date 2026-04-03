@@ -113,6 +113,7 @@ fun Route.routeWebNovel() {
                     filterTranslate = when (loc.translate) {
                         1 -> WebNovelFilter.Translate.GPT3
                         2 -> WebNovelFilter.Translate.Sakura
+                        3 -> WebNovelFilter.Translate.Murasaki
                         else -> WebNovelFilter.Translate.全部
                     },
                     filterSort = when (loc.sort) {
@@ -259,6 +260,7 @@ fun Route.routeWebNovel() {
                 val glossaryId: String? = null,
                 val paragraphsZh: List<String>,
                 val sakuraVersion: String? = null,
+                val murasakiVersion: String? = null,
             )
 
             val body = call.receive<Body>()
@@ -271,6 +273,7 @@ fun Route.routeWebNovel() {
                     glossaryId = body.glossaryId,
                     paragraphsZh = body.paragraphsZh,
                     sakuraVersion = body.sakuraVersion,
+                    murasakiVersion = body.murasakiVersion,
                 )
             }
         }
@@ -438,6 +441,7 @@ class WebNovelApi(
         val youdao: Long,
         val gpt: Long,
         val sakura: Long,
+        val murasaki: Long,
     )
 
     private suspend fun buildNovelDto(
@@ -467,6 +471,7 @@ class WebNovelApi(
             youdao = novel.youdao,
             gpt = novel.gpt,
             sakura = novel.sakura,
+            murasaki = novel.murasaki,
         )
         return if (user == null) {
             dto
@@ -518,6 +523,7 @@ class WebNovelApi(
         val youdaoParagraphs: List<String>?,
         val gptParagraphs: List<String>?,
         val sakuraParagraphs: List<String>?,
+        val murasakiParagraphs: List<String>?,
     )
 
     suspend fun getChapter(
@@ -546,6 +552,7 @@ class WebNovelApi(
             youdaoParagraphs = chapter.youdaoParagraphs,
             gptParagraphs = chapter.gptParagraphs,
             sakuraParagraphs = chapter.sakuraParagraphs,
+            murasakiParagraphs = chapter.murasakiParagraphs,
         )
     }
 
@@ -684,6 +691,11 @@ class WebNovelTranslateV2Api(
     private val metadataRepo: WebNovelMetadataRepository,
     private val chapterRepo: WebNovelChapterRepository,
 ) {
+    companion object {
+        private const val sakuraVersionRequired = "0.9"
+        private const val murasakiVersionRequired = "0.2"
+    }
+
     @Serializable
     data class TranslateTaskDto(
         val titleJp: String,
@@ -734,9 +746,15 @@ class WebNovelTranslateV2Api(
             val glossaryUuid = if (chapterTranslationOutline?.translated != true) {
                 null
             } else if (
-                translatorId == TranslatorId.Sakura && chapterTranslationOutline.sakuraVersion != "0.9"
+                translatorId == TranslatorId.Sakura &&
+                chapterTranslationOutline.sakuraVersion != sakuraVersionRequired
             ) {
                 "sakura outdated"
+            } else if (
+                translatorId == TranslatorId.Murasaki &&
+                chapterTranslationOutline.murasakiVersion != murasakiVersionRequired
+            ) {
+                "murasaki outdated"
             } else {
                 chapterTranslationOutline.glossaryUuid ?: "no glossary"
             }
@@ -793,22 +811,24 @@ class WebNovelTranslateV2Api(
                 TranslatorId.Youdao -> Triple(youdaoGlossaryUuid, youdaoGlossary, youdaoParagraphs)
                 TranslatorId.Gpt -> Triple(gptGlossaryUuid, gptGlossary, gptParagraphs)
                 TranslatorId.Sakura -> Triple(sakuraGlossaryUuid, sakuraGlossary, sakuraParagraphs)
+                TranslatorId.Murasaki -> Triple(murasakiGlossaryUuid, murasakiGlossary, murasakiParagraphs)
             }
         }
 
-        val sakuraOutdated =
-            (translatorId == TranslatorId.Sakura && chapter.sakuraVersion != "0.9")
+        val translatorOutdated =
+            (translatorId == TranslatorId.Sakura && chapter.sakuraVersion != sakuraVersionRequired) ||
+                    (translatorId == TranslatorId.Murasaki && chapter.murasakiVersion != murasakiVersionRequired)
         val oldGlossaryId = if (oldTranslation == null) {
             null
-        } else if (sakuraOutdated) {
-            "sakura outdated"
+        } else if (translatorOutdated) {
+            if (translatorId == TranslatorId.Murasaki) "murasaki outdated" else "sakura outdated"
         } else {
             oldGlossaryIdRaw ?: "no glossary"
         }
 
         return ChapterTranslateTaskDto(
             paragraphJp = chapter.paragraphs,
-            oldParagraphZh = oldTranslation.takeIf { !sakuraOutdated },
+            oldParagraphZh = oldTranslation.takeIf { !translatorOutdated },
             glossaryId = novel.glossaryUuid ?: "no glossary",
             glossary = novel.glossary,
             oldGlossaryId = oldGlossaryId,
@@ -862,9 +882,13 @@ class WebNovelTranslateV2Api(
         glossaryId: String?,
         paragraphsZh: List<String>,
         sakuraVersion: String?,
+        murasakiVersion: String?,
     ): TranslateStateDto {
-        if (translatorId == TranslatorId.Sakura && sakuraVersion != "0.9") {
+        if (translatorId == TranslatorId.Sakura && sakuraVersion != sakuraVersionRequired) {
             throwBadRequest("旧版本Sakura不再允许上传")
+        }
+        if (translatorId == TranslatorId.Murasaki && murasakiVersion != murasakiVersionRequired) {
+            throwBadRequest("旧版本Murasaki不再允许上传")
         }
 
         val novel = metadataRepo.get(providerId, novelId)

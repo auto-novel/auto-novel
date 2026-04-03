@@ -191,6 +191,7 @@ fun Route.routeWenkuNovel() {
                 val glossaryId: String? = null,
                 val paragraphsZh: List<String>,
                 val sakuraVersion: String? = null,
+                val murasakiVersion: String? = null,
             )
 
             val body = call.receive<Body>()
@@ -203,6 +204,7 @@ fun Route.routeWenkuNovel() {
                     glossaryId = body.glossaryId,
                     paragraphsZh = body.paragraphsZh,
                     sakuraVersion = body.sakuraVersion,
+                    murasakiVersion = body.murasakiVersion,
                 )
             }
         }
@@ -547,6 +549,11 @@ class WenkuNovelTranslateV2Api(
     private val metadataRepo: WenkuNovelMetadataRepository,
     private val volumeRepo: WenkuNovelVolumeRepository,
 ) {
+    companion object {
+        private const val sakuraVersionRequired = "0.9"
+        private const val murasakiVersionRequired = "0.2"
+    }
+
     @Serializable
     data class TranslateTaskDto(
         val glossaryId: String,
@@ -575,9 +582,15 @@ class WenkuNovelTranslateV2Api(
             val glossaryId = if (!translated) {
                 null
             } else if (
-                translatorId == TranslatorId.Sakura && chapterGlossary?.sakuraVersion != "0.9"
+                translatorId == TranslatorId.Sakura &&
+                chapterGlossary?.sakuraVersion != sakuraVersionRequired
             ) {
                 "sakura outdated"
+            } else if (
+                translatorId == TranslatorId.Murasaki &&
+                chapterGlossary?.murasakiVersion != murasakiVersionRequired
+            ) {
+                "murasaki outdated"
             } else {
                 chapterGlossary?.uuid ?: "no glossary"
             }
@@ -621,20 +634,22 @@ class WenkuNovelTranslateV2Api(
         val oldTranslation = volume.getTranslation(translatorId, chapterId)
         val chapterGlossary = volume.getChapterGlossary(translatorId, chapterId)
 
-        val sakuraOutdated =
-            translatorId == TranslatorId.Sakura && chapterGlossary?.sakuraVersion != "0.9"
+        val translatorOutdated =
+            (translatorId == TranslatorId.Sakura && chapterGlossary?.sakuraVersion != sakuraVersionRequired) ||
+                    (translatorId == TranslatorId.Murasaki &&
+                            chapterGlossary?.murasakiVersion != murasakiVersionRequired)
 
         val oldGlossaryId = if (oldTranslation == null) {
             null
-        } else if (sakuraOutdated) {
-            "sakura outdated"
+        } else if (translatorOutdated) {
+            if (translatorId == TranslatorId.Murasaki) "murasaki outdated" else "sakura outdated"
         } else {
             chapterGlossary?.uuid ?: "no glossary"
         }
 
         return ChapterTranslateTaskDto(
             paragraphJp = chapter,
-            oldParagraphZh = oldTranslation.takeIf { !sakuraOutdated },
+            oldParagraphZh = oldTranslation.takeIf { !translatorOutdated },
             glossaryId = novel.glossaryUuid ?: "no glossary",
             glossary = novel.glossary,
             oldGlossaryId = oldGlossaryId,
@@ -651,9 +666,13 @@ class WenkuNovelTranslateV2Api(
         glossaryId: String?,
         paragraphsZh: List<String>,
         sakuraVersion: String?,
+        murasakiVersion: String?,
     ): Int {
-        if (translatorId == TranslatorId.Sakura && sakuraVersion != "0.9") {
+        if (translatorId == TranslatorId.Sakura && sakuraVersion != sakuraVersionRequired) {
             throwBadRequest("旧版本Sakura不再允许上传")
+        }
+        if (translatorId == TranslatorId.Murasaki && murasakiVersion != murasakiVersionRequired) {
+            throwBadRequest("旧版本Murasaki不再允许上传")
         }
 
         validateVolumeId(volumeId)
@@ -683,7 +702,8 @@ class WenkuNovelTranslateV2Api(
             chapterId = chapterId,
             glossaryUuid = glossaryId,
             glossary = novel.glossary,
-            sakuraVersion = sakuraVersion?.takeIf { translatorId == TranslatorId.Sakura }
+            sakuraVersion = sakuraVersion?.takeIf { translatorId == TranslatorId.Sakura },
+            murasakiVersion = murasakiVersion?.takeIf { translatorId == TranslatorId.Murasaki },
         )
 
         return volume.listTranslation(

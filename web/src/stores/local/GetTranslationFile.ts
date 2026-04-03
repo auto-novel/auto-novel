@@ -14,7 +14,7 @@ export const getTranslationFile = async (
     id: string;
     mode: 'zh' | 'zh-jp' | 'jp-zh';
     translationsMode: 'parallel' | 'priority';
-    translations: ('sakura' | 'baidu' | 'youdao' | 'gpt')[];
+    translations: ('sakura' | 'baidu' | 'youdao' | 'gpt' | 'murasaki')[];
   },
 ) => {
   const filename = [

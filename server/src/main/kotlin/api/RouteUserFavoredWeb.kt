@@ -115,6 +115,7 @@ fun Route.routeUserFavoredWeb() {
                     filterTranslate = when (loc.translate) {
                         1 -> WebNovelFilter.Translate.GPT3
                         2 -> WebNovelFilter.Translate.Sakura
+                        3 -> WebNovelFilter.Translate.Murasaki
                         else -> WebNovelFilter.Translate.全部
                     },
                     filterSort = loc.sort,

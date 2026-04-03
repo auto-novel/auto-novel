@@ -17,6 +17,7 @@ export interface WebNovelOutlineDto {
   youdao: number;
   gpt: number;
   sakura: number;
+  murasaki: number;
   updateAt?: number;
 }
 
@@ -50,6 +51,7 @@ export interface WebNovelDto {
   youdao: number;
   gpt: number;
   sakura: number;
+  murasaki: number;
 }
 
 export interface WebNovelChapterDto {
@@ -62,4 +64,5 @@ export interface WebNovelChapterDto {
   youdaoParagraphs?: string[];
   gptParagraphs?: string[];
   sakuraParagraphs?: string[];
+  murasakiParagraphs?: string[];
 }

@@ -12,7 +12,7 @@ import { downloadFile } from '@/util';
 const translateOptions = useTemplateRef('translateOptions');
 
 const props = defineProps<{
-  type: 'gpt' | 'sakura';
+  type: 'gpt' | 'sakura' | 'murasaki';
 }>();
 
 const message = useMessage();
@@ -30,6 +30,8 @@ const calculateFinished = (volume: LocalVolumeMetadata) =>
     let chapterGlossaryId: string | undefined;
     if (props.type === 'gpt') {
       chapterGlossaryId = it.gpt;
+    } else if (props.type === 'murasaki') {
+      chapterGlossaryId = it.murasaki;
     } else {
       chapterGlossaryId = it.sakura;
     }
@@ -41,6 +43,8 @@ const calculateExpired = (volume: LocalVolumeMetadata) =>
     let chapterGlossaryId: string | undefined;
     if (props.type === 'gpt') {
       chapterGlossaryId = it.gpt;
+    } else if (props.type === 'murasaki') {
+      chapterGlossaryId = it.murasaki;
     } else {
       chapterGlossaryId = it.sakura;
     }

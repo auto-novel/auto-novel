@@ -5,6 +5,7 @@ import type { TranslatorId } from '@/model/Translator';
 
 import { BaiduTranslator } from './TranslatorBaidu';
 import { OpenAiTranslator } from './TranslatorOpenAi';
+import { MurasakiTranslator } from './TranslatorMurasaki';
 import { SakuraTranslator } from './TranslatorSakura';
 import { YoudaoTranslator } from './TranslatorYoudao';
 import type { Logger, SegmentCache, SegmentTranslator } from './Common';
@@ -15,6 +16,7 @@ export type TranslatorConfig =
   | { id: 'baidu' }
   | { id: 'youdao' }
   | ({ id: 'gpt' } & OpenAiTranslator.Config)
+  | ({ id: 'murasaki' } & MurasakiTranslator.Config)
   | ({ id: 'sakura' } & SakuraTranslator.Config);
 
 export class Translator {
@@ -36,13 +38,22 @@ export class Translator {
 
   allowUpload() {
     return !(
-      this.segTranslator instanceof SakuraTranslator &&
+      (this.segTranslator instanceof SakuraTranslator ||
+        this.segTranslator instanceof MurasakiTranslator) &&
       !this.segTranslator.allowUpload()
     );
   }
 
   sakuraModel() {
     if (this.segTranslator instanceof SakuraTranslator) {
+      return this.segTranslator.model?.id ?? '未知';
+    } else {
+      return '';
+    }
+  }
+
+  murasakiModel() {
+    if (this.segTranslator instanceof MurasakiTranslator) {
       return this.segTranslator.model?.id ?? '未知';
     } else {
       return '';
@@ -131,7 +142,10 @@ export class Translator {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const extra: any = { glossary };
-        if (this.segTranslator instanceof SakuraTranslator) {
+        if (
+          this.segTranslator instanceof SakuraTranslator ||
+          this.segTranslator instanceof MurasakiTranslator
+        ) {
           extra.version = this.segTranslator.version;
           extra.model = this.segTranslator.model;
         }
@@ -191,6 +205,8 @@ export namespace Translator {
       return YoudaoTranslator.create(log);
     } else if (config.id === 'gpt') {
       return OpenAiTranslator.create(log, config);
+    } else if (config.id === 'murasaki') {
+      return MurasakiTranslator.create(log, config);
     } else {
       return SakuraTranslator.create(log, config);
     }
@@ -212,6 +228,8 @@ export namespace Translator {
         segCache = await createSegIndexedDbCache('gpt-seg-cache');
       } else if (config.id === 'sakura') {
         segCache = await createSegIndexedDbCache('sakura-seg-cache');
+      } else if (config.id === 'murasaki') {
+        segCache = await createSegIndexedDbCache('murasaki-seg-cache');
       }
     }
     return new Translator(segTranslator, segCache, log);

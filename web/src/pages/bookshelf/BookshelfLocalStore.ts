@@ -134,7 +134,7 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         total,
       }: {
         level: 'expire' | 'all' | 'normal' | 'sync';
-        type: 'gpt' | 'sakura';
+        type: 'gpt' | 'sakura' | 'murasaki';
         shouldTop: boolean;
         startIndex: number;
         endIndex: number;
@@ -190,7 +190,7 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         shouldTop,
       }: {
         level: 'expire' | 'all';
-        type: 'gpt' | 'sakura';
+        type: 'gpt' | 'sakura' | 'murasaki';
         shouldTop: boolean;
       },
     ) {

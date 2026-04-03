@@ -45,6 +45,7 @@ export interface VolumeJpDto {
   youdao: number;
   gpt: number;
   sakura: number;
+  murasaki: number;
 }
 
 export interface AmazonNovel {

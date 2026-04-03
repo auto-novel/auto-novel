@@ -131,6 +131,7 @@ defineExpose({
           {{ item.type ? item.type + ' / ' : '' }}
           总计 {{ item.total }} / 百度 {{ item.baidu }} / 有道
           {{ item.youdao }} / GPT {{ item.gpt }} / Sakura {{ item.sakura }} /
+          Murasaki {{ item.murasaki }} /
         </n-text>
 
         <n-text depth="3">

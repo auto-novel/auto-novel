@@ -197,6 +197,12 @@ const router = createRouter({
               component: () => import('./pages/workspace/SakuraWorkspace.vue'),
             },
             {
+              path: 'murasaki',
+              meta: { title: 'Murasaki工作区' },
+              component: () =>
+                import('./pages/workspace/MurasakiWorkspace.vue'),
+            },
+            {
               path: 'interactive',
               meta: { title: '交互翻译' },
               component: () => import('./pages/workspace/Interactive.vue'),
@@ -281,6 +287,7 @@ const router = createRouter({
         { path: '/novel-list', redirect: '/novel' }, // 2024-06-25
         { path: '/wenku-list', redirect: '/wenku' }, // 2024-06-25
         { path: '/sakura-workspace', redirect: '/workspace/sakura' },
+        { path: '/murasaki-workspace', redirect: '/workspace/murasaki' },
 
         // 404
         {
