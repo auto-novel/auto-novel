@@ -7,6 +7,7 @@ export interface WebNovelOutlineDto {
   attentions: string[];
   keywords: string[];
   extra?: string;
+  wenkuId?: string;
   //
   favored?: string;
   lastReadAt?: number;
