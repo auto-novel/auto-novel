@@ -10,7 +10,7 @@ import { formatError } from '@/api';
 import { WenkuNovelRepo } from '@/repos';
 import { useNoticeStore, useWhoamiStore } from '@/stores';
 import { RegexUtil } from '@/util';
-import { getFullContent } from '@/util/file';
+import { getFullContent, getRawContent } from '@/util/file';
 
 const props = defineProps<{
   novelId: string;
@@ -67,6 +67,46 @@ async function beforeUpload({ file }: { file: UploadFileInfo }) {
     }
   } else {
     file.url = 'jp';
+  }
+
+  // 检查是否存在 opacity，如果存在则认为是机翻站小说，禁止上传
+  try {
+    const rawContents = await getRawContent(file.file);
+    const contents = Object.values(rawContents);
+    const totalFiles = contents.length;
+
+    // 统计 opacity
+    // <p style="opacity:0.4;">xxxxx</p>
+    const opacityPattern =
+      /(?:^|[\s;{"'])opacity\s*:\s*0(?:\.\d+)?(?=\s*(?:;|}|["']))/gim;
+
+    let filesWithOpacity = 0;
+    for (const content of contents) {
+      const matches = content.match(opacityPattern);
+      const opacityCount = matches ? matches.length : 0;
+
+      // 单文件内 opacity 出现 5 个以上，才认为该文件“存在 opacity”。
+      if (opacityCount > 5) {
+        filesWithOpacity += 1;
+      }
+    }
+
+    // 拦截条件：
+    // 1) 大样本（>5 文件）>= 4 个命中
+    // 2) 小样本（<=5 文件）>= 2 个命中
+    // 3) 迷你样本（1 文件）>= 1 个命中
+    const hitByLargeSet = totalFiles > 5 && filesWithOpacity >= 4;
+    const hitBySmallSet =
+      totalFiles > 1 && totalFiles <= 5 && filesWithOpacity >= 2;
+    const hitByMiniSet = totalFiles === 1 && filesWithOpacity >= 1;
+
+    if (hitByLargeSet || hitBySmallSet || hitByMiniSet) {
+      message.error('疑似机翻站小说，禁止上传');
+      return false;
+    }
+  } catch {
+    message.error('epub 解析失败');
+    return false;
   }
 }
 

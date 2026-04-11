@@ -407,4 +407,16 @@ export class Epub extends BaseFile {
     }
     return contents.join('\n');
   }
+
+  getRaw(): Record<string, string> {
+    const rawContents: Record<string, string> = {};
+    for (const item of this.iterDocInSpine()) {
+      let id = item.id;
+      if (item.id in rawContents) {
+        id = `${item.id}_${Math.random().toString(16).slice(2)}`;
+      }
+      rawContents[id] = item.doc.body.innerHTML;
+    }
+    return rawContents;
+  }
 }
