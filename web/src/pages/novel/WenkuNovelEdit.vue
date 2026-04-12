@@ -478,7 +478,7 @@ const levelOptions = [
             minRows: 8,
             maxRows: 24,
           }"
-          maxlength="500"
+          maxlength="1000"
           show-count
           :input-props="{ spellcheck: false }"
         />
