@@ -11,6 +11,7 @@ import { WenkuNovelRepo } from '@/repos';
 import { useNoticeStore, useWhoamiStore } from '@/stores';
 import { RegexUtil } from '@/util';
 import { getFullContent } from '@/util/file';
+import type { UploadTask } from '@/api/novel/client';
 
 const props = defineProps<{
   novelId: string;
@@ -70,6 +71,18 @@ async function beforeUpload({ file }: { file: UploadFileInfo }) {
   }
 }
 
+const uploadTasks: Record<string, UploadTask<string>> = {};
+
+async function cancelUpload(options: {
+  file: UploadFileInfo;
+  fileList: Array<UploadFileInfo>;
+  index: number;
+}): Promise<boolean> {
+  await uploadTasks[options.file.id]?.abort?.();
+  delete uploadTasks[options.file.id];
+  return true;
+}
+
 const customRequest = async ({
   file,
   onFinish,
@@ -81,20 +94,33 @@ const customRequest = async ({
     return;
   }
 
-  try {
-    const type = file.url === 'jp' ? 'jp' : 'zh';
-    await WenkuNovelRepo.createVolume(
-      props.novelId,
-      file.name,
-      type,
-      file.file as File,
-      (percent) => onProgress({ percent }),
-    );
-    onFinish();
-  } catch (e) {
-    onError();
-    message.error(`上传失败:${await formatError(e)}`);
-  }
+  const type = file.url === 'jp' ? 'jp' : 'zh';
+  const task: UploadTask<string> = WenkuNovelRepo.createVolume(
+    props.novelId,
+    file.name,
+    type,
+    file.file as File,
+    (percent) => onProgress({ percent }),
+  );
+  uploadTasks[file.id] = task;
+  task.promise
+    .then(() => {
+      delete uploadTasks[file.id];
+      onFinish();
+    })
+    .catch(async (e) => {
+      delete uploadTasks[file.id];
+      // 用户手动取消上传，不报错
+      if (e instanceof Error && e.message === '上传已取消') {
+        message.error(`上传已取消`);
+        return;
+      }
+      onError();
+      message.error(`上传失败:${await formatError(e)}`);
+    });
+  return {
+    abort: () => task.abort(),
+  };
 };
 
 const noticeStore = useNoticeStore();
@@ -126,6 +152,7 @@ const uploadVolumes = () => {
     :custom-request="customRequest"
     :show-trigger="haveReadRule"
     @before-upload="beforeUpload"
+    :on-remove="cancelUpload"
   >
     <c-button label="上传" :icon="PlusOutlined" />
   </n-upload>

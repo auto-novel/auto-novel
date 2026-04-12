@@ -67,12 +67,32 @@ export const WenkuNovelRepo = {
       exact: true,
     }),
   ),
-  createVolume: withOnSuccess(WenkuNovelApi.createVolume, (_, novelId) =>
-    cache.invalidateQueries({
-      key: [ItemKey, novelId],
-      exact: true,
-    }),
-  ),
+  createVolume: (
+    novelId: string,
+    volumeId: string,
+    type: 'jp' | 'zh',
+    file: File,
+    onProgress: (p: number) => void,
+  ) => {
+    const task = WenkuNovelApi.createVolume(
+      novelId,
+      volumeId,
+      type,
+      file,
+      onProgress,
+    );
+
+    return <typeof task>{
+      abort: task.abort,
+      promise: task.promise.then(async (ret) => {
+        await cache.invalidateQueries({
+          key: [ItemKey, novelId],
+          exact: true,
+        });
+        return ret;
+      }),
+    };
+  },
   deleteVolume: withOnSuccess(WenkuNovelApi.deleteVolume, (_, novelId) =>
     cache.invalidateQueries({
       key: [ItemKey, novelId],
