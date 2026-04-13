@@ -38,7 +38,7 @@ const { data: userPage, error } = AdminRepo.useUserList(
   pageSize,
   () => props.page,
   () => ({
-    username: listValue.value.搜索,
+    q: listValue.value.搜索,
     role: numberToRole(listValue.value.角色),
   }),
 );

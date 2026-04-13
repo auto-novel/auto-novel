@@ -39,14 +39,37 @@ function parseJwt(token: string): UserProfile {
   };
 }
 
-export function useUserData(app: string) {
-  const userData = useLocalStorage<UserData>(
-    window.location.origin === 'https://n.novelia.cc' ? 'auth' : 'authInfo',
-    {
-      profile: undefined,
-      adminMode: false,
+function useUserDataWithoutAuth(_app: string) {
+  const noAuthToken =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiLmnKzlnLDnlKjmiLciLCJyb2xlIjoiYWRtaW4iLCJjcmF0IjowLCJpYXQiOjB9.U6CwIExYZE7ls8jNeMPCkV8r2h6lOj6F7b3wJ_Ja5iY';
+  const userData = ref<UserData>({
+    profile: {
+      token: noAuthToken,
+      username: '本地用户',
+      role: 'admin',
+      issuedAt: 0,
+      createdAt: 0,
+      expiredAt: 0,
     },
-  );
+    adminMode: false,
+  });
+  async function refresh() {}
+  async function logout() {
+    return '';
+  }
+
+  return {
+    userData,
+    refresh,
+    logout,
+  };
+}
+
+function useUserDataWithAuth(app: string) {
+  const userData = useLocalStorage<UserData>('auth', {
+    profile: undefined,
+    adminMode: false,
+  });
 
   // 迁移旧数据
   if (userData.value.profile?.issuedAt === undefined) {
@@ -96,4 +119,13 @@ export function useUserData(app: string) {
     refresh,
     logout,
   };
+}
+
+export function useUserData(app: string) {
+  const mode = import.meta.env.VITE_API_MODE;
+  if (mode === 'local' || mode === 'native') {
+    return useUserDataWithoutAuth(app);
+  } else {
+    return useUserDataWithAuth(app);
+  }
 }

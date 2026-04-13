@@ -75,6 +75,7 @@ suspend fun makeEpubFile(
                                 it.appendElement("p").appendText(pwd.paragraphs[i])
                             } else {
                                 it.appendElement("p").appendText(pwd.paragraphs[i])
+                                    .attr("lang", "ja")
                                     .attr("style", "opacity:0.4;")
                             }
                         }

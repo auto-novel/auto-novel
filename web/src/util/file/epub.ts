@@ -214,7 +214,8 @@ export class Epub extends BaseFile {
       type: DOMParserSupportedType,
     ) => {
       const entry = entries.get(path);
-      if (!entry) throw new Error(`Entry not found: ${path}`);
+      if (!entry || !('getData' in entry))
+        throw new Error(`Entry not found or invalid: ${path}`);
       const text = await entry.getData!(new TextWriter());
       const parser = new DOMParser();
       return parser.parseFromString(text, type);
@@ -227,7 +228,8 @@ export class Epub extends BaseFile {
 
     const readBlob = async (path: string, type: string) => {
       const entry = entries.get(path);
-      if (!entry) throw new Error(`Entry not found: ${path}`);
+      if (!entry || !('getData' in entry))
+        throw new Error(`Entry not found or invalid: ${path}`);
       const data = await entry.getData!(new BlobWriter());
       return new Blob([data], { type });
     };

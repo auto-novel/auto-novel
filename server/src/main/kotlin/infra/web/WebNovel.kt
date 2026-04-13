@@ -3,6 +3,7 @@ package infra.web
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import infra.field
+import infra.oplog.Operation
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
@@ -13,7 +14,12 @@ import org.bson.types.ObjectId
 
 object WebNovelFilter {
     enum class Type { 全部, 连载中, 已完结, 短篇 }
-    enum class Level { 全部, 一般向, R18 }
+    enum class Level {
+        全部, 一般向, R18;
+
+        val isNsfw get() = this != 一般向
+    }
+
     enum class Translate { 全部, GPT3, Sakura }
     enum class Sort { 更新, 点击, 相关 }
 }
@@ -185,6 +191,37 @@ data class WebNovelChapterTranslationState(
     val sakuraVersion: String? = null,
 )
 
+@Serializable
+sealed interface WebNovelOperation {
+    @Serializable
+    @SerialName("update")
+    object Update : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-translation")
+    object UpdateTranslation : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-wenku-id")
+    object UpdateWenkuId : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-glossary")
+    data class UpdateGlossary(
+        val old: Map<String, String>,
+        val new: Map<String, String>,
+    ) : WebNovelOperation
+}
+
+@Serializable
+data class WebNovelOplog(
+    val providerId: String,
+    val novelId: String,
+    val operator: String,
+    val operation: WebNovelOperation,
+    @Contextual val createdAt: Instant,
+)
+
 // MongoDB
 @Serializable
 data class WebNovelFavoriteDbModel(
@@ -202,3 +239,5 @@ data class WebNovelReadHistoryDbModel(
     @Contextual val chapterId: String,
     @Contextual val createAt: Instant,
 )
+
+typealias WebNovelOplogDbModel = WebNovelOplog

@@ -9,7 +9,7 @@ const useUserList = (
   pageSize: number,
   page: MaybeRefOrGetter<number>,
   option: MaybeRefOrGetter<{
-    username?: string;
+    q?: string;
     role?: UserRole;
   }>,
 ) =>
@@ -19,11 +19,7 @@ const useUserList = (
       AuthAdminApi.listUser({
         page: toValue(page),
         pageSize,
-        ...Object.fromEntries(
-          Object.entries(toValue(option)).filter(
-            ([_, value]) => value !== undefined && value !== null,
-          ),
-        ),
+        ...toValue(option),
       }),
   });
 

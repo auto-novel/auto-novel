@@ -1,0 +1,4 @@
+packages:
+  - "web"
+  - "crawler"
+  - "packages/*"

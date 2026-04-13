@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { checkIsMobile, useIsWideScreen } from '@/pages/util';
 import { ReaderSetting, useReaderSettingStore } from '@/stores';
+import { AddOutlined, MinusOutlined } from '@vicons/material';
 
 const isMobile = checkIsMobile();
 const isWideScreen = useIsWideScreen(600);
@@ -12,6 +13,12 @@ const setCustomBodyColor = (color: string) =>
   (readerSetting.value.theme.bodyColor = color);
 const setCustomFontColor = (color: string) =>
   (readerSetting.value.theme.fontColor = color);
+const setIndentSize = (diff: number) => {
+  readerSetting.value.indentSize = Math.min(
+    Math.max(readerSetting.value.indentSize! + diff, 0),
+    9,
+  );
+};
 </script>
 
 <template>
@@ -25,7 +32,11 @@ const setCustomFontColor = (color: string) =>
       style="width: 100%"
     >
       <n-tab-pane name="signin" tab="内容">
-        <n-flex vertical size="large" style="width: 100%; padding: 20px">
+        <n-flex
+          vertical
+          size="large"
+          style="width: 100%; padding: 20px; box-sizing: border-box"
+        >
           <c-action-wrapper title="语言">
             <c-radio-group
               v-model:value="readerSetting.mode"
@@ -61,6 +72,13 @@ const setCustomFontColor = (color: string) =>
               :options="ReaderSetting.speakLanguagesOptions"
             />
           </c-action-wrapper>
+          <c-action-wrapper title="翻页模式">
+            <c-radio-group
+              :value="readerSetting.pageTurnMode"
+              @update-value="(it: any) => (readerSetting.pageTurnMode = it)"
+              :options="ReaderSetting.pageTurnModeOptions"
+            />
+          </c-action-wrapper>
           <c-action-wrapper v-if="isMobile" title="点按动画" align="center">
             <n-switch
               v-model:value="readerSetting.enableClickAnimition"
@@ -73,11 +91,40 @@ const setCustomFontColor = (color: string) =>
               size="small"
             />
           </c-action-wrapper>
-          <c-action-wrapper title="去除缩进" align="center">
-            <n-switch
-              v-model:value="readerSetting.trimLeadingSpaces"
-              size="small"
-            />
+          <c-action-wrapper title="缩进修正" align="center">
+            <n-flex size="large" align="center">
+              <n-switch
+                :value="readerSetting.indentSize !== undefined"
+                @update:value="
+                  (v: any) => (readerSetting.indentSize = v ? 2 : undefined)
+                "
+                size="small"
+              />
+              <c-action-wrapper
+                v-if="readerSetting.indentSize !== undefined"
+                title="缩进值"
+                align="center"
+              >
+                <n-input-group>
+                  <n-button size="small" @click="setIndentSize(-1)">
+                    <template #icon>
+                      <n-icon><MinusOutlined /></n-icon>
+                    </template>
+                  </n-button>
+                  <n-input
+                    :value="readerSetting.indentSize + ' 字符'"
+                    size="small"
+                    style="text-align: center; width: 70px"
+                    readonly
+                  />
+                  <n-button size="small" @click="setIndentSize(1)">
+                    <template #icon>
+                      <n-icon><AddOutlined /></n-icon>
+                    </template>
+                  </n-button>
+                </n-input-group>
+              </c-action-wrapper>
+            </n-flex>
           </c-action-wrapper>
 
           <n-text depth="3" style="font-size: 12px">

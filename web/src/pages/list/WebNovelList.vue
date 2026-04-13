@@ -21,7 +21,7 @@ const { whoami } = storeToRefs(whoamiStore);
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
-const listOptions = getWebListOptions(whoami.value.allowNsfw);
+const listOptions = getWebListOptions(whoami.value.hasNsfwAccess);
 
 const listValue = computed(
   () =>
@@ -29,7 +29,7 @@ const listValue = computed(
       搜索: props.query,
       来源: props.selected[0] ?? 0xff,
       类型: props.selected[1] ?? 0,
-      分级: props.selected[2] ?? 0,
+      分级: props.selected[2] ?? (whoami.value.hasNsfwAccess ? 0 : 1),
       翻译: props.selected[3] ?? 0,
       排序: props.selected[4] ?? 0,
     },

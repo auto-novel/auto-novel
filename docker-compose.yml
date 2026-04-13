@@ -14,7 +14,7 @@ services:
       - ./data/files-extra:/data/files-extra
     restart: always
 
-  server:
+  api:
     image: ghcr.io/auto-novel/auto-novel-server:latest
     depends_on:
       - mongo
@@ -25,14 +25,12 @@ services:
       - MAILGUN_API_KEY
       - MAILGUN_API_URL
       - MAILGUN_FROM_EMAIL
-      - JWT_SECRET
+      - ACCESS_TOKEN_SECRET
       - HAMELN_TOKEN
       - PIXIV_COOKIE_PHPSESSID
       - DB_HOST_MONGO=mongo
       - DB_HOST_ES=elasticsearch
       - DB_HOST_REDIS=redis
-    ports:
-      - 8081:8081
     volumes:
       - ./data/files-temp:/data/files-temp
       - ./data/files-wenku:/data/files-wenku
@@ -42,10 +40,9 @@ services:
   mongo:
     image: mongo:6.0.3
     environment:
-      - MONGO_INITDB_DATABASE=auth
-    ports:
-      - 27017:27017
+      - MONGO_INITDB_DATABASE=main
     volumes:
+      - ./db/mongo-init:/docker-entrypoint-initdb.d:ro
       - ./data/db:/data/db
     restart: always
 
@@ -54,6 +51,7 @@ services:
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
     ulimits:
       memlock:
         soft: -1
@@ -66,12 +64,15 @@ services:
     volumes:
       - ./data/es/data:/usr/share/elasticsearch/data
       - ./data/es/plugins:/usr/share/elasticsearch/plugins
-    ports:
-      - 9200:9200
+    entrypoint: |
+      bash -c "
+      if ! elasticsearch-plugin list | grep -q analysis-icu; then
+        elasticsearch-plugin install analysis-icu
+      fi
+      /usr/local/bin/docker-entrypoint.sh eswrapper
+      "
     restart: always
 
   redis:
     image: redis:7.2.1
-    ports:
-      - 6379:6379
     restart: always

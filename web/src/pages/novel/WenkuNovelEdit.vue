@@ -86,7 +86,7 @@ const formRules: FormRules = {
   level: [
     {
       validator: (_rule: FormItemRule, value: string) =>
-        value !== '成人向' || whoami.value.allowNsfw,
+        value !== '成人向' || whoami.value.hasNsfwAccess,
       message: '你太年轻了，无法创建成人向页面',
       trigger: 'input',
     },
@@ -197,7 +197,7 @@ const populateNovelFromAmazon = async (
     duration: 0,
   });
 
-  await smartImport(
+  const result = await smartImport(
     urlOrQuery.trim(),
     formValue.value.volumes,
     forcePopulateVolumes,
@@ -239,9 +239,14 @@ const populateNovelFromAmazon = async (
     },
   );
 
-  formValue.value.cover = formValue.value.volumes[0]?.cover;
-  msgReactive.content = '智能导入完成';
-  msgReactive.type = 'info';
+  if (result) {
+    formValue.value.cover = formValue.value.volumes[0]?.cover;
+    msgReactive.content = '智能导入完成';
+    msgReactive.type = 'info';
+  } else {
+    msgReactive.content = '智能导入失败';
+    msgReactive.type = 'error';
+  }
   delay(3000).then(() => msgReactive.destroy());
 };
 
@@ -332,9 +337,12 @@ const togglePresetKeyword = (checked: boolean, keyword: string) => {
 };
 
 const levelOptions = [
-  { label: '一般向', value: '一般向' },
-  { label: '成人向', value: '成人向' },
-  { label: '严肃向', value: '严肃向' },
+  { label: '轻小说', value: '一般向' },
+  { label: '轻文学', value: '轻文学' },
+  { label: '文学', value: '严肃向' },
+  { label: '非小说', value: '非小说' },
+  { label: 'R18男性向', value: '成人向' },
+  { label: 'R18女性向', value: '成人向女' },
 ];
 </script>
 

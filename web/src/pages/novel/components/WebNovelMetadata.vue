@@ -109,7 +109,7 @@ const latestChapterCreateAt = computed(() => {
     <c-button v-else label="开始阅读" disabled />
 
     <router-link
-      v-if="whoami.allowAdvancedFeatures"
+      v-if="whoami.hasNovelAccess"
       :to="`/novel-edit/${providerId}/${novelId}`"
     >
       <c-button label="编辑" :icon="EditNoteOutlined" />

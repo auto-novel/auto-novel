@@ -36,9 +36,9 @@ const { searchHistory } = storeToRefs(searchHistoryStore);
 function appendTag(tag: string) {
   const current = text.value.trimEnd();
   if (current) {
-    text.value = tag;
-  } else {
     text.value = `${current} ${tag}`;
+  } else {
+    text.value = tag;
   }
 }
 

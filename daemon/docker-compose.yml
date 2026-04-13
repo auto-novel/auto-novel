@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: auto-novel-crawler:latest
+    container_name: auto-novel-crawler
+    ports:
+      - '3000:3000'
+
+    environment:
+      - NODE_ENV=production
+      - CONFIG_PATH=/app/config.json
+    volumes:
+      - './config.json:/app/config.json'
+      - './data:/app/data'
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 2

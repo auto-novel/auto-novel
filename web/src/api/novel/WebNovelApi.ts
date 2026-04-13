@@ -72,6 +72,24 @@ const updateNovel = (
   },
 ) => client.post(`novel/${providerId}/${novelId}`, { json });
 
+const updateNovelTranslation = (
+  providerId: string,
+  novelId: string,
+  json: {
+    title: string;
+    introduction: string;
+    toc: { [key: string]: string };
+  },
+) => client.put(`novel/${providerId}/${novelId}/translation`, { json });
+
+const updateNovelWenkuId = (
+  providerId: string,
+  novelId: string,
+  json: {
+    wenkuId: string;
+  },
+) => client.put(`novel/${providerId}/${novelId}/wenku-id`, { json });
+
 const updateGlossary = (
   providerId: string,
   novelId: string,
@@ -177,6 +195,8 @@ export const WebNovelApi = {
   getChapter,
 
   updateNovel,
+  updateNovelTranslation,
+  updateNovelWenkuId,
   updateGlossary,
 
   createTranslationApi,

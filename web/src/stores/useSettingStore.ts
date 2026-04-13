@@ -138,8 +138,9 @@ export interface ReaderSetting {
   translations: TranslatorId[];
   clickArea: 'default' | 'left-right' | 'up-down' | 'none';
   speakLanguages: string[];
+  pageTurnMode: 'page' | 'scroll';
   enableClickAnimition: boolean;
-  trimLeadingSpaces: boolean;
+  indentSize?: number;
   enableSourceLabel: boolean;
   //
   fontWeight: number;
@@ -163,8 +164,8 @@ export namespace ReaderSetting {
     translations: ['sakura', 'gpt', 'youdao', 'baidu'],
     clickArea: 'default',
     speakLanguages: ['jp'],
+    pageTurnMode: 'page',
     enableClickAnimition: true,
-    trimLeadingSpaces: false,
     enableSourceLabel: false,
     //
     fontWeight: 400,
@@ -209,6 +210,12 @@ export namespace ReaderSetting {
         };
       }
     }
+    if ('trimLeadingSpaces' in setting) {
+      if (setting.trimLeadingSpaces) {
+        setting.indentSize = 0;
+      }
+      delete setting.trimLeadingSpaces;
+    }
   };
 
   export const modeOptions = [
@@ -232,6 +239,11 @@ export namespace ReaderSetting {
   export const speakLanguagesOptions = [
     { label: '中文', value: 'zh' },
     { label: '日文', value: 'jp' },
+  ];
+
+  export const pageTurnModeOptions = [
+    { label: '章节翻页', value: 'page' },
+    { label: '滚动翻页', value: 'scroll' },
   ];
 
   export const fontWeightOptions = [

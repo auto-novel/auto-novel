@@ -82,7 +82,7 @@ audio.loop = true;
 let requestCount = 0;
 export const requestKeepAlive = () => {
   requestCount += 1;
-  return audio.play();
+  audio.play().catch(() => {});
 };
 
 export const releaseKeepAlive = () => {

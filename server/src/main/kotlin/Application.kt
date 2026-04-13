@@ -16,6 +16,7 @@ import infra.web.repository.WebNovelChapterRepository
 import infra.web.repository.WebNovelFileRepository
 import infra.web.repository.WebNovelMetadataRepository
 import infra.web.datasource.WebNovelEsDataSource
+import infra.web.repository.WebNovelOplogRepository
 import infra.wenku.datasource.WenkuNovelEsDataSource
 import infra.wenku.datasource.WenkuNovelVolumeDiskDataSource
 import infra.wenku.repository.WenkuNovelMetadataRepository
@@ -55,7 +56,7 @@ fun main() {
             slf4jLogger()
             modules(appModule)
         }
-        authentication(secret = envNotNull("JWT_SECRET"))
+        authentication(secret = envNotNull("ACCESS_TOKEN_SECRET"))
         rateLimit()
         install(Resources)
         install(CachingHeaders)
@@ -140,6 +141,7 @@ val appModule = module {
     singleOf(::WebNovelFileRepository)
     singleOf(::WebNovelFavoredRepository)
     singleOf(::WebNovelReadHistoryRepository)
+    singleOf(::WebNovelOplogRepository)
 
     singleOf(::WenkuNovelMetadataRepository)
     singleOf(::WenkuNovelVolumeRepository)

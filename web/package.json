@@ -1,5 +1,5 @@
 {
-  "name": "auto-novel-web",
+  "name": "@auto-novel/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,13 +10,14 @@
     "safari>=14"
   ],
   "scripts": {
-    "dev": "vite",
-    "dev:local": "cross-env LOCAL=1 vite",
-    "build": "vite build && vue-tsc --noEmit",
-    "build:analyze": "ENABLE_SONDA=1 vite build",
+    "dev": "pnpm dev:remote",
+    "dev:remote": "VITE_API_MODE=remote vite",
+    "dev:local": "VITE_API_MODE=local vite",
+    "dev:native": "VITE_API_MODE=native vite",
+    "build": "vite build && vue-tsc -b --noEmit",
+    "preview": "vite preview",
     "lint": "eslint src",
     "lint:dist": "eslint dist",
-    "preview": "vite preview",
     "test": "vitest run",
     "prepare": "cd .. && husky web/.husky || true"
   },
@@ -24,7 +25,6 @@
     "@eslint/js": "^9.35.0",
     "@types/node": "^20.19.13",
     "@vue/eslint-config-typescript": "^14.6.0",
-    "cross-env": "^7.0.3",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-compat": "^6.0.2",
@@ -38,6 +38,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@auto-novel/crawler": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",
@@ -56,7 +57,7 @@
     "diff": "^5.2.0",
     "idb": "^8.0.3",
     "jwt-decode": "^4.0.0",
-    "ky": "1.7.5",
+    "ky": "^1.14.0",
     "lodash-es": "^4.17.21",
     "markdown-it": "^14.1.0",
     "markdown-it-anchor": "^9.2.0",
@@ -70,10 +71,10 @@
     "unplugin-imagemin": "^0.5.20",
     "unplugin-vue-components": "^0.27.5",
     "uuid": "^10.0.0",
-    "vite": "^7.1.4",
+    "vite": "^7.1.9",
     "vite-plugin-html": "^3.2.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vue": "^3.5.21",
+    "vue": "^3.5.22",
     "vue-draggable-plus": "^0.5.6",
     "vue-router": "^4.5.1",
     "vue-tsc": "^2.2.12"

@@ -5,7 +5,7 @@ import type { GenericNovelId } from '@/model/Common';
 import type { Glossary } from '@/model/Glossary';
 import type { TranslateTaskParams } from '@/model/Translator';
 import { useIsWideScreen } from '@/pages/util';
-import { Setting, useSettingStore } from '@/stores';
+import { Setting, useSettingStore, useWhoamiStore } from '@/stores';
 
 const probs = defineProps<{
   gnid: GenericNovelId;

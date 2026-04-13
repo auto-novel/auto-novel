@@ -3,7 +3,7 @@
     "target": "ES2015",
     "useDefineForClassFields": true,
     "module": "ES2020",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "strict": true,
     "jsx": "preserve",
     "sourceMap": true,
@@ -12,9 +12,8 @@
     "esModuleInterop": true,
     "lib": ["DOM", "ES2021"],
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]

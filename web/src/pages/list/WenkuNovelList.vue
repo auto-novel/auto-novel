@@ -18,7 +18,7 @@ const { whoami } = storeToRefs(whoamiStore);
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
-const listOptions = getWenkuListOptions(whoami.value.allowNsfw);
+const listOptions = getWenkuListOptions(whoami.value.hasNsfwAccess);
 
 const listValue = computed(
   () =>
@@ -32,10 +32,7 @@ const { data: novelPage, error } = WenkuNovelRepo.useWenkuNovelList(
   () => props.page,
   () => ({
     query: listValue.value.搜索,
-    level:
-      listValue.value.分级 == 0 || whoami.value.allowNsfw
-        ? listValue.value.分级 + 1
-        : listValue.value.分级 + 2,
+    level: listValue.value.分级,
   }),
 );
 
@@ -55,7 +52,7 @@ watch(novelPage, (novelPage) => {
   <div class="layout-content">
     <n-h1>文库小说</n-h1>
 
-    <router-link to="/wenku-edit">
+    <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
       <c-button
         label="新建小说"
         :icon="PlusOutlined"

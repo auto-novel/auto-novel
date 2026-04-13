@@ -57,16 +57,25 @@ const submit = async () => {
     return;
   }
 
+  const title = formValue.value.title.trim();
+  const introduction = formValue.value.introduction.trim();
+  const wenkuId = formValue.value.wenkuId.trim();
+  const toc = Object.assign(
+    {},
+    ...formValue.value.toc.map((item) => ({ [item.jp]: item.zh })),
+  );
+
   await doAction(
-    WebNovelRepo.updateNovel(providerId, novelId, {
-      title: formValue.value.title.trim(),
-      introduction: formValue.value.introduction.trim(),
-      wenkuId: formValue.value.wenkuId.trim(),
-      toc: Object.assign(
-        {},
-        ...formValue.value.toc.map((item) => ({ [item.jp]: item.zh })),
-      ),
-    }).then(() => {
+    Promise.all([
+      WebNovelRepo.updateNovelTranslation(providerId, novelId, {
+        title,
+        introduction,
+        toc,
+      }),
+      WebNovelRepo.updateNovelWenkuId(providerId, novelId, {
+        wenkuId,
+      }),
+    ]).then(() => {
       router.push({ path: `/novel/${providerId}/${novelId}` });
     }),
     '编辑',

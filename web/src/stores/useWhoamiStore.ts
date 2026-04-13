@@ -2,6 +2,7 @@ import { setTokenGetter } from '@/api/novel/client';
 import { useUserData } from '@/util';
 import { LSKey } from './key';
 import { UserRole } from '@/model/User';
+import { at } from 'lodash-es';
 
 export const useWhoamiStore = defineStore(LSKey.Auth, () => {
   const { userData, refresh, logout } = useUserData('n');
@@ -10,8 +11,9 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
   const whoami = computed(() => {
     const { profile, adminMode } = userData.value;
 
-    const isAdmin = profile?.role === 'admin';
     const isSignedIn = profile !== undefined;
+    const isAdmin = profile?.role === 'admin';
+    const asAdmin = isAdmin && adminMode;
 
     const createAtLeast = (days: number) => {
       if (!profile) return false;
@@ -23,6 +25,12 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
       return UserRole.toString(profile.role) + (adminMode ? '+' : '');
     };
 
+    const atLeastMember =
+      profile !== undefined && ['admin', 'member'].includes(profile.role);
+    const hasNsfwAccess = atLeastMember && createAtLeast(30);
+    const hasForumAccess = atLeastMember;
+    const hasNovelAccess = atLeastMember && createAtLeast(30);
+
     return {
       user: {
         username: profile?.username ?? '未登录',
@@ -31,9 +39,10 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
       },
       isSignedIn,
       isAdmin,
-      asAdmin: isAdmin && adminMode,
-      allowNsfw: createAtLeast(30),
-      allowAdvancedFeatures: createAtLeast(30),
+      asAdmin,
+      hasNsfwAccess,
+      hasForumAccess,
+      hasNovelAccess,
       isMe: (username: string) => profile?.username === username,
     };
   });

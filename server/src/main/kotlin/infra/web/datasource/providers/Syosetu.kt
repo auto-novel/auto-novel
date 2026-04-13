@@ -77,7 +77,7 @@ class Syosetu(
         val rangeId = rangeIds[rangeFilter] ?: return emptyPage()
         val statusId = statusIds[statusFilter] ?: return emptyPage()
 
-        val page = options["page"]?.toIntOrNull()?.plus(1) ?: 1
+        val page = options["page"]?.toIntOrNull() ?: 1
 
         val path = when (options["type"]) {
             "流派" -> {

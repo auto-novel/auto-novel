@@ -9,7 +9,6 @@ import {
 
 import { FavoredApi } from '@/api';
 import { WebNovelRepo, WenkuNovelRepo } from '@/repos';
-import bannerUrl from '@/image/banner.webp';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { useBreakPoints } from '@/pages/util';
 import { useWhoamiStore } from '@/stores';
@@ -75,7 +74,7 @@ const { data: mostVisitedWeb, error: mostVisitedWebError } =
   });
 
 const { data: latestUpdateWenku, error: latestUpdateWenkuError } =
-  WenkuNovelRepo.useWenkuNovelList(1, { level: 1 });
+  WenkuNovelRepo.useWenkuNovelList(1, { level: 0 });
 
 const showHowToUseModal = ref(false);
 const linkExample = [
@@ -103,8 +102,12 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
 
 <template>
   <div
-    :style="{ background: `rgba(0, 0, 0, .25) url(${bannerUrl})` }"
-    style="background-blend-mode: darken"
+    style="
+      background: rgba(0, 0, 0, 0.45) url('/files-extra/banner.v1.webp');
+      background-size: cover;
+      background-position: center top;
+      background-blend-mode: darken;
+    "
   >
     <div id="banner" class="layout-content">
       <n-h1
@@ -183,7 +186,6 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
     <div v-else style="height: 16px" />
 
     <bulletin>
-      <Migrate />
       <n-flex>
         <n-button text type="primary" @click="showHowToUseModal = true">
           使用说明

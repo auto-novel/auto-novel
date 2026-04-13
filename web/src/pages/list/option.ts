@@ -101,6 +101,8 @@ export interface WenkuListOptions extends ListOptions {
 export type WenkuListValue = ListValue<WenkuListOptions>;
 
 export function getWenkuListOptions(allowNsfw: boolean): WenkuListOptions {
+  const levels = ['全部小说', '轻小说', '轻文学', '文学', '非小说'];
+  const levelsNsfw = ['R18男性向', 'R18女性向'];
   return {
     搜索: {
       type: 'text',
@@ -108,7 +110,7 @@ export function getWenkuListOptions(allowNsfw: boolean): WenkuListOptions {
     },
     分级: {
       type: 'select',
-      tags: allowNsfw ? ['一般向', '成人向', '严肃向'] : ['一般向', '严肃向'],
+      tags: allowNsfw ? [...levels, ...levelsNsfw] : levels,
     },
   };
 }
@@ -143,6 +145,10 @@ const descriptorsKakuyomu: Record<string, Descriptor> = {
       范围: {
         type: 'select',
         tags: ['总计', '每年', '每月', '每周', '每日'],
+      },
+      状态: {
+        type: 'select',
+        tags: ['全部', '长篇', '短篇'],
       },
     },
   },
@@ -262,6 +268,7 @@ export function parseRankListValue(
     return {
       genre: get('流派'),
       range: get('范围'),
+      status: get('状态'),
     };
   } else {
     return {};

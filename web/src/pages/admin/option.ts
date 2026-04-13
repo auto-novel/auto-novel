@@ -42,7 +42,7 @@ export function getUserListOptions(): UserListOptions {
     搜索: {
       type: 'text',
       history: 'web',
-      placeholder: '请输入用户名',
+      placeholder: '请输入用户名或邮箱',
     },
     角色: {
       type: 'select',

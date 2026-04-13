@@ -1,19 +1,4 @@
-const LSKeyLegacy = {
-  Auth: 'authInfo',
-  Blacklist: 'blockComment',
-  Draft: 'draft',
-  Favored: 'favored',
-  ReadPosition: 'readPosition',
-  Notified: 'readState',
-  SearchHistoryWeb: 'webSearchHistory',
-  SearchHistoryWenku: 'wenkuSearchHistory',
-  Setting: 'setting',
-  SettingReader: 'readerSetting',
-  WorkspaceGpt: 'gpt-worker',
-  WorkspaceSakura: 'sakura-workspace',
-} as const;
-
-const LSKeyNew = {
+export const LSKey = {
   Auth: 'auth',
   Blacklist: 'blacklist',
   Draft: 'draft',
@@ -27,6 +12,3 @@ const LSKeyNew = {
   WorkspaceGpt: 'workspace-gpt',
   WorkspaceSakura: 'workspace-sakura',
 } as const;
-
-export const LSKey =
-  window.location.origin === 'https://n.novelia.cc' ? LSKeyNew : LSKeyLegacy;

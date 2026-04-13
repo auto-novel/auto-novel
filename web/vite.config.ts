@@ -1,81 +1,30 @@
 import vue from '@vitejs/plugin-vue';
-import fs from 'fs';
-import path from 'path';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import imagemin from 'unplugin-imagemin/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 import Components from 'unplugin-vue-components/vite';
-import { defineConfig, PluginOption, ServerOptions, UserConfig } from 'vite';
+import type { UserConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-const enableSonda = process.env.ENABLE_SONDA === '1';
-const enableLocalServer = process.env.LOCAL != undefined;
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd());
+  const apiMode = env.VITE_API_MODE;
+  const apiUrl = (() => {
+    if (apiMode === 'remote') {
+      return 'https://n.novelia.cc';
+    } else if (apiMode === 'local') {
+      return 'http://localhost:80';
+    } else if (apiMode === 'native') {
+      return 'http://localhost:8081';
+    }
+    return 'https://n.novelia.cc';
+  })();
+  const enableSonda = env.VITE_ENABLE_SONDA === 'true';
 
-const defineServerOptions = (): ServerOptions => {
-  return {
-    proxy: {
-      '/api': {
-        target: enableLocalServer
-          ? 'http://localhost:8081'
-          : 'https://n.novelia.cc',
-        changeOrigin: true,
-        bypass: (req, _res, _options) => {
-          if (
-            !enableLocalServer &&
-            req.url &&
-            req.url.includes('/translate-v2/')
-          ) {
-            if (req.url.includes('/chapter/')) {
-              console.log('检测到小说章节翻译请求，已拦截');
-              return false;
-            }
-          }
-        },
-        rewrite: (path) => {
-          if (enableLocalServer) {
-            path = path.replace(/^\/api/, '');
-          }
-          return path;
-        },
-      },
-      '/files-temp': {
-        target: 'https://n.novelia.cc',
-        changeOrigin: true,
-      },
-    },
-  };
-};
-
-const filesProxyPlugin = (): PluginOption => ({
-  name: 'files-proxy',
-  configureServer(server) {
-    server.middlewares.use('/files-temp', (req, res) => {
-      const url = new URL('http://localhost' + req.url);
-      const ext = path.extname(url.pathname).toLowerCase();
-      const mimeTypes = {
-        '.epub': 'application/epub+zip',
-        '.txt': 'text/plain',
-      };
-      res.setHeader(
-        'content-type',
-        mimeTypes[ext] || 'application/octet-stream',
-      );
-
-      const filePath = path.join(
-        __dirname,
-        '../server/data/files-temp',
-        url.pathname,
-      );
-      const content = fs.readFileSync(filePath);
-      res.end(content);
-    });
-  },
-});
-
-export default defineConfig(({ command, mode }) => {
-  const userConfig: UserConfig = {
+  const config: UserConfig = {
     build: {
       target: ['es2015'],
       cssCodeSplit: false,
@@ -98,6 +47,37 @@ export default defineConfig(({ command, mode }) => {
         },
       },
     },
+    server: {
+      allowedHosts: true,
+      proxy: {
+        '/api': {
+          target: apiUrl,
+          changeOrigin: true,
+          rewrite:
+            apiMode === 'native'
+              ? (path: string) => path.replace(/^\/api/, '')
+              : undefined,
+          bypass: (req, _res, _options) => {
+            if (
+              apiMode === 'remote' &&
+              req.url &&
+              req.url.includes('/translate-v2/')
+            ) {
+              console.log('检测到小说章节翻译请求，已拦截');
+              return false;
+            }
+          },
+        },
+        '/files-temp': {
+          target: apiUrl,
+          changeOrigin: true,
+        },
+        '/files-extra': {
+          target: 'https://n.novelia.cc',
+          changeOrigin: true,
+        },
+      },
+    },
     plugins: [
       vue(),
       imagemin({}),
@@ -106,7 +86,7 @@ export default defineConfig(({ command, mode }) => {
       }),
       tsconfigPaths({ loose: true }),
       AutoImport({
-        dts: './src/auto-imports.d.ts',
+        dts: 'src/auto-imports.d.ts',
         imports: [
           'vue',
           'vue-router',
@@ -123,23 +103,16 @@ export default defineConfig(({ command, mode }) => {
         ],
       }),
       Components({
-        dts: './src/components.d.ts',
+        dts: 'src/components.d.ts',
+        dirs: ['src/**/components/**'],
         resolvers: [NaiveUiResolver()],
-        dirs: ['./**/components/**'],
       }),
     ],
   };
 
-  if (command === 'serve') {
-    userConfig.server = defineServerOptions();
-    if (enableLocalServer) {
-      userConfig.plugins.push(filesProxyPlugin());
-    }
-  }
-
   if (enableSonda) {
-    userConfig.build.sourcemap = true;
-    userConfig.plugins.push(
+    config.build!.sourcemap = true;
+    config.plugins!.push(
       Sonda({
         gzip: true,
         brotli: true,
@@ -147,5 +120,5 @@ export default defineConfig(({ command, mode }) => {
     );
   }
 
-  return userConfig;
+  return config;
 });

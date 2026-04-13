@@ -29,7 +29,7 @@ const listOptions = getWenkuFavoredListOptions(
 const listValue = computed(
   () =>
     <WenkuFavoredListValue>{
-      排序: props.selected[4] ?? 0,
+      排序: props.selected[0] ?? 0,
     },
 );
 
@@ -62,10 +62,10 @@ const novelListRef = useTemplateRef('novelList');
 
     <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
       <bookshelf-wenku-control
-        :selected-novels="novelListRef!.selectedNovels"
+        :selected-novels="novelListRef?.selectedNovels ?? []"
         :favored-id="favoredId"
-        @select-all="novelListRef!.selectAll()"
-        @invert-selection="novelListRef!.invertSelection()"
+        @select-all="novelListRef?.selectAll()"
+        @invert-selection="novelListRef?.invertSelection()"
       />
     </n-collapse-transition>
 

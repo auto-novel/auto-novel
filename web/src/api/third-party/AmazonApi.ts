@@ -1,12 +1,32 @@
 import type { Options } from 'ky';
 import ky from 'ky';
 
+import { lazy } from '@/util';
+import { ensureCookie } from './util';
+
+const getClient = lazy(async () => {
+  const addon = window.Addon;
+  if (!addon) return ky;
+
+  const url = 'https://www.amazon.co.jp';
+  const domain = '.amazon.co.jp';
+  const keys = ['session-id', 'ubid-acbjp'];
+
+  await ensureCookie(addon, url, domain, keys);
+
+  return ky.create({
+    fetch: addon.fetch,
+  });
+});
+
 const getHtml = async (url: string, options?: Options) => {
-  const response = await ky.get(url, {
+  const client = await getClient();
+  const response = await client.get(url, {
     prefixUrl: 'https://www.amazon.co.jp',
     redirect: 'manual',
     credentials: 'include',
     retry: 0,
+    fetch: window.Addon?.fetch,
     ...options,
   });
 

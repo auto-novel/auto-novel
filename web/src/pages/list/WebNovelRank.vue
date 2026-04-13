@@ -15,15 +15,17 @@ const props = defineProps<{
   selected: number[];
 }>();
 
-const { title, listOptions } = getWebRankListOptions(
-  props.providerId,
-  props.typeId,
+const descriptor = computed(() =>
+  getWebRankListOptions(props.providerId, props.typeId),
 );
+
+const title = computed(() => descriptor.value.title);
+const listOptions = computed(() => descriptor.value.listOptions);
 
 const listValue = computed(
   () =>
     Object.fromEntries(
-      Object.entries(listOptions).map(([label], idx) => [
+      Object.entries(listOptions.value).map(([label], idx) => [
         label,
         props.selected[idx] ?? 0,
       ]),

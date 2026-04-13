@@ -102,4 +102,20 @@ export const WebNovelRepo = {
         exact: true,
       }),
   ),
+  updateNovelTranslation: withOnSuccess(
+    WebNovelApi.updateNovelTranslation,
+    (_, providerId, novelId) =>
+      useQueryCache().invalidateQueries({
+        key: [ItemKey, providerId, novelId],
+        exact: true,
+      }),
+  ),
+  updateNovelWenkuId: withOnSuccess(
+    WebNovelApi.updateNovelWenkuId,
+    (_, providerId, novelId) =>
+      useQueryCache().invalidateQueries({
+        key: [ItemKey, providerId, novelId],
+        exact: true,
+      }),
+  ),
 };

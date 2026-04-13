@@ -26,6 +26,13 @@ export interface SegmentTranslator {
 }
 
 export const createGlossaryWrapper = (glossary: Glossary) => {
+  for (const key in glossary) {
+    const parts = glossary[key].split('#');
+    if (parts.length > 1) {
+      glossary[key] = parts[0].trim();
+    }
+  }
+
   const presetTokens = [
     'kie',
     'rgx',
