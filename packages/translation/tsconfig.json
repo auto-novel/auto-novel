@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ES2020",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "lib": ["DOM", "ES2021"],
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}

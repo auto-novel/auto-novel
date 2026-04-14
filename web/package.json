@@ -11,9 +11,9 @@
   ],
   "scripts": {
     "dev": "pnpm dev:remote",
-    "dev:remote": "VITE_API_MODE=remote vite",
-    "dev:local": "VITE_API_MODE=local vite",
-    "dev:native": "VITE_API_MODE=native vite",
+    "dev:remote": "cross-env VITE_API_MODE=remote vite",
+    "dev:local": "cross-env VITE_API_MODE=local vite",
+    "dev:native": "cross-env VITE_API_MODE=native vite",
     "build": "vite build && vue-tsc -b --noEmit",
     "preview": "vite preview",
     "lint": "eslint src",
@@ -25,6 +25,7 @@
     "@eslint/js": "^9.35.0",
     "@types/node": "^20.19.13",
     "@vue/eslint-config-typescript": "^14.6.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-compat": "^6.0.2",
@@ -39,6 +40,7 @@
   },
   "dependencies": {
     "@auto-novel/crawler": "workspace:*",
+    "@auto-novel/translation": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",

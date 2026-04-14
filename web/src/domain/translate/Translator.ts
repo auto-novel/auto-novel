@@ -4,12 +4,15 @@ import type { Glossary } from '@/model/Glossary';
 import type { TranslatorId } from '@/model/Translator';
 
 import { BaiduTranslator } from './TranslatorBaidu';
-import { OpenAiTranslator } from './TranslatorOpenAi';
+import { OpenAiTranslator } from './TranslatorOpenAi'; // 暂时保留但不使用
 import { SakuraTranslator } from './TranslatorSakura';
 import { YoudaoTranslator } from './TranslatorYoudao';
 import type { Logger, SegmentCache, SegmentTranslator } from './Common';
 import { createSegIndexedDbCache } from './Common';
 import { RegexUtil } from '@/util';
+
+import { TranslationAdapter } from './TranslationAdapter'; //
+import { OpenAiTranslator as PackagesOpenAiTranslator } from '@auto-novel/translation';
 
 export type TranslatorConfig =
   | { id: 'baidu' }
@@ -190,7 +193,18 @@ export namespace Translator {
     } else if (config.id === 'youdao') {
       return YoudaoTranslator.create(log);
     } else if (config.id === 'gpt') {
-      return OpenAiTranslator.create(log, config);
+      return new TranslationAdapter(
+        new PackagesOpenAiTranslator({
+          id: 'gpt',
+          type: 'gpt',
+          concurrency: 1,
+          model: config.model,
+          endpoint: config.endpoint,
+          key: config.key,
+        }),
+        'gpt',
+        log,
+      );
     } else {
       return SakuraTranslator.create(log, config);
     }
@@ -219,26 +233,10 @@ export namespace Translator {
 }
 
 const filterGlossary = (glossary: Glossary, text: string[]) => {
-  // 从长到短查找单词。查到后，将段落split为多个，多个段落中不存在这个单词。之后再在多个段落中查找较短的单词。
-  // 这是为了防止重翻时，如果更新的是短术语，而长术语中又恰好包含这个短术语，则避免重翻只包含那个长术语而不包含短术语的段落。
-  const sortedGlossary = Object.keys(glossary).sort(
-    (a, b) => b.length - a.length,
-  );
   const filteredGlossary: Glossary = {};
-  let text_queue = [...text];
-  while (text_queue.length > 0) {
-    let current_text = text_queue.shift() as string;
-    for (const wordJp of sortedGlossary) {
-      if (current_text.includes(wordJp)) {
-        filteredGlossary[wordJp] = glossary[wordJp];
-        const parts = current_text.split(wordJp);
-        for (let i = 0; i < parts.length; i++) {
-          if (parts[i].trim() != '') {
-            text_queue.push(parts[i]);
-          }
-        }
-        break;
-      }
+  for (const wordJp in glossary) {
+    if (text.some((it) => it.includes(wordJp))) {
+      filteredGlossary[wordJp] = glossary[wordJp];
     }
   }
   return filteredGlossary;
