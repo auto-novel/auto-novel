@@ -20,6 +20,14 @@ db["web-read-history"].createIndex(
   { expireAfterSeconds: 8640000 }, // 100 days
 );
 
+db["web-oplog"].createIndex({ providerId: 1, novelId: 1, createdAt: 1 });
+db["web-oplog"].createIndex({ operator: 1, createdAt: 1 });
+db["web-oplog"].createIndex({ createdAt: 1 });
+
 db["wenku-favorite"].createIndex({ userId: 1, novelId: 1 }, { unique: true });
 db["wenku-favorite"].createIndex({ userId: 1, createAt: 1 });
 db["wenku-favorite"].createIndex({ userId: 1, updateAt: 1 });
+
+db["wenku-oplog"].createIndex({ novelId: 1, createdAt: 1 });
+db["wenku-oplog"].createIndex({ operator: 1, createdAt: 1 });
+db["wenku-oplog"].createIndex({ createdAt: 1 });

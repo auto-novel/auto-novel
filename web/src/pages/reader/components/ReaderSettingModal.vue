@@ -96,7 +96,7 @@ const setIndentSize = (diff: number) => {
               <n-switch
                 :value="readerSetting.indentSize !== undefined"
                 @update:value="
-                  (v) => (readerSetting.indentSize = v ? 2 : undefined)
+                  (v: any) => (readerSetting.indentSize = v ? 2 : undefined)
                 "
                 size="small"
               />

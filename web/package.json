@@ -1,5 +1,5 @@
 {
-  "name": "auto-novel-web",
+  "name": "@auto-novel/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,7 +14,7 @@
     "dev:remote": "VITE_API_MODE=remote vite",
     "dev:local": "VITE_API_MODE=local vite",
     "dev:native": "VITE_API_MODE=native vite",
-    "build": "vite build && vue-tsc -b",
+    "build": "vite build && vue-tsc -b --noEmit",
     "preview": "vite preview",
     "lint": "eslint src",
     "lint:dist": "eslint dist",
@@ -38,7 +38,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@auto-novel/crawler": "link:../crawler",
+    "@auto-novel/crawler": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",

@@ -11,6 +11,8 @@ import {
   useWhoamiStore,
   useWorkspaceStore,
 } from '@/stores';
+import { Crawler } from '@/domain/crawler';
+import { doAction } from '@/pages/util';
 
 const props = defineProps<{
   providerId: string;
@@ -80,6 +82,18 @@ const files = computed(() => {
     }),
   };
 });
+
+const updateNovel = () => {
+  if (!Crawler.checkAddon()) {
+    message.error('无法更新目录：未检测到Addon');
+    return;
+  }
+  return doAction(
+    Crawler.updateWebNovel(providerId, novelId),
+    '更新小说（伪）',
+    message,
+  );
+};
 
 const importToWorkspace = async () => {
   const blob = await ky.get(files.value.jp.url).blob();
@@ -222,6 +236,12 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         label="导入日文至工作区"
         :round="false"
         @action="importToWorkspace"
+      />
+      <c-button
+        v-if="whoami.isAdmin"
+        label="更新目录"
+        :round="false"
+        @action="updateNovel()"
       />
     </n-button-group>
   </n-flex>

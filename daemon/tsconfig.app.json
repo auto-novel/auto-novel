@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "composite": true,
+    "module": "ESNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "useDefineForClassFields": true,
+    "rootDir": "./src",
+    "paths": {
+      "@/*": ["./src/*", "./package.json"],
+      "@auto-novel/crawler": ["../packages/crawler/dist/index.d.ts"]
+    }
+  },
+  "include": [
+    "./src/lib/**/*",
+    "./src/app/**/*",
+    "src/proxy",
+    "src/services",
+    "src/config.ts",
+    "src/createApp.ts",
+    "src/index.ts",
+    "src/routes.ts"
+  ]
+}

@@ -166,6 +166,75 @@ class WebNovelMetadataRepository(
             }
     }
 
+    suspend fun create(
+        providerId: String,
+        novelId: String,
+        titleJp: String,
+        authors: List<WebNovelAuthor>,
+        type: WebNovelType,
+        attentions: List<WebNovelAttention>,
+        keywords: List<String>,
+        points: Int?,
+        totalCharacters: Int,
+        introductionJp: String,
+        toc: List<WebNovelTocItem>,
+    ) {
+        val novel = WebNovel(
+            id = ObjectId(),
+            providerId = providerId,
+            novelId = novelId,
+            titleJp = titleJp,
+            authors = authors,
+            type = type,
+            attentions = attentions,
+            keywords = keywords,
+            points = points,
+            totalCharacters = totalCharacters,
+            introductionJp = introductionJp,
+            toc = toc,
+            pauseUpdate = true,
+        )
+        webNovelMetadataCollection.insertOne(novel)
+        es.syncNovel(novel)
+    }
+
+    suspend fun update(
+        providerId: String,
+        novelId: String,
+        titleJp: String,
+        authors: List<WebNovelAuthor>,
+        type: WebNovelType,
+        attentions: List<WebNovelAttention>,
+        keywords: List<String>,
+        points: Int?,
+        totalCharacters: Int,
+        introductionJp: String,
+        toc: List<WebNovelTocItem>,
+    ) {
+        val now = Clock.System.now()
+        webNovelMetadataCollection
+            .findOneAndUpdate(
+                byId(providerId, novelId),
+                combine(
+                    set(WebNovel::titleJp.field(), titleJp),
+                    set(WebNovel::authors.field(), authors),
+                    set(WebNovel::type.field(), type),
+                    set(WebNovel::attentions.field(), attentions),
+                    set(WebNovel::keywords.field(), keywords),
+                    set(WebNovel::points.field(), points),
+                    set(WebNovel::totalCharacters.field(), totalCharacters),
+                    set(WebNovel::introductionJp.field(), introductionJp),
+                    set(WebNovel::toc.field(), toc),
+                    set(WebNovel::pauseUpdate.field(), true),
+                    set(WebNovel::syncAt.field(), now),
+                    set(WebNovel::changeAt.field(), now),
+                    set(WebNovel::updateAt.field(), now),
+                ),
+                FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+            )
+            ?.also { es.syncNovel(it) }
+    }
+
     suspend fun getNovelAndSave(
         providerId: String,
         novelId: String,

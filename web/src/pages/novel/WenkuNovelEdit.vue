@@ -197,7 +197,7 @@ const populateNovelFromAmazon = async (
     duration: 0,
   });
 
-  await smartImport(
+  const result = await smartImport(
     urlOrQuery.trim(),
     formValue.value.volumes,
     forcePopulateVolumes,
@@ -239,9 +239,14 @@ const populateNovelFromAmazon = async (
     },
   );
 
-  formValue.value.cover = formValue.value.volumes[0]?.cover;
-  msgReactive.content = '智能导入完成';
-  msgReactive.type = 'info';
+  if (result) {
+    formValue.value.cover = formValue.value.volumes[0]?.cover;
+    msgReactive.content = '智能导入完成';
+    msgReactive.type = 'info';
+  } else {
+    msgReactive.content = '智能导入失败';
+    msgReactive.type = 'error';
+  }
   delay(3000).then(() => msgReactive.destroy());
 };
 

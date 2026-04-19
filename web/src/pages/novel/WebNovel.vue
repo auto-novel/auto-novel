@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { formatError } from '@/api';
-import { WebNovelRepo } from '@/repos';
-import { useIsWideScreen } from '@/pages/util';
 import { computedAsync } from '@vueuse/core';
+
+import { formatError } from '@/api';
+import { useIsWideScreen } from '@/pages/util';
+import { WebNovelRepo } from '@/repos';
 
 const { providerId, novelId } = defineProps<{
   providerId: string;

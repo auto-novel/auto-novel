@@ -145,7 +145,7 @@ class Kakuyomu(
         val introduction = work.string("introduction")
 
         val toc = work
-            .array("tableOfContents")
+            .array("tableOfContentsV2")
             .map { it.jsonObject.unref() }
             .flatMap { tableOfContentsChapter ->
                 val chapter = tableOfContentsChapter

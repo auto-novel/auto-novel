@@ -3,6 +3,7 @@ package infra.web
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import infra.field
+import infra.oplog.Operation
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
@@ -190,6 +191,37 @@ data class WebNovelChapterTranslationState(
     val sakuraVersion: String? = null,
 )
 
+@Serializable
+sealed interface WebNovelOperation {
+    @Serializable
+    @SerialName("update")
+    object Update : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-translation")
+    object UpdateTranslation : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-wenku-id")
+    object UpdateWenkuId : WebNovelOperation
+
+    @Serializable
+    @SerialName("update-glossary")
+    data class UpdateGlossary(
+        val old: Map<String, String>,
+        val new: Map<String, String>,
+    ) : WebNovelOperation
+}
+
+@Serializable
+data class WebNovelOplog(
+    val providerId: String,
+    val novelId: String,
+    val operator: String,
+    val operation: WebNovelOperation,
+    @Contextual val createdAt: Instant,
+)
+
 // MongoDB
 @Serializable
 data class WebNovelFavoriteDbModel(
@@ -207,3 +239,5 @@ data class WebNovelReadHistoryDbModel(
     @Contextual val chapterId: String,
     @Contextual val createAt: Instant,
 )
+
+typealias WebNovelOplogDbModel = WebNovelOplog
