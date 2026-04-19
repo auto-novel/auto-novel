@@ -32,6 +32,18 @@ object Epub {
         }
     }
 
+    fun checkZipValid(path: Path): Result<Unit> =
+        runCatching {
+            ZipUtils.unzip(path).use { fs ->
+                val root = fs.rootDirectories.first()
+                Files.walk(root).use { stream ->
+                    stream
+                        .filter { Files.isRegularFile(it) }
+                        .forEach { Files.readAllBytes(it) }
+                }
+            }
+        }
+
     inline fun modify(
         srcPath: Path,
         dstPath: Path,

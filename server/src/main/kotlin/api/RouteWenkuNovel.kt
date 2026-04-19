@@ -22,7 +22,6 @@ import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import org.koin.ktor.ext.inject
@@ -228,8 +227,23 @@ private fun throwNovelNotFound(): Nothing =
     throwNotFound("小说不存在")
 
 private fun validateVolumeId(volumeId: String) {
-    if (!volumeId.endsWith("txt") && !volumeId.endsWith("epub"))
+    val maxFilenameChars = 100
+    val windowsInvalidFilenameChars = setOf('<', '>', ':', '"', '/', '\\', '|', '?', '*')
+
+    if (!volumeId.endsWith(".txt") && !volumeId.endsWith(".epub"))
         throwBadRequest("不支持的文件格式")
+
+    val nameLength = volumeId.length
+    if (nameLength == 0 || nameLength > maxFilenameChars) {
+        throwBadRequest("文件名长度错误（最大 $maxFilenameChars 字符）")
+    }
+
+    val hasInvalidChar = volumeId.any { ch ->
+        ch in windowsInvalidFilenameChars || ch.code in 0..31
+    }
+    if (hasInvalidChar) {
+        throwBadRequest("文件名包含非法字符（不能包含 <>:\"/\\\\|?*）")
+    }
 }
 
 class WenkuNovelApi(
@@ -483,6 +497,10 @@ class WenkuNovelApi(
             when (e) {
                 is VolumeCreateException.VolumeAlreadyExist -> throwConflict("卷已经存在")
                 is VolumeCreateException.VolumeUnpackFailure -> throwInternalServerError("解包失败,由于${e.cause?.message}")
+                is VolumeCreateException.VolumeTooLarge -> throwBadRequest(e.message ?: "文件大小不能超过40MB")
+                is VolumeCreateException.VolumeCorrupted -> throwBadRequest("文件损坏或不是合法的 epub/txt")
+                is VolumeCreateException.VolumeUploadInterrupted -> throwBadRequest("上传已中断或文件不完整，请重试")
+                is VolumeCreateException.VolumeCreateFailure -> throwInternalServerError("保存上传文件失败")
             }
         }
 
