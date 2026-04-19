@@ -1,4 +1,4 @@
-type Locale = 'zh-cn' | 'zh-tw';
+type Locale = 'origin' | 'zh-cn' | 'zh-tw';
 
 type Converter = {
   toView: (text: string) => string;
@@ -11,8 +11,22 @@ export const defaultConverter: Converter = {
 };
 
 export async function useOpenCC(locale: Locale) {
-  if (locale === 'zh-cn') {
+  if (locale === 'origin') {
     return defaultConverter;
+  } else if (locale === 'zh-cn') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opencc: any = await import('opencc-js');
+    const ccLocale = opencc.Locale;
+    const customDict = [
+      ['托', '託'],
+      ['娘', '孃'],
+    ];
+    return {
+      toView: opencc.ConverterFactory(ccLocale.from.tw, ccLocale.to.cn, [
+        customDict,
+      ]),
+      toData: (text: string) => text,
+    };
   } else if (locale === 'zh-tw') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const opencc: any = await import('opencc-js');
