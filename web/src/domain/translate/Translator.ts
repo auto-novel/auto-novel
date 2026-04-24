@@ -4,12 +4,15 @@ import type { Glossary } from '@/model/Glossary';
 import type { TranslatorId } from '@/model/Translator';
 
 import { BaiduTranslator } from './TranslatorBaidu';
-import { OpenAiTranslator } from './TranslatorOpenAi';
+import { OpenAiTranslator } from './TranslatorOpenAi'; // 暂时保留但不使用
 import { SakuraTranslator } from './TranslatorSakura';
 import { YoudaoTranslator } from './TranslatorYoudao';
 import type { Logger, SegmentCache, SegmentTranslator } from './Common';
 import { createSegIndexedDbCache } from './Common';
 import { RegexUtil } from '@/util';
+
+import { TranslationAdapter } from './TranslationAdapter'; //
+import { OpenAiTranslator as PackagesOpenAiTranslator } from '@auto-novel/translation';
 
 export type TranslatorConfig =
   | { id: 'baidu' }
@@ -190,7 +193,18 @@ export namespace Translator {
     } else if (config.id === 'youdao') {
       return YoudaoTranslator.create(log);
     } else if (config.id === 'gpt') {
-      return OpenAiTranslator.create(log, config);
+      return new TranslationAdapter(
+        new PackagesOpenAiTranslator({
+          id: 'gpt',
+          type: 'gpt',
+          concurrency: 1,
+          model: config.model,
+          endpoint: config.endpoint,
+          key: config.key,
+        }),
+        'gpt',
+        log,
+      );
     } else {
       return SakuraTranslator.create(log, config);
     }
