@@ -18,6 +18,22 @@ export const getFullContent = async (file: File) => {
   }
 };
 
+export async function getRawContent(
+  file: File,
+): Promise<Record<string | 'all', string>> {
+  if (file.name.endsWith('.txt') || file.name.endsWith('.srt')) {
+    const txt = await Txt.fromFile(file);
+    return {
+      all: txt.text,
+    };
+  } else if (file.name.endsWith('.epub')) {
+    const epub = await Epub.fromFile(file);
+    return await epub.getRaw();
+  } else {
+    return {};
+  }
+}
+
 export const parseFile = async (
   file: File,
   allowExts = ['epub', 'txt', 'srt'],

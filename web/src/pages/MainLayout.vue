@@ -17,6 +17,7 @@ import {
 } from '@vicons/material';
 import type { MenuOption } from 'naive-ui';
 import { NButton, NIcon, NText, NTime, useOsTheme } from 'naive-ui';
+import { h } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import { useBreakPoints } from '@/pages/util';

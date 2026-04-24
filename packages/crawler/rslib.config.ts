@@ -1,24 +1,23 @@
-import { defineConfig } from "@rslib/core";
+import { defineConfig } from '@rslib/core';
 
-const isDebug = process.env.NODE_ENV !== "production";
+const isDebug = process.env.NODE_ENV !== 'production';
 
 export default defineConfig({
   resolve: {
     alias: {
-      "@": "./src",
+      '@': './src',
     },
   },
   lib: [
     {
-      format: "esm",
+      format: 'esm',
       dts: true,
-      bundle: true,
       source: {
-        entry: { index: "src/index.ts" },
-        tsconfigPath: "tsconfig.json",
+        entry: { index: 'src/index.ts' },
+        tsconfigPath: 'tsconfig.json',
       },
       output: {
-        target: "web",
+        target: 'web',
       },
     },
   ],

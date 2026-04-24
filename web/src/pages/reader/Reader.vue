@@ -5,7 +5,7 @@ import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
 import type { TranslatorId } from '@/model/Translator';
 import { checkIsMobile } from '@/pages/util';
-import { ReadPositionRepo } from '@/repos';
+import { ReadPositionRepo, WebNovelRepo } from '@/repos';
 import {
   useLocalVolumeStore,
   useReaderSettingStore,
@@ -48,6 +48,13 @@ const gnid = ((): GenericNovelId => {
 
 const store = useReaderStore(gnid);
 
+// 仅 web 小说需要获取小说元数据，用于在 document.title 中拼接小说名称
+const novelQuery =
+  gnid.type === 'web'
+    ? WebNovelRepo.useWebNovel(gnid.providerId, gnid.novelId)
+    : undefined;
+const novel = novelQuery?.data;
+
 const targetChapterId = ref('');
 const currentChapterId = ref('');
 const chapterResult = shallowRef<Result<ReaderChapter>>();
@@ -62,13 +69,22 @@ const novelUrl = (() => {
   }
 })();
 
+// 组合阅读页 document.title，显示「章节名称 | 小说名称」，小说元数据未就绪时仅显示章节名称
+const applyDocumentTitle = (chapter: ReaderChapter) => {
+  if (gnid.type === 'web' && novel?.value?.titleJp) {
+    document.title = `${chapter.titleJp} | ${novel.value.titleJp}`;
+  } else {
+    document.title = chapter.titleJp;
+  }
+};
+
 const updateChapter = (
   chapterId: string,
   result: Result<ReaderChapter>,
   replace = false,
 ) => {
   if (result.ok) {
-    document.title = result.value.titleJp;
+    applyDocumentTitle(result.value);
     if (gnid.type === 'web' && whoami.value.isSignedIn) {
       ReadHistoryApi.updateReadHistoryWeb(
         gnid.providerId,
@@ -99,6 +115,16 @@ const updateChapter = (
     router.push(`${prefix}/${chapterId}`);
   }
 };
+
+// 章节通常比小说元数据先到达，首次 updateChapter 时 novel 可能仍为 undefined，导致 title 暂时只有章节名
+// 元数据到达后由此 watch 重套一次，补上小说名称
+if (novel !== undefined) {
+  watch(novel, () => {
+    if (chapterResult.value?.ok) {
+      applyDocumentTitle(chapterResult.value.value);
+    }
+  });
+}
 
 const navToChapter = async (chapterId: string) => {
   targetChapterId.value = chapterId;

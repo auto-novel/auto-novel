@@ -1,6 +1,0 @@
-dist/
-node_modules/
-src/auto-imports.d.ts
-src/components.d.ts
-vite.config.ts.timestamp*
-sonda-report.html

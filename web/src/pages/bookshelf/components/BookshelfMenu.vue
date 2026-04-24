@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { MenuOption } from 'naive-ui';
+import { h } from 'vue';
 
 import { FavoredRepo, useWhoamiStore } from '@/stores';
 import BookshelfMenuItem from './BookshelfMenuItem.vue';

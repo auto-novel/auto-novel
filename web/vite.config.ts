@@ -1,13 +1,11 @@
 import vue from '@vitejs/plugin-vue';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
-import imagemin from 'unplugin-imagemin/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 import Components from 'unplugin-vue-components/vite';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
@@ -78,15 +76,17 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    resolve: {
+      tsconfigPaths: true,
+    },
     plugins: [
       vue(),
-      imagemin({}),
       createHtmlPlugin({
         minify: { minifyJS: true },
       }),
-      tsconfigPaths({ loose: true }),
       AutoImport({
         dts: 'src/auto-imports.d.ts',
+        ignore: ['h'],
         imports: [
           'vue',
           'vue-router',

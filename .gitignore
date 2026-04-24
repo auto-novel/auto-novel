@@ -5,6 +5,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
+vite.config.ts.timestamp*
+sonda-report.html
 
 # Server
 server/.gradle/

@@ -4,7 +4,7 @@ import MarkdownIt from 'markdown-it';
 import { spoiler } from '@mdit/plugin-spoiler';
 import { container } from '@mdit/plugin-container';
 import { NRate } from 'naive-ui';
-import { render } from 'vue';
+import { h, render } from 'vue';
 
 const props = defineProps<{
   mode: 'article' | 'comment';

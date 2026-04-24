@@ -10,7 +10,8 @@ import { formatError } from '@/api';
 import { WenkuNovelRepo } from '@/repos';
 import { useNoticeStore, useWhoamiStore } from '@/stores';
 import { RegexUtil } from '@/util';
-import { getFullContent } from '@/util/file';
+import { getFullContent, getRawContent } from '@/util/file';
+import type { UploadTask } from '@/api/novel/client';
 
 const props = defineProps<{
   novelId: string;
@@ -68,6 +69,58 @@ async function beforeUpload({ file }: { file: UploadFileInfo }) {
   } else {
     file.url = 'jp';
   }
+
+  // 检查是否存在 opacity，如果存在则认为是机翻站小说，禁止上传
+  try {
+    const rawContents = await getRawContent(file.file);
+    const contents = Object.values(rawContents);
+    const totalFiles = contents.length;
+
+    // 统计 opacity
+    // <p style="opacity:0.4;">xxxxx</p>
+    const opacityPattern =
+      /(?:^|[\s;{"'])opacity\s*:\s*0(?:\.\d+)?(?=\s*(?:;|}|["']))/gim;
+
+    let filesWithOpacity = 0;
+    for (const content of contents) {
+      const matches = content.match(opacityPattern);
+      const opacityCount = matches ? matches.length : 0;
+
+      // 单文件内 opacity 出现 5 个以上，才认为该文件“存在 opacity”。
+      if (opacityCount > 5) {
+        filesWithOpacity += 1;
+      }
+    }
+
+    // 拦截条件：
+    // 1) 大样本（>5 文件）>= 4 个命中
+    // 2) 小样本（<=5 文件）>= 2 个命中
+    // 3) 迷你样本（1 文件）>= 1 个命中
+    const hitByLargeSet = totalFiles > 5 && filesWithOpacity >= 4;
+    const hitBySmallSet =
+      totalFiles > 1 && totalFiles <= 5 && filesWithOpacity >= 2;
+    const hitByMiniSet = totalFiles === 1 && filesWithOpacity >= 1;
+
+    if (hitByLargeSet || hitBySmallSet || hitByMiniSet) {
+      message.error('疑似机翻站小说，禁止上传');
+      return false;
+    }
+  } catch {
+    message.error('epub 解析失败');
+    return false;
+  }
+}
+
+const uploadTasks: Record<string, UploadTask<string>> = {};
+
+async function cancelUpload(options: {
+  file: UploadFileInfo;
+  fileList: Array<UploadFileInfo>;
+  index: number;
+}): Promise<boolean> {
+  await uploadTasks[options.file.id]?.abort?.();
+  delete uploadTasks[options.file.id];
+  return true;
 }
 
 const customRequest = async ({
@@ -81,20 +134,33 @@ const customRequest = async ({
     return;
   }
 
-  try {
-    const type = file.url === 'jp' ? 'jp' : 'zh';
-    await WenkuNovelRepo.createVolume(
-      props.novelId,
-      file.name,
-      type,
-      file.file as File,
-      (percent) => onProgress({ percent }),
-    );
-    onFinish();
-  } catch (e) {
-    onError();
-    message.error(`上传失败:${await formatError(e)}`);
-  }
+  const type = file.url === 'jp' ? 'jp' : 'zh';
+  const task: UploadTask<string> = WenkuNovelRepo.createVolume(
+    props.novelId,
+    file.name,
+    type,
+    file.file as File,
+    (percent) => onProgress({ percent }),
+  );
+  uploadTasks[file.id] = task;
+  task.promise
+    .then(() => {
+      delete uploadTasks[file.id];
+      onFinish();
+    })
+    .catch(async (e) => {
+      delete uploadTasks[file.id];
+      // 用户手动取消上传，不报错
+      if (e instanceof Error && e.message === '上传已取消') {
+        message.error(`上传已取消`);
+        return;
+      }
+      onError();
+      message.error(`上传失败:${await formatError(e)}`);
+    });
+  return {
+    abort: () => task.abort(),
+  };
 };
 
 const noticeStore = useNoticeStore();
@@ -126,6 +192,7 @@ const uploadVolumes = () => {
     :custom-request="customRequest"
     :show-trigger="haveReadRule"
     @before-upload="beforeUpload"
+    :on-remove="cancelUpload"
   >
     <c-button label="上传" :icon="PlusOutlined" />
   </n-upload>

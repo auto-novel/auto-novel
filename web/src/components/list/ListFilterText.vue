@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { SearchOutlined } from '@vicons/material';
 import type { DropdownOption } from 'naive-ui';
+import { h } from 'vue';
 
 import {
   useSettingStore,
