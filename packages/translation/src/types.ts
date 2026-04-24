@@ -1,40 +1,49 @@
-export type TranslatorType = 'baidu' | 'youdao' | 'gpt' | 'sakura';
-
-export interface TranslationTask {
+export interface Segment {
   id: string;
+  order: string;
   text: string;
-  sourceLang: string;
-  targetLang: string;
-  translatorType: TranslatorType;
-  glossary?: Record<string, string>;
-  metadata?: Record<string, string>;
+  onComplete: (translatedText: string) => void;
+  onError: (reason: any) => void;
 }
-
-export type TranslationResult = {
-  taskId: string;
-} & (
-  | {
-      status: 'success';
-      translatedText: string;
-    }
-  | {
-      status: 'error';
-      error: string;
-    }
-);
 
 export interface Translator {
-  readonly id: string;
-  readonly type: TranslatorType;
-  readonly concurrency: number;
-  translate(task: TranslationTask): Promise<TranslationResult>;
+  translate(text: string): Promise<string>;
 }
 
-export interface EngineCallbacks {
-  onTaskUpdate: (result: TranslationResult) => void;
+export interface TranslationLoop {
+  id: string;
+  translator: Translator;
+  abortController: AbortController;
+}
 
-  /**
-   * Called when the entire queue is empty.
-   */
-  onQueueIdle?: () => void;
+export interface PipelineConfig {
+  highWaterMark: number;
+}
+
+export abstract class SegmentQueue {
+  abstract readonly length: number;
+  abstract readonly highWaterMark: number;
+  abstract enqueueAll(segments: Segment[]): void;
+  abstract dequeue(): Promise<Segment>;
+  abstract waitUntilBelowHighWaterMark(): Promise<void>;
+}
+
+export class Visualizer {}
+
+export abstract class TranslationPipeline {
+  protected config: PipelineConfig;
+  protected queue: SegmentQueue;
+  protected translatorLoops: Map<string, TranslationLoop>;
+  protected visualizer?: Visualizer;
+
+  constructor(config: PipelineConfig, queue: SegmentQueue) {
+    this.config = config;
+    this.queue = queue;
+    this.translatorLoops = new Map();
+  }
+
+  abstract translate(text: string): Promise<string>;
+  abstract waitUntilBelowHighWaterMark(): Promise<void>;
+  abstract registerTranslator(translator: Translator): void;
+  abstract unregisterTranslator(translator: Translator): void;
 }
