@@ -1,5 +1,6 @@
 export type Glossary = Record<string, string>;
 
+//#region Segment相关类型
 export interface SegmentContext {
   glossary: Glossary;
 
@@ -50,6 +51,15 @@ export interface SegmentAssembler {
   ): Segment[];
 }
 
+export abstract class SegmentQueue {
+  abstract readonly length: number;
+  abstract readonly highWaterMark: number;
+  abstract enqueueAll(segments: Segment[]): void;
+  abstract dequeue(): Promise<Segment>;
+  abstract waitUntilBelowHighWaterMark(): Promise<void>;
+}
+//#endregion
+
 export interface Translator {
   translate(text: string, context: SegmentContext): Promise<string>;
 }
@@ -62,14 +72,6 @@ export interface TranslationLoop {
 
 export interface PipelineConfig {
   highWaterMark: number;
-}
-
-export abstract class SegmentQueue {
-  abstract readonly length: number;
-  abstract readonly highWaterMark: number;
-  abstract enqueueAll(segments: Segment[]): void;
-  abstract dequeue(): Promise<Segment>;
-  abstract waitUntilBelowHighWaterMark(): Promise<void>;
 }
 
 export class Visualizer {}
