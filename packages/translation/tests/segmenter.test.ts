@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createLineSegmenter, createSegmentAssembler } from '../src/segmenter';
+import { createSegmentAssembler, createLineSegmenter } from '../src/segment';
 import type { Glossary, TranslationHistory } from '../src/types';
 
 // ============================================================
