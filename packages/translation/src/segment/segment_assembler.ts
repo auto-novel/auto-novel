@@ -1,4 +1,5 @@
 import { isEqual } from 'lodash-es';
+import { filterGlossary } from '@/utils';
 import type {
   Glossary,
   LineRange,
@@ -6,33 +7,7 @@ import type {
   SegmentAssembler,
   SegmentContext,
   TranslationHistory,
-} from '../types';
-
-const filterGlossary = (glossary: Glossary, lines: string[]): Glossary => {
-  const filtered: Glossary = {};
-  for (const word in glossary) {
-    if (lines.some((line) => line.includes(word))) {
-      filtered[word] = glossary[word];
-    }
-  }
-  return filtered;
-};
-
-// TODO: 考虑正向最大匹配？
-/* 
-const filterGlossary = (glossary: Glossary, text: string): Glossary => {
-    const filtered: Glossary = {};
-    const sortedWords = Object.keys(glossary).sort((a, b) => b.length - a.length);
-    let tempText = text;
-    for (const word of sortedWords) {
-        if (tempText.includes(word)) {
-            filtered[word] = glossary[word];
-            tempText = tempText.split(word).join('\0'.repeat(word.length));
-        }
-    }
-    return filtered;
-};
-*/
+} from '@/types';
 
 export const createSegmentAssembler = (): SegmentAssembler => {
   return {
@@ -41,8 +16,8 @@ export const createSegmentAssembler = (): SegmentAssembler => {
       lines: string[],
       ranges: LineRange[],
       glossary: Glossary,
-      onSegComplete: (translatedLines: string[]) => void,
-      onSegError: (reason: any) => void,
+      onSegComplete: (segment: Segment, translatedLines: string[]) => void,
+      onSegError: (segment: Segment, reason: any) => void,
       history?: TranslationHistory,
     ): Segment[] {
       return ranges.map((range, index) => {

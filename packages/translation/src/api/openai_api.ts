@@ -2,7 +2,7 @@
 import type { Options } from 'ky';
 import ky, { HTTPError } from 'ky';
 
-import { parseEventStream, safeJson } from '../utils';
+import { parseEventStream, safeJson } from '@/utils';
 
 export const createOpenAiApi = (endpoint: string, key: string) => {
   const endpointUrl = new URL(endpoint);

@@ -1,4 +1,4 @@
-import type { LineRange, LineSegmenter } from '../types';
+import type { LineRange, LineSegmenter } from '@/types';
 
 export const createLineSegmenter = (
   maxLength?: number,
