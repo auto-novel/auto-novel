@@ -1,5 +1,4 @@
 import { isEqual } from 'lodash-es';
-import { filterGlossary } from '@/utils';
 import type {
   Glossary,
   LineRange,
@@ -8,6 +7,16 @@ import type {
   SegmentContext,
   TranslationHistory,
 } from '@/types';
+
+const filterGlossary = (glossary: Glossary, lines: string[]): Glossary => {
+  const filtered: Glossary = {};
+  for (const word in glossary) {
+    if (lines.some((line) => line.includes(word))) {
+      filtered[word] = glossary[word];
+    }
+  }
+  return filtered;
+};
 
 export const createSegmentAssembler = (): SegmentAssembler => {
   return {

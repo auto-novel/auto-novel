@@ -1,6 +1,7 @@
 import type { CheerioAPI } from 'cheerio';
 import * as cheerio from 'cheerio';
 import type { KyInstance } from 'ky';
+import pLimit from 'p-limit';
 
 import { parseJapanDateString } from '@/utils';
 
@@ -127,8 +128,20 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
 
   client: KyInstance;
 
-  constructor(client: KyInstance) {
+  private options: {
+    concurrency: number;
+  };
+
+  constructor(
+    client: KyInstance,
+    options?: {
+      concurrency?: number;
+    },
+  ) {
     this.client = client;
+    this.options = {
+      concurrency: Math.max(1, Math.floor(options?.concurrency ?? 1)),
+    };
   }
 
   async getRank(options: GetRankOptions): Promise<Page<RemoteNovelListItem>> {
@@ -313,6 +326,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
     } else {
       const lastPageHref = $('.c-pager__item--last').first().attr('href');
       const totalPages = Number(lastPageHref?.split('/?p=')[1] ?? '1') || 1;
+      const limit = pLimit(this.options.concurrency);
 
       function parseTocPage($: CheerioAPI): TocItem[] {
         return $('div.p-eplist')
@@ -352,13 +366,23 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
       }
 
       toc = parseTocPage($);
-      for (let page = 2; page <= totalPages; page += 1) {
-        const $page = await this.client
-          .get(`https://ncode.syosetu.com/${novelId}/?p=${page}`)
-          .text()
-          .then((text) => cheerio.load(text));
-        toc.push(...parseTocPage($page));
-      }
+      const tocPageNumbers = Array.from(
+        { length: Math.max(0, totalPages - 1) },
+        (_, index) => index + 2,
+      );
+      const pageTocs = await Promise.all(
+        tocPageNumbers.map((page) =>
+          limit(async () => {
+            const $page = await this.client
+              .get(`https://ncode.syosetu.com/${novelId}/?p=${page}`)
+              .text()
+              .then((text) => cheerio.load(text));
+
+            return parseTocPage($page);
+          }),
+        ),
+      );
+      toc.push(...pageTocs.flat());
     }
 
     return {

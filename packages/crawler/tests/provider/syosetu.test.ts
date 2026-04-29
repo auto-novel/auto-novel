@@ -6,7 +6,7 @@ import { WebNovelAttention, WebNovelType } from '@/provider/types';
 import { client } from './utils';
 
 describe('syosetu', () => {
-  const provider = new Syosetu(client);
+  const provider = new Syosetu(client, { concurrency: 2 });
 
   test('metadata', async () => {
     // 魔法少女がいく～TS魔法少女は運が悪いようです～

@@ -52,7 +52,7 @@ const providers: Record<ProviderId, ProviderInitFn> = {
   pixiv: (ky) => new Pixiv(ky),
   novelup: (ky) => new Novelup(ky),
   kakuyomu: (ky) => new Kakuyomu(ky),
-  syosetu: (ky) => new Syosetu(ky),
+  syosetu: (ky) => new Syosetu(ky, { concurrency: 2 }),
 };
 
 export const Providers = providers;
