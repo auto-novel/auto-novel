@@ -18,22 +18,6 @@ const filterGlossary = (glossary: Glossary, lines: string[]): Glossary => {
   return filtered;
 };
 
-// TODO: 考虑正向最大匹配？
-/* 
-const filterGlossary = (glossary: Glossary, text: string): Glossary => {
-    const filtered: Glossary = {};
-    const sortedWords = Object.keys(glossary).sort((a, b) => b.length - a.length);
-    let tempText = text;
-    for (const word of sortedWords) {
-        if (tempText.includes(word)) {
-            filtered[word] = glossary[word];
-            tempText = tempText.split(word).join('\0'.repeat(word.length));
-        }
-    }
-    return filtered;
-};
-*/
-
 export const createSegmentAssembler = (): SegmentAssembler => {
   return {
     assemble(

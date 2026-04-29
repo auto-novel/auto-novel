@@ -1,6 +1,5 @@
 export type Glossary = Record<string, string>;
 
-//#region Segment相关类型
 export interface SegmentContext {
   glossary: Glossary;
 
@@ -58,7 +57,6 @@ export abstract class SegmentQueue {
   abstract dequeue(): Promise<Segment>;
   abstract waitUntilBelowHighWaterMark(): Promise<void>;
 }
-//#endregion
 
 export interface Translator {
   translate(text: string, context: SegmentContext): Promise<string>;
