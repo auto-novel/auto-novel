@@ -6,7 +6,7 @@ import type {
   SegmentAssembler,
   SegmentContext,
   TranslationHistory,
-} from '../types';
+} from '@/types';
 
 const filterGlossary = (glossary: Glossary, lines: string[]): Glossary => {
   const filtered: Glossary = {};

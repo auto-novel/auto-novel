@@ -1,4 +1,4 @@
-import type { Segment, SegmentQueue } from '../types';
+import type { Segment, SegmentQueue } from '@/types';
 
 export class SegmentQueueImpl implements SegmentQueue {
   private readonly _items: Segment[] = [];
