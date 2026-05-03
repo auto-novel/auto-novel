@@ -12,7 +12,9 @@ import {
 import { copyToClipBoard, doAction } from '@/pages/util';
 import { useLocalVolumeStore, useWhoamiStore } from '@/stores';
 import { downloadFile } from '@/util';
+import { useWindowSize } from '@vueuse/core';
 import GlossaryTermTable from './GlossaryTermTable.vue';
+import GlossaryGroupTabs from './GlossaryGroupTabs.vue';
 
 const props = defineProps<{
   gnid?: GenericNovelId;
@@ -33,6 +35,9 @@ const novelId = computed(() => {
   if (!gnid) return '';
   return GenericNovelId.toString(gnid);
 });
+
+const { width } = useWindowSize();
+const isNarrow = computed(() => width.value < 600);
 
 const toggleGlossaryModal = () => {
   if (showGlossaryModal.value === false) {
@@ -533,14 +538,21 @@ const submitGlossary = () =>
       </n-flex>
     </template>
 
-    <!-- 主内容区：左侧分组 + 右侧术语 -->
+    <!-- 主内容区：左侧分组 + 右侧术语（桌面端） / 上标签栏 + 下内容（移动端） -->
     <div
       v-if="novelId"
-      style="display: flex; gap: 16px; min-height: 300px"
+      :style="{
+        display: 'flex',
+        flexDirection: isNarrow ? 'column' : 'row',
+        gap: '12px',
+        minHeight: '300px',
+      }"
       @keydown="onKeydown"
     >
-      <!-- 左侧分组侧边栏 -->
+      <!-- ======== 分组选择器 ======== -->
+      <!-- 桌面端：纵向侧边栏 -->
       <div
+        v-if="!isNarrow"
         style="
           width: 150px;
           flex-shrink: 0;
@@ -550,99 +562,70 @@ const submitGlossary = () =>
       >
         <n-flex vertical size="small">
           <n-text strong style="font-size: 13px">分组</n-text>
-
-          <div
-            v-for="name in groupNames"
-            :key="name"
-            @click="
-              selectedGroup = name;
-              clearSelection();
+          <GlossaryGroupTabs
+            :group-names="groupNames"
+            :display-data="displayData"
+            :selected-group="selectedGroup"
+            :editing-group-name="editingGroupName"
+            :editing-group-new-name="editingGroupNewName"
+            :show-new-group-input="showNewGroupInput"
+            :new-group-name="newGroupName"
+            :ungrouped-count="ungroupedEntries.length"
+            @select="
+              (name) => {
+                selectedGroup = name;
+                clearSelection();
+              }
             "
-            :style="{
-              padding: '4px 8px',
-              cursor: 'pointer',
-              borderRadius: '4px',
-              fontSize: '12px',
-              background:
-                selectedGroup === name
-                  ? 'var(--primary-color-hover, #eee)'
-                  : 'transparent',
-            }"
-          >
-            <template v-if="editingGroupName === name">
-              <n-input
-                v-model:value="editingGroupNewName"
-                size="tiny"
-                @blur="finishRename"
-                @keydown.enter="finishRename"
-              />
-            </template>
-            <template v-else>
-              <n-flex justify="space-between" align="center">
-                <n-text @dblclick="startRename(name)" style="flex: 1">
-                  {{ name }}
-                </n-text>
-                <n-text depth="3" style="font-size: 10px">
-                  {{ displayData[name]?.length ?? 0 }}
-                </n-text>
-              </n-flex>
-            </template>
-          </div>
-
-          <div
-            @click="
-              selectedGroup = undefined;
-              clearSelection();
-            "
-            :style="{
-              padding: '4px 8px',
-              cursor: 'pointer',
-              borderRadius: '4px',
-              fontSize: '12px',
-              background:
-                selectedGroup === undefined
-                  ? 'var(--primary-color-hover, #eee)'
-                  : 'transparent',
-            }"
-          >
-            <n-flex justify="space-between" align="center">
-              <n-text>未分组</n-text>
-              <n-text depth="3" style="font-size: 10px">
-                {{ ungroupedEntries.length }}
-              </n-text>
-            </n-flex>
-          </div>
-
-          <div v-if="showNewGroupInput" style="margin-top: 4px">
-            <n-input
-              v-model:value="newGroupName"
-              size="tiny"
-              placeholder="新分组名"
-              @keydown.enter="addNewGroup"
-              @blur="addNewGroup"
-            />
-          </div>
-          <c-button
-            v-else
-            :icon="AddOutlined"
-            label="新建组"
-            size="tiny"
-            text
-            @action="showNewGroupInput = true"
-          />
-
-          <c-button
-            v-if="selectedGroup && selectedGroup !== '未分组'"
-            label="删除此组"
-            size="tiny"
-            text
-            type="error"
-            @action="deleteCurrentGroup"
+            @start-rename="startRename"
+            @finish-rename="finishRename"
+            @update:editing-group-new-name="editingGroupNewName = $event"
+            @add-new-group="addNewGroup"
+            @update:new-group-name="newGroupName = $event"
+            @show-new-group="showNewGroupInput = true"
+            @delete-group="deleteCurrentGroup"
           />
         </n-flex>
       </div>
 
-      <!-- 右侧术语列表 -->
+      <!-- 移动端：横向滚动标签栏 -->
+      <div
+        v-else
+        style="
+          overflow-x: auto;
+          white-space: nowrap;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #eee;
+        "
+      >
+        <n-flex align="center" style="flex-wrap: nowrap; gap: 4px">
+          <GlossaryGroupTabs
+            :group-names="groupNames"
+            :display-data="displayData"
+            :selected-group="selectedGroup"
+            :editing-group-name="editingGroupName"
+            :editing-group-new-name="editingGroupNewName"
+            :show-new-group-input="showNewGroupInput"
+            :new-group-name="newGroupName"
+            :ungrouped-count="ungroupedEntries.length"
+            @select="
+              (name) => {
+                selectedGroup = name;
+                clearSelection();
+              }
+            "
+            @start-rename="startRename"
+            @finish-rename="finishRename"
+            @update:editing-group-new-name="editingGroupNewName = $event"
+            @add-new-group="addNewGroup"
+            @update:new-group-name="newGroupName = $event"
+            @show-new-group="showNewGroupInput = true"
+            @delete-group="deleteCurrentGroup"
+          />
+        </n-flex>
+      </div>
+
+      <!-- ======== 术语列表 ======== -->
       <div style="flex: 1; min-width: 0">
         <template v-if="selectedGroup && currentGroupEntries.length > 0">
           <n-text
@@ -675,7 +658,7 @@ const submitGlossary = () =>
             depth="3"
             style="font-size: 11px; margin-bottom: 8px; display: block"
           >
-            未分组术语 — 点击左侧分组名将术语移入分组
+            未分组术语 — 点击分组名将术语移入分组
           </n-text>
           <GlossaryTermTable
             :entries="ungroupedEntries"
