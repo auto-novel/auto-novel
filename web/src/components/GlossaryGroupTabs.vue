@@ -23,6 +23,10 @@ const selectBorder = computed(() =>
   isDark.value ? '#76e2b6' : primaryColor.value,
 );
 const selectTextColor = computed(() => (isDark.value ? '#76e2b6' : undefined));
+const dragOverBg = computed(() =>
+  isDark.value ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+);
+const dragOverBorder = computed(() => (isDark.value ? '#4ade80' : '#22c55e'));
 
 const props = defineProps<{
   groupNames: string[];
@@ -75,19 +79,35 @@ function onTabWheel(e: WheelEvent) {
 }
 
 const dragOverGroup = ref<string | undefined>(undefined);
+const draggedGroup = ref<string | null>(null);
 
 function onDragStart(e: DragEvent, name: string) {
-  e.dataTransfer!.setData('application/x-group-name', name);
+  draggedGroup.value = name;
+  e.dataTransfer!.setData('text/plain', name);
   e.dataTransfer!.effectAllowed = 'move';
 }
 
+function onDragEnd() {
+  draggedGroup.value = null;
+}
+
+function onTabsDragLeave(e: DragEvent) {
+  const el = e.currentTarget as HTMLElement;
+  const related = e.relatedTarget as HTMLElement | null;
+  if (!related || !el.contains(related)) {
+    dragOverGroup.value = undefined;
+  }
+}
+
 function onDrop(e: DragEvent, groupName: string | undefined) {
-  const dragGroup = e.dataTransfer?.getData('application/x-group-name');
-  if (dragGroup && dragGroup !== groupName) {
-    emit('reorderGroups', dragGroup, groupName ?? '');
+  e.preventDefault();
+  if (draggedGroup.value && draggedGroup.value !== groupName) {
+    emit('reorderGroups', draggedGroup.value, groupName ?? '');
+    draggedGroup.value = null;
     dragOverGroup.value = undefined;
     return;
   }
+  draggedGroup.value = null;
   const jp = e.dataTransfer?.getData('text/plain');
   if (jp) emit('dropTerm', jp, groupName);
   dragOverGroup.value = undefined;
@@ -107,6 +127,7 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
   >
     <div
       style="display: flex; align-items: center; flex-wrap: nowrap; gap: 4px"
+      @dragleave="onTabsDragLeave"
     >
       <!-- 用户分组列表 -->
       <div
@@ -115,8 +136,8 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
         draggable="true"
         @click="emit('select', name)"
         @dragstart="(e: DragEvent) => onDragStart(e, name)"
+        @dragend="onDragEnd"
         @dragover.prevent="dragOverGroup = name"
-        @dragleave="dragOverGroup === name && (dragOverGroup = undefined)"
         @drop="(e: DragEvent) => onDrop(e, name)"
         @contextmenu.prevent="emit('deleteGroupRequest', name)"
         @touchstart="startLongPress(name)"
@@ -133,27 +154,21 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
             selectedGroup === name
               ? selectBg
               : dragOverGroup === name
-                ? 'var(--primary-color-suppl, #d0e0ff)'
+                ? dragOverBg
                 : 'var(--n-action-color, rgba(0,0,0,0.03))',
           borderLeft:
             selectedGroup === name
               ? `3px solid ${selectBorder}`
               : dragOverGroup === name
-                ? '1px dashed var(--primary-color, #999)'
+                ? `1px dashed ${dragOverBorder}`
                 : '3px solid transparent',
           color: selectedGroup === name ? selectTextColor : undefined,
           borderRight:
-            dragOverGroup === name
-              ? '1px dashed var(--primary-color, #999)'
-              : 'none',
+            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
           borderTop:
-            dragOverGroup === name
-              ? '1px dashed var(--primary-color, #999)'
-              : 'none',
+            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
           borderBottom:
-            dragOverGroup === name
-              ? '1px dashed var(--primary-color, #999)'
-              : 'none',
+            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
         }"
       >
         <template v-if="editingGroupName === name">
@@ -189,7 +204,6 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
       <div
         @click="emit('select', undefined)"
         @dragover.prevent="dragOverGroup = '未分组'"
-        @dragleave="dragOverGroup === '未分组' && (dragOverGroup = undefined)"
         @drop="(e: DragEvent) => onDrop(e, undefined)"
         :style="{
           padding: '4px 8px',
@@ -202,26 +216,26 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
             selectedGroup === undefined
               ? selectBg
               : dragOverGroup === '未分组'
-                ? 'var(--primary-color-suppl, #d0e0ff)'
+                ? dragOverBg
                 : 'var(--n-action-color, rgba(0,0,0,0.03))',
           borderLeft:
             selectedGroup === undefined
               ? `3px solid ${selectBorder}`
               : dragOverGroup === '未分组'
-                ? '1px dashed var(--primary-color, #999)'
+                ? `1px dashed ${dragOverBorder}`
                 : '3px solid transparent',
           color: selectedGroup === undefined ? selectTextColor : undefined,
           borderRight:
             dragOverGroup === '未分组'
-              ? '1px dashed var(--primary-color, #999)'
+              ? `1px dashed ${dragOverBorder}`
               : 'none',
           borderTop:
             dragOverGroup === '未分组'
-              ? '1px dashed var(--primary-color, #999)'
+              ? `1px dashed ${dragOverBorder}`
               : 'none',
           borderBottom:
             dragOverGroup === '未分组'
-              ? '1px dashed var(--primary-color, #999)'
+              ? `1px dashed ${dragOverBorder}`
               : 'none',
         }"
       >
@@ -264,6 +278,7 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
       <!-- 删除当前组 -->
       <c-button
         v-if="selectedGroup && selectedGroup !== '未分组'"
+        class="danger-hover-green"
         label="删除此组"
         size="tiny"
         text
@@ -289,6 +304,7 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
       />
       <c-button
         v-if="isAdmin"
+        class="danger-hover-green"
         label="清空"
         size="tiny"
         text
@@ -303,5 +319,11 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
 <style scoped>
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+:deep(.danger-hover-green:hover) {
+  --n-text-color: #18a058 !important;
+  --n-text-color-hover: #18a058 !important;
+  --n-text-color-pressed: #18a058 !important;
+  --n-text-color-focus: #18a058 !important;
 }
 </style>

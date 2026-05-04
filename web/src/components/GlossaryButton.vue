@@ -231,11 +231,9 @@ function onReorderGroups(from: string, to: string) {
   const g = GlossaryGroup.getGroups(novelId.value);
   const names = Object.keys(g);
   const fromIdx = names.indexOf(from);
-  let toIdx = names.indexOf(to);
+  const toIdx = names.indexOf(to);
   if (fromIdx === -1 || toIdx === -1) return;
-  const [moved] = names.splice(fromIdx, 1);
-  if (fromIdx < toIdx) toIdx--;
-  names.splice(toIdx + 1, 0, moved);
+  [names[fromIdx], names[toIdx]] = [names[toIdx], names[fromIdx]];
   const newGroups: GlossaryGroupMap = {};
   for (const name of names) {
     newGroups[name] = g[name] ?? [];
