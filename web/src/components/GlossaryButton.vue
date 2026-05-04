@@ -51,6 +51,7 @@ const toggleGlossaryModal = () => {
 
 // ========== 分组相关 ==========
 const groups = ref<GlossaryGroupMap>({});
+const groupOrder = ref<string[]>([]);
 const selectedGroup = ref<string | undefined>(undefined);
 const newGroupName = ref('');
 const showNewGroupInput = ref(false);
@@ -60,11 +61,12 @@ const editingGroupNewName = ref('');
 function loadGroups() {
   if (!novelId.value) return;
   groups.value = GlossaryGroup.getGroups(novelId.value);
+  groupOrder.value = GlossaryGroup.getGroupOrder(novelId.value);
 }
 
 function saveGroups() {
   if (!novelId.value) return;
-  GlossaryGroup.saveGroups(novelId.value, groups.value);
+  GlossaryGroup.saveGroups(novelId.value, groups.value, groupOrder.value);
 }
 
 // 监听跨标签页变更
@@ -75,7 +77,8 @@ if (typeof window !== 'undefined') {
       e.newValue !== null
     ) {
       try {
-        groups.value = JSON.parse(e.newValue);
+        groups.value = GlossaryGroup.getGroups(novelId.value);
+        groupOrder.value = GlossaryGroup.getGroupOrder(novelId.value);
       } catch {
         /* ignore */
       }
@@ -92,11 +95,15 @@ const displayData = computed<GlossaryGroupMap>(() => {
     }));
     return result;
   }
-  return GlossaryGroup.buildDisplayData(groups.value, glossary.value);
+  return GlossaryGroup.buildDisplayData(
+    groups.value,
+    glossary.value,
+    groupOrder.value,
+  );
 });
 
 const groupNames = computed(() => {
-  return Object.keys(displayData.value).filter((n) => n !== '未分组');
+  return groupOrder.value.filter((n) => n in displayData.value);
 });
 
 const currentGroupEntries = computed<GlossaryEntry[]>(() => {
@@ -228,18 +235,13 @@ function confirmDeleteGroup() {
 
 function onReorderGroups(from: string, to: string) {
   if (!novelId.value) return;
-  const g = GlossaryGroup.getGroups(novelId.value);
-  const names = Object.keys(g);
-  const fromIdx = names.indexOf(from);
-  const toIdx = names.indexOf(to);
+  const order = [...groupOrder.value];
+  const fromIdx = order.indexOf(from);
+  const toIdx = order.indexOf(to);
   if (fromIdx === -1 || toIdx === -1) return;
-  [names[fromIdx], names[toIdx]] = [names[toIdx], names[fromIdx]];
-  const newGroups: GlossaryGroupMap = {};
-  for (const name of names) {
-    newGroups[name] = g[name] ?? [];
-  }
-  GlossaryGroup.saveGroups(novelId.value, newGroups);
-  loadGroups();
+  [order[fromIdx], order[toIdx]] = [order[toIdx], order[fromIdx]];
+  groupOrder.value = order;
+  GlossaryGroup.saveGroups(novelId.value, groups.value, order);
 }
 
 // ========== 多选相关 ==========

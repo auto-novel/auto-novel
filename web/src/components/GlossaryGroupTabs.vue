@@ -145,11 +145,12 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
         @touchmove="cancelLongPress"
         :style="{
           padding: '4px 8px',
-          cursor: 'pointer',
+          cursor: 'grab',
           borderRadius: '4px',
           fontSize: '12px',
           whiteSpace: 'nowrap',
           flexShrink: 0,
+          userSelect: 'none',
           background:
             selectedGroup === name
               ? selectBg

@@ -10,9 +10,28 @@ function storageKey(novelId: string): string {
   return `${STORAGE_KEY_PREFIX}${novelId}`;
 }
 
+const ORDER_KEY = '_order';
+
+function readStoredOrder(novelId: string): string[] {
+  try {
+    const raw = localStorage.getItem(storageKey(novelId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return [];
+    const order = parsed[ORDER_KEY];
+    return Array.isArray(order) ? order : [];
+  } catch {
+    return [];
+  }
+}
+
 export namespace GlossaryGroup {
   export function storageKeyFor(novelId: string): string {
     return storageKey(novelId);
+  }
+
+  export function getGroupOrder(novelId: string): string[] {
+    return readStoredOrder(novelId);
   }
 
   export function getGroups(novelId: string): GlossaryGroupMap {
@@ -21,7 +40,8 @@ export namespace GlossaryGroup {
       if (!raw) return {};
       const parsed = JSON.parse(raw);
       if (typeof parsed !== 'object' || parsed === null) return {};
-      return parsed as GlossaryGroupMap;
+      const { [ORDER_KEY]: _order, ...groups } = parsed;
+      return groups as GlossaryGroupMap;
     } catch {
       return {};
     }
@@ -30,8 +50,15 @@ export namespace GlossaryGroup {
   export function saveGroups(
     novelId: string,
     groups: GlossaryGroupMap,
+    order?: string[],
   ): boolean {
-    const json = JSON.stringify(groups);
+    const newOrder =
+      order ?? readStoredOrder(novelId).filter((k) => k in groups);
+    for (const key of Object.keys(groups)) {
+      if (!newOrder.includes(key)) newOrder.push(key);
+    }
+    const data = { [ORDER_KEY]: newOrder, ...groups };
+    const json = JSON.stringify(data);
     if (json.length > MAX_STORAGE_BYTES) {
       console.warn(`分组数据过大 (${json.length} bytes)，放弃保存`);
       return false;
@@ -103,7 +130,8 @@ export namespace GlossaryGroup {
     if (groups[newName] || !groups[oldName]) return false;
     groups[newName] = groups[oldName];
     delete groups[oldName];
-    return saveGroups(novelId, groups);
+    saveGroups(novelId, groups);
+    return true;
   }
 
   export function deleteGroup(novelId: string, groupName: string): void {
@@ -116,26 +144,29 @@ export namespace GlossaryGroup {
     const groups = getGroups(novelId);
     if (groups[groupName]) return false;
     groups[groupName] = [];
-    return saveGroups(novelId, groups);
+    saveGroups(novelId, groups);
+    return true;
   }
 
   /** 交叉比对：返回增补后的显示数据 */
   export function buildDisplayData(
     groups: GlossaryGroupMap,
     serverGlossary: Record<string, string>,
+    order?: string[],
   ): GlossaryGroupMap {
     const result: GlossaryGroupMap = {};
     const groupedJps = new Set<string>();
 
-    // 先复制所有本地分组
-    for (const [name, entries] of Object.entries(groups)) {
+    const names = order ?? Object.keys(groups);
+    for (const name of names) {
+      const entries = groups[name];
+      if (!entries) continue;
       result[name] = entries.map((e) => {
         groupedJps.add(e.jp);
-        // 如果服务端有这个术语，用服务端的 zh
         if (e.jp in serverGlossary) {
           return { jp: e.jp, zh: serverGlossary[e.jp] };
         }
-        return e; // 不在服务端 → 划线显示
+        return e;
       });
     }
 
