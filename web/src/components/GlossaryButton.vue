@@ -544,36 +544,13 @@ const submitGlossary = () =>
             size="small"
             @action="downloadGlossaryAsJsonFile"
           />
-
-          <!-- 单向同步按钮 -->
-          <template v-if="!isNarrow">
-            <n-divider vertical />
-            <c-button
-              label="远程→本地"
-              :round="false"
-              size="small"
-              @action="syncRemoteToLocal"
-            />
-            <c-button
-              label="本地→编辑区"
-              :round="false"
-              size="small"
-              @action="syncLocalToEditing"
-            />
-          </template>
-
-          <c-button
-            v-if="whoami.isAdmin"
-            secondary
-            type="error"
-            label="清空"
-            :round="false"
-            size="small"
-            @action="showClearConfirm = true"
-          />
-        </n-flex>
-
-        <n-flex align="center" :wrap="false">
+          <n-text
+            v-if="lastDeletedTerm !== undefined"
+            depth="3"
+            style="font-size: 12px"
+          >
+            {{ lastDeletedTerm }}
+          </n-text>
           <c-button
             :disabled="deletedTerms.length === 0"
             label="撤销删除"
@@ -582,16 +559,9 @@ const submitGlossary = () =>
             @action="undoDeleteTerm"
           />
           <n-text
-            v-if="lastDeletedTerm !== undefined"
-            depth="3"
-            style="font-size: 12px"
-          >
-            {{ lastDeletedTerm }}
-          </n-text>
-          <n-text
             v-if="selectedTerms.size > 0"
             depth="3"
-            style="font-size: 12px; margin-left: 8px"
+            style="font-size: 12px"
           >
             已选 {{ selectedTerms.size }} 项 — Delete 键批量删除
           </n-text>
@@ -600,7 +570,7 @@ const submitGlossary = () =>
     </template>
 
     <!-- 主内容区 -->
-    <div v-if="novelId" @keydown="onKeydown">
+    <div v-if="novelId" tabindex="0" style="outline: none" @keydown="onKeydown">
       <!-- ======== 桌面端：标签页 + 表格 ======== -->
       <div
         v-if="!isNarrow"
@@ -621,6 +591,10 @@ const submitGlossary = () =>
             :show-new-group-input="showNewGroupInput"
             :new-group-name="newGroupName"
             :ungrouped-count="ungroupedEntries.length"
+            :is-admin="whoami.isAdmin"
+            @sync-remote-to-local="syncRemoteToLocal"
+            @sync-local-to-editing="syncLocalToEditing"
+            @clear-request="showClearConfirm = true"
             @select="
               (name) => {
                 selectedGroup = name;

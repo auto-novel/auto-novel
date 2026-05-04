@@ -33,6 +33,7 @@ const props = defineProps<{
   showNewGroupInput: boolean;
   newGroupName: string;
   ungroupedCount: number;
+  isAdmin: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -47,6 +48,9 @@ const emit = defineEmits<{
   dropTerm: [jp: string, groupName: string | undefined];
   deleteGroupRequest: [name: string];
   reorderGroups: [from: string, to: string];
+  syncRemoteToLocal: [];
+  syncLocalToEditing: [];
+  clearRequest: [];
 }>();
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -266,6 +270,31 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
         type="error"
         style="flex-shrink: 0; margin-left: 8px"
         @action="emit('deleteGroup')"
+      />
+
+      <!-- 单向同步 + 清空 -->
+      <c-button
+        label="远程→本地"
+        size="tiny"
+        text
+        style="flex-shrink: 0"
+        @action="emit('syncRemoteToLocal')"
+      />
+      <c-button
+        label="本地→编辑区"
+        size="tiny"
+        text
+        style="flex-shrink: 0"
+        @action="emit('syncLocalToEditing')"
+      />
+      <c-button
+        v-if="isAdmin"
+        label="清空"
+        size="tiny"
+        text
+        type="error"
+        style="flex-shrink: 0"
+        @action="emit('clearRequest')"
       />
     </div>
   </div>
