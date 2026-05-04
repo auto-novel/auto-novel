@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { DeleteOutlineOutlined, AddOutlined } from '@vicons/material';
+import { DeleteOutlineOutlined } from '@vicons/material';
 
 import { WebNovelApi, WenkuNovelApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
@@ -168,25 +168,79 @@ function finishRename() {
   editingGroupNewName.value = '';
 }
 
-function deleteCurrentGroup() {
-  const name = selectedGroup.value;
+function deleteCurrentGroup(groupName?: string) {
+  const name = groupName ?? selectedGroup.value;
   if (!name) return;
   GlossaryGroup.deleteGroup(novelId.value, name);
   loadGroups();
-  selectedGroup.value = undefined;
-}
-
-function moveTermToGroup(jp: string) {
-  const name = selectedGroup.value;
-  if (!name || name === '未分组' || !novelId.value) return;
-  const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
-  GlossaryGroup.moveTerm(novelId.value, jp, zh, name);
-  loadGroups();
+  if (selectedGroup.value === name) selectedGroup.value = undefined;
 }
 
 function removeTermFromCurrentGroup(jp: string) {
   if (!novelId.value) return;
   GlossaryGroup.removeTerm(novelId.value, jp);
+  loadGroups();
+}
+
+function onDropTerm(jp: string, groupName: string | undefined) {
+  if (!novelId.value) return;
+  if (!groupName || groupName === '未分组') {
+    GlossaryGroup.removeTerm(novelId.value, jp);
+  } else {
+    const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
+    GlossaryGroup.moveTerm(novelId.value, jp, zh, groupName);
+  }
+  loadGroups();
+}
+
+function onDeleteGroupRequest(name: string) {
+  const entries = displayData.value[name];
+  if (!entries || entries.length === 0) {
+    GlossaryGroup.deleteGroup(novelId.value, name);
+    loadGroups();
+    if (selectedGroup.value === name) selectedGroup.value = undefined;
+  } else {
+    deleteGroupConfirmName.value = name;
+  }
+}
+
+const deleteGroupConfirmName = ref<string | null>(null);
+const showDeleteGroupConfirm = computed({
+  get: () => deleteGroupConfirmName.value !== null,
+  set: (v: boolean) => {
+    if (!v) deleteGroupConfirmName.value = null;
+  },
+});
+const deleteGroupConfirmCount = computed(() => {
+  const name = deleteGroupConfirmName.value;
+  if (!name) return 0;
+  return displayData.value[name]?.length ?? 0;
+});
+
+function confirmDeleteGroup() {
+  const name = deleteGroupConfirmName.value;
+  if (!name || !novelId.value) return;
+  GlossaryGroup.deleteGroup(novelId.value, name);
+  deleteGroupConfirmName.value = null;
+  loadGroups();
+  if (selectedGroup.value === name) selectedGroup.value = undefined;
+}
+
+function onReorderGroups(from: string, to: string) {
+  if (!novelId.value) return;
+  const g = GlossaryGroup.getGroups(novelId.value);
+  const names = Object.keys(g);
+  const fromIdx = names.indexOf(from);
+  let toIdx = names.indexOf(to);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = names.splice(fromIdx, 1);
+  if (fromIdx < toIdx) toIdx--;
+  names.splice(toIdx + 1, 0, moved);
+  const newGroups: GlossaryGroupMap = {};
+  for (const name of names) {
+    newGroups[name] = g[name] ?? [];
+  }
+  GlossaryGroup.saveGroups(novelId.value, newGroups);
   loadGroups();
 }
 
@@ -257,6 +311,7 @@ function onKeydown(e: KeyboardEvent) {
 /** 远程 → 本地：用服务端术语表覆盖当前编辑 */
 function syncRemoteToLocal() {
   glossary.value = { ...props.value };
+  loadGroups();
   message.success('已从远程同步到本地编辑');
 }
 
@@ -299,12 +354,14 @@ const undoDeleteTerm = () => {
   if (deletedTerms.value.length === 0) return;
   const [jp, zh] = deletedTerms.value.pop()!;
   glossary.value[jp] = zh;
+  loadGroups();
 };
 
 const deleteTerm = (jp: string) => {
   if (jp in glossary.value) {
     deletedTerms.value.push([jp, glossary.value[jp]]);
     delete glossary.value[jp];
+    loadGroups();
   }
 };
 
@@ -347,6 +404,7 @@ const addTerm = () => {
   if (jp && zh) {
     glossary.value[jp.trim()] = zh.trim();
     termsToAdd.value = ['', ''];
+    loadGroups();
   }
 };
 
@@ -367,6 +425,7 @@ const importGlossary = () => {
     message.success('导入成功');
     for (const jp in importedGlossary)
       glossary.value[jp] = importedGlossary[jp];
+    loadGroups();
   }
 };
 
@@ -487,19 +546,21 @@ const submitGlossary = () =>
           />
 
           <!-- 单向同步按钮 -->
-          <n-divider vertical />
-          <c-button
-            label="远程→本地"
-            :round="false"
-            size="small"
-            @action="syncRemoteToLocal"
-          />
-          <c-button
-            label="本地→编辑区"
-            :round="false"
-            size="small"
-            @action="syncLocalToEditing"
-          />
+          <template v-if="!isNarrow">
+            <n-divider vertical />
+            <c-button
+              label="远程→本地"
+              :round="false"
+              size="small"
+              @action="syncRemoteToLocal"
+            />
+            <c-button
+              label="本地→编辑区"
+              :round="false"
+              size="small"
+              @action="syncLocalToEditing"
+            />
+          </template>
 
           <c-button
             v-if="whoami.isAdmin"
@@ -538,30 +599,19 @@ const submitGlossary = () =>
       </n-flex>
     </template>
 
-    <!-- 主内容区：左侧分组 + 右侧术语（桌面端） / 上标签栏 + 下内容（移动端） -->
-    <div
-      v-if="novelId"
-      :style="{
-        display: 'flex',
-        flexDirection: isNarrow ? 'column' : 'row',
-        gap: '12px',
-        minHeight: '300px',
-      }"
-      @keydown="onKeydown"
-    >
-      <!-- ======== 分组选择器 ======== -->
-      <!-- 桌面端：纵向侧边栏 -->
+    <!-- 主内容区 -->
+    <div v-if="novelId" @keydown="onKeydown">
+      <!-- ======== 桌面端：标签页 + 表格 ======== -->
       <div
         v-if="!isNarrow"
-        style="
-          width: 150px;
-          flex-shrink: 0;
-          border-right: 1px solid #eee;
-          padding-right: 8px;
-        "
+        :style="{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          minHeight: '300px',
+        }"
       >
-        <n-flex vertical size="small">
-          <n-text strong style="font-size: 13px">分组</n-text>
+        <div style="padding-bottom: 4px; border-bottom: 1px solid #eee">
           <GlossaryGroupTabs
             :group-names="groupNames"
             :display-data="displayData"
@@ -584,101 +634,85 @@ const submitGlossary = () =>
             @update:new-group-name="newGroupName = $event"
             @show-new-group="showNewGroupInput = true"
             @delete-group="deleteCurrentGroup"
+            @drop-term="onDropTerm"
+            @delete-group-request="onDeleteGroupRequest"
+            @reorder-groups="onReorderGroups"
           />
-        </n-flex>
+        </div>
+
+        <div style="flex: 1; min-width: 0">
+          <template v-if="selectedGroup && currentGroupEntries.length > 0">
+            <GlossaryTermTable
+              :entries="currentGroupEntries"
+              :glossary="glossary"
+              :selected-terms="selectedTerms"
+              :is-in-server-glossary="isInServerGlossary"
+              :is-zh-conflict="isZhConflict"
+              :get-local-zh="getLocalZh"
+              :novel-id="novelId"
+              :in-group="true"
+              @toggle-select="toggleSelect"
+              @delete-term="deleteTerm"
+              @remove-from-group="removeTermFromCurrentGroup"
+              @revert-term="revertTerm"
+              @revert-to-local-zh="revertToLocalZh"
+              @clear-local-record="clearLocalRecord"
+            />
+          </template>
+
+          <template v-else-if="!selectedGroup && ungroupedEntries.length > 0">
+            <GlossaryTermTable
+              :entries="ungroupedEntries"
+              :glossary="glossary"
+              :selected-terms="selectedTerms"
+              :is-in-server-glossary="isInServerGlossary"
+              :is-zh-conflict="isZhConflict"
+              :get-local-zh="getLocalZh"
+              :novel-id="novelId"
+              :in-group="false"
+              @toggle-select="toggleSelect"
+              @delete-term="deleteTerm"
+              @remove-from-group="removeTermFromCurrentGroup"
+              @revert-term="revertTerm"
+              @revert-to-local-zh="revertToLocalZh"
+              @clear-local-record="clearLocalRecord"
+            />
+          </template>
+
+          <n-text v-else depth="3" style="font-size: 12px">暂无术语</n-text>
+        </div>
       </div>
 
-      <!-- 移动端：横向滚动标签栏 -->
-      <div
-        v-else
-        style="
-          overflow-x: auto;
-          white-space: nowrap;
-          padding-bottom: 4px;
-          border-bottom: 1px solid #eee;
-        "
-      >
-        <n-flex align="center" style="flex-wrap: nowrap; gap: 4px">
-          <GlossaryGroupTabs
-            :group-names="groupNames"
-            :display-data="displayData"
-            :selected-group="selectedGroup"
-            :editing-group-name="editingGroupName"
-            :editing-group-new-name="editingGroupNewName"
-            :show-new-group-input="showNewGroupInput"
-            :new-group-name="newGroupName"
-            :ungrouped-count="ungroupedEntries.length"
-            @select="
-              (name) => {
-                selectedGroup = name;
-                clearSelection();
-              }
-            "
-            @start-rename="startRename"
-            @finish-rename="finishRename"
-            @update:editing-group-new-name="editingGroupNewName = $event"
-            @add-new-group="addNewGroup"
-            @update:new-group-name="newGroupName = $event"
-            @show-new-group="showNewGroupInput = true"
-            @delete-group="deleteCurrentGroup"
-          />
-        </n-flex>
-      </div>
-
-      <!-- ======== 术语列表 ======== -->
-      <div style="flex: 1; min-width: 0">
-        <template v-if="selectedGroup && currentGroupEntries.length > 0">
-          <n-text
-            depth="3"
-            style="font-size: 11px; margin-bottom: 8px; display: block"
-          >
-            分组: {{ selectedGroup }}
-          </n-text>
-          <GlossaryTermTable
-            :entries="currentGroupEntries"
-            :glossary="glossary"
-            :selected-terms="selectedTerms"
-            :is-in-server-glossary="isInServerGlossary"
-            :is-zh-conflict="isZhConflict"
-            :get-local-zh="getLocalZh"
-            :novel-id="novelId"
-            :in-group="true"
-            @toggle-select="toggleSelect"
-            @delete-term="deleteTerm"
-            @move-to-group="moveTermToGroup"
-            @remove-from-group="removeTermFromCurrentGroup"
-            @revert-term="revertTerm"
-            @revert-to-local-zh="revertToLocalZh"
-            @clear-local-record="clearLocalRecord"
-          />
-        </template>
-
-        <template v-else-if="!selectedGroup && ungroupedEntries.length > 0">
-          <n-text
-            depth="3"
-            style="font-size: 11px; margin-bottom: 8px; display: block"
-          >
-            未分组术语 — 点击分组名将术语移入分组
-          </n-text>
-          <GlossaryTermTable
-            :entries="ungroupedEntries"
-            :glossary="glossary"
-            :selected-terms="selectedTerms"
-            :is-in-server-glossary="isInServerGlossary"
-            :is-zh-conflict="isZhConflict"
-            :get-local-zh="getLocalZh"
-            :novel-id="novelId"
-            :in-group="false"
-            @toggle-select="toggleSelect"
-            @delete-term="deleteTerm"
-            @move-to-group="moveTermToGroup"
-            @remove-from-group="removeTermFromCurrentGroup"
-            @revert-term="revertTerm"
-            @revert-to-local-zh="revertToLocalZh"
-            @clear-local-record="clearLocalRecord"
-          />
-        </template>
-
+      <!-- ======== 移动端：简易表格（不启用分组） ======== -->
+      <div v-else>
+        <n-table
+          v-if="Object.keys(glossary).length !== 0"
+          striped
+          size="small"
+          style="font-size: 12px; max-width: 400px"
+        >
+          <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
+            <td>
+              <c-button
+                :icon="DeleteOutlineOutlined"
+                text
+                type="error"
+                size="small"
+                @action="deleteTerm(wordJp)"
+              />
+            </td>
+            <td>{{ wordJp }}</td>
+            <td nowrap="nowrap">=></td>
+            <td style="padding-right: 16px">
+              <n-input
+                v-model:value="glossary[wordJp]"
+                size="tiny"
+                placeholder="请输入中文翻译"
+                :theme-overrides="{ border: '0', color: 'transprent' }"
+              />
+            </td>
+          </tr>
+        </n-table>
         <n-text v-else depth="3" style="font-size: 12px">暂无术语</n-text>
       </div>
     </div>
@@ -720,21 +754,37 @@ const submitGlossary = () =>
     </template>
   </c-modal>
 
+  <!-- 删除非空分组确认对话框 -->
+  <c-modal v-model:show="showDeleteGroupConfirm" title="确认删除分组">
+    <n-text>
+      分组 "{{ deleteGroupConfirmName }}" 中有
+      {{ deleteGroupConfirmCount }} 个术语，删除分组后这些术语将移到未分组。
+    </n-text>
+    <template #action>
+      <c-button label="取消" @action="deleteGroupConfirmName = null" />
+      <c-button label="确认删除" type="error" @action="confirmDeleteGroup" />
+    </template>
+  </c-modal>
+
   <!-- 清空确认对话框 -->
-  <n-modal v-model:show="showClearConfirm" title="确认清空">
-    <div style="padding: 16px">
-      <n-text>确定要清空术语表吗？此操作将同时清空本地分组数据。</n-text>
-      <n-flex justify="end" style="margin-top: 16px">
-        <c-button label="取消" @action="showClearConfirm = false" />
-        <c-button
-          label="确认清空"
-          type="error"
-          @action="
-            clearTerm();
-            showClearConfirm = false;
-          "
-        />
-      </n-flex>
-    </div>
-  </n-modal>
+  <c-modal v-model:show="showClearConfirm" title="确认清空">
+    <n-text>确定要清空术语表吗？此操作将同时清空本地分组数据。</n-text>
+    <template #action>
+      <c-button label="取消" @action="showClearConfirm = false" />
+      <c-button
+        label="确认清空"
+        type="error"
+        @action="
+          clearTerm();
+          showClearConfirm = false;
+        "
+      />
+    </template>
+  </c-modal>
 </template>
+
+<style scoped>
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>

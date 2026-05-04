@@ -16,7 +16,6 @@ defineProps<{
 const emit = defineEmits<{
   toggleSelect: [jp: string, event: MouseEvent];
   deleteTerm: [jp: string];
-  moveToGroup: [jp: string];
   removeFromGroup: [jp: string];
   revertTerm: [jp: string];
   revertToLocalZh: [jp: string];
@@ -29,23 +28,50 @@ const emit = defineEmits<{
     <tr
       v-for="entry in entries"
       :key="entry.jp"
+      draggable="true"
       :style="{
         background: selectedTerms.has(entry.jp)
           ? 'var(--primary-color-suppl, #d0e0ff)'
           : undefined,
       }"
       @click="emit('toggleSelect', entry.jp, $event)"
+      @dragstart="
+        (e: DragEvent) => {
+          e.dataTransfer!.setData('text/plain', entry.jp);
+          (e.target as HTMLElement).style.opacity = '0.5';
+        }
+      "
+      @dragend="
+        (e: DragEvent) => {
+          (e.target as HTMLElement).style.opacity = '';
+        }
+      "
     >
       <!-- 删除按钮 -->
       <td style="width: 32px">
-        <c-button
-          v-if="isInServerGlossary(entry.jp)"
-          :icon="DeleteOutlineOutlined"
-          text
-          type="error"
-          size="small"
-          @action="emit('deleteTerm', entry.jp)"
-        />
+        <span style="position: relative; top: 2px">
+          <c-button
+            v-if="isInServerGlossary(entry.jp)"
+            :icon="DeleteOutlineOutlined"
+            text
+            type="error"
+            size="small"
+            @action="emit('deleteTerm', entry.jp)"
+          />
+        </span>
+      </td>
+
+      <!-- 拖拽把手 -->
+      <td
+        style="
+          width: 20px;
+          cursor: grab;
+          color: var(--n-text-color-disabled, #999);
+          font-size: 10px;
+          padding: 0 2px;
+        "
+      >
+        <span style="position: relative; top: -2px">:::</span>
       </td>
 
       <!-- jp -->
@@ -98,16 +124,6 @@ const emit = defineEmits<{
           size="tiny"
           text
           @action="emit('removeFromGroup', entry.jp)"
-        />
-
-        <!-- 在未分组且当前有选中分组 → 移入按钮 -->
-        <c-button
-          v-if="isInServerGlossary(entry.jp) && !inGroup && novelId"
-          label="移入"
-          size="tiny"
-          text
-          type="info"
-          @action="emit('moveToGroup', entry.jp)"
         />
 
         <!-- zh 冲突提示 -->

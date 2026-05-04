@@ -1,5 +1,28 @@
 <script lang="ts" setup>
 import { AddOutlined } from '@vicons/material';
+import { useThemeVars } from 'naive-ui';
+
+const themeVars = useThemeVars();
+const isDark = computed(() => {
+  const c = themeVars.value.bodyColor;
+  if (!c) return false;
+  const r = parseInt(c.substring(1, 3), 16);
+  const g = parseInt(c.substring(3, 5), 16);
+  const b = parseInt(c.substring(5, 7), 16);
+  return (r + g + b) / 3 < 128;
+});
+
+const primaryColor = computed(() => themeVars.value.primaryColor ?? '#18a058');
+const primaryColorSuppl = computed(
+  () => themeVars.value.primaryColorSuppl ?? '#d0e0ff',
+);
+const selectBg = computed(() =>
+  isDark.value ? '#263633' : primaryColorSuppl.value,
+);
+const selectBorder = computed(() =>
+  isDark.value ? '#76e2b6' : primaryColor.value,
+);
+const selectTextColor = computed(() => (isDark.value ? '#76e2b6' : undefined));
 
 const props = defineProps<{
   groupNames: string[];
@@ -21,96 +44,235 @@ const emit = defineEmits<{
   'update:newGroupName': [value: string];
   showNewGroup: [];
   deleteGroup: [];
+  dropTerm: [jp: string, groupName: string | undefined];
+  deleteGroupRequest: [name: string];
+  reorderGroups: [from: string, to: string];
 }>();
+
+const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+
+function startLongPress(name: string) {
+  longPressTimer.value = setTimeout(() => {
+    emit('deleteGroupRequest', name);
+  }, 600);
+}
+
+function cancelLongPress() {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value);
+    longPressTimer.value = null;
+  }
+}
+
+function onTabWheel(e: WheelEvent) {
+  const el = e.currentTarget as HTMLElement;
+  el.scrollLeft += e.deltaY;
+  e.preventDefault();
+}
+
+const dragOverGroup = ref<string | undefined>(undefined);
+
+function onDragStart(e: DragEvent, name: string) {
+  e.dataTransfer!.setData('application/x-group-name', name);
+  e.dataTransfer!.effectAllowed = 'move';
+}
+
+function onDrop(e: DragEvent, groupName: string | undefined) {
+  const dragGroup = e.dataTransfer?.getData('application/x-group-name');
+  if (dragGroup && dragGroup !== groupName) {
+    emit('reorderGroups', dragGroup, groupName ?? '');
+    dragOverGroup.value = undefined;
+    return;
+  }
+  const jp = e.dataTransfer?.getData('text/plain');
+  if (jp) emit('dropTerm', jp, groupName);
+  dragOverGroup.value = undefined;
+}
 </script>
 
 <template>
-  <!-- 用户分组列表 -->
   <div
-    v-for="name in groupNames"
-    :key="name"
-    @click="emit('select', name)"
-    :style="{
-      padding: '4px 8px',
-      cursor: 'pointer',
-      borderRadius: '4px',
-      fontSize: '12px',
-      whiteSpace: 'nowrap',
-      background:
-        selectedGroup === name
-          ? 'var(--primary-color-hover, #eee)'
-          : 'transparent',
-    }"
+    style="
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    "
+    class="hide-scrollbar"
+    @wheel="onTabWheel"
   >
-    <template v-if="editingGroupName === name">
-      <n-input
-        :value="editingGroupNewName"
+    <div
+      style="display: flex; align-items: center; flex-wrap: nowrap; gap: 4px"
+    >
+      <!-- 用户分组列表 -->
+      <div
+        v-for="name in groupNames"
+        :key="name"
+        draggable="true"
+        @click="emit('select', name)"
+        @dragstart="(e: DragEvent) => onDragStart(e, name)"
+        @dragover.prevent="dragOverGroup = name"
+        @dragleave="dragOverGroup === name && (dragOverGroup = undefined)"
+        @drop="(e: DragEvent) => onDrop(e, name)"
+        @contextmenu.prevent="emit('deleteGroupRequest', name)"
+        @touchstart="startLongPress(name)"
+        @touchend="cancelLongPress"
+        @touchmove="cancelLongPress"
+        :style="{
+          padding: '4px 8px',
+          cursor: 'pointer',
+          borderRadius: '4px',
+          fontSize: '12px',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          background:
+            selectedGroup === name
+              ? selectBg
+              : dragOverGroup === name
+                ? 'var(--primary-color-suppl, #d0e0ff)'
+                : 'var(--n-action-color, rgba(0,0,0,0.03))',
+          borderLeft:
+            selectedGroup === name
+              ? `3px solid ${selectBorder}`
+              : dragOverGroup === name
+                ? '1px dashed var(--primary-color, #999)'
+                : '3px solid transparent',
+          color: selectedGroup === name ? selectTextColor : undefined,
+          borderRight:
+            dragOverGroup === name
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+          borderTop:
+            dragOverGroup === name
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+          borderBottom:
+            dragOverGroup === name
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+        }"
+      >
+        <template v-if="editingGroupName === name">
+          <n-input
+            :value="editingGroupNewName"
+            size="tiny"
+            @update:value="emit('update:editingGroupNewName', $event)"
+            @blur="emit('finishRename')"
+            @keydown.enter="emit('finishRename')"
+          />
+        </template>
+        <template v-else>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              flex-wrap: nowrap;
+              gap: 6px;
+            "
+          >
+            <n-text @dblclick="emit('startRename', name)" style="flex: 1">
+              {{ name }}
+            </n-text>
+            <n-text depth="3" style="font-size: 10px">
+              {{ displayData[name]?.length ?? 0 }}
+            </n-text>
+          </div>
+        </template>
+      </div>
+
+      <!-- 未分组 -->
+      <div
+        @click="emit('select', undefined)"
+        @dragover.prevent="dragOverGroup = '未分组'"
+        @dragleave="dragOverGroup === '未分组' && (dragOverGroup = undefined)"
+        @drop="(e: DragEvent) => onDrop(e, undefined)"
+        :style="{
+          padding: '4px 8px',
+          cursor: 'pointer',
+          borderRadius: '4px',
+          fontSize: '12px',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          background:
+            selectedGroup === undefined
+              ? selectBg
+              : dragOverGroup === '未分组'
+                ? 'var(--primary-color-suppl, #d0e0ff)'
+                : 'var(--n-action-color, rgba(0,0,0,0.03))',
+          borderLeft:
+            selectedGroup === undefined
+              ? `3px solid ${selectBorder}`
+              : dragOverGroup === '未分组'
+                ? '1px dashed var(--primary-color, #999)'
+                : '3px solid transparent',
+          color: selectedGroup === undefined ? selectTextColor : undefined,
+          borderRight:
+            dragOverGroup === '未分组'
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+          borderTop:
+            dragOverGroup === '未分组'
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+          borderBottom:
+            dragOverGroup === '未分组'
+              ? '1px dashed var(--primary-color, #999)'
+              : 'none',
+        }"
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 6px;
+          "
+        >
+          <n-text>未分组</n-text>
+          <n-text depth="3" style="font-size: 10px">
+            {{ ungroupedCount }}
+          </n-text>
+        </div>
+      </div>
+      <!-- 新建组 -->
+      <div v-if="showNewGroupInput" style="flex-shrink: 0">
+        <n-input
+          :value="newGroupName"
+          size="tiny"
+          placeholder="新分组名"
+          @update:value="emit('update:newGroupName', $event)"
+          @keydown.enter="emit('addNewGroup')"
+          @blur="emit('addNewGroup')"
+        />
+      </div>
+      <c-button
+        v-else
+        :icon="AddOutlined"
+        label="新建组"
         size="tiny"
-        @update:value="emit('update:editingGroupNewName', $event)"
-        @blur="emit('finishRename')"
-        @keydown.enter="emit('finishRename')"
+        text
+        style="flex-shrink: 0"
+        @action="emit('showNewGroup')"
       />
-    </template>
-    <template v-else>
-      <n-flex justify="space-between" align="center">
-        <n-text @dblclick="emit('startRename', name)" style="flex: 1">
-          {{ name }}
-        </n-text>
-        <n-text depth="3" style="font-size: 10px">
-          {{ displayData[name]?.length ?? 0 }}
-        </n-text>
-      </n-flex>
-    </template>
-  </div>
 
-  <!-- 未分组 -->
-  <div
-    @click="emit('select', undefined)"
-    :style="{
-      padding: '4px 8px',
-      cursor: 'pointer',
-      borderRadius: '4px',
-      fontSize: '12px',
-      whiteSpace: 'nowrap',
-      background:
-        selectedGroup === undefined
-          ? 'var(--primary-color-hover, #eee)'
-          : 'transparent',
-    }"
-  >
-    <n-flex justify="space-between" align="center">
-      <n-text>未分组</n-text>
-      <n-text depth="3" style="font-size: 10px">{{ ungroupedCount }}</n-text>
-    </n-flex>
+      <!-- 删除当前组 -->
+      <c-button
+        v-if="selectedGroup && selectedGroup !== '未分组'"
+        label="删除此组"
+        size="tiny"
+        text
+        type="error"
+        style="flex-shrink: 0; margin-left: 8px"
+        @action="emit('deleteGroup')"
+      />
+    </div>
   </div>
-
-  <!-- 新建组 -->
-  <div v-if="showNewGroupInput" style="margin-top: 4px">
-    <n-input
-      :value="newGroupName"
-      size="tiny"
-      placeholder="新分组名"
-      @update:value="emit('update:newGroupName', $event)"
-      @keydown.enter="emit('addNewGroup')"
-      @blur="emit('addNewGroup')"
-    />
-  </div>
-  <c-button
-    v-else
-    :icon="AddOutlined"
-    label="新建组"
-    size="tiny"
-    text
-    @action="emit('showNewGroup')"
-  />
-
-  <!-- 删除当前组 -->
-  <c-button
-    v-if="selectedGroup && selectedGroup !== '未分组'"
-    label="删除此组"
-    size="tiny"
-    text
-    type="error"
-    @action="emit('deleteGroup')"
-  />
 </template>
+
+<style scoped>
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>
