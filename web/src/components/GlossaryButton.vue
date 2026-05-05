@@ -42,6 +42,7 @@ const isNarrow = computed(() => width.value < 600);
 const toggleGlossaryModal = () => {
   if (showGlossaryModal.value === false) {
     glossary.value = { ...props.value };
+    GlossaryGroup.syncUngrouped(novelId.value, glossary.value);
     loadGroups();
     selectedGroup.value = undefined;
     selectedTerms.value = new Set();
@@ -185,14 +186,18 @@ function deleteCurrentGroup(groupName?: string) {
 
 function removeTermFromCurrentGroup(jp: string) {
   if (!novelId.value) return;
+  const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
   GlossaryGroup.removeTerm(novelId.value, jp);
+  GlossaryGroup.addToUngrouped(novelId.value, jp, zh);
   loadGroups();
 }
 
 function onDropTerm(jp: string, groupName: string | undefined) {
   if (!novelId.value) return;
   if (!groupName || groupName === '未分组') {
+    const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
     GlossaryGroup.removeTerm(novelId.value, jp);
+    GlossaryGroup.addToUngrouped(novelId.value, jp, zh);
   } else {
     const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
     GlossaryGroup.moveTerm(novelId.value, jp, zh, groupName);
@@ -237,9 +242,15 @@ function onReorderGroups(from: string, to: string) {
   if (!novelId.value) return;
   const order = [...groupOrder.value];
   const fromIdx = order.indexOf(from);
-  const toIdx = order.indexOf(to);
-  if (fromIdx === -1 || toIdx === -1) return;
-  [order[fromIdx], order[toIdx]] = [order[toIdx], order[fromIdx]];
+  if (fromIdx === -1) return;
+  order.splice(fromIdx, 1);
+  if (to) {
+    const toIdx = order.indexOf(to);
+    if (toIdx === -1) return;
+    order.splice(toIdx, 0, from);
+  } else {
+    order.push(from);
+  }
   groupOrder.value = order;
   GlossaryGroup.saveGroups(novelId.value, groups.value, order);
 }
@@ -625,12 +636,19 @@ const submitGlossary = () =>
               :get-local-zh="getLocalZh"
               :novel-id="novelId"
               :in-group="true"
+              :group-name="selectedGroup"
               @toggle-select="toggleSelect"
               @delete-term="deleteTerm"
               @remove-from-group="removeTermFromCurrentGroup"
               @revert-term="revertTerm"
               @revert-to-local-zh="revertToLocalZh"
               @clear-local-record="clearLocalRecord"
+              @reorder-term="
+                (from, to) => {
+                  GlossaryGroup.reorderTerm(novelId, selectedGroup!, from, to);
+                  loadGroups();
+                }
+              "
             />
           </template>
 
@@ -650,6 +668,12 @@ const submitGlossary = () =>
               @revert-term="revertTerm"
               @revert-to-local-zh="revertToLocalZh"
               @clear-local-record="clearLocalRecord"
+              @reorder-term="
+                (from, to) => {
+                  GlossaryGroup.reorderTerm(novelId, '未分组', from, to);
+                  loadGroups();
+                }
+              "
             />
           </template>
 

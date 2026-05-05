@@ -59,10 +59,87 @@ const emit = defineEmits<{
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-function startLongPress(name: string) {
+const touchDrag = ref<{
+  active: boolean;
+  groupName: string | null;
+  startX: number;
+  startY: number;
+  isDragging: boolean;
+}>({ active: false, groupName: null, startX: 0, startY: 0, isDragging: false });
+
+function findGroupFromTouch(touch: Touch): string | undefined {
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (!el) return undefined;
+  const tab = (el as HTMLElement).closest('[data-group-name]');
+  return (tab as HTMLElement | null)?.dataset.groupName;
+}
+
+function onTouchStart(e: TouchEvent, name: string) {
   longPressTimer.value = setTimeout(() => {
     emit('deleteGroupRequest', name);
+    touchDrag.value = {
+      active: false,
+      groupName: null,
+      startX: 0,
+      startY: 0,
+      isDragging: false,
+    };
   }, 600);
+  const touch = e.touches[0];
+  touchDrag.value = {
+    active: true,
+    groupName: name,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    isDragging: false,
+  };
+}
+
+function onTouchMove(e: TouchEvent) {
+  cancelLongPress();
+  if (!touchDrag.value.active) return;
+  const touch = e.touches[0];
+  const dx = Math.abs(touch.clientX - touchDrag.value.startX);
+  const dy = Math.abs(touch.clientY - touchDrag.value.startY);
+  if (!touchDrag.value.isDragging && (dx > 10 || dy > 10)) {
+    touchDrag.value.isDragging = true;
+  }
+  if (touchDrag.value.isDragging) {
+    e.preventDefault();
+    dragOverGroup.value = findGroupFromTouch(touch);
+  }
+}
+
+function onTouchEnd(e: TouchEvent) {
+  cancelLongPress();
+  if (!touchDrag.value.active) return;
+  if (touchDrag.value.isDragging) {
+    const touch = e.changedTouches[0];
+    let targetGroup = findGroupFromTouch(touch) ?? dragOverGroup.value;
+    if (targetGroup === '未分组') targetGroup = undefined;
+    if (targetGroup) {
+      targetGroup = resolveDropTarget(
+        touch.clientX,
+        touch.clientY,
+        targetGroup,
+      );
+    }
+    if (
+      touchDrag.value.groupName &&
+      targetGroup !== undefined &&
+      targetGroup !== touchDrag.value.groupName
+    ) {
+      emit('reorderGroups', touchDrag.value.groupName, targetGroup);
+    }
+    dragOverGroup.value = undefined;
+  }
+  touchDrag.value = {
+    active: false,
+    groupName: null,
+    startX: 0,
+    startY: 0,
+    isDragging: false,
+  };
 }
 
 function cancelLongPress() {
@@ -70,6 +147,26 @@ function cancelLongPress() {
     clearTimeout(longPressTimer.value);
     longPressTimer.value = null;
   }
+}
+
+function resolveDropTarget(
+  clientX: number,
+  clientY: number,
+  currentTarget: string,
+): string {
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el) return currentTarget;
+  const tab = (el as HTMLElement).closest(
+    '[data-group-name]',
+  ) as HTMLElement | null;
+  if (!tab || tab.dataset.groupName !== currentTarget) return currentTarget;
+  const rect = tab.getBoundingClientRect();
+  if (clientX <= rect.left + rect.width / 2) return currentTarget;
+  const idx = props.groupNames.indexOf(currentTarget);
+  if (idx >= 0 && idx < props.groupNames.length - 1) {
+    return props.groupNames[idx + 1];
+  }
+  return '';
 }
 
 function onTabWheel(e: WheelEvent) {
@@ -91,6 +188,13 @@ function onDragEnd() {
   draggedGroup.value = null;
 }
 
+function isDragTarget(name: string): boolean {
+  if (dragOverGroup.value !== name) return false;
+  if (draggedGroup.value === name) return false;
+  if (touchDrag.value.groupName === name) return false;
+  return true;
+}
+
 function onTabsDragLeave(e: DragEvent) {
   const el = e.currentTarget as HTMLElement;
   const related = e.relatedTarget as HTMLElement | null;
@@ -102,7 +206,11 @@ function onTabsDragLeave(e: DragEvent) {
 function onDrop(e: DragEvent, groupName: string | undefined) {
   e.preventDefault();
   if (draggedGroup.value && draggedGroup.value !== groupName) {
-    emit('reorderGroups', draggedGroup.value, groupName ?? '');
+    let target = groupName ?? '';
+    if (target) {
+      target = resolveDropTarget(e.clientX, e.clientY, target);
+    }
+    emit('reorderGroups', draggedGroup.value, target);
     draggedGroup.value = null;
     dragOverGroup.value = undefined;
     return;
@@ -128,84 +236,111 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
     <div
       style="display: flex; align-items: center; flex-wrap: nowrap; gap: 4px"
       @dragleave="onTabsDragLeave"
+      @dragover.prevent
+      @drop="
+        (e: DragEvent) => {
+          e.preventDefault();
+          onDrop(e, dragOverGroup === '未分组' ? undefined : dragOverGroup);
+        }
+      "
     >
       <!-- 用户分组列表 -->
-      <div
-        v-for="name in groupNames"
-        :key="name"
-        draggable="true"
-        @click="emit('select', name)"
-        @dragstart="(e: DragEvent) => onDragStart(e, name)"
-        @dragend="onDragEnd"
-        @dragover.prevent="dragOverGroup = name"
-        @drop="(e: DragEvent) => onDrop(e, name)"
-        @contextmenu.prevent="emit('deleteGroupRequest', name)"
-        @touchstart="startLongPress(name)"
-        @touchend="cancelLongPress"
-        @touchmove="cancelLongPress"
-        :style="{
-          padding: '4px 8px',
-          cursor: 'grab',
-          borderRadius: '4px',
-          fontSize: '12px',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-          userSelect: 'none',
-          background:
-            selectedGroup === name
-              ? selectBg
-              : dragOverGroup === name
-                ? dragOverBg
-                : 'var(--n-action-color, rgba(0,0,0,0.03))',
-          borderLeft:
-            selectedGroup === name
-              ? `3px solid ${selectBorder}`
-              : dragOverGroup === name
-                ? `1px dashed ${dragOverBorder}`
-                : '3px solid transparent',
-          color: selectedGroup === name ? selectTextColor : undefined,
-          borderRight:
-            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
-          borderTop:
-            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
-          borderBottom:
-            dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
-        }"
+      <TransitionGroup
+        name="group-tab"
+        tag="div"
+        style="display: flex; gap: 4px"
       >
-        <template v-if="editingGroupName === name">
-          <n-input
-            :value="editingGroupNewName"
-            size="tiny"
-            @update:value="emit('update:editingGroupNewName', $event)"
-            @blur="emit('finishRename')"
-            @keydown.enter="emit('finishRename')"
-          />
-        </template>
-        <template v-else>
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              flex-wrap: nowrap;
-              gap: 6px;
-            "
-          >
-            <n-text @dblclick="emit('startRename', name)" style="flex: 1">
-              {{ name }}
-            </n-text>
-            <n-text depth="3" style="font-size: 10px">
-              {{ displayData[name]?.length ?? 0 }}
-            </n-text>
-          </div>
-        </template>
-      </div>
+        <div
+          v-for="name in groupNames"
+          :key="name"
+          :data-group-name="name"
+          draggable="true"
+          @click="emit('select', name)"
+          @dragstart="(e: DragEvent) => onDragStart(e, name)"
+          @dragend="onDragEnd"
+          @dragover.prevent="dragOverGroup = name"
+          @drop="
+            (e: DragEvent) => {
+              e.stopPropagation();
+              onDrop(e, name);
+            }
+          "
+          @contextmenu.prevent="emit('deleteGroupRequest', name)"
+          @touchstart="(e: TouchEvent) => onTouchStart(e, name)"
+          @touchmove="(e: TouchEvent) => onTouchMove(e)"
+          @touchend="(e: TouchEvent) => onTouchEnd(e)"
+          :style="{
+            padding: '4px 8px',
+            cursor: 'grab',
+            borderRadius: '4px',
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            userSelect: 'none',
+            touchAction: 'none',
+            background:
+              selectedGroup === name
+                ? selectBg
+                : dragOverGroup === name
+                  ? dragOverBg
+                  : 'var(--n-action-color, rgba(0,0,0,0.03))',
+            borderLeft:
+              selectedGroup === name
+                ? `3px solid ${selectBorder}`
+                : dragOverGroup === name
+                  ? `1px dashed ${dragOverBorder}`
+                  : '3px solid transparent',
+            color: selectedGroup === name ? selectTextColor : undefined,
+            borderRight:
+              dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
+            borderTop:
+              dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
+            borderBottom:
+              dragOverGroup === name ? `1px dashed ${dragOverBorder}` : 'none',
+            marginLeft: isDragTarget(name) ? '36px' : '0px',
+            transition: 'margin-left 0.2s ease, transform 0.25s ease',
+          }"
+        >
+          <template v-if="editingGroupName === name">
+            <n-input
+              :value="editingGroupNewName"
+              size="tiny"
+              @update:value="emit('update:editingGroupNewName', $event)"
+              @blur="emit('finishRename')"
+              @keydown.enter="emit('finishRename')"
+            />
+          </template>
+          <template v-else>
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: nowrap;
+                gap: 6px;
+              "
+            >
+              <n-text @dblclick="emit('startRename', name)" style="flex: 1">
+                {{ name }}
+              </n-text>
+              <n-text depth="3" style="font-size: 10px">
+                {{ displayData[name]?.length ?? 0 }}
+              </n-text>
+            </div>
+          </template>
+        </div>
+      </TransitionGroup>
 
       <!-- 未分组 -->
       <div
         @click="emit('select', undefined)"
         @dragover.prevent="dragOverGroup = '未分组'"
-        @drop="(e: DragEvent) => onDrop(e, undefined)"
+        @drop="
+          (e: DragEvent) => {
+            e.stopPropagation();
+            onDrop(e, undefined);
+          }
+        "
         :style="{
           padding: '4px 8px',
           cursor: 'pointer',
@@ -238,6 +373,8 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
             dragOverGroup === '未分组'
               ? `1px dashed ${dragOverBorder}`
               : 'none',
+          marginLeft: dragOverGroup === '未分组' ? '36px' : '0px',
+          transition: 'margin-left 0.2s ease, transform 0.25s ease',
         }"
       >
         <div
@@ -320,6 +457,19 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
 <style scoped>
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+.group-tab-move,
+.group-tab-enter-active,
+.group-tab-leave-active {
+  transition: transform 0.25s ease;
+}
+.group-tab-enter-from,
+.group-tab-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.group-tab-leave-active {
+  position: absolute;
 }
 :deep(.danger-hover-green:hover) {
   --n-text-color: #18a058 !important;

@@ -53,8 +53,10 @@ export namespace GlossaryGroup {
     order?: string[],
   ): boolean {
     const newOrder =
-      order ?? readStoredOrder(novelId).filter((k) => k in groups);
+      order ??
+      readStoredOrder(novelId).filter((k) => k in groups && k !== '未分组');
     for (const key of Object.keys(groups)) {
+      if (key === '未分组') continue;
       if (!newOrder.includes(key)) newOrder.push(key);
     }
     const data = { [ORDER_KEY]: newOrder, ...groups };
@@ -70,6 +72,37 @@ export namespace GlossaryGroup {
       console.warn('localStorage 写入失败，可能已满', e);
       return false;
     }
+  }
+
+  export function addToUngrouped(
+    novelId: string,
+    jp: string,
+    zh: string,
+  ): void {
+    const groups = getGroups(novelId);
+    if (!groups['未分组']) groups['未分组'] = [];
+    groups['未分组'].push({ jp, zh });
+    saveGroups(novelId, groups);
+  }
+
+  export function syncUngrouped(
+    novelId: string,
+    serverGlossary: Record<string, string>,
+  ): void {
+    const groups = getGroups(novelId);
+    const groupedJps = new Set<string>();
+    for (const name of Object.keys(groups)) {
+      if (name === '未分组') continue;
+      for (const e of groups[name] || []) groupedJps.add(e.jp);
+    }
+    if (!groups['未分组']) groups['未分组'] = [];
+    const seen = new Set(groups['未分组'].map((e) => e.jp));
+    for (const jp of Object.keys(serverGlossary)) {
+      if (!groupedJps.has(jp) && !seen.has(jp)) {
+        groups['未分组'].push({ jp, zh: serverGlossary[jp] });
+      }
+    }
+    saveGroups(novelId, groups);
   }
 
   export function clearGroups(novelId: string): void {
@@ -148,6 +181,21 @@ export namespace GlossaryGroup {
     return true;
   }
 
+  /** 组内术语重排 */
+  export function reorderTerm(
+    novelId: string,
+    groupName: string,
+    fromIndex: number,
+    toIndex: number,
+  ): void {
+    const groups = getGroups(novelId);
+    const entries = groups[groupName];
+    if (!entries || fromIndex < 0 || fromIndex >= entries.length) return;
+    const [item] = entries.splice(fromIndex, 1);
+    entries.splice(toIndex, 0, item);
+    saveGroups(novelId, groups);
+  }
+
   /** 交叉比对：返回增补后的显示数据 */
   export function buildDisplayData(
     groups: GlossaryGroupMap,
@@ -159,6 +207,7 @@ export namespace GlossaryGroup {
 
     const names = order ?? Object.keys(groups);
     for (const name of names) {
+      if (name === '未分组') continue;
       const entries = groups[name];
       if (!entries) continue;
       result[name] = entries.map((e) => {
@@ -170,10 +219,21 @@ export namespace GlossaryGroup {
       });
     }
 
-    // 未分组术语（在服务端但不在任何分组中）
+    // 未分组术语：优先使用存储的顺序，合并新增的服务端术语
+    const storedUngrouped = groups['未分组'] || [];
     const ungrouped: GlossaryEntry[] = [];
+    const seen = new Set<string>();
+    for (const e of storedUngrouped) {
+      if (groupedJps.has(e.jp)) continue;
+      seen.add(e.jp);
+      if (e.jp in serverGlossary) {
+        ungrouped.push({ jp: e.jp, zh: serverGlossary[e.jp] });
+      } else {
+        ungrouped.push(e);
+      }
+    }
     for (const jp of Object.keys(serverGlossary)) {
-      if (!groupedJps.has(jp)) {
+      if (!groupedJps.has(jp) && !seen.has(jp)) {
         ungrouped.push({ jp, zh: serverGlossary[jp] });
       }
     }
