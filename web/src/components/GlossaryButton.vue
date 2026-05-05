@@ -192,9 +192,12 @@ function removeTermFromCurrentGroup(jp: string) {
   loadGroups();
 }
 
-function onDropTerm(jp: string | string[], groupName: string | undefined) {
+function onDropTerm(jp: string, groupName: string | undefined) {
   if (!novelId.value) return;
-  const jps = Array.isArray(jp) ? jp : [jp];
+  const jps =
+    selectedTerms.value.has(jp) && selectedTerms.value.size > 1
+      ? [...selectedTerms.value]
+      : [jp];
   for (const j of jps) {
     if (!groupName || groupName === '未分组') {
       const zh = glossary.value[j] ?? getLocalZh(j) ?? '';
