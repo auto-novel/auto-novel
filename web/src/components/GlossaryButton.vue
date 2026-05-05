@@ -411,16 +411,6 @@ const revertTerm = (jp: string) => {
     const found = entries.find((e) => e.jp === jp);
     if (found) {
       glossary.value[jp] = found.zh;
-      if (selectedGroup.value && selectedGroup.value !== '未分组') {
-        GlossaryGroup.moveTerm(
-          novelId.value,
-          jp,
-          found.zh,
-          selectedGroup.value,
-        );
-      } else {
-        GlossaryGroup.removeTerm(novelId.value, jp);
-      }
       loadGroups();
       return;
     }

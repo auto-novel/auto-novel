@@ -1,6 +1,26 @@
 <script lang="ts" setup>
 import { DeleteOutlineOutlined } from '@vicons/material';
+import { useThemeVars } from 'naive-ui';
 import type { GlossaryEntry } from '@/model/GlossaryGroup';
+
+const themeVars = useThemeVars();
+
+const isDark = computed(() => {
+  const c = themeVars.value.bodyColor;
+  if (!c) return false;
+  const r = parseInt(c.substring(1, 3), 16);
+  const g = parseInt(c.substring(3, 5), 16);
+  const b = parseInt(c.substring(5, 7), 16);
+  return (r + g + b) / 3 < 128;
+});
+
+const stripeColor = computed(() =>
+  isDark.value ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+);
+
+const termBorderColor = computed(() =>
+  isDark.value ? 'rgba(255,255,255,0.08)' : '#efeff5',
+);
 
 const props = defineProps<{
   entries: GlossaryEntry[];
@@ -63,7 +83,13 @@ function onRowDrop(e: DragEvent) {
 </script>
 
 <template>
-  <table class="term-table">
+  <table
+    class="term-table"
+    :style="{
+      '--term-stripe': stripeColor,
+      '--term-border': termBorderColor,
+    }"
+  >
     <TransitionGroup name="term-row" tag="tbody">
       <tr
         v-for="(entry, index) in entries"
@@ -134,7 +160,7 @@ function onRowDrop(e: DragEvent) {
               v-model:value="glossary[entry.jp]"
               size="tiny"
               placeholder="请输入中文翻译"
-              :theme-overrides="{ border: '0', color: 'transprent' }"
+              :theme-overrides="{ border: '0', color: 'transparent' }"
             />
           </template>
           <n-text v-else depth="3" style="text-decoration: line-through">
@@ -203,11 +229,11 @@ function onRowDrop(e: DragEvent) {
 }
 
 .term-table tr {
-  border-bottom: 1px solid var(--n-border-color, #efeff5);
+  border-bottom: 1px solid var(--term-border);
 }
 
 .term-table tbody tr:nth-child(even) {
-  background: var(--n-td-striped-color, rgba(0, 0, 0, 0.04));
+  background: var(--term-stripe);
 }
 
 .term-row-move {
