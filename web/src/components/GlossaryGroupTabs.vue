@@ -49,7 +49,7 @@ const emit = defineEmits<{
   'update:newGroupName': [value: string];
   showNewGroup: [];
   deleteGroup: [];
-  dropTerm: [jp: string, groupName: string | undefined];
+  dropTerm: [jp: string | string[], groupName: string | undefined];
   deleteGroupRequest: [name: string];
   reorderGroups: [from: string, to: string];
   syncRemoteToLocal: [];
@@ -234,8 +234,19 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
     return;
   }
   draggedGroup.value = null;
-  const jp = e.dataTransfer?.getData('text/plain');
-  if (jp) emit('dropTerm', jp, groupName);
+  const raw = e.dataTransfer?.getData('text/plain');
+  if (!raw) {
+    dragOverGroup.value = undefined;
+    return;
+  }
+  let jps: string | string[] = raw;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) jps = parsed;
+  } catch {
+    /* not JSON, use raw string */
+  }
+  emit('dropTerm', jps, groupName);
   dragOverGroup.value = undefined;
 }
 </script>

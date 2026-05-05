@@ -192,15 +192,18 @@ function removeTermFromCurrentGroup(jp: string) {
   loadGroups();
 }
 
-function onDropTerm(jp: string, groupName: string | undefined) {
+function onDropTerm(jp: string | string[], groupName: string | undefined) {
   if (!novelId.value) return;
-  if (!groupName || groupName === '未分组') {
-    const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
-    GlossaryGroup.removeTerm(novelId.value, jp);
-    GlossaryGroup.addToUngrouped(novelId.value, jp, zh);
-  } else {
-    const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
-    GlossaryGroup.moveTerm(novelId.value, jp, zh, groupName);
+  const jps = Array.isArray(jp) ? jp : [jp];
+  for (const j of jps) {
+    if (!groupName || groupName === '未分组') {
+      const zh = glossary.value[j] ?? getLocalZh(j) ?? '';
+      GlossaryGroup.removeTerm(novelId.value, j);
+      GlossaryGroup.addToUngrouped(novelId.value, j, zh);
+    } else {
+      const zh = glossary.value[j] ?? getLocalZh(j) ?? '';
+      GlossaryGroup.moveTerm(novelId.value, j, zh, groupName);
+    }
   }
   loadGroups();
 }
@@ -306,8 +309,13 @@ function toggleSelect(jp: string, event: MouseEvent) {
       selectedTerms.value = next;
     }
   } else {
-    selectedTerms.value = new Set([jp]);
-    lastClickedJp.value = jp;
+    if (selectedTerms.value.size === 1 && selectedTerms.value.has(jp)) {
+      selectedTerms.value = new Set();
+      lastClickedJp.value = null;
+    } else {
+      selectedTerms.value = new Set([jp]);
+      lastClickedJp.value = jp;
+    }
   }
 }
 

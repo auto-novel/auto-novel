@@ -58,7 +58,11 @@ const dragOverIndex = ref<number | null>(null);
 
 function onRowDragStart(e: DragEvent, entry: GlossaryEntry, index: number) {
   dragFromIndex.value = index;
-  e.dataTransfer!.setData('text/plain', entry.jp);
+  const data =
+    selectedTerms.has(entry.jp) && selectedTerms.size > 1
+      ? JSON.stringify([...selectedTerms])
+      : entry.jp;
+  e.dataTransfer!.setData('text/plain', data);
   e.dataTransfer!.effectAllowed = 'move';
   (e.target as HTMLElement).style.opacity = '0.5';
 }
