@@ -172,6 +172,7 @@ function onRowDrop(e: DragEvent) {
               size="tiny"
               placeholder="请输入中文翻译"
               :theme-overrides="{ border: '0', color: 'transparent' }"
+              @click.stop
             />
           </template>
           <n-text v-else depth="3" style="text-decoration: line-through">
