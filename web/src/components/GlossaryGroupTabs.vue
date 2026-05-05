@@ -38,6 +38,7 @@ const props = defineProps<{
   newGroupName: string;
   ungroupedCount: number;
   isAdmin: boolean;
+  historyCount: number;
 }>();
 
 const emit = defineEmits<{
@@ -59,6 +60,7 @@ const emit = defineEmits<{
   sortByTimeReverse: [];
   sortByKana: [];
   sortByKanaReverse: [];
+  showHistory: [];
 }>();
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -465,6 +467,15 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
         style="flex-shrink: 0"
         @action="emit('syncLocalToEditing')"
       />
+      <n-button
+        size="tiny"
+        text
+        style="flex-shrink: 0; font-size: 12px"
+        @click="emit('showHistory')"
+      >
+        历史
+        <span v-if="historyCount > 0">[{{ historyCount }}]</span>
+      </n-button>
       <c-button
         v-if="isAdmin"
         class="danger-hover-green"

@@ -41,6 +41,7 @@ const props = defineProps<{
   novelId: string;
   inGroup: boolean;
   groupName?: string;
+  deletedJps: Set<string>;
 }>();
 
 const emit = defineEmits<{
@@ -169,6 +170,7 @@ function onRowDrop(e: DragEvent) {
               placeholder="请输入中文翻译"
               :theme-overrides="{ border: '0', color: 'transparent' }"
               @click.stop
+              @keydown.enter="($event.target as HTMLInputElement).blur()"
             />
           </template>
           <n-text v-else depth="3" style="text-decoration: line-through">
@@ -178,9 +180,13 @@ function onRowDrop(e: DragEvent) {
 
         <!-- 操作按钮 -->
         <td style="white-space: nowrap">
-          <!-- 不在服务端 → 回退按钮 -->
+          <!-- 不在服务端且未主动删除 → 回退按钮 -->
           <c-button
-            v-if="!isInServerGlossary(entry.jp) && novelId"
+            v-if="
+              !isInServerGlossary(entry.jp) &&
+              novelId &&
+              !deletedJps.has(entry.jp)
+            "
             label="回退"
             size="tiny"
             text

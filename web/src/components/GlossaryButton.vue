@@ -9,6 +9,14 @@ import {
   type GlossaryGroupMap,
   type GlossaryEntry,
 } from '@/model/GlossaryGroup';
+import {
+  type GlossaryHistoryEntry,
+  getHistory,
+  addHistory,
+  deleteHistory,
+  clearHistory,
+  getLatestGlossary,
+} from '@/model/GlossaryHistory';
 import { copyToClipBoard, doAction } from '@/pages/util';
 import { useLocalVolumeStore, useSettingStore, useWhoamiStore } from '@/stores';
 import { downloadFile } from '@/util';
@@ -49,6 +57,15 @@ const toggleGlossaryModal = () => {
     loadGroups();
     selectedGroup.value = undefined;
     selectedTerms.value = new Set();
+
+    // 检测远程变动：如果服务端术语表与最近一条历史记录不同，自动写入快照
+    // addHistory 内部有去重，相同则跳过
+    if (novelId.value && Object.keys(props.value).length > 0) {
+      addHistory(novelId.value, {
+        glossary: { ...props.value },
+        type: 'remote-changed',
+      });
+    }
   }
   showGlossaryModal.value = !showGlossaryModal.value;
 };
@@ -389,6 +406,10 @@ const importGlossaryRaw = ref('');
 const termsToAdd = ref<[string, string]>(['', '']);
 const deletedTerms = ref<[string, string][]>([]);
 
+const deletedJps = computed(
+  () => new Set(deletedTerms.value.map(([jp]) => jp)),
+);
+
 const lastDeletedTerm = computed(() => {
   const last = deletedTerms.value[deletedTerms.value.length - 1];
   if (last === undefined) return undefined;
@@ -403,6 +424,71 @@ const clearTerm = () => {
 
 const showClearConfirm = ref(false);
 
+// ========== 历史记录 ==========
+const showHistoryModal = ref(false);
+const expandedHistoryId = ref<string | undefined>(undefined);
+const historyVersion = ref(0);
+
+const historyEntries = computed<GlossaryHistoryEntry[]>(() => {
+  if (!novelId.value) return [];
+  void historyVersion.value; // 强制在 openHistory 时刷新
+  return getHistory(novelId.value);
+});
+
+const historyCount = computed(() => historyEntries.value.length);
+
+function openHistory() {
+  historyVersion.value++;
+  showHistoryModal.value = true;
+}
+
+function restoreHistory(entry: GlossaryHistoryEntry) {
+  glossary.value = { ...entry.glossary };
+  if (novelId.value) loadGroups();
+  showHistoryModal.value = false;
+  message.success(
+    `已恢复到 ${new Date(entry.timestamp).toLocaleString()} 的历史版本`,
+  );
+}
+
+interface GlossaryDiff {
+  added: { jp: string; zh: string }[];
+  removed: { jp: string; zh: string }[];
+  modified: { jp: string; oldZh: string; newZh: string }[];
+  unchanged: { jp: string; zh: string }[];
+}
+
+function getHistoryDiff(entry: GlossaryHistoryEntry): GlossaryDiff {
+  const oldGlossary = entry.glossary;
+  const cur = glossary.value;
+  const added: GlossaryDiff['added'] = [];
+  const removed: GlossaryDiff['removed'] = [];
+  const modified: GlossaryDiff['modified'] = [];
+  const unchanged: GlossaryDiff['unchanged'] = [];
+
+  for (const jp of Object.keys(oldGlossary)) {
+    if (!(jp in cur)) {
+      removed.push({ jp, zh: oldGlossary[jp] });
+    } else if (cur[jp] !== oldGlossary[jp]) {
+      modified.push({ jp, oldZh: oldGlossary[jp], newZh: cur[jp] });
+    } else {
+      unchanged.push({ jp, zh: oldGlossary[jp] });
+    }
+  }
+  for (const jp of Object.keys(cur)) {
+    if (!(jp in oldGlossary)) {
+      added.push({ jp, zh: cur[jp] });
+    }
+  }
+
+  return { added, removed, modified, unchanged };
+}
+
+function deleteHistoryEntry(entryId: string) {
+  if (!novelId.value) return;
+  deleteHistory(novelId.value, entryId);
+}
+
 const undoDeleteTerm = () => {
   if (deletedTerms.value.length === 0) return;
   const [jp, zh] = deletedTerms.value.pop()!;
@@ -414,6 +500,7 @@ const deleteTerm = (jp: string) => {
   if (jp in glossary.value) {
     deletedTerms.value.push([jp, glossary.value[jp]]);
     delete glossary.value[jp];
+    if (novelId.value) GlossaryGroup.removeTerm(novelId.value, jp);
     loadGroups();
   }
 };
@@ -442,6 +529,8 @@ const clearLocalRecord = (jp: string) => {
   loadGroups();
 };
 
+const addJpInputRef = ref<{ focus: () => void }>();
+
 const addTerm = () => {
   const [jp, zh] = termsToAdd.value;
   if (jp && zh) {
@@ -450,6 +539,19 @@ const addTerm = () => {
     loadGroups();
   }
 };
+
+function onAddInputKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const [jp, zh] = termsToAdd.value;
+    if (jp.trim() && zh.trim()) {
+      addTerm();
+      nextTick(() => {
+        addJpInputRef.value?.focus();
+      });
+    }
+  }
+}
 
 const exportGlossary = async (ev: MouseEvent) => {
   const isSuccess = await copyToClipBoard(
@@ -509,6 +611,12 @@ const submitGlossary = () =>
       for (const key in props.value) delete props.value[key];
       for (const key in glossary.value) props.value[key] = glossary.value[key];
       if (novelId.value) saveGroups();
+      if (novelId.value && Object.keys(glossary.value).length > 0) {
+        addHistory(novelId.value, {
+          glossary: { ...toRaw(glossary.value) },
+          type: 'submit',
+        });
+      }
     }),
     '术语表提交',
     message,
@@ -544,12 +652,14 @@ const submitGlossary = () =>
 
         <n-input-group>
           <n-input
+            ref="addJpInputRef"
             pair
             v-model:value="termsToAdd"
             size="small"
             separator="=>"
             :placeholder="['日文', '中文']"
-            :input-props="{ spellcheck: false }"
+            :input-props="[{ spellcheck: false }, { spellcheck: false }]"
+            @keydown="onAddInputKeydown"
           />
           <c-button
             label="添加"
@@ -635,6 +745,7 @@ const submitGlossary = () =>
             :new-group-name="newGroupName"
             :ungrouped-count="ungroupedEntries.length"
             :is-admin="whoami.isAdmin"
+            :history-count="historyCount"
             @sync-remote-to-local="syncRemoteToLocal"
             @sync-local-to-editing="syncLocalToEditing"
             @clear-request="showClearConfirm = true"
@@ -658,6 +769,7 @@ const submitGlossary = () =>
             @sort-by-time-reverse="handleSortByTimeReverse"
             @sort-by-kana="handleSortByKana"
             @sort-by-kana-reverse="handleSortByKanaReverse"
+            @show-history="openHistory"
           />
         </div>
 
@@ -673,6 +785,7 @@ const submitGlossary = () =>
               :novel-id="novelId"
               :in-group="true"
               :group-name="selectedGroup"
+              :deleted-jps="deletedJps"
               @toggle-select="toggleSelect"
               @delete-term="deleteTerm"
               @remove-from-group="removeTermFromCurrentGroup"
@@ -698,6 +811,7 @@ const submitGlossary = () =>
               :get-local-zh="getLocalZh"
               :novel-id="novelId"
               :in-group="false"
+              :deleted-jps="deletedJps"
               @toggle-select="toggleSelect"
               @delete-term="deleteTerm"
               @remove-from-group="removeTermFromCurrentGroup"
@@ -799,6 +913,164 @@ const submitGlossary = () =>
       <c-button label="确认删除" type="error" @action="confirmDeleteGroup" />
     </template>
   </c-modal>
+
+  <!-- 历史记录对话框 -->
+  <n-modal
+    v-model:show="showHistoryModal"
+    preset="card"
+    title="术语表历史记录"
+    :bordered="false"
+    size="large"
+    transform-origin="center"
+    :block-scroll="false"
+    style="width: min(600px, calc(100% - 16px))"
+  >
+    <n-text v-if="historyEntries.length === 0" depth="3">暂无历史记录</n-text>
+    <n-list v-else>
+      <n-list-item
+        v-for="entry in [...historyEntries].reverse()"
+        :key="entry.id"
+      >
+        <n-thing>
+          <template #header>
+            <n-flex align="center" :wrap="false">
+              <n-tag
+                :type="entry.type === 'submit' ? 'info' : 'warning'"
+                size="small"
+              >
+                {{ entry.type === 'submit' ? '提交' : '远程变动' }}
+              </n-tag>
+              <n-text depth="3" style="font-size: 12px">
+                {{ new Date(entry.timestamp).toLocaleString() }}
+              </n-text>
+              <n-text style="font-size: 12px">
+                {{ entry.termCount }} 条术语
+              </n-text>
+            </n-flex>
+          </template>
+          <template #description>
+            <template
+              v-for="diff in [
+                expandedHistoryId === entry.id ? getHistoryDiff(entry) : null,
+              ]"
+              :key="entry.id"
+            >
+              <div
+                v-if="diff"
+                style="max-height: 250px; overflow-y: auto; margin-top: 8px"
+              >
+                <div
+                  v-if="
+                    diff.removed.length +
+                      diff.modified.length +
+                      diff.added.length ===
+                    0
+                  "
+                >
+                  <n-text depth="3" style="font-size: 11px">
+                    与当前无差异
+                  </n-text>
+                </div>
+                <table
+                  v-else
+                  style="
+                    width: 100%;
+                    max-width: 500px;
+                    border-collapse: collapse;
+                    font-size: 11px;
+                    font-family: monospace;
+                  "
+                >
+                  <tr
+                    v-for="row in diff.removed"
+                    :key="'removed-' + row.jp"
+                    style="background: rgba(208, 48, 80, 0.1)"
+                  >
+                    <td style="width: 16px; color: #d03050; padding: 2px 4px">
+                      -
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px; color: #d03050">
+                      {{ row.zh }}
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="row in diff.modified"
+                    :key="'modified-' + row.jp"
+                    style="background: rgba(240, 160, 30, 0.1)"
+                  >
+                    <td style="width: 16px; color: #f0a01e; padding: 2px 4px">
+                      ~
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px">
+                      <span style="text-decoration: line-through; opacity: 0.6">
+                        {{ row.oldZh }}
+                      </span>
+                      <span style="margin: 0 4px">→</span>
+                      <span style="color: #f0a01e">{{ row.newZh }}</span>
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="row in diff.added"
+                    :key="'added-' + row.jp"
+                    style="background: rgba(24, 160, 88, 0.1)"
+                  >
+                    <td style="width: 16px; color: #18a058; padding: 2px 4px">
+                      +
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px; color: #18a058">
+                      {{ row.zh }}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </template>
+          </template>
+          <template #action>
+            <n-space>
+              <n-button
+                size="tiny"
+                @click="
+                  expandedHistoryId =
+                    expandedHistoryId === entry.id ? undefined : entry.id
+                "
+              >
+                展开
+              </n-button>
+              <n-button
+                size="tiny"
+                type="primary"
+                @click="restoreHistory(entry)"
+              >
+                恢复
+              </n-button>
+              <n-button size="tiny" @click="deleteHistoryEntry(entry.id)">
+                删除
+              </n-button>
+            </n-space>
+          </template>
+        </n-thing>
+      </n-list-item>
+    </n-list>
+    <template #action>
+      <n-button
+        v-if="historyEntries.length > 0"
+        type="error"
+        @click="
+          clearHistory(novelId);
+          showHistoryModal = false;
+        "
+      >
+        清空全部历史
+      </n-button>
+      <n-button @click="showHistoryModal = false">关闭</n-button>
+    </template>
+  </n-modal>
 
   <!-- 清空确认对话框 -->
   <c-modal v-model:show="showClearConfirm" title="确认清空">
