@@ -223,30 +223,30 @@ function onTabsDragLeave(e: DragEvent) {
 
 function onDrop(e: DragEvent, groupName: string | undefined) {
   e.preventDefault();
+  // 有 term 数据 → 优先走 term drop 逻辑
+  const raw = e.dataTransfer?.getData('text/plain');
+  if (raw) {
+    let jps: string | string[] = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) jps = parsed;
+    } catch {
+      /* not JSON, use raw string */
+    }
+    emit('dropTerm', jps, groupName);
+    draggedGroup.value = null;
+    dragOverGroup.value = undefined;
+    return;
+  }
+  // 无 term 数据 → tab reorder
   if (draggedGroup.value && draggedGroup.value !== groupName) {
     let target = groupName ?? '';
     if (target) {
       target = resolveDropTarget(e.clientX, e.clientY, target);
     }
     emit('reorderGroups', draggedGroup.value, target);
-    draggedGroup.value = null;
-    dragOverGroup.value = undefined;
-    return;
   }
   draggedGroup.value = null;
-  const raw = e.dataTransfer?.getData('text/plain');
-  if (!raw) {
-    dragOverGroup.value = undefined;
-    return;
-  }
-  let jps: string | string[] = raw;
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) jps = parsed;
-  } catch {
-    /* not JSON, use raw string */
-  }
-  emit('dropTerm', jps, groupName);
   dragOverGroup.value = undefined;
 }
 </script>
