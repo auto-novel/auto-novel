@@ -226,6 +226,7 @@ function onRowDrop(e: DragEvent) {
 
 .term-table td {
   padding: 6px 12px;
+  background: inherit;
 }
 
 .term-table tr {
@@ -236,13 +237,24 @@ function onRowDrop(e: DragEvent) {
   background: var(--term-stripe);
 }
 
+/* n-input 内部所有层都透出 tr 背景 */
+.term-table :deep(.n-input) {
+  --n-color: transparent;
+  background-color: transparent !important;
+}
+
+.term-table :deep(.n-input .n-input__border),
+.term-table :deep(.n-input .n-input__state-border) {
+  border: none !important;
+}
+
 .term-row-move {
   transition: transform 0.25s ease;
 }
 
 .term-row-enter-active,
 .term-row-leave-active {
-  transition: all 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 .term-row-enter-from,

@@ -410,7 +410,7 @@ const revertTerm = (jp: string) => {
   for (const [, entries] of Object.entries(g)) {
     const found = entries.find((e) => e.jp === jp);
     if (found) {
-      glossary.value[jp] = found.zh;
+      glossary.value = { ...glossary.value, [jp]: found.zh };
       loadGroups();
       return;
     }
