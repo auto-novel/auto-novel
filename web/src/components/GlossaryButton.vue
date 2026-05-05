@@ -255,6 +255,34 @@ function onReorderGroups(from: string, to: string) {
   GlossaryGroup.saveGroups(novelId.value, groups.value, order);
 }
 
+function handleSortByTime() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByTime(novelId.value, name, glossary.value, false);
+  loadGroups();
+}
+
+function handleSortByTimeReverse() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByTime(novelId.value, name, glossary.value, true);
+  loadGroups();
+}
+
+function handleSortByKana() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByKana(novelId.value, name, false);
+  loadGroups();
+}
+
+function handleSortByKanaReverse() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByKana(novelId.value, name, true);
+  loadGroups();
+}
+
 // ========== 多选相关 ==========
 const selectedTerms = ref<Set<string>>(new Set());
 const lastClickedJp = ref<string | null>(null);
@@ -622,6 +650,10 @@ const submitGlossary = () =>
             @drop-term="onDropTerm"
             @delete-group-request="onDeleteGroupRequest"
             @reorder-groups="onReorderGroups"
+            @sort-by-time="handleSortByTime"
+            @sort-by-time-reverse="handleSortByTimeReverse"
+            @sort-by-kana="handleSortByKana"
+            @sort-by-kana-reverse="handleSortByKanaReverse"
           />
         </div>
 

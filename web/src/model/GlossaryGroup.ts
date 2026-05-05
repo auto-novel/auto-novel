@@ -196,6 +196,44 @@ export namespace GlossaryGroup {
     saveGroups(novelId, groups);
   }
 
+  /** 按云端术语表 key 顺序排序（云端术语在前，本地术语在末尾保持原序） */
+  export function sortGroupByTime(
+    novelId: string,
+    groupName: string,
+    serverGlossary: Record<string, string>,
+    reverse: boolean,
+  ): void {
+    const groups = getGroups(novelId);
+    const entries = groups[groupName];
+    if (!entries || entries.length <= 1) return;
+    const cloudOrder = Object.keys(serverGlossary);
+    const cloudSet = new Set(cloudOrder);
+    const cloudTerms = entries.filter((e) => cloudSet.has(e.jp));
+    const localTerms = entries.filter((e) => !cloudSet.has(e.jp));
+    cloudTerms.sort(
+      (a, b) => cloudOrder.indexOf(a.jp) - cloudOrder.indexOf(b.jp),
+    );
+    const sorted = [...cloudTerms, ...localTerms];
+    if (reverse) sorted.reverse();
+    groups[groupName] = sorted;
+    saveGroups(novelId, groups);
+  }
+
+  /** 按 JP 五十音排序 */
+  export function sortGroupByKana(
+    novelId: string,
+    groupName: string,
+    reverse: boolean,
+  ): void {
+    const groups = getGroups(novelId);
+    const entries = groups[groupName];
+    if (!entries || entries.length <= 1) return;
+    const sorted = [...entries].sort((a, b) => a.jp.localeCompare(b.jp, 'ja'));
+    if (reverse) sorted.reverse();
+    groups[groupName] = sorted;
+    saveGroups(novelId, groups);
+  }
+
   /** 交叉比对：返回增补后的显示数据 */
   export function buildDisplayData(
     groups: GlossaryGroupMap,

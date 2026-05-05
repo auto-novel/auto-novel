@@ -55,6 +55,10 @@ const emit = defineEmits<{
   syncRemoteToLocal: [];
   syncLocalToEditing: [];
   clearRequest: [];
+  sortByTime: [];
+  sortByTimeReverse: [];
+  sortByKana: [];
+  sortByKanaReverse: [];
 }>();
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
@@ -147,6 +151,20 @@ function cancelLongPress() {
     clearTimeout(longPressTimer.value);
     longPressTimer.value = null;
   }
+}
+
+const sortOptions = [
+  { label: '时间排序', key: 'time' },
+  { label: '时间倒序', key: 'time-reverse' },
+  { label: '五十音排序 (A→Z)', key: 'kana' },
+  { label: '五十音倒序 (Z→A)', key: 'kana-reverse' },
+];
+
+function handleSortSelect(key: string) {
+  if (key === 'time') emit('sortByTime');
+  else if (key === 'time-reverse') emit('sortByTimeReverse');
+  else if (key === 'kana') emit('sortByKana');
+  else if (key === 'kana-reverse') emit('sortByKanaReverse');
 }
 
 function resolveDropTarget(
@@ -412,6 +430,15 @@ function onDrop(e: DragEvent, groupName: string | undefined) {
         style="flex-shrink: 0"
         @action="emit('showNewGroup')"
       />
+
+      <!-- 排序 -->
+      <n-dropdown
+        trigger="click"
+        :options="sortOptions"
+        @select="handleSortSelect"
+      >
+        <c-button label="排序" size="tiny" text style="flex-shrink: 0" />
+      </n-dropdown>
 
       <!-- 删除当前组 -->
       <c-button
