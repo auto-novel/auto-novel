@@ -68,12 +68,19 @@ class WenkuNovelFavoredRepository(
 
         val sortBson = when (sort) {
             FavoredNovelListSort.CreateAt -> descending(WenkuNovelFavoriteDbModel::createAt.field())
-            FavoredNovelListSort.UpdateAt -> descending(WenkuNovelFavoriteDbModel::updateAt.field())
+            FavoredNovelListSort.UpdateAt -> descending("novel.${WenkuNovel::updateAt.field()}")
         }
 
         val doc = userFavoredWenkuCollection
             .aggregate<PageModel>(
                 match(filterBson),
+                lookup(
+                    from = MongoCollectionNames.WENKU_NOVEL,
+                    localField = WenkuNovelFavoriteDbModel::novelId.field(),
+                    foreignField = WenkuNovel::id.field(),
+                    as = "novel"
+                ),
+                unwind("\$novel"),
                 sort(sortBson),
                 facet(
                     Facet("count", count()),
@@ -81,13 +88,6 @@ class WenkuNovelFavoredRepository(
                         "items",
                         skip(page * pageSize),
                         limit(pageSize),
-                        lookup(
-                            /* from = */ MongoCollectionNames.WENKU_NOVEL,
-                            /* localField = */ WenkuNovelFavoriteDbModel::novelId.field(),
-                            /* foreignField = */ WenkuNovel::id.field(),
-                            /* as = */ "novel"
-                        ),
-                        unwind("\$novel"),
                         replaceRoot("\$novel"),
                     )
                 ),
