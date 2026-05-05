@@ -51,10 +51,13 @@ function onRowDragOver(e: DragEvent, index: number) {
 function onRowDrop(e: DragEvent) {
   e.preventDefault();
   const from = dragFromIndex.value;
-  const to = dragOverIndex.value;
+  let to = dragOverIndex.value;
   dragFromIndex.value = null;
   dragOverIndex.value = null;
   if (from === null || to === null || from === to) return;
+  // 向下拖时，splice 先移除 from 会导致 to 位置左移一位
+  if (from < to) to--;
+  if (from === to) return;
   emit('reorderTerm', from, to);
 }
 </script>
