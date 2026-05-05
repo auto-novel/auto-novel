@@ -22,6 +22,15 @@ const termBorderColor = computed(() =>
   isDark.value ? 'rgba(255,255,255,0.08)' : '#efeff5',
 );
 
+const selectColor = computed(
+  () =>
+    themeVars.value.primaryColorSuppl ?? (isDark.value ? '#263633' : '#d0e0ff'),
+);
+
+const dragIndicatorColor = computed(
+  () => themeVars.value.primaryColor ?? '#18a058',
+);
+
 const props = defineProps<{
   entries: GlossaryEntry[];
   glossary: Record<string, string>;
@@ -96,12 +105,10 @@ function onRowDrop(e: DragEvent) {
         :key="entry.jp"
         draggable="true"
         :style="{
-          background: selectedTerms.has(entry.jp)
-            ? 'var(--primary-color-suppl, #d0e0ff)'
-            : undefined,
+          background: selectedTerms.has(entry.jp) ? selectColor : undefined,
           borderTop:
             dragOverIndex === index && dragFromIndex !== index
-              ? '2px solid var(--primary-color, #18a058)'
+              ? `2px solid ${dragIndicatorColor}`
               : undefined,
         }"
         @click="emit('toggleSelect', entry.jp, $event)"
