@@ -195,8 +195,16 @@ function onRowDrop(e: DragEvent) {
   font-size: 12px;
 }
 
-.term-table tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.02);
+.term-table td {
+  padding: 6px 12px;
+}
+
+.term-table tr {
+  border-bottom: 1px solid var(--n-border-color, #efeff5);
+}
+
+.term-table tbody tr:nth-child(even) {
+  background: var(--n-td-striped-color, rgba(0, 0, 0, 0.04));
 }
 
 .term-row-move {
