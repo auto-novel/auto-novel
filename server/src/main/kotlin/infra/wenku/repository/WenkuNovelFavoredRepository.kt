@@ -75,10 +75,10 @@ class WenkuNovelFavoredRepository(
             .aggregate<PageModel>(
                 match(filterBson),
                 lookup(
-                    from = MongoCollectionNames.WENKU_NOVEL,
-                    localField = WenkuNovelFavoriteDbModel::novelId.field(),
-                    foreignField = WenkuNovel::id.field(),
-                    as = "novel"
+                    /* from = */ MongoCollectionNames.WENKU_NOVEL,
+                    /* localField = */ WenkuNovelFavoriteDbModel::novelId.field(),
+                    /* foreignField = */ WenkuNovel::id.field(),
+                    /* as = */ "novel"
                 ),
                 unwind("\$novel"),
                 facet(
