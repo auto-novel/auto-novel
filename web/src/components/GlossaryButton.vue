@@ -10,7 +10,7 @@ import {
   type GlossaryEntry,
 } from '@/model/GlossaryGroup';
 import { copyToClipBoard, doAction } from '@/pages/util';
-import { useLocalVolumeStore, useWhoamiStore } from '@/stores';
+import { useLocalVolumeStore, useSettingStore, useWhoamiStore } from '@/stores';
 import { downloadFile } from '@/util';
 import { useWindowSize } from '@vueuse/core';
 import GlossaryTermTable from './GlossaryTermTable.vue';
@@ -25,6 +25,9 @@ const message = useMessage();
 
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
+
+const settingStore = useSettingStore();
+const { setting } = storeToRefs(settingStore);
 
 const glossary = ref<Glossary>({});
 
@@ -613,7 +616,7 @@ const submitGlossary = () =>
     <div v-if="novelId" tabindex="0" style="outline: none" @keydown="onKeydown">
       <!-- ======== 桌面端：标签页 + 表格 ======== -->
       <div
-        v-if="!isNarrow"
+        v-if="!isNarrow && setting.useGlossaryGroups"
         :style="{
           display: 'flex',
           flexDirection: 'column',
@@ -714,7 +717,7 @@ const submitGlossary = () =>
         </div>
       </div>
 
-      <!-- ======== 移动端：简易表格（不启用分组） ======== -->
+      <!-- ======== 简易表格（移动端 或 关闭分组模式） ======== -->
       <div v-else>
         <n-table
           v-if="Object.keys(glossary).length !== 0"

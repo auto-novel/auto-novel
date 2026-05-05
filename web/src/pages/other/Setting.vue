@@ -84,6 +84,10 @@ const playSound = (source: string) => {
           <n-checkbox v-model:checked="setting.hideCommmentWenkuNovel">
             隐藏文库小说评论
           </n-checkbox>
+          <b>术语表</b>
+          <n-checkbox v-model:checked="setting.useGlossaryGroups">
+            启用分组模式（桌面端）
+          </n-checkbox>
           <b>收藏夹</b>
           <n-checkbox v-model:checked="setting.showTagInWebFavored">
             显示收藏夹里网络小说的标签
