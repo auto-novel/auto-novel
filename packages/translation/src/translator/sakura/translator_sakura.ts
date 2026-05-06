@@ -1,5 +1,5 @@
 import type { SegmentContext, Translator, PromptBuilder } from '@/types';
-import { createOpenAiApi } from '@/api/openai_api';
+import { createOpenAiApi } from '@/api/OpenAiApi';
 import { createSakuraPromptBuilder } from './prompt_sakura';
 
 export type SakuraVersion = '0.8' | '0.9' | '0.10' | '1.0';
@@ -20,7 +20,7 @@ export class SakuraTranslator implements Translator {
 
   constructor(config: SakuraTranslatorConfig) {
     this.api = createOpenAiApi(config.endpoint, 'no-key');
-    this.version = config.version ?? '0.9';
+    this.version = config.version ?? '1.0';
     this.prevSegLength = config.prevSegLength ?? 500;
     this.promptBuilder =
       config.promptBuilder ?? createSakuraPromptBuilder(this.version);
@@ -31,8 +31,6 @@ export class SakuraTranslator implements Translator {
     context?: SegmentContext,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
-
-    // 根据 prevSegLength 截取前文
     const prevSegs = context?.prevSegs ?? [];
     const truncatedPrevSegs = this.truncatePrevSegs(prevSegs);
     const translateContext: SegmentContext = {
@@ -56,8 +54,6 @@ export class SakuraTranslator implements Translator {
       }
       retry++;
     }
-
-    // 逐行翻译
     return this.translateLineByLine(lines, translateContext);
   }
 

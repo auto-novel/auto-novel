@@ -29,8 +29,6 @@ export const safeJson = <T extends object>(text: string) => {
 
 export namespace RegexUtil {
   const englishChars = /[a-z]|[A-Z]/;
-  // Note: This regex was incorrect in the original file.
-  // It was matching Hanzi instead of English. Corrected here.
   export const hasEnglishChars = (str: string) => englishChars.test(str);
 
   const hanzi = /[\u4E00-\u9FAF]/;

@@ -1,5 +1,5 @@
 import type { SegmentContext, Translator, PromptBuilder } from '@/types';
-import { createOpenAiApi } from '@/api/openai_api';
+import { createOpenAiApi } from '@/api/OpenAiApi';
 import { detectChinese } from '@/utils';
 import { createOpenAiPromptBuilder } from './prompt_openai';
 
@@ -8,7 +8,7 @@ export type OpenAiTranslatorConfig = {
   endpoint: string;
   key: string;
   model: string;
-  //如果不指定，则有翻译器创建默认翻译Prompt
+  //如果不指定，则由翻译器创建默认翻译Prompt
   promptBuilder?: PromptBuilder;
 };
 
