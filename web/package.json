@@ -40,7 +40,6 @@
   },
   "dependencies": {
     "@auto-novel/crawler": "workspace:*",
-    "@auto-novel/translation": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",
