@@ -8,16 +8,22 @@ import infra.wenku.WenkuNovelVolumeList
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import util.epub.Epub
 import util.serialName
 import java.nio.charset.Charset
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Path
+import java.util.UUID
 import kotlin.io.path.*
 
 sealed class VolumeCreateException(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class VolumeAlreadyExist : VolumeCreateException("卷已经存在")
+    class VolumeUploadInterrupted(cause: Throwable? = null) : VolumeCreateException("上传已中断或文件不完整", cause)
+    class VolumeTooLarge(message: String) : VolumeCreateException(message, null)
+    class VolumeCorrupted(cause: Throwable? = null) : VolumeCreateException("文件损坏或不是合法的 epub", cause)
+    class VolumeCreateFailure(cause: Throwable? = null) : VolumeCreateException("无法保存上传文件", cause)
     class VolumeUnpackFailure(cause: Throwable) : VolumeCreateException("卷解包失败", cause)
 }
 
@@ -72,43 +78,103 @@ class WenkuNovelVolumeDiskDataSource(
             volumesDir.createDirectories()
         }
 
-        val volumePath = volumesDir / volumeId
-        val volumeOutputStream = try {
-            volumePath.createFile().outputStream()
-        } catch (e: FileAlreadyExistsException) {
+        val normVolumesDir = volumesDir.normalize()
+        val finalPath = (normVolumesDir / volumeId).normalize()
+        val uploadTempPath = (
+            normVolumesDir / "$volumeId.${UUID.randomUUID()}.uploading"
+        ).normalize()
+
+        // Security(kuriko): 检查是否存在路径穿越风险
+        // Security(kuriko): 如果 volumesDir 存在 / 等字符，仍然存在非预期的目录创建
+        if (!finalPath.startsWith(normVolumesDir) || !uploadTempPath.startsWith(normVolumesDir)) {
+            throw VolumeCreateException.VolumeCreateFailure()
+        }
+
+        if (finalPath.exists()) {
             throw VolumeCreateException.VolumeAlreadyExist()
         }
-        val volumeTooLarge = volumeOutputStream.use { out ->
-            var bytesCopied: Long = 0
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var bytes = inputStream.readAvailable(buffer)
-            while (bytes >= 0) {
-                bytesCopied += bytes
-                if (bytesCopied > 1024 * 1024 * 40) {
-                    return@use true
+        val tempOutputStream = try {
+            uploadTempPath.deleteIfExists()
+            uploadTempPath.createFile().outputStream()
+        } catch (e: Throwable) {
+            throw VolumeCreateException.VolumeCreateFailure(e)
+        }
+
+        val volumeTooLarge = tempOutputStream.use { out ->
+            try {
+                var bytesCopied: Long = 0
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    when (val bytes = inputStream.readAvailable(buffer)) {
+                        -1 -> break
+                        0 -> continue
+                        else -> {
+                            bytesCopied += bytes
+                            if (bytesCopied > 1024 * 1024 * 40) {
+                                return@use true
+                            }
+                            out.write(buffer, 0, bytes)
+                        }
+                    }
                 }
-                out.write(buffer, 0, bytes)
-                bytes = inputStream.readAvailable(buffer)
+            } catch (e: Throwable) {
+                uploadTempPath.deleteIfExists()
+                if (e is CancellationException) throw e
+                throw VolumeCreateException.VolumeUploadInterrupted(e)
+            }
+
+            inputStream.closedCause?.let {
+                uploadTempPath.deleteIfExists()
+                throw VolumeCreateException.VolumeUploadInterrupted(it)
             }
             return@use false
         }
 
         if (volumeTooLarge) {
-            volumePath.deleteIfExists()
-            throw RuntimeException("文件大小不能超过40MB")
+            uploadTempPath.deleteIfExists()
+            throw VolumeCreateException.VolumeTooLarge("文件大小不能超过40MB")
+        }
+
+        // 根据不同上传文件，分别进行合法性检测
+        when (finalPath.extension.lowercase()) {
+                "txt" -> {
+                    /* txt 暂时没有额外检测 */
+                }
+                "epub" -> {
+                    Epub.checkZipValid(uploadTempPath).getOrElse { e ->
+                        uploadTempPath.deleteIfExists()
+                        throw VolumeCreateException.VolumeCorrupted(e)
+                    }
+                }
+                else -> {
+                uploadTempPath.deleteIfExists()
+                throw VolumeCreateException.VolumeCorrupted()
+            }
+        }
+
+        try {
+            uploadTempPath.moveTo(finalPath)
+        } catch (e: FileAlreadyExistsException) {
+            throw VolumeCreateException.VolumeAlreadyExist()
+        } catch (e: Throwable) {
+            throw VolumeCreateException.VolumeCreateFailure(e)
+        } finally {
+            uploadTempPath.deleteIfExists()
         }
 
         if (unpack) {
+            val unpackPath = normVolumesDir / "$volumeId.unpack"
             try {
-                unpackVolume(volumesDir, volumeId)
-                val volume = getVolume(volumesDir, volumeId)
+                unpackVolume(normVolumesDir, volumeId)
+                val volume = getVolume(normVolumesDir, volumeId)
                 return@withContext volume?.listChapter()?.size
             } catch (e: Throwable) {
                 e.printStackTrace()
-                val unpackPath = volumesDir / "$volumeId.unpack"
-                volumePath.deleteIfExists()
                 unpackPath.deleteRecursively()
+                finalPath.deleteIfExists()
                 throw VolumeCreateException.VolumeUnpackFailure(e)
+            } finally {
+                uploadTempPath.deleteIfExists()
             }
         }
         return@withContext null
@@ -278,7 +344,7 @@ private suspend fun getGlossary(path: Path) =
             null
         else try {
             Json.decodeFromString<WenkuChapterGlossary>(path.readText())
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             null
         }
     }
