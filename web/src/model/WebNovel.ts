@@ -55,6 +55,8 @@ export interface WebNovelDto {
 export interface WebNovelChapterDto {
   titleJp: string;
   titleZh?: string;
+  novelTitleJp?: string;
+  novelTitleZh?: string;
   prevId?: string;
   nextId?: string;
   paragraphs: string[];

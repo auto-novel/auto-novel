@@ -672,6 +672,8 @@ class WebNovelApi(
     data class ChapterDto(
         val titleJp: String,
         val titleZh: String?,
+        val novelTitleJp: String,
+        val novelTitleZh: String?,
         val prevId: String?,
         val nextId: String?,
         val paragraphs: List<String>,
@@ -700,6 +702,8 @@ class WebNovelApi(
         return ChapterDto(
             titleJp = toc[currIndex].titleJp,
             titleZh = toc[currIndex].titleZh,
+            novelTitleJp = novel.titleJp,
+            novelTitleZh = novel.titleZh,
             prevId = toc.getOrNull(currIndex - 1)?.chapterId,
             nextId = toc.getOrNull(currIndex + 1)?.chapterId,
             paragraphs = chapter.paragraphs,
