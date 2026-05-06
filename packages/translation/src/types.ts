@@ -3,7 +3,7 @@ export type Glossary = Record<string, string>;
 export interface SegmentContext {
   glossary?: Glossary;
 
-  //在PipeLine中动态填充的前文信息
+  //初始为空，在PipeLine中动态填充的前文信息
   prevSegs?: string[][];
 
   //过期重翻使用
@@ -16,12 +16,13 @@ export interface Segment {
   order: number;
   lines: string[];
   context?: SegmentContext;
-  //传递自身以及已翻译文本
   onComplete: (segment: Segment, translatedLines: string[]) => void;
   onError: (segment: Segment, reason: any) => void;
 }
 
-//行数范围(左闭右开) [start, end)
+/**
+ * 行数范围（左闭右开） [start, end)
+ */
 export interface LineRange {
   start: number;
   end: number;
@@ -36,9 +37,10 @@ export interface TranslationHistory {
   translatedLines: string[];
   glossary: Glossary;
 }
-
-//组装并更新Segment信息
-//根据history信息决定是否跳过（过期重翻逻辑）
+/**
+ * 组装并更新Segment信息
+ * 根据history信息决定是否跳过（过期重翻逻辑）
+ */
 export interface SegmentAssembler {
   assemble(
     id: string,
@@ -59,7 +61,6 @@ export abstract class SegmentQueue {
   abstract waitUntilBelowHighWaterMark(): Promise<void>;
 }
 
-//#region Translator相关类型
 export type PromptBuilder = (
   lines: string[],
   context?: SegmentContext,
@@ -68,9 +69,7 @@ export type PromptBuilder = (
 export interface Translator {
   translate(lines: string[], context?: SegmentContext): Promise<string[]>;
 }
-//#endregion
 
-//#region TranslationPipeline相关类型
 export interface PipelineConfig {
   highWaterMark: number;
 }
@@ -101,6 +100,5 @@ export abstract class TranslationPipeline {
   abstract registerTranslator(translator: Translator): void;
   abstract unregisterTranslator(translator: Translator): void;
 }
-//#endregion
 
 export class Visualizer {}
