@@ -1,6 +1,6 @@
 import type { Segment, SegmentQueue } from '@/types';
 
-export class SegmentQueueImpl implements SegmentQueue {
+export class DefaultSegmentQueue implements SegmentQueue {
   private readonly _items: Segment[] = [];
   private readonly _highWaterMark: number;
 
@@ -12,7 +12,7 @@ export class SegmentQueueImpl implements SegmentQueue {
   private _hwPromise: Promise<void> | null = null;
 
   constructor(highWaterMark: number) {
-    this._highWaterMark = highWaterMark;
+    this._highWaterMark = Math.max(1, highWaterMark);
   }
 
   get length(): number {
@@ -24,59 +24,86 @@ export class SegmentQueueImpl implements SegmentQueue {
   }
 
   enqueueAll(segments: Segment[]): void {
-    if (segments.length === 0) return;
+    const segLen = segments.length;
+    if (segLen === 0) return;
 
-    this._items.push(...segments);
+    const resolverLen = this._dequeueResolvers.length;
+    const matchCount = Math.min(segLen, resolverLen);
 
-    // 逐个唤醒等待的消费者（一个 segment 唤醒一个消费者）
-    let idx = 0;
-    while (idx < segments.length && this._dequeueResolvers.length > 0) {
-      const resolve = this._dequeueResolvers.shift()!;
-      const seg = this._items.shift()!;
-      resolve(seg);
-      idx++;
+    if (matchCount > 0) {
+      for (let i = 0; i < matchCount; i++) {
+        this._dequeueResolvers[i](segments[i]);
+      }
+      this._dequeueResolvers.splice(0, matchCount);
     }
-
-    this.#tryResolveHw();
+    if (segLen > matchCount) {
+      for (let i = matchCount; i < segLen; i++) {
+        this._items.push(segments[i]);
+      }
+    }
   }
 
-  dequeue(): Promise<Segment> {
+  async dequeue(signal?: AbortSignal): Promise<Segment> {
+    signal?.throwIfAborted();
+
     if (this._items.length > 0) {
       const item = this._items.shift()!;
-      this.#tryResolveHw();
-      return Promise.resolve(item);
+      this._tryResolveHw();
+      return item;
     }
-    return new Promise<Segment>((resolve) => {
-      this._dequeueResolvers.push(resolve);
+    return new Promise<Segment>((resolve, reject) => {
+      const onAbort = () => {
+        const idx = this._dequeueResolvers.indexOf(dequeueResolver);
+        if (idx !== -1) this._dequeueResolvers.splice(idx, 1);
+        reject(signal!.reason);
+      };
+      const dequeueResolver = (seg: Segment) => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve(seg);
+      };
+
+      signal?.addEventListener('abort', onAbort, { once: true });
+      this._dequeueResolvers.push(dequeueResolver);
     });
   }
 
-  waitUntilBelowHighWaterMark(): Promise<void> {
-    if (this._items.length < this._highWaterMark) {
-      return Promise.resolve();
+  async waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+
+    if (this._items.length < this._highWaterMark) return;
+
+    if (!this._hwPromise) {
+      this._hwPromise = new Promise<void>((resolve) => {
+        this._hwResolver = resolve;
+      });
     }
 
-    // 复用已有的 Promise，避免多个等待者冲突
-    if (this._hwPromise) {
-      return this._hwPromise;
-    }
+    if (!signal) return this._hwPromise;
 
-    this._hwPromise = new Promise<void>((resolve) => {
-      this._hwResolver = resolve;
+    return new Promise((resolve, reject) => {
+      const onAbort = () => reject(signal.reason);
+      signal.addEventListener('abort', onAbort, { once: true });
+
+      this._hwPromise!.then(
+        () => {
+          signal.removeEventListener('abort', onAbort);
+          resolve();
+        },
+        (err) => {
+          signal.removeEventListener('abort', onAbort);
+          reject(err);
+        },
+      );
     });
-
-    return this._hwPromise;
   }
 
   /** 检查并尝试唤醒等待水位下降的生产者 */
-  #tryResolveHw(): void {
+  private _tryResolveHw(): void {
     if (this._hwResolver && this._items.length < this._highWaterMark) {
       const resolve = this._hwResolver;
-      const promise = this._hwPromise!;
       this._hwResolver = null;
       this._hwPromise = null;
       resolve();
-      promise.catch(() => {});
     }
   }
 }

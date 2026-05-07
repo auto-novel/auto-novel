@@ -29,6 +29,7 @@ export class SakuraTranslator implements Translator {
   async translate(
     lines: string[],
     context?: SegmentContext,
+    signal?: AbortSignal,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
     const prevSegs = context?.prevSegs ?? [];
@@ -44,6 +45,7 @@ export class SakuraTranslator implements Translator {
         lines,
         translateContext,
         retry > 0,
+        signal,
       );
 
       const splitText = text.replaceAll('<|im_end|>', '').split('\n');
@@ -54,7 +56,7 @@ export class SakuraTranslator implements Translator {
       }
       retry++;
     }
-    return this.translateLineByLine(lines, translateContext);
+    return this.translateLineByLine(lines, translateContext, signal);
   }
 
   private truncatePrevSegs(prevSegs: string[][]): string[][] {
@@ -77,19 +79,23 @@ export class SakuraTranslator implements Translator {
     lines: string[],
     context?: SegmentContext,
     hasDegradation?: boolean,
+    signal?: AbortSignal,
   ): Promise<{ text: string; hasDegradation: boolean }> {
     const messages = this.promptBuilder(lines, context);
     const text = lines.join('\n');
     const maxNewToken = Math.max(Math.ceil(text.length * 1.7), 100);
 
-    const completion = await this.api.createChatCompletions({
-      model: '',
-      messages,
-      temperature: 0.1,
-      top_p: 0.3,
-      max_tokens: maxNewToken,
-      frequency_penalty: hasDegradation ? 0.2 : 0.0,
-    });
+    const completion = await this.api.createChatCompletions(
+      {
+        model: '',
+        messages,
+        temperature: 0.1,
+        top_p: 0.3,
+        max_tokens: maxNewToken,
+        frequency_penalty: hasDegradation ? 0.2 : 0.0,
+      },
+      { signal },
+    );
 
     return {
       text: completion.choices[0]?.message?.content ?? '',
@@ -100,12 +106,15 @@ export class SakuraTranslator implements Translator {
   private async translateLineByLine(
     lines: string[],
     context?: SegmentContext,
+    signal?: AbortSignal,
   ): Promise<string[]> {
     const prevSegs = context?.prevSegs ?? [];
     const resultPerLine: string[] = [];
     let degradationLineCount = 0;
 
     for (const line of lines) {
+      signal?.throwIfAborted();
+
       const lineContext: SegmentContext = {
         ...context,
         prevSegs: [...prevSegs, resultPerLine],
@@ -115,6 +124,7 @@ export class SakuraTranslator implements Translator {
         [line],
         lineContext,
         true,
+        signal,
       );
 
       if (hasDegradation) {

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SegmentQueueImpl } from '../src/segment';
+import { DefaultSegmentQueue } from '../src/segment';
 import type { Segment } from '../src/types';
 
-describe('SegmentQueueImpl', () => {
-  let queue: SegmentQueueImpl;
+describe('DefaultSegmentQueue', () => {
+  let queue: DefaultSegmentQueue;
   const HWM = 3; // 设置高水位线为 3，方便测试
 
   // 模拟数据的辅助函数
@@ -11,7 +11,7 @@ describe('SegmentQueueImpl', () => {
     ({ id, text: `content-${id}` }) as any;
 
   beforeEach(() => {
-    queue = new SegmentQueueImpl(HWM);
+    queue = new DefaultSegmentQueue(HWM);
   });
 
   // --- 场景 1：基础功能 ---
