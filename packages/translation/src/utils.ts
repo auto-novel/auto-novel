@@ -100,3 +100,58 @@ export const delay = (ms: number, signal?: AbortSignal) =>
     }, ms);
     signal?.addEventListener('abort', abortHandler);
   });
+
+export class Semaphore {
+  private current = 0;
+  private queue: Array<() => void> = [];
+  constructor(private max: number) {
+    if (max <= 0)
+      throw new Error('Semaphore max capacity must be greater than 0');
+  }
+
+  private async _acquire(): Promise<void> {
+    if (this.current < this.max) {
+      this.current++;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.queue.push(resolve);
+    });
+  }
+
+  private _release(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()!;
+      next();
+    } else {
+      this.current--;
+    }
+  }
+
+  setMax(max: number): void {
+    if (max <= 0)
+      throw new Error('Semaphore max capacity must be greater than 0');
+    this.max = max;
+    while (this.queue.length > 0 && this.current < this.max) {
+      this.current++;
+      const next = this.queue.shift()!;
+      next();
+    }
+  }
+
+  async use<T>(fn: () => Promise<T> | T): Promise<T> {
+    await this._acquire();
+    let released = false;
+    const safeRelease = () => {
+      if (!released) {
+        released = true;
+        this._release();
+      }
+    };
+    try {
+      return await fn();
+    } finally {
+      safeRelease();
+    }
+  }
+}

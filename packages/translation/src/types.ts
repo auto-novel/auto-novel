@@ -74,10 +74,6 @@ export interface Translator {
   ): Promise<string[]>;
 }
 
-export interface PipelineConfig {
-  highWaterMark: number;
-}
-
 export interface TranslationLoop {
   id: string;
   translator: Translator;
@@ -87,13 +83,11 @@ export interface TranslationLoop {
 }
 
 export abstract class TranslationPipeline {
-  protected config: PipelineConfig;
   protected queue: SegmentQueue;
   protected translatorLoops: Map<string, TranslationLoop>;
   protected visualizer?: Visualizer;
 
-  constructor(config: PipelineConfig, queue: SegmentQueue) {
-    this.config = config;
+  constructor(queue: SegmentQueue) {
     this.queue = queue;
     this.translatorLoops = new Map();
   }
