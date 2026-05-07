@@ -10,19 +10,18 @@ import {
   Glossary,
 } from '@/types';
 import { createLineSegmenter, createSegmentAssembler } from '@/segment';
+import { DefaultSegmentQueue } from '@/segment';
 
 export class DefaultTranslationPipeline extends TranslationPipeline {
+  protected queue: SegmentQueue;
   private segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
 
-  constructor(
-    queue: SegmentQueue,
-    segmenter?: LineSegmenter,
-    assembler?: SegmentAssembler,
-  ) {
-    super(queue);
+  constructor(highWaterMark?: number, segmenter?: LineSegmenter) {
+    super();
+    this.queue = new DefaultSegmentQueue(highWaterMark ?? 50);
     this.segmenter = segmenter ?? createLineSegmenter(1500, 30);
-    this.assembler = assembler ?? createSegmentAssembler();
+    this.assembler = createSegmentAssembler();
   }
 
   async translate(
@@ -90,10 +89,6 @@ export class DefaultTranslationPipeline extends TranslationPipeline {
       .sort((a, b) => a.order - b.order)
       .map((r) => r.text)
       .join('\n');
-  }
-
-  waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
-    return this.queue.waitUntilBelowHighWaterMark(signal);
   }
 
   registerTranslator(translator: Translator, concurrency?: number): void {

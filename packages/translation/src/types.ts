@@ -83,12 +83,11 @@ export interface TranslationLoop {
 }
 
 export abstract class TranslationPipeline {
-  protected queue: SegmentQueue;
+  protected abstract queue: SegmentQueue;
   protected translatorLoops: Map<string, TranslationLoop>;
   protected visualizer?: Visualizer;
 
-  constructor(queue: SegmentQueue) {
-    this.queue = queue;
+  constructor() {
     this.translatorLoops = new Map();
   }
 
@@ -98,7 +97,11 @@ export abstract class TranslationPipeline {
     history?: TranslationHistory,
     signal?: AbortSignal,
   ): Promise<string>;
-  abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
+
+  waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
+    return this.queue.waitUntilBelowHighWaterMark(signal);
+  }
+
   abstract registerTranslator(
     translator: Translator,
     concurrency?: number,
