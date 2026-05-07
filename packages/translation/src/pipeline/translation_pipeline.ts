@@ -63,15 +63,24 @@ export class DefaultTranslationPipeline extends TranslationPipeline {
     for (const seg of segments) {
       const promise = new Promise<{ order: number; text: string }>(
         (resolve, reject) => {
-          deferredMap.set(seg.order, { resolve, reject });
-          signal?.addEventListener('abort', () => reject(signal.reason), {
-            once: true,
+          const onAbort = () => reject(signal?.reason);
+          signal?.addEventListener('abort', onAbort, { once: true });
+          deferredMap.set(seg.order, {
+            resolve: (val) => {
+              signal?.removeEventListener('abort', onAbort);
+              resolve(val);
+            },
+            reject: (err) => {
+              signal?.removeEventListener('abort', onAbort);
+              reject(err);
+            },
           });
         },
       );
       segmentPromises.push(promise);
     }
 
+    await this.waitUntilBelowHighWaterMark(signal);
     this.queue.enqueueAll(segments);
     const results = await Promise.allSettled(segmentPromises);
     const finalSegments = results.map((result, index) => {
@@ -134,7 +143,6 @@ export class DefaultTranslationPipeline extends TranslationPipeline {
       if (loop.translator === translator) {
         loop.abortController.abort();
         this.translatorLoops.delete(id);
-        break;
       }
     }
   }
