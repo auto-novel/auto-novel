@@ -41,13 +41,15 @@ const hasTranslation = computed(() => {
 });
 
 const file = computed(() => {
-  const { mode, translationsMode, translations } = setting.value.downloadFormat;
+  const { mode, translationsMode, translations, opacityOrColor } =
+    setting.value.downloadFormat;
 
   const { url, filename } = WenkuNovelApi.createFileUrl({
     novelId,
     volumeId: volume.volumeId,
     mode,
     translationsMode,
+    opacityOrColor,
     translations,
   });
   return { url, filename };

@@ -10,6 +10,8 @@ import type {
   WebNovelOutlineDto,
 } from '@/model/WebNovel';
 import { client } from './client';
+import { Setting } from '@/stores/useSettingStore';
+import { download } from 'naive-ui/es/_utils';
 
 const listNovel = ({
   page,
@@ -152,6 +154,7 @@ const createFileUrl = ({
   mode,
   translationsMode,
   translations,
+  opacityOrColor,
   type,
   title,
 }: {
@@ -161,6 +164,7 @@ const createFileUrl = ({
   translationsMode: 'parallel' | 'priority';
   translations: ('sakura' | 'baidu' | 'youdao' | 'gpt')[];
   type: 'epub' | 'txt';
+  opacityOrColor: Setting['downloadFormat']['opacityOrColor'];
   title: string;
 }) => {
   const filename = [
@@ -169,6 +173,7 @@ const createFileUrl = ({
       ? ''
       : (translationsMode === 'parallel' ? 'B' : 'Y') +
         translations.map((it) => it[0]).join(''),
+    opacityOrColor === 'opacity' ? 'O' : 'C',
     title.replace(/[\/|\\:*?"<>]/g, ''),
     type,
   ]
@@ -180,6 +185,7 @@ const createFileUrl = ({
     translationsMode,
     type,
     filename,
+    opacityOrColor,
   });
   translations.forEach((it) => params.append('translations', it));
 
