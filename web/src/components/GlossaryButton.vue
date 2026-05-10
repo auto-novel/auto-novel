@@ -4,9 +4,25 @@ import { DeleteOutlineOutlined } from '@vicons/material';
 import { WebNovelApi, WenkuNovelApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
 import { Glossary } from '@/model/Glossary';
+import {
+  GlossaryGroup,
+  type GlossaryGroupMap,
+  type GlossaryEntry,
+} from '@/model/GlossaryGroup';
+import {
+  type GlossaryHistoryEntry,
+  getHistory,
+  addHistory,
+  deleteHistory,
+  clearHistory,
+  getLatestGlossary,
+} from '@/model/GlossaryHistory';
 import { copyToClipBoard, doAction } from '@/pages/util';
-import { useLocalVolumeStore, useWhoamiStore } from '@/stores';
+import { useLocalVolumeStore, useSettingStore, useWhoamiStore } from '@/stores';
 import { downloadFile } from '@/util';
+import { useWindowSize } from '@vueuse/core';
+import GlossaryTermTable from './GlossaryTermTable.vue';
+import GlossaryGroupTabs from './GlossaryGroupTabs.vue';
 
 const props = defineProps<{
   gnid?: GenericNovelId;
@@ -18,31 +34,562 @@ const message = useMessage();
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
+const settingStore = useSettingStore();
+const { setting } = storeToRefs(settingStore);
+
 const glossary = ref<Glossary>({});
 
 const showGlossaryModal = ref(false);
 
+const novelId = computed(() => {
+  const gnid = props.gnid;
+  if (!gnid) return '';
+  return GenericNovelId.toString(gnid);
+});
+
+const { width } = useWindowSize();
+const isNarrow = computed(() => width.value < 600);
+
 const toggleGlossaryModal = () => {
   if (showGlossaryModal.value === false) {
     glossary.value = { ...props.value };
+    GlossaryGroup.syncUngrouped(novelId.value, glossary.value);
+    loadGroups();
+    selectedGroup.value = undefined;
+    selectedTerms.value = new Set();
+
+    // 检测远程变动：如果服务端术语表与最近一条历史记录不同，自动写入快照
+    // addHistory 内部有去重，相同则跳过
+    if (novelId.value && Object.keys(props.value).length > 0) {
+      addHistory(novelId.value, {
+        glossary: { ...props.value },
+        type: 'remote-changed',
+      });
+    }
   }
   showGlossaryModal.value = !showGlossaryModal.value;
 };
 
+// ========== 分组相关 ==========
+const groups = ref<GlossaryGroupMap>({});
+const groupOrder = ref<string[]>([]);
+const selectedGroup = ref<string | undefined>(undefined);
+const newGroupName = ref('');
+const showNewGroupInput = ref(false);
+const editingGroupName = ref<string | null>(null);
+const editingGroupNewName = ref('');
+
+function loadGroups() {
+  if (!novelId.value) return;
+  groups.value = GlossaryGroup.getGroups(novelId.value);
+  groupOrder.value = GlossaryGroup.getGroupOrder(novelId.value);
+}
+
+function saveGroups() {
+  if (!novelId.value) return;
+  GlossaryGroup.saveGroups(novelId.value, groups.value, groupOrder.value);
+}
+
+// 监听跨标签页变更
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (
+      e.key === GlossaryGroup.storageKeyFor(novelId.value) &&
+      e.newValue !== null
+    ) {
+      try {
+        groups.value = GlossaryGroup.getGroups(novelId.value);
+        groupOrder.value = GlossaryGroup.getGroupOrder(novelId.value);
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+}
+
+const displayData = computed<GlossaryGroupMap>(() => {
+  if (!novelId.value) {
+    const result: GlossaryGroupMap = {};
+    result['未分组'] = Object.entries(glossary.value).map(([jp, zh]) => ({
+      jp,
+      zh,
+    }));
+    return result;
+  }
+  return GlossaryGroup.buildDisplayData(
+    groups.value,
+    glossary.value,
+    groupOrder.value,
+  );
+});
+
+const groupNames = computed(() => {
+  return groupOrder.value.filter((n) => n in displayData.value);
+});
+
+const currentGroupEntries = computed<GlossaryEntry[]>(() => {
+  const name = selectedGroup.value;
+  if (!name) return [];
+  return displayData.value[name] ?? [];
+});
+
+const ungroupedEntries = computed<GlossaryEntry[]>(() => {
+  return displayData.value['未分组'] ?? [];
+});
+
+function isInServerGlossary(jp: string): boolean {
+  return jp in glossary.value;
+}
+
+function getLocalZh(jp: string): string | undefined {
+  if (!novelId.value) return undefined;
+  const g = GlossaryGroup.getGroups(novelId.value);
+  for (const entries of Object.values(g)) {
+    const found = entries.find((e) => e.jp === jp);
+    if (found) return found.zh;
+  }
+  return undefined;
+}
+
+function isZhConflict(jp: string): boolean {
+  const localZh = getLocalZh(jp);
+  return localZh !== undefined && localZh !== glossary.value[jp];
+}
+
+function addNewGroup() {
+  const name = newGroupName.value.trim();
+  if (!name) return;
+  if (name === '未分组') {
+    message.warning('不能使用保留名称');
+    return;
+  }
+  if (groups.value[name]) {
+    message.warning('分组名已存在');
+    return;
+  }
+  groups.value[name] = [];
+  saveGroups();
+  newGroupName.value = '';
+  showNewGroupInput.value = false;
+}
+
+function startRename(groupName: string) {
+  editingGroupName.value = groupName;
+  editingGroupNewName.value = groupName;
+}
+
+function finishRename() {
+  const oldName = editingGroupName.value;
+  const newName = editingGroupNewName.value.trim();
+  if (oldName && newName && oldName !== newName) {
+    if (newName === '未分组') {
+      message.warning('不能使用保留名称');
+    } else if (groups.value[newName]) {
+      message.warning('分组名已存在');
+    } else {
+      GlossaryGroup.renameGroup(novelId.value, oldName, newName);
+      loadGroups();
+      if (selectedGroup.value === oldName) selectedGroup.value = newName;
+    }
+  }
+  editingGroupName.value = null;
+  editingGroupNewName.value = '';
+}
+
+function deleteCurrentGroup(groupName?: string) {
+  const name = groupName ?? selectedGroup.value;
+  if (!name) return;
+  GlossaryGroup.deleteGroup(novelId.value, name);
+  loadGroups();
+  if (selectedGroup.value === name) selectedGroup.value = undefined;
+}
+
+function removeTermFromCurrentGroup(jp: string) {
+  if (!novelId.value) return;
+  const zh = glossary.value[jp] ?? getLocalZh(jp) ?? '';
+  GlossaryGroup.removeTerm(novelId.value, jp);
+  GlossaryGroup.addToUngrouped(novelId.value, jp, zh);
+  loadGroups();
+}
+
+function onDropTerm(jp: string, groupName: string | undefined) {
+  if (!novelId.value) return;
+  const jps =
+    selectedTerms.value.has(jp) && selectedTerms.value.size > 1
+      ? [...selectedTerms.value]
+      : [jp];
+  for (const j of jps) {
+    if (!groupName || groupName === '未分组') {
+      const zh = glossary.value[j] ?? getLocalZh(j) ?? '';
+      GlossaryGroup.removeTerm(novelId.value, j);
+      GlossaryGroup.addToUngrouped(novelId.value, j, zh);
+    } else {
+      const zh = glossary.value[j] ?? getLocalZh(j) ?? '';
+      GlossaryGroup.moveTerm(novelId.value, j, zh, groupName);
+    }
+  }
+  loadGroups();
+}
+
+function onDeleteGroupRequest(name: string) {
+  const entries = displayData.value[name];
+  if (!entries || entries.length === 0) {
+    GlossaryGroup.deleteGroup(novelId.value, name);
+    loadGroups();
+    if (selectedGroup.value === name) selectedGroup.value = undefined;
+  } else {
+    deleteGroupConfirmName.value = name;
+  }
+}
+
+const deleteGroupConfirmName = ref<string | null>(null);
+const showDeleteGroupConfirm = computed({
+  get: () => deleteGroupConfirmName.value !== null,
+  set: (v: boolean) => {
+    if (!v) deleteGroupConfirmName.value = null;
+  },
+});
+const deleteGroupConfirmCount = computed(() => {
+  const name = deleteGroupConfirmName.value;
+  if (!name) return 0;
+  return displayData.value[name]?.length ?? 0;
+});
+
+function confirmDeleteGroup() {
+  const name = deleteGroupConfirmName.value;
+  if (!name || !novelId.value) return;
+  GlossaryGroup.deleteGroup(novelId.value, name);
+  deleteGroupConfirmName.value = null;
+  loadGroups();
+  if (selectedGroup.value === name) selectedGroup.value = undefined;
+}
+
+function onReorderGroups(from: string, to: string) {
+  if (!novelId.value) return;
+  const order = [...groupOrder.value];
+  const fromIdx = order.indexOf(from);
+  if (fromIdx === -1) return;
+  order.splice(fromIdx, 1);
+  if (to) {
+    const toIdx = order.indexOf(to);
+    if (toIdx === -1) return;
+    order.splice(toIdx, 0, from);
+  } else {
+    order.push(from);
+  }
+  groupOrder.value = order;
+  GlossaryGroup.saveGroups(novelId.value, groups.value, order);
+}
+
+function handleSortByTime() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByTime(novelId.value, name, glossary.value, false);
+  loadGroups();
+}
+
+function handleSortByTimeReverse() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByTime(novelId.value, name, glossary.value, true);
+  loadGroups();
+}
+
+function handleSortByKana() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByKana(novelId.value, name, false);
+  loadGroups();
+}
+
+function handleSortByKanaReverse() {
+  if (!novelId.value) return;
+  const name = selectedGroup.value ?? '未分组';
+  GlossaryGroup.sortGroupByKana(novelId.value, name, true);
+  loadGroups();
+}
+
+// ========== 多选相关 ==========
+const selectedTerms = ref<Set<string>>(new Set());
+const lastClickedJp = ref<string | null>(null);
+
+function toggleSelect(jp: string, event: MouseEvent) {
+  if (event.ctrlKey || event.metaKey) {
+    const next = new Set(selectedTerms.value);
+    if (next.has(jp)) next.delete(jp);
+    else next.add(jp);
+    selectedTerms.value = next;
+    lastClickedJp.value = jp;
+  } else if (event.shiftKey && lastClickedJp.value) {
+    const entries = currentListEntries();
+    const prevIdx = entries.findIndex((e) => e.jp === lastClickedJp.value);
+    const curIdx = entries.findIndex((e) => e.jp === jp);
+    if (prevIdx >= 0 && curIdx >= 0) {
+      const start = Math.min(prevIdx, curIdx);
+      const end = Math.max(prevIdx, curIdx);
+      const next = new Set(selectedTerms.value);
+      for (let i = start; i <= end; i++) next.add(entries[i].jp);
+      selectedTerms.value = next;
+    }
+  } else {
+    if (selectedTerms.value.size === 1 && selectedTerms.value.has(jp)) {
+      selectedTerms.value = new Set();
+      lastClickedJp.value = null;
+    } else {
+      selectedTerms.value = new Set([jp]);
+      lastClickedJp.value = jp;
+    }
+  }
+}
+
+function currentListEntries(): GlossaryEntry[] {
+  if (selectedGroup.value) return currentGroupEntries.value;
+  return ungroupedEntries.value;
+}
+
+function clearSelection() {
+  selectedTerms.value = new Set();
+  lastClickedJp.value = null;
+}
+
+function batchDeleteSelected() {
+  const toDelete = [...selectedTerms.value].filter((jp) =>
+    isInServerGlossary(jp),
+  );
+  if (toDelete.length === 0) return;
+  for (const jp of toDelete) {
+    deletedTerms.value.push([jp, glossary.value[jp]]);
+    delete glossary.value[jp];
+  }
+  if (novelId.value) {
+    for (const jp of toDelete) GlossaryGroup.removeTerm(novelId.value, jp);
+    loadGroups();
+  }
+  clearSelection();
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Delete' && selectedTerms.value.size > 0) {
+    batchDeleteSelected();
+  }
+  if (e.key === 'Escape') {
+    clearSelection();
+  }
+}
+
+// ========== 单向同步 ==========
+/** 远程 → 本地：用服务端术语表覆盖当前编辑 */
+function syncRemoteToLocal() {
+  glossary.value = { ...props.value };
+  loadGroups();
+  message.success('已从远程同步到本地编辑');
+}
+
+/** 本地 → 编辑区：将本地分组中缓存的 zh 批量写入当前编辑术语表 */
+function syncLocalToEditing() {
+  if (!novelId.value) return;
+  let count = 0;
+  const localGroups = GlossaryGroup.getGroups(novelId.value);
+  for (const entries of Object.values(localGroups)) {
+    for (const e of entries) {
+      if (e.jp in glossary.value && glossary.value[e.jp] !== e.zh) {
+        glossary.value[e.jp] = e.zh;
+        count++;
+      }
+    }
+  }
+  message.success(`已将 ${count} 条本地 zh 同步到编辑区`);
+}
+
+// ========== 术语 CRUD ==========
+const importGlossaryRaw = ref('');
+const termsToAdd = ref<[string, string]>(['', '']);
+const deletedTerms = ref<[string, string][]>([]);
+
+const deletedJps = computed(
+  () => new Set(deletedTerms.value.map(([jp]) => jp)),
+);
+
+const lastDeletedTerm = computed(() => {
+  const last = deletedTerms.value[deletedTerms.value.length - 1];
+  if (last === undefined) return undefined;
+  return `${last[0]} => ${last[1]}`;
+});
+
+const clearTerm = () => {
+  glossary.value = {};
+  if (novelId.value) GlossaryGroup.clearGroups(novelId.value);
+  loadGroups();
+};
+
+const showClearConfirm = ref(false);
+
+// ========== 历史记录 ==========
+const showHistoryModal = ref(false);
+const expandedHistoryId = ref<string | undefined>(undefined);
+const historyVersion = ref(0);
+
+const historyEntries = computed<GlossaryHistoryEntry[]>(() => {
+  if (!novelId.value) return [];
+  void historyVersion.value; // 强制在 openHistory 时刷新
+  return getHistory(novelId.value);
+});
+
+const historyCount = computed(() => historyEntries.value.length);
+
+function openHistory() {
+  historyVersion.value++;
+  showHistoryModal.value = true;
+}
+
+function restoreHistory(entry: GlossaryHistoryEntry) {
+  glossary.value = { ...entry.glossary };
+  if (novelId.value) loadGroups();
+  showHistoryModal.value = false;
+  message.success(
+    `已恢复到 ${new Date(entry.timestamp).toLocaleString()} 的历史版本`,
+  );
+}
+
+interface GlossaryDiff {
+  added: { jp: string; zh: string }[];
+  removed: { jp: string; zh: string }[];
+  modified: { jp: string; oldZh: string; newZh: string }[];
+  unchanged: { jp: string; zh: string }[];
+}
+
+function getHistoryDiff(entry: GlossaryHistoryEntry): GlossaryDiff {
+  const oldGlossary = entry.glossary;
+  const cur = glossary.value;
+  const added: GlossaryDiff['added'] = [];
+  const removed: GlossaryDiff['removed'] = [];
+  const modified: GlossaryDiff['modified'] = [];
+  const unchanged: GlossaryDiff['unchanged'] = [];
+
+  for (const jp of Object.keys(oldGlossary)) {
+    if (!(jp in cur)) {
+      removed.push({ jp, zh: oldGlossary[jp] });
+    } else if (cur[jp] !== oldGlossary[jp]) {
+      modified.push({ jp, oldZh: oldGlossary[jp], newZh: cur[jp] });
+    } else {
+      unchanged.push({ jp, zh: oldGlossary[jp] });
+    }
+  }
+  for (const jp of Object.keys(cur)) {
+    if (!(jp in oldGlossary)) {
+      added.push({ jp, zh: cur[jp] });
+    }
+  }
+
+  return { added, removed, modified, unchanged };
+}
+
+function deleteHistoryEntry(entryId: string) {
+  if (!novelId.value) return;
+  deleteHistory(novelId.value, entryId);
+}
+
+const undoDeleteTerm = () => {
+  if (deletedTerms.value.length === 0) return;
+  const [jp, zh] = deletedTerms.value.pop()!;
+  glossary.value[jp] = zh;
+  loadGroups();
+};
+
+const deleteTerm = (jp: string) => {
+  if (jp in glossary.value) {
+    deletedTerms.value.push([jp, glossary.value[jp]]);
+    delete glossary.value[jp];
+    if (novelId.value) GlossaryGroup.removeTerm(novelId.value, jp);
+    loadGroups();
+  }
+};
+
+const revertTerm = (jp: string) => {
+  if (!novelId.value) return;
+  const g = GlossaryGroup.getGroups(novelId.value);
+  for (const [, entries] of Object.entries(g)) {
+    const found = entries.find((e) => e.jp === jp);
+    if (found) {
+      glossary.value = { ...glossary.value, [jp]: found.zh };
+      loadGroups();
+      return;
+    }
+  }
+};
+
+const revertToLocalZh = (jp: string) => {
+  const localZh = getLocalZh(jp);
+  if (localZh !== undefined) glossary.value[jp] = localZh;
+};
+
+const clearLocalRecord = (jp: string) => {
+  if (!novelId.value) return;
+  GlossaryGroup.removeTerm(novelId.value, jp);
+  loadGroups();
+};
+
+const addJpInputRef = ref<{ focus: () => void }>();
+
+const addTerm = () => {
+  const [jp, zh] = termsToAdd.value;
+  if (jp && zh) {
+    glossary.value[jp.trim()] = zh.trim();
+    termsToAdd.value = ['', ''];
+    loadGroups();
+  }
+};
+
+function onAddInputKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const [jp, zh] = termsToAdd.value;
+    if (jp.trim() && zh.trim()) {
+      addTerm();
+      nextTick(() => {
+        addJpInputRef.value?.focus();
+      });
+    }
+  }
+}
+
+const exportGlossary = async (ev: MouseEvent) => {
+  const isSuccess = await copyToClipBoard(
+    Glossary.toText(glossary.value),
+    ev.target as HTMLElement,
+  );
+  if (isSuccess) message.success('导出成功：已复制到剪贴板');
+  else message.error('导出失败');
+};
+
+const importGlossary = () => {
+  const importedGlossary = Glossary.fromText(importGlossaryRaw.value);
+  if (importedGlossary === undefined) {
+    message.error('导入失败：术语表格式不正确');
+  } else {
+    message.success('导入成功');
+    for (const jp in importedGlossary)
+      glossary.value[jp] = importedGlossary[jp];
+    loadGroups();
+  }
+};
+
+const downloadGlossaryAsJsonFile = async () => {
+  downloadFile(
+    `${gnidHint.value ?? 'glossary'}.json`,
+    new Blob([Glossary.toJson(glossary.value)], { type: 'text/plain' }),
+  );
+};
+
 const gnidHint = computed(() => {
   const gnid = props.gnid;
-  if (gnid === undefined) {
-    return undefined;
-  } else {
-    return GenericNovelId.toString(gnid);
-  }
+  if (gnid === undefined) return undefined;
+  return GenericNovelId.toString(gnid);
 });
 
 const updateGlossary = async () => {
   const gnid = props.gnid;
-  if (gnid === undefined) {
-    return;
-  }
+  if (gnid === undefined) return;
   const glossaryValue = toRaw(glossary.value);
   if (gnid.type === 'web') {
     await WebNovelApi.updateGlossary(
@@ -61,87 +608,19 @@ const updateGlossary = async () => {
 const submitGlossary = () =>
   doAction(
     updateGlossary().then(() => {
-      // 触发组件外的术语表本体更新。有点傻，但够用。
-      for (const key in props.value) {
-        delete props.value[key];
-      }
-      for (const key in glossary.value) {
-        props.value[key] = glossary.value[key];
+      for (const key in props.value) delete props.value[key];
+      for (const key in glossary.value) props.value[key] = glossary.value[key];
+      if (novelId.value) saveGroups();
+      if (novelId.value && Object.keys(glossary.value).length > 0) {
+        addHistory(novelId.value, {
+          glossary: { ...toRaw(glossary.value) },
+          type: 'submit',
+        });
       }
     }),
     '术语表提交',
     message,
   );
-
-const importGlossaryRaw = ref('');
-const termsToAdd = ref<[string, string]>(['', '']);
-
-const deletedTerms = ref<[string, string][]>([]);
-
-const lastDeletedTerm = computed(() => {
-  const last = deletedTerms.value[deletedTerms.value.length - 1];
-  if (last === undefined) return undefined;
-  return `${last[0]} => ${last[1]}`;
-});
-
-const clearTerm = () => {
-  glossary.value = {};
-};
-
-const undoDeleteTerm = () => {
-  if (deletedTerms.value.length === 0) return;
-  const [jp, zh] = deletedTerms.value.pop()!;
-  glossary.value[jp] = zh;
-};
-
-const deleteTerm = (jp: string) => {
-  if (jp in glossary.value) {
-    deletedTerms.value.push([jp, glossary.value[jp]]);
-    delete glossary.value[jp];
-  }
-};
-
-const addTerm = () => {
-  const [jp, zh] = termsToAdd.value;
-  if (jp && zh) {
-    glossary.value[jp.trim()] = zh.trim();
-    termsToAdd.value = ['', ''];
-  }
-};
-
-const exportGlossary = async (ev: MouseEvent) => {
-  const isSuccess = await copyToClipBoard(
-    Glossary.toText(glossary.value),
-    ev.target as HTMLElement,
-  );
-  if (isSuccess) {
-    message.success('导出成功：已复制到剪贴板');
-  } else {
-    message.success('导出失败');
-  }
-};
-
-const importGlossary = () => {
-  const importedGlossary = Glossary.fromText(importGlossaryRaw.value);
-  if (importedGlossary === undefined) {
-    message.error('导入失败：术语表格式不正确');
-  } else {
-    message.success('导入成功');
-    for (const jp in importedGlossary) {
-      const zh = importedGlossary[jp];
-      glossary.value[jp] = zh;
-    }
-  }
-};
-
-const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
-  downloadFile(
-    `${gnidHint.value ?? 'glossary'}.json`,
-    new Blob([Glossary.toJson(glossary.value)], {
-      type: 'text/plain',
-    }),
-  );
-};
 </script>
 
 <template>
@@ -160,11 +639,10 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
       <n-flex
         vertical
         size="large"
-        style="max-width: 400px; margin-bottom: 16px"
+        style="max-width: 600px; margin-bottom: 16px"
       >
         <template v-if="gnidHint">
           <n-text style="font-size: 12px">{{ gnidHint }}</n-text>
-
           <n-text>
             使用前务必先阅读
             <c-a to="/forum/660ab4da55001f583649a621">术语表使用指南</c-a>
@@ -174,12 +652,14 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
 
         <n-input-group>
           <n-input
+            ref="addJpInputRef"
             pair
             v-model:value="termsToAdd"
             size="small"
             separator="=>"
             :placeholder="['日文', '中文']"
-            :input-props="{ spellcheck: false }"
+            :input-props="[{ spellcheck: false }, { spellcheck: false }]"
+            @keydown="onAddInputKeydown"
           />
           <c-button
             label="添加"
@@ -212,28 +692,10 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
             @action="importGlossary"
           />
           <c-button
-            label="下载json文件"
+            label="下载json"
             :round="false"
             size="small"
             @action="downloadGlossaryAsJsonFile"
-          />
-          <c-button
-            v-if="whoami.isAdmin"
-            secondary
-            type="error"
-            label="清空"
-            :round="false"
-            size="small"
-            @action="clearTerm"
-          />
-        </n-flex>
-        <n-flex align="center" :wrap="false">
-          <c-button
-            :disabled="deletedTerms.length === 0"
-            label="撤销删除"
-            :round="false"
-            size="small"
-            @action="undoDeleteTerm"
           />
           <n-text
             v-if="lastDeletedTerm !== undefined"
@@ -242,44 +704,393 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           >
             {{ lastDeletedTerm }}
           </n-text>
+          <c-button
+            :disabled="deletedTerms.length === 0"
+            label="撤销删除"
+            :round="false"
+            size="small"
+            @action="undoDeleteTerm"
+          />
+          <n-text
+            v-if="selectedTerms.size > 0"
+            depth="3"
+            style="font-size: 12px"
+          >
+            已选 {{ selectedTerms.size }} 项 — Delete 键批量删除
+          </n-text>
         </n-flex>
       </n-flex>
     </template>
 
-    <n-table
-      v-if="Object.keys(glossary).length !== 0"
-      striped
-      size="small"
-      style="font-size: 12px; max-width: 400px"
-    >
-      <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
-        <td>
-          <c-button
-            :icon="DeleteOutlineOutlined"
-            text
-            type="error"
-            size="small"
-            @action="deleteTerm(wordJp)"
+    <!-- 主内容区 -->
+    <div v-if="novelId" tabindex="0" style="outline: none" @keydown="onKeydown">
+      <!-- ======== 桌面端：标签页 + 表格 ======== -->
+      <div
+        v-if="!isNarrow && setting.useGlossaryGroups"
+        :style="{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          minHeight: '300px',
+        }"
+      >
+        <div style="padding-bottom: 4px; border-bottom: 1px solid #eee">
+          <GlossaryGroupTabs
+            :group-names="groupNames"
+            :display-data="displayData"
+            :selected-group="selectedGroup"
+            :editing-group-name="editingGroupName"
+            :editing-group-new-name="editingGroupNewName"
+            :show-new-group-input="showNewGroupInput"
+            :new-group-name="newGroupName"
+            :ungrouped-count="ungroupedEntries.length"
+            :is-admin="whoami.isAdmin"
+            :history-count="historyCount"
+            @sync-remote-to-local="syncRemoteToLocal"
+            @sync-local-to-editing="syncLocalToEditing"
+            @clear-request="showClearConfirm = true"
+            @select="
+              (name) => {
+                selectedGroup = name;
+                clearSelection();
+              }
+            "
+            @start-rename="startRename"
+            @finish-rename="finishRename"
+            @update:editing-group-new-name="editingGroupNewName = $event"
+            @add-new-group="addNewGroup"
+            @update:new-group-name="newGroupName = $event"
+            @show-new-group="showNewGroupInput = true"
+            @delete-group="deleteCurrentGroup"
+            @drop-term="onDropTerm"
+            @delete-group-request="onDeleteGroupRequest"
+            @reorder-groups="onReorderGroups"
+            @sort-by-time="handleSortByTime"
+            @sort-by-time-reverse="handleSortByTimeReverse"
+            @sort-by-kana="handleSortByKana"
+            @sort-by-kana-reverse="handleSortByKanaReverse"
+            @show-history="openHistory"
           />
-        </td>
-        <td>{{ wordJp }}</td>
-        <td nowrap="nowrap">=></td>
-        <td style="padding-right: 16px">
-          <n-input
-            v-model:value="glossary[wordJp]"
-            size="tiny"
-            placeholder="请输入中文翻译"
-            :theme-overrides="{
-              border: '0',
-              color: 'transprent',
-            }"
-          />
-        </td>
-      </tr>
-    </n-table>
+        </div>
+
+        <div style="flex: 1; min-width: 0">
+          <template v-if="selectedGroup && currentGroupEntries.length > 0">
+            <GlossaryTermTable
+              :entries="currentGroupEntries"
+              :glossary="glossary"
+              :selected-terms="selectedTerms"
+              :is-in-server-glossary="isInServerGlossary"
+              :is-zh-conflict="isZhConflict"
+              :get-local-zh="getLocalZh"
+              :novel-id="novelId"
+              :in-group="true"
+              :group-name="selectedGroup"
+              :deleted-jps="deletedJps"
+              @toggle-select="toggleSelect"
+              @delete-term="deleteTerm"
+              @remove-from-group="removeTermFromCurrentGroup"
+              @revert-term="revertTerm"
+              @revert-to-local-zh="revertToLocalZh"
+              @clear-local-record="clearLocalRecord"
+              @reorder-term="
+                (from, to) => {
+                  GlossaryGroup.reorderTerm(novelId, selectedGroup!, from, to);
+                  loadGroups();
+                }
+              "
+            />
+          </template>
+
+          <template v-else-if="!selectedGroup && ungroupedEntries.length > 0">
+            <GlossaryTermTable
+              :entries="ungroupedEntries"
+              :glossary="glossary"
+              :selected-terms="selectedTerms"
+              :is-in-server-glossary="isInServerGlossary"
+              :is-zh-conflict="isZhConflict"
+              :get-local-zh="getLocalZh"
+              :novel-id="novelId"
+              :in-group="false"
+              :deleted-jps="deletedJps"
+              @toggle-select="toggleSelect"
+              @delete-term="deleteTerm"
+              @remove-from-group="removeTermFromCurrentGroup"
+              @revert-term="revertTerm"
+              @revert-to-local-zh="revertToLocalZh"
+              @clear-local-record="clearLocalRecord"
+              @reorder-term="
+                (from, to) => {
+                  GlossaryGroup.reorderTerm(novelId, '未分组', from, to);
+                  loadGroups();
+                }
+              "
+            />
+          </template>
+
+          <n-text v-else depth="3" style="font-size: 12px">暂无术语</n-text>
+        </div>
+      </div>
+
+      <!-- ======== 简易表格（移动端 或 关闭分组模式） ======== -->
+      <div v-else>
+        <n-table
+          v-if="Object.keys(glossary).length !== 0"
+          striped
+          size="small"
+          style="font-size: 12px; max-width: 400px"
+        >
+          <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
+            <td>
+              <c-button
+                :icon="DeleteOutlineOutlined"
+                text
+                type="error"
+                size="small"
+                @action="deleteTerm(wordJp)"
+              />
+            </td>
+            <td>{{ wordJp }}</td>
+            <td nowrap="nowrap">=></td>
+            <td style="padding-right: 16px">
+              <n-input
+                v-model:value="glossary[wordJp]"
+                size="tiny"
+                placeholder="请输入中文翻译"
+                :theme-overrides="{ border: '0', color: 'transprent' }"
+              />
+            </td>
+          </tr>
+        </n-table>
+        <n-text v-else depth="3" style="font-size: 12px">暂无术语</n-text>
+      </div>
+    </div>
+
+    <!-- 无 novelId 时的降级视图 -->
+    <div v-else>
+      <n-table
+        v-if="Object.keys(glossary).length !== 0"
+        striped
+        size="small"
+        style="font-size: 12px; max-width: 400px"
+      >
+        <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
+          <td>
+            <c-button
+              :icon="DeleteOutlineOutlined"
+              text
+              type="error"
+              size="small"
+              @action="deleteTerm(wordJp)"
+            />
+          </td>
+          <td>{{ wordJp }}</td>
+          <td nowrap="nowrap">=></td>
+          <td style="padding-right: 16px">
+            <n-input
+              v-model:value="glossary[wordJp]"
+              size="tiny"
+              placeholder="请输入中文翻译"
+              :theme-overrides="{ border: '0', color: 'transprent' }"
+            />
+          </td>
+        </tr>
+      </n-table>
+    </div>
 
     <template #action>
       <c-button label="提交" type="primary" @action="submitGlossary()" />
     </template>
   </c-modal>
+
+  <!-- 删除非空分组确认对话框 -->
+  <c-modal v-model:show="showDeleteGroupConfirm" title="确认删除分组">
+    <n-text>
+      分组 "{{ deleteGroupConfirmName }}" 中有
+      {{ deleteGroupConfirmCount }} 个术语，删除分组后这些术语将移到未分组。
+    </n-text>
+    <template #action>
+      <c-button label="取消" @action="deleteGroupConfirmName = null" />
+      <c-button label="确认删除" type="error" @action="confirmDeleteGroup" />
+    </template>
+  </c-modal>
+
+  <!-- 历史记录对话框 -->
+  <n-modal
+    v-model:show="showHistoryModal"
+    preset="card"
+    title="术语表历史记录"
+    :bordered="false"
+    size="large"
+    transform-origin="center"
+    :block-scroll="false"
+    style="width: min(600px, calc(100% - 16px))"
+  >
+    <n-text v-if="historyEntries.length === 0" depth="3">暂无历史记录</n-text>
+    <n-list v-else>
+      <n-list-item
+        v-for="entry in [...historyEntries].reverse()"
+        :key="entry.id"
+      >
+        <n-thing>
+          <template #header>
+            <n-flex align="center" :wrap="false">
+              <n-tag
+                :type="entry.type === 'submit' ? 'info' : 'warning'"
+                size="small"
+              >
+                {{ entry.type === 'submit' ? '提交' : '远程变动' }}
+              </n-tag>
+              <n-text depth="3" style="font-size: 12px">
+                {{ new Date(entry.timestamp).toLocaleString() }}
+              </n-text>
+              <n-text style="font-size: 12px">
+                {{ entry.termCount }} 条术语
+              </n-text>
+            </n-flex>
+          </template>
+          <template #description>
+            <template
+              v-for="diff in [
+                expandedHistoryId === entry.id ? getHistoryDiff(entry) : null,
+              ]"
+              :key="entry.id"
+            >
+              <div
+                v-if="diff"
+                style="max-height: 250px; overflow-y: auto; margin-top: 8px"
+              >
+                <div
+                  v-if="
+                    diff.removed.length +
+                      diff.modified.length +
+                      diff.added.length ===
+                    0
+                  "
+                >
+                  <n-text depth="3" style="font-size: 11px">
+                    与当前无差异
+                  </n-text>
+                </div>
+                <table
+                  v-else
+                  style="
+                    width: 100%;
+                    max-width: 500px;
+                    border-collapse: collapse;
+                    font-size: 11px;
+                    font-family: monospace;
+                  "
+                >
+                  <tr
+                    v-for="row in diff.removed"
+                    :key="'removed-' + row.jp"
+                    style="background: rgba(208, 48, 80, 0.1)"
+                  >
+                    <td style="width: 16px; color: #d03050; padding: 2px 4px">
+                      -
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px; color: #d03050">
+                      {{ row.zh }}
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="row in diff.modified"
+                    :key="'modified-' + row.jp"
+                    style="background: rgba(240, 160, 30, 0.1)"
+                  >
+                    <td style="width: 16px; color: #f0a01e; padding: 2px 4px">
+                      ~
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px">
+                      <span style="text-decoration: line-through; opacity: 0.6">
+                        {{ row.oldZh }}
+                      </span>
+                      <span style="margin: 0 4px">→</span>
+                      <span style="color: #f0a01e">{{ row.newZh }}</span>
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="row in diff.added"
+                    :key="'added-' + row.jp"
+                    style="background: rgba(24, 160, 88, 0.1)"
+                  >
+                    <td style="width: 16px; color: #18a058; padding: 2px 4px">
+                      +
+                    </td>
+                    <td style="padding: 2px 4px">{{ row.jp }}</td>
+                    <td style="padding: 2px 4px">=></td>
+                    <td style="padding: 2px 4px; color: #18a058">
+                      {{ row.zh }}
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </template>
+          </template>
+          <template #action>
+            <n-space>
+              <n-button
+                size="tiny"
+                @click="
+                  expandedHistoryId =
+                    expandedHistoryId === entry.id ? undefined : entry.id
+                "
+              >
+                展开
+              </n-button>
+              <n-button
+                size="tiny"
+                type="primary"
+                @click="restoreHistory(entry)"
+              >
+                恢复
+              </n-button>
+              <n-button size="tiny" @click="deleteHistoryEntry(entry.id)">
+                删除
+              </n-button>
+            </n-space>
+          </template>
+        </n-thing>
+      </n-list-item>
+    </n-list>
+    <template #action>
+      <n-button
+        v-if="historyEntries.length > 0"
+        type="error"
+        @click="
+          clearHistory(novelId);
+          showHistoryModal = false;
+        "
+      >
+        清空全部历史
+      </n-button>
+      <n-button @click="showHistoryModal = false">关闭</n-button>
+    </template>
+  </n-modal>
+
+  <!-- 清空确认对话框 -->
+  <c-modal v-model:show="showClearConfirm" title="确认清空">
+    <n-text>确定要清空术语表吗？此操作将同时清空本地分组数据。</n-text>
+    <template #action>
+      <c-button label="取消" @action="showClearConfirm = false" />
+      <c-button
+        label="确认清空"
+        type="error"
+        @action="
+          clearTerm();
+          showClearConfirm = false;
+        "
+      />
+    </template>
+  </c-modal>
 </template>
+
+<style scoped>
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+</style>

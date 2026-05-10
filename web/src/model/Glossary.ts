@@ -39,7 +39,9 @@ export namespace Glossary {
       if (parts.length !== 2) return;
 
       const [jp, zh] = parts;
-      glossary[jp.trim()] = zh.trim();
+      const jpTrimmed = jp.trim();
+      if (!jpTrimmed) continue;
+      glossary[jpTrimmed] = zh.trim();
     }
     return glossary;
   };

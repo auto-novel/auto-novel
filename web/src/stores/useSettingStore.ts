@@ -34,6 +34,7 @@ export interface Setting {
   //
   locale: 'zh-cn' | 'zh-tw';
   searchLocaleAware: boolean;
+  useGlossaryGroups: boolean;
 }
 
 export namespace Setting {
@@ -69,6 +70,7 @@ export namespace Setting {
     //
     locale: 'zh-cn',
     searchLocaleAware: false,
+    useGlossaryGroups: true,
   };
 
   export const migrate = (setting: Setting) => {
@@ -95,6 +97,10 @@ export namespace Setting {
     // 2024-05-28
     if ((setting.paginationMode as unknown) === 'auto') {
       setting.paginationMode = 'pagination';
+    }
+    // 2024-05-05
+    if (setting.useGlossaryGroups === undefined) {
+      setting.useGlossaryGroups = true;
     }
   };
 
