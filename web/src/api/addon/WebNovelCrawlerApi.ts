@@ -12,15 +12,45 @@ import {
 } from '@auto-novel/crawler';
 
 import { lazy } from '@/util';
+import { CheckCFWall } from '@/domain/crawler/checker';
+import { getAddon } from '.';
 
 const getCrawler = lazy(async () => {
-  const addon = window.Addon;
+  const addon = await getAddon();
   if (!addon) return undefined;
 
-  const client = ky.create({ fetch: addon.fetch.bind(addon) });
+  const client = ky.create({
+    fetch: (input: string | URL | Request, init?: RequestInit) => {
+      return addon.fetch
+        .bind(addon)(input, init)
+        .then(async (resp) => {
+          await resp.clone().text().then(CheckCFWall);
+          return resp;
+        });
+    },
+  });
+
   const hamelnClient = ky.create({
     fetch: (input: string | URL | Request, init?: RequestInit) =>
-      addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, init),
+      addon
+        .cookiesPatch({
+          url: 'https://syosetu.org',
+          patches: {
+            over18: {
+              name: 'over18',
+              domain: 'syosetu.org',
+              value: 'off',
+            },
+          },
+        })
+        .then(() =>
+          addon
+            .tabFetch({ tabUrl: 'https://syosetu.org' }, input, init)
+            .then(async (resp) => {
+              await resp.clone().text().then(CheckCFWall);
+              return resp;
+            }),
+        ),
   });
 
   return new WebNovelCrawler({
@@ -38,7 +68,8 @@ const getMetadata = async (
   novelId: string,
 ): Promise<WebNovelMetadata | null | undefined> => {
   const crawler = await getCrawler();
-  if (!window.Addon || !crawler) {
+  const addon = await getAddon();
+  if (!addon || !crawler) {
     throw new Error('未检测到浏览器扩展，无法抓取网页小说');
   }
   return crawler.getMetadata(providerId, novelId);

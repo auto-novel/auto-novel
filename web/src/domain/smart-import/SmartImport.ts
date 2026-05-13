@@ -6,6 +6,7 @@ import { ensureCookie } from '@/api/third-party/util';
 import { parallelExec } from '@/util';
 import { lazy } from '@/util';
 import { Translator } from '../translate';
+import { getAddon } from '@/api/addon';
 
 type Logger = (message: string) => void;
 
@@ -16,7 +17,7 @@ type SmartImportCallback = {
 };
 
 const getClient = async () => {
-  const addon = window.Addon;
+  const addon = await getAddon();
   if (!addon) return ky;
 
   const url = 'https://www.amazon.co.jp';
@@ -34,7 +35,7 @@ const getAmazon = lazy(async () => new Amazon(await getClient()));
 
 const parseTitle = (title: string) => {
   // 替换全角空格
-  title.replaceAll('　', ' ');
+  title = title.replaceAll('　', ' ');
 
   const irrelevantKeywords = [
     '特典',

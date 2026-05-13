@@ -6,9 +6,10 @@ import ky from 'ky';
 
 import { lazy } from '@/util';
 import { ensureCookie } from './util';
+import { getAddon } from '@/api/addon';
 
 const getClient = lazy(async () => {
-  const addon = window.Addon;
+  const addon = await getAddon();
   if (!addon) return ky;
 
   const url = 'https://dict.youdao.com/';
@@ -18,7 +19,7 @@ const getClient = lazy(async () => {
   const cookies = await ensureCookie(addon, url, domain, keys);
 
   return ky.create({
-    fetch: addon.fetch.bind(window.Addon),
+    fetch: addon.fetch.bind(addon),
   });
 });
 

@@ -1,4 +1,4 @@
-import { YoudaoApi, YoudaoTranslateResult } from '@/api';
+import { AddonVersionException, YoudaoApi, YoudaoTranslateResult } from '@/api';
 import { RegexUtil, safeJson } from '@/util';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createGlossaryWrapper, createLengthSegmentor } from './Common';
@@ -22,6 +22,10 @@ export class YoudaoTranslator implements SegmentTranslator {
       }
       await YoudaoApi.refreshKey();
     } catch (e) {
+      console.error(e);
+      if (e instanceof AddonVersionException) {
+        throw e;
+      }
       this.log('无法获得Key，使用默认值');
     }
     return this;

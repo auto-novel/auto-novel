@@ -1,10 +1,10 @@
 export interface CookieStatus {
   domain: string;
   name: string;
-  hostOnly: boolean;
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
+  value: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
 }
 
 export type InfoResult = {
@@ -20,6 +20,9 @@ export interface AddonApi {
   cookiesStatus(params: {
     url?: string;
     domain?: string;
+    partitionKey?: {
+      topLevelSite: string;
+    };
     keys: string[] | '*';
   }): Promise<Record<string, CookieStatus>>;
 
