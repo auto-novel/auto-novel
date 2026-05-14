@@ -225,6 +225,9 @@ importers:
       '@types/node':
         specifier: ^20.19.13
         version: 20.19.37
+      '@types/semver':
+        specifier: ^7.7.1
+        version: 7.7.1
       '@vue/eslint-config-typescript':
         specifier: ^14.6.0
         version: 14.7.0(eslint-plugin-vue@10.8.0(@typescript-eslint/parser@8.57.0(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(vue-eslint-parser@10.4.0(eslint@9.39.4(jiti@2.6.1))))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
@@ -1648,6 +1651,12 @@ packages:
     resolution:
       {
         integrity: sha512-TENp7YkI2hNlc4dplhivSHj0hU4DORCK56VY7rniaSfA5f87uD3uv+kPIRuH9h64TGv976iVFi4gEHZZtS2y8Q==,
+      }
+
+  '@types/semver@7.7.1':
+    resolution:
+      {
+        integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==,
       }
 
   '@types/sortablejs@1.15.9':
@@ -5845,6 +5854,8 @@ snapshots:
       undici-types: 7.16.0
 
   '@types/opencc-js@1.0.3': {}
+
+  '@types/semver@7.7.1': {}
 
   '@types/sortablejs@1.15.9': {}
 

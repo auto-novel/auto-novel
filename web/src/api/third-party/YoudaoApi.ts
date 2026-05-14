@@ -10,7 +10,6 @@ import { getAddon } from '@/api/addon';
 
 const getClient = lazy(async () => {
   const addon = await getAddon();
-  if (!addon) return ky;
 
   const url = 'https://dict.youdao.com/';
   const domain = '.youdao.com';

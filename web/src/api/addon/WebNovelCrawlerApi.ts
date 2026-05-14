@@ -12,15 +12,26 @@ import {
 } from '@auto-novel/crawler';
 
 import { lazy } from '@/util';
-import { CheckCFWall } from '@/domain/crawler/checker';
+import { CheckCFWall, CheckPixivR18 } from '@/domain/crawler/checker';
 import { getAddon } from '.';
 
 const getCrawler = lazy(async () => {
   const addon = await getAddon();
-  if (!addon) return undefined;
 
   const client = ky.create({
     fetch: (input: string | URL | Request, init?: RequestInit) => {
+      return addon.fetch
+        .bind(addon)(input, init)
+        .then(async (resp) => {
+          await resp.clone().text().then(CheckCFWall);
+          return resp;
+        });
+    },
+  });
+
+  const pixivClient = ky.create({
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      await CheckPixivR18();
       return addon.fetch
         .bind(addon)(input, init)
         .then(async (resp) => {
@@ -58,7 +69,7 @@ const getCrawler = lazy(async () => {
     hameln: () => new Hameln(hamelnClient),
     kakuyomu: () => new Kakuyomu(client),
     novelup: () => new Novelup(client),
-    pixiv: () => new Pixiv(client),
+    pixiv: () => new Pixiv(pixivClient),
     syosetu: () => new Syosetu(client, { concurrency: 2 }),
   });
 });
@@ -68,8 +79,7 @@ const getMetadata = async (
   novelId: string,
 ): Promise<WebNovelMetadata | null | undefined> => {
   const crawler = await getCrawler();
-  const addon = await getAddon();
-  if (!addon || !crawler) {
+  if (!crawler) {
     throw new Error('未检测到浏览器扩展，无法抓取网页小说');
   }
   return crawler.getMetadata(providerId, novelId);

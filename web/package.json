@@ -24,6 +24,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^20.19.13",
+    "@types/semver": "^7.7.1",
     "@vue/eslint-config-typescript": "^14.6.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.35.0",

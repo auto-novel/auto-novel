@@ -18,7 +18,6 @@ type SmartImportCallback = {
 
 const getClient = async () => {
   const addon = await getAddon();
-  if (!addon) return ky;
 
   const url = 'https://www.amazon.co.jp';
   const domain = '.amazon.co.jp';

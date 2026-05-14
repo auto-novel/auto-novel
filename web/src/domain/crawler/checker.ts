@@ -1,4 +1,5 @@
 import { getAddon } from '@/api/addon';
+import { lazy } from '@/util';
 
 // 检查是否触发 CF 墙
 export class CFWallException extends Error {
@@ -14,32 +15,65 @@ export function CheckCFWall(html: string) {
 }
 
 // 检查 Hameln 是否解除 R18 限制
-export async function CheckHamelnAllowR18(): Promise<boolean | undefined> {
+export class HamelnR18Exception extends Error {
+  constructor() {
+    super('Hameln 未开启 R18，请开启后刷新页面重试');
+    this.name = 'HamelnR18Exception';
+  }
+}
+export async function CheckHamelnR18() {
   const addon = await getAddon();
-  if (!addon) return undefined;
 
   const ret = await addon.cookiesStatus({
     url: 'https://syosetu.org',
     domain: 'syosetu.org',
     keys: ['over18'],
   });
-  return ret['over18'].value === 'off';
-}
-
-// 检查 Pixiv 是否登录
-export async function CheckPixivLogin(): Promise<boolean> {
-  //FIXME(kuriko): 未实现
-  throw new Error('Not Implemented');
+  if (ret['over18'].value !== 'off') {
+    throw new HamelnR18Exception();
+  }
 }
 
 // 检查 Pixiv 是否开启 R18
-export async function CheckPixivR18(): Promise<boolean> {
-  //FIXME(kuriko): 未实现
-  throw new Error('Not Implemented');
+export class PixivLoginException extends Error {
+  constructor() {
+    super('Pixiv 账号未登录，请登录后刷新页面重试');
+    this.name = 'PixivLoginException';
+  }
 }
+export class PixivR18Exception extends Error {
+  constructor() {
+    super('Pixiv 未开启 R18G，请开启后刷新页面重试');
+    this.name = 'PixivR18Exception';
+  }
+}
+export const CheckPixivR18 = lazy(async () => {
+  const addon = await getAddon();
 
-// 检查 Pixiv 是否遇到付费墙
-export async function CheckPixivPaywall(): Promise<boolean> {
-  //FIXME(kuriko): 未实现
-  throw new Error('Not Implemented');
-}
+  const resp = await addon.fetch('https://www.pixiv.net/settings/viewing');
+
+  const doc = new DOMParser().parseFromString(await resp.text(), 'text/html');
+  const isEnableSensitiveView = (
+    doc.querySelector(
+      'input[name=sensitive_view_setting]',
+    ) as HTMLInputElement | null
+  )?.checked;
+  const isEnableR18 = (
+    doc.querySelector('input[name=r18]') as HTMLInputElement | null
+  )?.checked;
+  const isEnableR18G = (
+    doc.querySelector('input[name=r18g]') as HTMLInputElement | null
+  )?.checked;
+
+  if (
+    isEnableSensitiveView === undefined ||
+    isEnableR18 === undefined ||
+    isEnableR18G === undefined
+  ) {
+    throw new PixivLoginException();
+  }
+
+  if (!(isEnableSensitiveView && isEnableR18 && isEnableR18G)) {
+    throw new PixivR18Exception();
+  }
+});

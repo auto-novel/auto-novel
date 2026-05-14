@@ -14,9 +14,15 @@ export class AddonVersionException extends Error {
     this.name = 'AddonVersionException';
   }
 }
+export class AddonNotFoundException extends Error {
+  constructor() {
+    super('未检测到扩展程序，请安装后重试');
+    this.name = 'AddonNotFoundException';
+  }
+}
 export const getAddon = lazy(async () => {
   const addon = window.Addon;
-  if (!addon) return undefined;
+  if (!addon) throw new AddonNotFoundException();
 
   const info = await addon.info();
   const version = info.version.replace(/^v/, '');
