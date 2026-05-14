@@ -4,7 +4,7 @@ export * from './WebNovelCrawlerApi';
 import semver from 'semver';
 
 // FIXME(kuriko): 临时测试用，后续需要修复
-const MINIMAL_ADDON_VERSION = '1.0.0';
+const MINIMAL_ADDON_VERSION = '0.0.0';
 
 export class AddonVersionException extends Error {
   constructor(readonly version: string) {
@@ -23,7 +23,7 @@ export class AddonNotFoundException extends Error {
 export const getAddon = lazy(async () => {
   const addon = window.Addon;
   if (!addon) throw new AddonNotFoundException();
-  const version = addon.version.replace(/^v/, '');
+  const version = addon.version;
   if (semver.lt(version, MINIMAL_ADDON_VERSION)) {
     throw new AddonVersionException(version);
   }
