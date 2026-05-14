@@ -125,7 +125,7 @@ export const parallelExec = async <T>(
 
 export namespace RegexUtil {
   const englishChars = /[a-z]|[A-Z]/;
-  export const hasEnglishChars = (str: string) => /[\u4E00-\u9FAF]/.test(str);
+  export const hasEnglishChars = (str: string) => englishChars.test(str);
 
   const hanzi = /[\u4E00-\u9FAF]/;
   export const hasHanzi = (str: string) => hanzi.test(str);

@@ -90,7 +90,17 @@ async function refreshKey() {
   key = resp['data']['secretKey'];
 }
 
-async function webtranslate(query: string, from: string, options?: Options) {
+export type YoudaoTranslateResult = {
+  code: number;
+  translateResult?: {
+    tgt: string;
+  }[][];
+};
+async function webtranslate(
+  query: string,
+  from: string,
+  options?: Options,
+): Promise<string> {
   const client = await getClient();
   const resp = await client
     .post('https://dict.youdao.com/webtranslate', {
