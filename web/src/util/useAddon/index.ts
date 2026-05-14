@@ -13,6 +13,8 @@ export type InfoResult = {
 };
 
 export interface AddonApi {
+  version: string;
+
   ping(): Promise<string>;
 
   info(): Promise<InfoResult>;

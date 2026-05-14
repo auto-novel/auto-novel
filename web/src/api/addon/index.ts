@@ -23,9 +23,7 @@ export class AddonNotFoundException extends Error {
 export const getAddon = lazy(async () => {
   const addon = window.Addon;
   if (!addon) throw new AddonNotFoundException();
-
-  const info = await addon.info();
-  const version = info.version.replace(/^v/, '');
+  const version = addon.version.replace(/^v/, '');
   if (semver.lt(version, MINIMAL_ADDON_VERSION)) {
     throw new AddonVersionException(version);
   }
