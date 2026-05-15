@@ -612,19 +612,18 @@ class WebNovelApi(
         }
 
         // Merge toc with the old one to preserve translation.
-        data class AccKey(val chapterId: String?, val titleJp: String)
-        val oldItemAcc = buildMap<AccKey, WebNovelTocItem>(novel.toc.size) {
+        val oldTitleZhAcc = buildMap<String, String?>(novel.toc.size) {
             novel.toc.forEach { oldItem ->
-                put(AccKey(oldItem.chapterId, oldItem.titleJp), oldItem)
+                this[oldItem.titleJp] = oldItem.titleZh
             }
         }
         val mergedToc = body.toc.map { newItem ->
-            val oldItem = oldItemAcc[AccKey(newItem.chapterId, newItem.title)]
+            val titleZh = oldTitleZhAcc[newItem.title]
             WebNovelTocItem(
                 titleJp = newItem.title,
-                titleZh = oldItem?.titleZh,
+                titleZh = titleZh,
                 chapterId = newItem.chapterId,
-                createAt = newItem.createAt ?: oldItem?.createAt,
+                createAt = newItem.createAt,
             )
         }
 
