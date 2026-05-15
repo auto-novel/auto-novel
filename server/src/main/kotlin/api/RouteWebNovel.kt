@@ -56,6 +56,11 @@ data class WebNovelChapterUpdateBody(
     val paragraphs: List<String>,
 )
 
+@Serializable
+data class WebNovelChapterUpdateManyBody(
+    val chapters: Map<String, WebNovelChapterUpdateBody>,
+)
+
 @Resource("/novel")
 private class WebNovelRes {
     @Resource("")
@@ -87,6 +92,9 @@ private class WebNovelRes {
 
         @Resource("/chapter/{chapterId}")
         class Chapter(val parent: Id, val chapterId: String)
+
+        @Resource("/chapters")
+        class Chapters(val parent: Id)
 
         @Resource("/translate-v2/{translatorId}")
         class TranslateV2(val parent: Id, val translatorId: TranslatorId) {
@@ -207,6 +215,19 @@ fun Route.routeWebNovel() {
                     providerId = loc.providerId,
                     novelId = loc.novelId,
                     body = body,
+                )
+            }
+        }
+
+        put<WebNovelRes.Id.Chapters> { loc ->
+            val user = call.user()
+            val body = call.receive<WebNovelChapterUpdateManyBody>()
+            call.tryRespond {
+                service.upsertChapters(
+                    user = user,
+                    providerId = loc.parent.providerId,
+                    novelId = loc.parent.novelId,
+                    chapters = body.chapters,
                 )
             }
         }
@@ -726,6 +747,44 @@ class WebNovelApi(
             gptParagraphs = chapter.gptParagraphs,
             sakuraParagraphs = chapter.sakuraParagraphs,
         )
+    }
+
+    suspend fun upsertChapters(
+        user: User,
+        providerId: String,
+        novelId: String,
+        chapters: Map<String, WebNovelChapterUpdateBody>,
+    ) {
+        user.requireAdmin() // temp admin only
+        user.requireNovelAccess()
+        validateId(providerId, novelId)
+
+        val novel = metadataRepo.get(providerId, novelId)
+            ?: throwNovelNotFound()
+
+        chapters.forEach { (chapterId, _) ->
+            if (novel.toc.none { it.chapterId == chapterId }) {
+                throwBadRequest("章节不在目录中")
+            }
+        }
+
+        chapters.forEach { (chapterId, chapterUpdateData) ->
+            if (chapterRepo.get(providerId, novelId, chapterId) == null) {
+                chapterRepo.create(
+                    providerId = providerId,
+                    novelId = novelId,
+                    chapterId = chapterId,
+                    paragraphs = chapterUpdateData.paragraphs,
+                )
+            } else {
+                chapterRepo.update(
+                    providerId = providerId,
+                    novelId = novelId,
+                    chapterId = chapterId,
+                    paragraphs = chapterUpdateData.paragraphs,
+                )
+            }
+        }
     }
 
     suspend fun createChapter(
