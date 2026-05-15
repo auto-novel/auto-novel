@@ -599,16 +599,33 @@ class WebNovelApi(
         val novel = metadataRepo.get(providerId, novelId)
             ?: throwNovelNotFound()
 
+        val newChapterIds = body.toc.mapNotNullTo(HashSet(body.toc.size)) {
+            it.chapterId
+        }
+
         val noChapterDeleted = novel
             .toc
             .mapNotNull { it.chapterId }
-            .all { oldChapterId ->
-                body.toc.any { newItem ->
-                    newItem.chapterId == oldChapterId
-                }
-            }
+            .all { oldChapterId -> oldChapterId in newChapterIds }
         if (!noChapterDeleted) {
             user.requireAdmin()
+        }
+
+        // Merge toc with the old one to preserve translation.
+        data class AccKey(val chapterId: String?, val titleJp: String)
+        val oldItemAcc = buildMap<AccKey, WebNovelTocItem>(novel.toc.size) {
+            novel.toc.forEach { oldItem ->
+                put(AccKey(oldItem.chapterId, oldItem.titleJp), oldItem)
+            }
+        }
+        val mergedToc = body.toc.map { newItem ->
+            val oldItem = oldItemAcc[AccKey(newItem.chapterId, newItem.title)]
+            WebNovelTocItem(
+                titleJp = newItem.title,
+                titleZh = oldItem?.titleZh,
+                chapterId = newItem.chapterId,
+                createAt = newItem.createAt ?: oldItem?.createAt,
+            )
         }
 
         metadataRepo.update(
@@ -622,7 +639,7 @@ class WebNovelApi(
             points = body.points,
             totalCharacters = body.totalCharacters,
             introductionJp = body.introduction,
-            toc = body.toc.map { WebNovelTocItem(it.title, null, it.chapterId, it.createAt) },
+            toc = mergedToc,
         )
         oplogRepo.create(
             providerId = providerId,
