@@ -15,8 +15,8 @@ import util.serialName
 import java.nio.charset.Charset
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Path
-import java.util.UUID
 import kotlin.io.path.*
+import kotlin.random.Random
 
 sealed class VolumeCreateException(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class VolumeAlreadyExist : VolumeCreateException("卷已经存在")
@@ -81,7 +81,7 @@ class WenkuNovelVolumeDiskDataSource(
         val normVolumesDir = volumesDir.normalize()
         val finalPath = (normVolumesDir / volumeId).normalize()
         val uploadTempPath = (
-            normVolumesDir / "$volumeId.${UUID.randomUUID()}.uploading"
+            normVolumesDir / "$volumeId.${"%02d".format(Random.nextInt(100))}.temp"
         ).normalize()
 
         // Security(kuriko): 检查是否存在路径穿越风险
@@ -368,4 +368,3 @@ private suspend fun setGlossary(
         )
     )
 }
-

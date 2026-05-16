@@ -227,7 +227,7 @@ private fun throwNovelNotFound(): Nothing =
     throwNotFound("小说不存在")
 
 private fun validateVolumeId(volumeId: String) {
-    val maxFilenameChars = 100
+    val maxFilenameChars = 80
     val windowsInvalidFilenameChars = setOf('<', '>', ':', '"', '/', '\\', '|', '?', '*')
 
     if (!volumeId.endsWith(".txt") && !volumeId.endsWith(".epub"))
