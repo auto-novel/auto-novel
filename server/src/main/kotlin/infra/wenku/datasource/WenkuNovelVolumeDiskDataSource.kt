@@ -23,7 +23,7 @@ sealed class VolumeCreateException(message: String, cause: Throwable? = null) : 
     class VolumeUploadInterrupted(cause: Throwable? = null) : VolumeCreateException("上传已中断或文件不完整", cause)
     class VolumeTooLarge(message: String) : VolumeCreateException(message, null)
     class VolumeCorrupted(cause: Throwable? = null) : VolumeCreateException("文件损坏或不是合法的 epub", cause)
-    class VolumeCreateFailure(cause: Throwable? = null) : VolumeCreateException("无法保存上传文件", cause)
+    class VolumeCreateFailure(cause: Throwable? = null) : VolumeCreateException("服务器保存文件失败，请考虑缩短文件名后重试", cause)
     class VolumeUnpackFailure(cause: Throwable) : VolumeCreateException("卷解包失败", cause)
 }
 
