@@ -73,11 +73,7 @@ export function parseJapanDateString(
       return undefined;
     }
     return utcDate;
-  } catch (error) {
-    console.error(
-      `日期解析失败: pattern='${pattern}', dateString='${dateString}'`,
-      error,
-    );
+  } catch {
     return undefined;
   }
 }

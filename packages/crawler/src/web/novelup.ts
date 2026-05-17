@@ -9,7 +9,9 @@ import {
   type WebNovelProvider,
   type WebNovelTocItem,
   WebNovelType,
+  emptyPage,
 } from './types';
+import { CrawlerParseError } from '@/errors';
 import {
   fetchDocument,
   numExtractor,
@@ -25,7 +27,7 @@ function parseWebNovelType(typeText: string): WebNovelType {
     case '完結済':
       return WebNovelType.Completed;
     default:
-      throw new Error(`无法解析的小说类型： ${typeText}`);
+      throw new CrawlerParseError(`无法解析的小说类型： ${typeText}`);
   }
 }
 
@@ -42,10 +44,10 @@ export class Novelup implements WebNovelProvider {
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
-    throw new Error('Not implemented');
+    return emptyPage();
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const $ = await fetchDocument(
       this.client,
       `https://novelup.plus/story/${novelId}`,

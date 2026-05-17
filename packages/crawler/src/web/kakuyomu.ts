@@ -12,6 +12,7 @@ import {
   WebNovelType,
   emptyPage,
 } from './types';
+import { CrawlerAuthError, CrawlerParseError } from '@/errors';
 import { fetchDocument, removePrefix } from './utils';
 
 const RANGE_IDS = {
@@ -70,7 +71,7 @@ function parseWebNovelType(typeText: string): WebNovelType {
     case 'RUNNING':
       return WebNovelType.Ongoing;
     default:
-      throw new Error(`无法解析的小说类型：${typeText}`);
+      throw new CrawlerParseError(`无法解析的小说类型：${typeText}`);
   }
 }
 
@@ -139,32 +140,32 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
     };
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const $ = await fetchDocument(
       this.client,
       `https://kakuyomu.jp/works/${novelId}`,
     );
 
     const script = $('#__NEXT_DATA__').first().html();
-    if (!script) throw new Error('作品信息解析失败');
+    if (!script) throw new CrawlerParseError('作品信息解析失败');
 
     const apollo = JSON.parse(script)?.props?.pageProps?.__APOLLO_STATE__;
     if (!apollo || typeof apollo !== 'object')
-      throw new Error('作品信息解析失败');
+      throw new CrawlerParseError('作品信息解析失败');
 
     function unrefApollo(data: any): any {
       return apollo[data?.__ref] ?? undefined;
     }
 
     const work = apollo[`Work:${novelId}`];
-    if (!work) throw new Error('作品信息解析失败');
+    if (!work) throw new CrawlerParseError('作品信息解析失败');
 
     const title = work.alternativeTitle ?? work.title;
-    if (!title) throw new Error('标题解析失败');
+    if (!title) throw new CrawlerParseError('标题解析失败');
 
     const authorData = unrefApollo(work.author);
     if (!authorData?.activityName || !authorData?.name) {
-      throw new Error('作者解析失败');
+      throw new CrawlerParseError('作者解析失败');
     }
     const authors: WebNovelAuthor[] = [
       {
@@ -175,7 +176,7 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
 
     const typeText = work.serialStatus;
     if (!typeText) {
-      throw new Error('小说类型解析失败');
+      throw new CrawlerParseError('小说类型解析失败');
     }
     const type = parseWebNovelType(typeText);
 
@@ -254,7 +255,7 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
       .map((_, el) => $(el).text())
       .get();
     if (paragraphs.length === 0) {
-      throw new Error('付费章节，无法获取');
+      throw new CrawlerAuthError('付费章节，无法获取');
     }
 
     return { paragraphs };

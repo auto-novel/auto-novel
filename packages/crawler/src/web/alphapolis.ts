@@ -9,7 +9,9 @@ import {
   type WebNovelProvider,
   type WebNovelTocItem,
   WebNovelType,
+  emptyPage,
 } from './types';
+import { CrawlerParseError } from '@/errors';
 import {
   fetchDocument,
   numExtractor,
@@ -29,7 +31,7 @@ function parseWebNovelType(typeText: string): WebNovelType {
     case '完結':
       return WebNovelType.Completed;
     default:
-      throw new Error(`无法解析的小说类型： ${typeText}`);
+      throw new CrawlerParseError(`无法解析的小说类型： ${typeText}`);
   }
 }
 
@@ -46,7 +48,7 @@ export class Alphapolis implements WebNovelProvider {
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
-    throw new Error('Not implemented');
+    return emptyPage();
   }
 
   private getMetadataUrl(novelId: string): string {
@@ -57,27 +59,27 @@ export class Alphapolis implements WebNovelProvider {
     return `${this.getMetadataUrl(novelId)}/episode/${chapterId}`;
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const $ = await fetchDocument(this.client, this.getMetadataUrl(novelId));
 
     const $contentInfo = $('#sidebar').first().find('.content-info').first();
     if ($contentInfo.length === 0) {
-      throw new Error('作品信息解析失败');
+      throw new CrawlerParseError('作品信息解析失败');
     }
 
     const $contentMain = $('#main').first().find('.content-main').first();
     if ($contentMain.length === 0) {
-      throw new Error('作品主体解析失败');
+      throw new CrawlerParseError('作品主体解析失败');
     }
 
     const $info = $contentInfo.find('.content-statuses').first();
     if ($info.length === 0) {
-      throw new Error('作品状态解析失败');
+      throw new CrawlerParseError('作品状态解析失败');
     }
 
     const $table = $contentInfo.find('table.detail').first();
     if ($table.length === 0) {
-      throw new Error('作品详情解析失败');
+      throw new CrawlerParseError('作品详情解析失败');
     }
 
     const row = (label: string) =>
@@ -109,7 +111,7 @@ export class Alphapolis implements WebNovelProvider {
 
     const typeText = textOrNull($info.find('span.complete').first().text());
     if (!typeText) {
-      throw new Error('小说类型解析失败');
+      throw new CrawlerParseError('小说类型解析失败');
     }
     const type = parseWebNovelType(typeText);
 
@@ -176,7 +178,7 @@ export class Alphapolis implements WebNovelProvider {
         if ($el.hasClass('episode')) {
           const episodeTitle = $el.find('span.title').first().text().trim();
           if (!episodeTitle) {
-            throw new Error('episode title parse failed');
+            throw new CrawlerParseError('章节标题解析失败');
           }
 
           const href = $el.find('a').first().attr('href');
@@ -215,7 +217,7 @@ export class Alphapolis implements WebNovelProvider {
       $content = $('div.text');
     }
     if ($content.length === 0) {
-      throw new Error('章节内容解析失败');
+      throw new CrawlerParseError('章节内容解析失败');
     }
 
     $content.find('rp, rt').remove();
@@ -225,7 +227,7 @@ export class Alphapolis implements WebNovelProvider {
     const paragraphs = rawText.split(/\r?\n/).map((line) => line.trim());
 
     if (paragraphs.length < 5) {
-      throw new Error('章节内容太少，爬取频率太快导致未加载');
+      throw new CrawlerParseError('章节内容太少，爬取频率太快导致未加载');
     }
 
     return { paragraphs };

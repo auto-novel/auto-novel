@@ -7,6 +7,7 @@ import type {
   WebNovelMetadata,
   WebNovelProvider,
 } from './types';
+import { CrawlerInputError } from '@/errors';
 
 import { Alphapolis } from './alphapolis';
 import { Hameln } from './hameln';
@@ -57,7 +58,7 @@ export class WebNovelCrawler {
 
     const providerInit = this.providers.get(providerId);
     if (!providerInit) {
-      throw new Error(`Unknown providerId: ${providerId}`);
+      throw new CrawlerInputError(`未知的 providerId：${providerId}`);
     }
 
     const provider = providerInit();
@@ -68,14 +69,14 @@ export class WebNovelCrawler {
   async getRank(
     providerId: string,
     options: Record<string, string>,
-  ): Promise<Page<WebNovelListItem> | null | undefined> {
+  ): Promise<Page<WebNovelListItem>> {
     return this.getProvider(providerId).getRank(options);
   }
 
   async getMetadata(
     providerId: string,
     novelId: string,
-  ): Promise<WebNovelMetadata | null | undefined> {
+  ): Promise<WebNovelMetadata> {
     return this.getProvider(providerId).getMetadata(novelId);
   }
 
@@ -83,7 +84,7 @@ export class WebNovelCrawler {
     providerId: string,
     novelId: string,
     chapterId: string,
-  ): Promise<WebNovelChapter | null | undefined> {
+  ): Promise<WebNovelChapter> {
     return this.getProvider(providerId).getChapter(novelId, chapterId);
   }
 }

@@ -14,6 +14,7 @@ import {
   WebNovelType,
   emptyPage,
 } from './types';
+import { CrawlerParseError } from '@/errors';
 import { fetchDocument, parseJapanDateString } from './utils';
 
 const RANGE_IDS = {
@@ -109,7 +110,7 @@ function parseWebNovelType(typeText: string): WebNovelType {
     case '短編':
       return WebNovelType.ShortStory;
     default:
-      throw new Error(`无法解析的小说类型: ${typeText}`);
+      throw new CrawlerParseError(`无法解析的小说类型: ${typeText}`);
   }
 }
 
@@ -228,7 +229,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
     };
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const [$, $info] = await Promise.all([
       fetchDocument(this.client, `https://ncode.syosetu.com/${novelId}`),
       fetchDocument(
@@ -238,12 +239,12 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
     ]);
 
     const title = $info('h1').first().text().trim();
-    if (!title) throw new Error('标题解析失败');
+    if (!title) throw new CrawlerParseError('标题解析失败');
 
     const infoData = $info('.p-infotop-data').first();
     const infoType = $info('.p-infotop-type').first();
     if (infoData.length === 0 || infoType.length === 0)
-      throw new Error('作品信息解析失败');
+      throw new CrawlerParseError('作品信息解析失败');
 
     const row = (label: string) =>
       infoData
@@ -254,7 +255,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
 
     const authorCell = row('作者名');
     const authorName = authorCell.text().trim();
-    if (!authorName) throw new Error('作者解析失败');
+    if (!authorName) throw new CrawlerParseError('作者解析失败');
     const authorLink = authorCell.find('a').attr('href');
     const authors: WebNovelAuthor[] = [{ name: authorName, link: authorLink }];
 
@@ -263,7 +264,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
       .first()
       .text()
       .trim();
-    if (!typeText) throw new Error('小说类型解析失败');
+    if (!typeText) throw new CrawlerParseError('小说类型解析失败');
     const type = parseWebNovelType(typeText);
 
     const attentionSet = new Set<WebNovelAttention>();
@@ -289,7 +290,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
       if (r18Text === 'R18') {
         attentionSet.add(WebNovelAttention.R18);
       } else {
-        throw new Error(`无法解析的注意事项: ${r18Text}`);
+        throw new CrawlerParseError(`无法解析的注意事项: ${r18Text}`);
       }
     }
 
@@ -303,10 +304,10 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
     const points = extractNumber(row('総合評価').text());
 
     const totalCharacters = extractNumber(row('文字数').text());
-    if (!totalCharacters) throw new Error('字数解析失败');
+    if (!totalCharacters) throw new CrawlerParseError('字数解析失败');
 
     const introduction = row('あらすじ').text().trim();
-    if (!introduction) throw new Error('简介解析失败');
+    if (!introduction) throw new CrawlerParseError('简介解析失败');
 
     let toc: WebNovelTocItem[];
     if ($('div.p-eplist').first().length === 0) {
@@ -395,7 +396,7 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
   async getChapter(
     novelId: string,
     chapterId: string,
-  ): Promise<WebNovelChapter | null> {
+  ): Promise<WebNovelChapter> {
     const url =
       chapterId === 'default'
         ? `https://ncode.syosetu.com/${novelId}`

@@ -1,3 +1,10 @@
+export {
+  CrawlerAuthError,
+  CrawlerError,
+  CrawlerInputError,
+  CrawlerParseError,
+} from '@/errors';
+
 export { Amazon } from '@/amazon/amazon';
 export { extractAsin, prettyCover } from '@/amazon/util';
 

@@ -10,7 +10,9 @@ import {
   type WebNovelTocItem,
   WebNovelAttention,
   WebNovelType,
+  emptyPage,
 } from './types';
+import { CrawlerParseError } from '@/errors';
 import {
   fetchDocument,
   numExtractor,
@@ -31,7 +33,7 @@ function parseWebNovelType(text: string): WebNovelType {
     return WebNovelType.ShortStory;
   }
 
-  throw new Error(`无法解析的小说类型:${text}`);
+  throw new CrawlerParseError(`无法解析的小说类型:${text}`);
 }
 
 export class Hameln implements WebNovelProvider {
@@ -62,10 +64,10 @@ export class Hameln implements WebNovelProvider {
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
-    throw new Error('Not implemented');
+    return emptyPage();
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const [$list, $detail] = await Promise.all([
       fetchDocument(this.client, `${this.baseUrl}/novel/${novelId}`),
       fetchDocument(
@@ -79,12 +81,12 @@ export class Hameln implements WebNovelProvider {
         .toArray()
         .find((el) => $detail(el).text().trim() === label);
       if (!cell) {
-        throw new Error(`Failed to find row: ${label}`);
+        throw new CrawlerParseError(`未找到字段：${label}`);
       }
 
       const value = $detail(cell).next();
       if (value.length === 0) {
-        throw new Error(`Failed to find row: ${label}`);
+        throw new CrawlerParseError(`未找到字段：${label}`);
       }
 
       return value;

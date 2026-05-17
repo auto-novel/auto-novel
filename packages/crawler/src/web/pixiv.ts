@@ -10,7 +10,9 @@ import {
   type WebNovelTocItem,
   WebNovelAttention,
   WebNovelType,
+  emptyPage,
 } from './types';
+import { CrawlerAuthError, CrawlerInputError } from '@/errors';
 
 function parsePixivAttention(xRestrict: number): WebNovelAttention[] {
   return xRestrict === 0 ? [] : [WebNovelAttention.R18];
@@ -36,10 +38,10 @@ export class Pixiv implements WebNovelProvider {
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
-    throw new Error('Not implemented');
+    return emptyPage();
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     if (novelId.startsWith('s')) {
       const chapterId = novelId.substring(1);
       const data: any = await this.client
@@ -50,7 +52,9 @@ export class Pixiv implements WebNovelProvider {
       const seriesData = obj.seriesNavData;
       if (seriesData != null) {
         const targetNovelId = seriesData.seriesId;
-        throw new Error(`小说ID不合适，应当使用：/${this.id}/${targetNovelId}`);
+        throw new CrawlerInputError(
+          `小说ID不合适，应当使用：/${this.id}/${targetNovelId}`,
+        );
       }
 
       const author: WebNovelAuthor = {
@@ -114,7 +118,7 @@ export class Pixiv implements WebNovelProvider {
 
       contents.forEach((seriesContent: any) => {
         if (seriesContent.title == undefined) {
-          throw new Error('当前账号无法获取该小说资源');
+          throw new CrawlerAuthError('当前账号无法获取该小说资源');
         }
 
         keywords.push(...(seriesContent.tags ?? []));
@@ -149,7 +153,7 @@ export class Pixiv implements WebNovelProvider {
 
     items.forEach((item: any) => {
       if (!item.available) {
-        throw new Error('当前账号无法获取该小说资源');
+        throw new CrawlerAuthError('当前账号无法获取该小说资源');
       }
 
       toc.push({
