@@ -31,8 +31,68 @@ export class Pixiv implements WebNovelProvider {
 
   client: KyInstance;
 
+  private static readonly VIEWING_SETTINGS_TTL = 60 * 60 * 1000;
+  private viewingSettingsCache: {
+    expiresAt: number;
+    promise: Promise<void>;
+  } | null = null;
+
   constructor(client: KyInstance) {
     this.client = client;
+  }
+
+  private async assertViewingSettingsEnabled(): Promise<void> {
+    const html = await this.client
+      .get('https://www.pixiv.net/settings/viewing')
+      .text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    const getChecked = (name: string) =>
+      (doc.querySelector(`input[name="${name}"]`) as HTMLInputElement | null)
+        ?.checked;
+
+    const isSensitiveViewEnabled = getChecked('sensitive_view_setting');
+    const isR18Enabled = getChecked('r18');
+    const isR18GEnabled = getChecked('r18g');
+
+    if (
+      isSensitiveViewEnabled === undefined ||
+      isR18Enabled === undefined ||
+      isR18GEnabled === undefined
+    ) {
+      throw new CrawlerAuthError('Pixiv 账号未登录');
+    }
+
+    if (!(isSensitiveViewEnabled && isR18Enabled && isR18GEnabled)) {
+      throw new CrawlerAuthError(
+        'Pixiv 账号未开启敏感内容、R18 或 R18G 查看权限',
+      );
+    }
+  }
+
+  private async ensureViewingSettings(): Promise<void> {
+    const now = Date.now();
+    if (
+      this.viewingSettingsCache &&
+      this.viewingSettingsCache.expiresAt > now
+    ) {
+      await this.viewingSettingsCache.promise;
+      return;
+    }
+
+    const promise = this.assertViewingSettingsEnabled().catch((error) => {
+      if (this.viewingSettingsCache?.promise === promise) {
+        this.viewingSettingsCache = null;
+      }
+      throw error;
+    });
+
+    this.viewingSettingsCache = {
+      expiresAt: now + Pixiv.VIEWING_SETTINGS_TTL,
+      promise,
+    };
+
+    await promise;
   }
 
   async getRank(
@@ -42,6 +102,8 @@ export class Pixiv implements WebNovelProvider {
   }
 
   async getMetadata(novelId: string): Promise<WebNovelMetadata> {
+    await this.ensureViewingSettings();
+
     if (novelId.startsWith('s')) {
       const chapterId = novelId.substring(1);
       const data: any = await this.client
@@ -229,6 +291,8 @@ export class Pixiv implements WebNovelProvider {
     _novelId: string,
     chapterId: string,
   ): Promise<WebNovelChapter> {
+    await this.ensureViewingSettings();
+
     const data: any = await this.client
       .get(`https://www.pixiv.net/ajax/novel/${chapterId}`)
       .json();
