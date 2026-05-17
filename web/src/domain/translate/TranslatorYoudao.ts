@@ -1,26 +1,32 @@
-import { YoudaoApi, YoudaoTranslateResult } from '@/api';
-import { RegexUtil, safeJson } from '@/util';
+import type { KyInstance } from 'ky';
+import ky from 'ky';
+
+import { createYoudaoApi, YoudaoTranslateResult } from '@/api';
+import { RegexUtil, lazy, safeJson } from '@/util';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createGlossaryWrapper, createLengthSegmentor } from './Common';
+import { ensureCookie } from '@/api/third-party/util';
 
 export class YoudaoTranslator implements SegmentTranslator {
   id = <const>'youdao';
   log: Logger;
+  private api: ReturnType<typeof createYoudaoApi>;
 
-  constructor(log: Logger) {
+  constructor(log: Logger, client: KyInstance) {
     this.log = log;
+    this.api = createYoudaoApi(client);
   }
 
   async init() {
     try {
       try {
-        await YoudaoApi.rlog();
+        await this.api.rlog();
       } catch {
         this.log(
           '无法访问有道 rlog，请临时关闭广告屏蔽插件，或将 rlogs.youdao.com 加入白名单',
         );
       }
-      await YoudaoApi.refreshKey();
+      await this.api.refreshKey();
     } catch (e) {
       this.log('无法获得Key，使用默认值');
     }
@@ -50,7 +56,7 @@ export class YoudaoTranslator implements SegmentTranslator {
     }
 
     let translateWorker = async (seg: string[], from: string) => {
-      const raw = await YoudaoApi.webtranslate(seg.join('\n'), from, {
+      const raw = await this.api.webtranslate(seg.join('\n'), from, {
         signal,
       });
       let json = safeJson<YoudaoTranslateResult>(raw);
@@ -107,6 +113,20 @@ export class YoudaoTranslator implements SegmentTranslator {
   }
 }
 
+const getClient = lazy(async (): Promise<KyInstance> => {
+  const addon = window.Addon;
+  if (!addon) return ky;
+
+  await ensureCookie(addon, 'https://dict.youdao.com/', '.youdao.com', [
+    'OUTFOX_SEARCH_USER_ID',
+  ]);
+
+  return ky.create({
+    fetch: addon.fetch.bind(window.Addon),
+  });
+});
+
 export namespace YoudaoTranslator {
-  export const create = (log: Logger) => new YoudaoTranslator(log).init();
+  export const create = async (log: Logger) =>
+    new YoudaoTranslator(log, await getClient()).init();
 }
