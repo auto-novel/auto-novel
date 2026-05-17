@@ -16,7 +16,9 @@ export class AddonVersionException extends Error {
 }
 export class AddonNotFoundException extends Error {
   constructor() {
-    super('未检测到扩展程序，请安装后重试');
+    super(
+      '未检测到机翻站插件，请安装后重试，参见：github.com/auto-novel/addon',
+    );
     this.name = 'AddonNotFoundException';
   }
 }

@@ -1,4 +1,9 @@
-import { AddonVersionException, YoudaoApi, YoudaoTranslateResult } from '@/api';
+import {
+  AddonVersionException,
+  getAddon,
+  YoudaoApi,
+  YoudaoTranslateResult,
+} from '@/api';
 import { RegexUtil, safeJson } from '@/util';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createGlossaryWrapper, createLengthSegmentor } from './Common';
@@ -12,6 +17,8 @@ export class YoudaoTranslator implements SegmentTranslator {
   }
 
   async init() {
+    // Check addon availablility
+    const _ = await getAddon();
     try {
       try {
         await YoudaoApi.rlog();
