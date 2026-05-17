@@ -2,7 +2,7 @@ import ky from 'ky';
 
 import { Amazon, extractAsin, prettyCover } from '@auto-novel/crawler';
 import type { AmazonNovel, WenkuVolumeDto } from '@/model/WenkuNovel';
-import { ensureCookie } from '@/api/third-party/util';
+import { ensureCookie } from '@/api/addon/util';
 import { parallelExec } from '@/util';
 import { lazy } from '@/util';
 import { Translator } from '../translate';

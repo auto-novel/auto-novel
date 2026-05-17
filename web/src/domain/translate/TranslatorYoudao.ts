@@ -1,11 +1,14 @@
 import type { KyInstance } from 'ky';
 import ky from 'ky';
 
-import { createYoudaoApi, YoudaoTranslateResult } from '@/api';
+import {
+  createYoudaoApi,
+  type YoudaoTranslateResult,
+} from '@auto-novel/translator';
 import { RegexUtil, lazy, safeJson } from '@/util';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createGlossaryWrapper, createLengthSegmentor } from './Common';
-import { ensureCookie } from '@/api/third-party/util';
+import { ensureCookie } from '@/api/addon/util';
 
 export class YoudaoTranslator implements SegmentTranslator {
   id = <const>'youdao';

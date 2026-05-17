@@ -58,6 +58,9 @@ importers:
 
   packages/translator:
     dependencies:
+      crypto-es:
+        specifier: ^2.1.0
+        version: 2.1.0
       ky:
         specifier: ^1.14.0
         version: 1.14.3
