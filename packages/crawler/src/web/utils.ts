@@ -4,7 +4,17 @@ import { parse } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import type { KyInstance } from 'ky';
 
+import { CrawlerAuthError } from '@/errors';
+
 import { WebNovelAttention } from './types';
+
+export function assertNoCFChallenge(html: string): void {
+  if (html.includes('#challenge-error-text')) {
+    throw new CrawlerAuthError(
+      '触发 Cloudflare 人机验证，请先访问小说原站完成人机验证后再重试',
+    );
+  }
+}
 
 export const fetchDocument = async (
   client: KyInstance,
@@ -13,7 +23,10 @@ export const fetchDocument = async (
   client
     .get(url)
     .text()
-    .then((text) => cheerio.load(text));
+    .then((text) => {
+      assertNoCFChallenge(text);
+      return cheerio.load(text);
+    });
 
 export const removeSuffix = (suffix: string) => (input: string) =>
   input.endsWith(suffix) ? input.slice(0, -suffix.length) : input;
