@@ -1,4 +1,4 @@
-import { createOpenAiApi } from '@/api';
+import { createOpenAiApi } from '@auto-novel/translator';
 import type { Glossary } from '@/model/Glossary';
 
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';

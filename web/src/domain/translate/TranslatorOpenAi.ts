@@ -1,4 +1,4 @@
-import { createOpenAiApi, OpenAiError } from '@/api';
+import { OpenAiError, createOpenAiApi } from '@auto-novel/translator';
 import type { Glossary } from '@/model/Glossary';
 import { delay, RegexUtil } from '@/util';
 
