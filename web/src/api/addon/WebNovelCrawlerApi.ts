@@ -12,33 +12,19 @@ import {
 } from '@auto-novel/crawler';
 
 import { lazy } from '@/util';
-import { CheckCFWall, CheckPixivR18 } from '@/domain/crawler/checker';
 import { getAddon } from '.';
 
 const getCrawler = lazy(async () => {
   const addon = await getAddon();
 
   const client = ky.create({
-    fetch: (input: string | URL | Request, init?: RequestInit) => {
-      return addon.fetch
-        .bind(addon)(input, init)
-        .then(async (resp) => {
-          await resp.clone().text().then(CheckCFWall);
-          return resp;
-        });
-    },
+    fetch: (input: string | URL | Request, init?: RequestInit) =>
+      addon.fetch.bind(addon)(input, init),
   });
 
   const pixivClient = ky.create({
-    fetch: async (input: string | URL | Request, init?: RequestInit) => {
-      await CheckPixivR18();
-      return addon.fetch
-        .bind(addon)(input, init)
-        .then(async (resp) => {
-          await resp.clone().text().then(CheckCFWall);
-          return resp;
-        });
-    },
+    fetch: (input: string | URL | Request, init?: RequestInit) =>
+      addon.fetch.bind(addon)(input, init),
   });
 
   const hamelnClient = ky.create({
@@ -55,12 +41,7 @@ const getCrawler = lazy(async () => {
           },
         })
         .then(() =>
-          addon
-            .tabFetch({ tabUrl: 'https://syosetu.org' }, input, init)
-            .then(async (resp) => {
-              await resp.clone().text().then(CheckCFWall);
-              return resp;
-            }),
+          addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, init),
         ),
   });
 
