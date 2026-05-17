@@ -15,15 +15,15 @@ import util.serialName
 import java.nio.charset.Charset
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Path
-import java.util.UUID
 import kotlin.io.path.*
+import kotlin.random.Random
 
 sealed class VolumeCreateException(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class VolumeAlreadyExist : VolumeCreateException("卷已经存在")
     class VolumeUploadInterrupted(cause: Throwable? = null) : VolumeCreateException("上传已中断或文件不完整", cause)
     class VolumeTooLarge(message: String) : VolumeCreateException(message, null)
     class VolumeCorrupted(cause: Throwable? = null) : VolumeCreateException("文件损坏或不是合法的 epub", cause)
-    class VolumeCreateFailure(cause: Throwable? = null) : VolumeCreateException("无法保存上传文件", cause)
+    class VolumeCreateFailure(cause: Throwable? = null) : VolumeCreateException("服务器保存文件失败，请考虑缩短文件名后重试", cause)
     class VolumeUnpackFailure(cause: Throwable) : VolumeCreateException("卷解包失败", cause)
 }
 
@@ -81,7 +81,7 @@ class WenkuNovelVolumeDiskDataSource(
         val normVolumesDir = volumesDir.normalize()
         val finalPath = (normVolumesDir / volumeId).normalize()
         val uploadTempPath = (
-            normVolumesDir / "$volumeId.${UUID.randomUUID()}.uploading"
+            normVolumesDir / "$volumeId.${"%02d".format(Random.nextInt(100))}.temp"
         ).normalize()
 
         // Security(kuriko): 检查是否存在路径穿越风险
@@ -368,4 +368,3 @@ private suspend fun setGlossary(
         )
     )
 }
-
