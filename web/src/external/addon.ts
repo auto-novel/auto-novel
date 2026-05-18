@@ -1,10 +1,13 @@
+import { AddonNotFoundError, assertAddonVersion } from '@/external/errors';
+
 export interface CookieStatus {
   domain: string;
   name: string;
+  value: string;
   hostOnly: boolean;
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
 }
 
 export type InfoResult = {
@@ -13,6 +16,8 @@ export type InfoResult = {
 };
 
 export interface AddonApi {
+  version: string;
+
   ping(): Promise<string>;
 
   info(): Promise<InfoResult>;
@@ -20,6 +25,9 @@ export interface AddonApi {
   cookiesStatus(params: {
     url?: string;
     domain?: string;
+    partitionKey?: {
+      topLevelSite: string;
+    };
     keys: string[] | '*';
   }): Promise<Record<string, CookieStatus>>;
 
@@ -45,6 +53,14 @@ declare global {
   interface Window {
     Addon?: AddonApi;
   }
+}
+
+export function getAddon(): AddonApi {
+  const addon = window.Addon;
+  if (!addon) throw new AddonNotFoundError();
+
+  assertAddonVersion(addon.version);
+  return addon;
 }
 
 function allCookiesAvailable(

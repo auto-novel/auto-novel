@@ -2,13 +2,11 @@ import ky from 'ky';
 
 import { AmazonCrawler, extractAsin, prettyCover } from '@auto-novel/crawler';
 
-import { ensureCookie } from '@/external/addon';
-import { AddonNotFoundError } from '@/external/errors';
+import { ensureCookie, getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
 const getClient = async () => {
-  const addon = window.Addon;
-  if (!addon) throw new AddonNotFoundError();
+  const addon = getAddon();
 
   const url = 'https://www.amazon.co.jp';
   const domain = '.amazon.co.jp';

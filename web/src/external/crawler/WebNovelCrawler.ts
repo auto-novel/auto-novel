@@ -11,12 +11,11 @@ import {
   WebNovelCrawler,
 } from '@auto-novel/crawler';
 
-import { AddonNotFoundError } from '@/external/errors';
+import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
 const getCrawler = lazy(async () => {
-  const addon = window.Addon;
-  if (!addon) throw new AddonNotFoundError();
+  const addon = getAddon();
 
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
   const hamelnClient = ky.create({
