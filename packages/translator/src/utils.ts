@@ -58,6 +58,14 @@ export const detectChinese = (text: string) => {
   return pZh > 0.75 || (pZh > pJp && pZh > pEn * 2 && pJp < 0.1);
 };
 
+export const safeJson = <T extends object>(text: string) => {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined;
+  }
+};
+
 export const delay = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     let timeout: any = null;
