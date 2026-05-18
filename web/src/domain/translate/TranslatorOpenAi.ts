@@ -231,21 +231,16 @@ const askApi = (
   signal?: AbortSignal,
 ): Promise<{ answer: string }> =>
   api
-    .createChatCompletionsStream(
+    .createChatCompletions(
       {
         messages: messages.map(([role, content]) => ({ content, role })),
         model,
-        stream: true,
       },
       { signal },
     )
-    .then((completionStream) => {
-      const answer = Array.from(completionStream)
-        .map((chunk) => chunk.choices[0]?.delta.content)
-        .filter((content) => typeof content === 'string')
-        .join('');
-      return { answer };
-    });
+    .then((completion) => ({
+      answer: completion.choices[0]?.message.content ?? '',
+    }));
 
 const buildMessages = (
   lines: string[],
