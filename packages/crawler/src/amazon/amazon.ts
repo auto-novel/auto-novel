@@ -9,7 +9,7 @@ import { search as parseSearch } from '@/amazon/search';
 
 const AMAZON_JP_URL = 'https://www.amazon.co.jp';
 
-export class Amazon {
+export class AmazonCrawler {
   constructor(private readonly client: KyInstance) {}
 
   private async getHtml(url: string, options?: Options) {

@@ -48,8 +48,6 @@ const toCurrentMutationBody = (novel: WebNovelDto) => ({
 
 const updateWebNovel = async (providerId: string, novelId: string) => {
   const metadata = await WebNovelCrawlerApi.getMetadata(providerId, novelId);
-  if (metadata == null) throw new Error('未找到小说');
-
   const body = toMutationBody(metadata);
   const current = await WebNovelApi.getNovel(providerId, novelId);
   if (body.toc.length < current.toc.length) {

@@ -45,9 +45,6 @@ const getOrCreateWebNovel = async (providerId: string, novelId: string) => {
   }
 
   const metadata = await WebNovelCrawlerApi.getMetadata(providerId, novelId);
-  if (metadata == null) {
-    throw new Error('前端爬虫未找到小说');
-  }
   await WebNovelApi.createNovel(providerId, novelId, toMutationBody(metadata));
 
   return WebNovelApi.getNovel(providerId, novelId);

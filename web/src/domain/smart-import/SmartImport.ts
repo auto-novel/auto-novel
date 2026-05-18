@@ -1,10 +1,6 @@
-import ky from 'ky';
-
-import { Amazon, extractAsin, prettyCover } from '@auto-novel/crawler';
 import type { AmazonNovel, WenkuVolumeDto } from '@/model/WenkuNovel';
-import { ensureCookie } from '@/api/addon/util';
+import { AmazonCrawlerApi } from '@/api';
 import { parallelExec } from '@/util';
-import { lazy } from '@/util';
 import { Translator } from '../translate';
 
 type Logger = (message: string) => void;
@@ -14,23 +10,6 @@ type SmartImportCallback = {
   populateNovel: (novel: AmazonNovel) => void;
   populateVolume: (volume: WenkuVolumeDto) => void;
 };
-
-const getClient = async () => {
-  const addon = window.Addon;
-  if (!addon) return ky;
-
-  const url = 'https://www.amazon.co.jp';
-  const domain = '.amazon.co.jp';
-  const keys = ['session-id', 'ubid-acbjp'];
-
-  await ensureCookie(addon, url, domain, keys);
-
-  return ky.create({
-    fetch: addon.fetch,
-  });
-};
-
-const getAmazon = lazy(async () => new Amazon(await getClient()));
 
 const parseTitle = (title: string) => {
   // 替换全角空格
@@ -134,19 +113,18 @@ const getNovelFromVolumes = async (volumes: WenkuVolumeDto[]) => {
   const metadata = await getNovelByAsin(volumes[0].asin);
   metadata.volumes = volumes.map((v) => {
     const { title, imprint } = parseTitle(v.title);
-    const cover = prettyCover(v.cover);
+    const cover = AmazonCrawlerApi.prettyCover(v.cover);
     return { asin: v.asin, title, cover, imprint };
   });
   return metadata;
 };
 
 const getNovelByAsin = async (asin: string): Promise<AmazonNovel> => {
-  const amazon = await getAmazon();
-  const product = await amazon.getProduct(asin);
+  const product = await AmazonCrawlerApi.getProduct(asin);
   if (product.type === 'volume') {
     const volume = product.volume;
     const { title, imprint } = parseTitle(volume.title);
-    const cover = prettyCover(volume.cover);
+    const cover = AmazonCrawlerApi.prettyCover(volume.cover);
     return {
       title,
       r18: volume.r18,
@@ -157,11 +135,11 @@ const getNovelByAsin = async (asin: string): Promise<AmazonNovel> => {
     };
   } else if (product.type === 'serial') {
     const { title, total } = product.serial;
-    const serial = await amazon.getSerial(asin, total);
+    const serial = await AmazonCrawlerApi.getSerial(asin, total);
     serial.volumes = await Promise.all(
       serial.volumes.map(async (volume) => ({
         ...volume,
-        asin: await amazon.resolveKindleAsin(volume.asin),
+        asin: await AmazonCrawlerApi.resolveKindleAsin(volume.asin),
       })),
     );
     const novel = await getNovelFromVolumes(serial.volumes);
@@ -179,8 +157,7 @@ const getNovelBySearch = async (
   log: Logger,
 ): Promise<AmazonNovel> => {
   log(`导入小说 开始搜索\n`);
-  const amazon = await getAmazon();
-  const searchItems = (await amazon.search(query))
+  const searchItems = (await AmazonCrawlerApi.search(query))
     .filter(({ title }) => title.includes(query) && checkIsNovelByTitle(title))
     .sort((a, b) => a.title.localeCompare(b.title));
 
@@ -192,7 +169,7 @@ const getNovelBySearch = async (
     serialAsinSet.add(serialAsin);
 
     log(`尝试导入小说系列 ${serialAsin}`);
-    const product = await amazon.getProduct(asin);
+    const product = await AmazonCrawlerApi.getProduct(asin);
     if (
       product.type !== 'volume' ||
       !checkIsNovelByDetail(
@@ -218,7 +195,7 @@ const getNovelBySearch = async (
 };
 
 const getVolume = async (asin: string) => {
-  const product = await (await getAmazon()).getProduct(asin);
+  const product = await AmazonCrawlerApi.getProduct(asin);
   if (product.type !== 'volume') {
     throw new Error(`ASIN不对应小说:${asin}`);
   }
@@ -227,8 +204,10 @@ const getVolume = async (asin: string) => {
   return <WenkuVolumeDto>{
     asin,
     title: realTitle,
-    cover: prettyCover(cover),
-    coverHires: coverHires ? prettyCover(coverHires) : undefined,
+    cover: AmazonCrawlerApi.prettyCover(cover),
+    coverHires: coverHires
+      ? AmazonCrawlerApi.prettyCover(coverHires)
+      : undefined,
     publisher,
     imprint,
     publishAt,
@@ -246,7 +225,7 @@ export const smartImport = async (
   if (urlOrQuery.length > 0) {
     let novel: AmazonNovel;
     try {
-      const asin = extractAsin(urlOrQuery);
+      const asin = AmazonCrawlerApi.extractAsin(urlOrQuery);
       if (asin === undefined) {
         novel = await getNovelBySearch(urlOrQuery, log);
       } else {

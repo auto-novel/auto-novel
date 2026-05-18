@@ -36,7 +36,7 @@ const getCrawler = lazy(async () => {
 const getMetadata = async (
   providerId: string,
   novelId: string,
-): Promise<WebNovelMetadata | null | undefined> => {
+): Promise<WebNovelMetadata> => {
   const crawler = await getCrawler();
   if (!window.Addon || !crawler) {
     throw new Error('未检测到浏览器扩展，无法抓取网页小说');

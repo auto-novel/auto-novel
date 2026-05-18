@@ -5,7 +5,7 @@ export {
   CrawlerParseError,
 } from '@/errors';
 
-export { Amazon } from '@/amazon/amazon';
+export { AmazonCrawler } from '@/amazon/amazon';
 export { extractAsin, prettyCover } from '@/amazon/util';
 
 export { Alphapolis } from '@/web/alphapolis';
