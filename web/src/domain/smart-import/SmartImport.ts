@@ -1,5 +1,5 @@
 import type { AmazonNovel, WenkuVolumeDto } from '@/model/WenkuNovel';
-import { AmazonCrawlerApi } from '@/api';
+import { AmazonCrawlerApi } from '@/external';
 import { parallelExec } from '@/util';
 import { Translator } from '../translate';
 

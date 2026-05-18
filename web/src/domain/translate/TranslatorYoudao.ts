@@ -1,11 +1,7 @@
-import type { KyInstance } from 'ky';
-import ky from 'ky';
-
 import { YoudaoTranslator as PackageYoudaoTranslator } from '@auto-novel/translator';
-import { lazy } from '@/util';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createGlossaryWrapper, createLengthSegmentor } from './Common';
-import { ensureCookie } from '@/api/addon/util';
+import { createYoudaoTranslator } from '@/external';
 
 export class YoudaoTranslator implements SegmentTranslator {
   id = <const>'youdao';
@@ -13,17 +9,9 @@ export class YoudaoTranslator implements SegmentTranslator {
   segmentor = createLengthSegmentor(3500);
   private translator: PackageYoudaoTranslator;
 
-  constructor(log: Logger, client: KyInstance) {
+  constructor(log: Logger, translator: PackageYoudaoTranslator) {
     this.log = log;
-    this.translator = new PackageYoudaoTranslator({
-      client,
-      log,
-    });
-  }
-
-  async init() {
-    await this.translator.init();
-    return this;
+    this.translator = translator;
   }
 
   async translate(
@@ -36,20 +24,7 @@ export class YoudaoTranslator implements SegmentTranslator {
   }
 }
 
-const getClient = lazy(async (): Promise<KyInstance> => {
-  const addon = window.Addon;
-  if (!addon) return ky;
-
-  await ensureCookie(addon, 'https://dict.youdao.com/', '.youdao.com', [
-    'OUTFOX_SEARCH_USER_ID',
-  ]);
-
-  return ky.create({
-    fetch: addon.fetch.bind(window.Addon),
-  });
-});
-
 export namespace YoudaoTranslator {
   export const create = async (log: Logger) =>
-    new YoudaoTranslator(log, await getClient()).init();
+    new YoudaoTranslator(log, await createYoudaoTranslator(log));
 }

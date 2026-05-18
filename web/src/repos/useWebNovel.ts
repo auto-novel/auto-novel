@@ -1,13 +1,9 @@
 import { HTTPError } from 'ky';
 import { useQuery, useQueryCache } from '@pinia/colada';
 
-import type { WebNovelMetadata } from '@/api';
-import {
-  FavoredApi,
-  ReadHistoryApi,
-  WebNovelApi,
-  WebNovelCrawlerApi,
-} from '@/api';
+import { FavoredApi, ReadHistoryApi, WebNovelApi } from '@/api';
+import type { WebNovelMetadata } from '@/external';
+import { WebNovelCrawlerApi } from '@/external';
 import { withOnSuccess } from './cache';
 
 const ItemKey = 'web-novel';

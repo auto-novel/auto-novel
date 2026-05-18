@@ -1,6 +1,5 @@
 import { HTTPError, TimeoutError } from 'ky';
 
-export * from './addon';
 export * from './auth';
 export * from './novel';
 

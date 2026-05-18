@@ -11,11 +11,12 @@ import {
   WebNovelCrawler,
 } from '@auto-novel/crawler';
 
+import { AddonNotFoundError } from '@/external/errors';
 import { lazy } from '@/util';
 
 const getCrawler = lazy(async () => {
   const addon = window.Addon;
-  if (!addon) return undefined;
+  if (!addon) throw new AddonNotFoundError();
 
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
   const hamelnClient = ky.create({
@@ -38,9 +39,6 @@ const getMetadata = async (
   novelId: string,
 ): Promise<WebNovelMetadata> => {
   const crawler = await getCrawler();
-  if (!window.Addon || !crawler) {
-    throw new Error('未检测到浏览器扩展，无法抓取网页小说');
-  }
   return crawler.getMetadata(providerId, novelId);
 };
 
