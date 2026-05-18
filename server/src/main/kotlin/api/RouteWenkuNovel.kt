@@ -226,16 +226,18 @@ fun Route.routeWenkuNovel() {
 private fun throwNovelNotFound(): Nothing =
     throwNotFound("小说不存在")
 
-private fun validateVolumeId(volumeId: String) {
-    val maxFilenameChars = 80
+private fun validateVolumeId(volumeId: String, strictMode: Boolean = false) {
+    // temp file: [.xx].epub.xx.temp, 8 bytes
+    // final file: [jp-zh.Ybygs.]XXXX.epub, 12 bytes
+    val maxFilenameBytes = 255 - 15
     val windowsInvalidFilenameChars = setOf('<', '>', ':', '"', '/', '\\', '|', '?', '*')
 
     if (!volumeId.endsWith(".txt") && !volumeId.endsWith(".epub"))
         throwBadRequest("不支持的文件格式")
 
-    val nameLength = volumeId.length
-    if (nameLength == 0 || nameLength > maxFilenameChars) {
-        throwBadRequest("文件名长度错误（最大 $maxFilenameChars 字符）")
+    val nameBytes = volumeId.toByteArray(Charsets.UTF_8).size
+    if (strictMode && (nameBytes == 0 || nameBytes > maxFilenameBytes)) {
+        throwBadRequest("文件名长度过长")
     }
 
     val hasInvalidChar = volumeId.any { ch ->
@@ -484,7 +486,7 @@ class WenkuNovelApi(
         unpack: Boolean,
     ): Int {
         validateNovelId(novelId)
-        validateVolumeId(volumeId)
+        validateVolumeId(volumeId, strictMode = true)
 
         val total = try {
             volumeRepo.createVolume(
