@@ -10,5 +10,7 @@ export type {
   SakuraVersion,
   SakuraTranslatorConfig,
 } from './translator/sakura-translator';
+export { allowModels } from './translator/sakura-prompt';
+export type { ModelMeta } from './translator/sakura-prompt';
 export type { YoudaoTranslatorConfig } from './translator/youdao-translator';
 export { YoudaoTranslator } from './translator/youdao-translator';

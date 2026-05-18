@@ -6,16 +6,27 @@ import type {
 } from '@/types';
 
 import { createOpenAiApi } from './openai-api';
-import { createSakuraPromptBuilder } from './sakura-prompt';
+import {
+  allowModels,
+  createSakuraPromptBuilder,
+  type ModelMeta,
+} from './sakura-prompt';
 
 export type SakuraVersion = '0.8' | '0.9' | '0.10' | '1.0';
 
 export type SakuraTranslatorConfig = {
   endpoint: string;
-  version?: SakuraVersion;
   prevSegLength?: number;
   promptBuilder?: PromptBuilder;
   log?: Logger;
+};
+
+type ResolvedSakuraTranslatorConfig = {
+  api: ReturnType<typeof createOpenAiApi>;
+  version: SakuraVersion;
+  prevSegLength: number;
+  promptBuilder: PromptBuilder;
+  log: Logger;
 };
 
 export class SakuraTranslator implements Translator {
@@ -24,14 +35,65 @@ export class SakuraTranslator implements Translator {
   private prevSegLength: number;
   private promptBuilder: PromptBuilder;
   private log: Logger;
+  model?: {
+    id: string;
+    meta: ModelMeta;
+  };
 
-  constructor(config: SakuraTranslatorConfig) {
-    this.api = createOpenAiApi(config.endpoint, 'no-key');
-    this.version = config.version ?? '1.0';
-    this.prevSegLength = config.prevSegLength ?? 500;
-    this.promptBuilder =
-      config.promptBuilder ?? createSakuraPromptBuilder(this.version);
-    this.log = config.log ?? (() => {});
+  private constructor(config: ResolvedSakuraTranslatorConfig) {
+    this.api = config.api;
+    this.version = config.version;
+    this.prevSegLength = config.prevSegLength;
+    this.promptBuilder = config.promptBuilder;
+    this.log = config.log;
+  }
+
+  get currentVersion(): SakuraVersion {
+    return this.version;
+  }
+
+  static async create(config: SakuraTranslatorConfig) {
+    const api = createOpenAiApi(config.endpoint, 'no-key');
+    const log = config.log ?? (() => {});
+    const model = await SakuraTranslator.detectModel(api, log);
+    const version = SakuraTranslator.detectVersion(model?.id);
+    const translator = new SakuraTranslator({
+      api,
+      version,
+      prevSegLength: config.prevSegLength ?? 500,
+      promptBuilder: config.promptBuilder ?? createSakuraPromptBuilder(version),
+      log,
+    });
+    translator.model = model;
+    return translator;
+  }
+
+  allowUpload() {
+    if (this.prevSegLength !== 500) {
+      this.log('前文长度不是500');
+      return false;
+    }
+
+    if (this.model === undefined) {
+      this.log('无法获取模型数据');
+      return false;
+    }
+
+    const metaCurrent = this.model.meta;
+    const metaExpected = allowModels[this.model.id]?.meta;
+    if (metaExpected === undefined) {
+      this.log(`模型为${this.model.id}，禁止上传`);
+      return false;
+    }
+
+    for (const key in metaExpected) {
+      if (metaCurrent[key] !== metaExpected[key]) {
+        this.log('模型检查未通过，不要尝试欺骗模型检查');
+        return false;
+      }
+    }
+    this.log(`模型为${this.model.id}，允许上传`);
+    return true;
   }
 
   async translate(
@@ -93,6 +155,37 @@ export class SakuraTranslator implements Translator {
     return result;
   }
 
+  private static detectVersion(id?: string): SakuraVersion {
+    if (id?.includes('0.8')) return '0.8';
+    if (id?.includes('0.9')) return '0.9';
+    if (id?.includes('0.10')) return '0.10';
+    if (id?.includes('1.0')) return '1.0';
+    return '1.0';
+  }
+
+  private static async detectModel(
+    api: ReturnType<typeof createOpenAiApi>,
+    log: Logger,
+  ) {
+    const modelsPage = await api
+      .listModels({
+        headers: {
+          'ngrok-skip-browser-warning': '69420',
+        },
+      })
+      .catch((e) => {
+        log(`获取模型数据失败：${e}`);
+      });
+    const model = modelsPage?.data[0];
+    if (model === undefined) {
+      return undefined;
+    }
+    return {
+      id: model.id.replace(/(.gguf)$/, ''),
+      meta: model.meta as ModelMeta,
+    };
+  }
+
   private async createChatCompletions(
     lines: string[],
     context?: SegmentContext,
@@ -112,7 +205,10 @@ export class SakuraTranslator implements Translator {
         max_tokens: maxNewToken,
         frequency_penalty: hasDegradation ? 0.2 : 0.0,
       },
-      { signal },
+      {
+        signal,
+        timeout: false,
+      },
     );
 
     return {

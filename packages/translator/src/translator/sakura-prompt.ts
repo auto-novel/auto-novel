@@ -2,6 +2,57 @@ import type { PromptBuilder, SegmentContext } from '@/types';
 
 import type { SakuraVersion } from './sakura-translator';
 
+export type ModelMeta = Record<string, number>;
+
+export const allowModels: {
+  [key: string]: { repo: string; meta: ModelMeta };
+} = {
+  'sakura-14b-qwen2.5-v1.0-iq4xs': {
+    repo: 'SakuraLLM/Sakura-14B-Qwen2.5-v1.0-GGUF',
+    meta: {
+      vocab_type: 2,
+      n_vocab: 152064,
+      n_ctx_train: 131072,
+      n_embd: 5120,
+      n_params: 14770033664,
+      size: 8180228096,
+    },
+  },
+  'sakura-14b-qwen2.5-v1.0-q6k': {
+    repo: 'SakuraLLM/Sakura-14B-Qwen2.5-v1.0-GGUF',
+    meta: {
+      vocab_type: 2,
+      n_vocab: 152064,
+      n_ctx_train: 131072,
+      n_embd: 5120,
+      n_params: 14770033664,
+      size: 12118716416,
+    },
+  },
+  'sakura-14b-qwen2beta-v0.9.2-iq4xs': {
+    repo: 'SakuraLLM/Sakura-14B-Qwen2beta-v0.9.2-GGUF',
+    meta: {
+      vocab_type: 2,
+      n_vocab: 152064,
+      n_ctx_train: 32768,
+      n_embd: 5120,
+      n_params: 14167290880,
+      size: 7908392960,
+    },
+  },
+  'sakura-32b-qwen2beta-v0.9-iq4xs': {
+    repo: 'SakuraLLM/Sakura-32B-Qwen2beta-v0.9-GGUF',
+    meta: {
+      vocab_type: 2,
+      n_vocab: 152064,
+      n_ctx_train: 32768,
+      n_embd: 5120,
+      n_params: 32512218112,
+      size: 17728790528,
+    },
+  },
+};
+
 export const createSakuraPromptBuilder = (
   version: SakuraVersion,
 ): PromptBuilder => {
