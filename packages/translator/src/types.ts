@@ -66,6 +66,8 @@ export type PromptBuilder = (
   context?: SegmentContext,
 ) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
 
+export type Logger = (message: string, detail?: string[]) => void;
+
 export interface Translator {
   translate(
     lines: string[],

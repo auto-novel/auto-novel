@@ -19,7 +19,9 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     const parts: string[] = [];
 
     //术语表处理
-    const pairs = Object.entries(glossary);
+    const pairs = Object.entries(glossary).filter(([jp]) =>
+      lines.some((line) => line.includes(jp)),
+    );
     if (pairs.length > 0) {
       parts.push('翻译的时候参考下面的术语表：');
       for (const [jp, zh] of pairs) {

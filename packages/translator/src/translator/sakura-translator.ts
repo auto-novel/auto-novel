@@ -1,4 +1,9 @@
-import type { SegmentContext, Translator, PromptBuilder } from '@/types';
+import type {
+  Logger,
+  SegmentContext,
+  Translator,
+  PromptBuilder,
+} from '@/types';
 
 import { createOpenAiApi } from './openai-api';
 import { createSakuraPromptBuilder } from './sakura-prompt';
@@ -10,6 +15,7 @@ export type SakuraTranslatorConfig = {
   version?: SakuraVersion;
   prevSegLength?: number;
   promptBuilder?: PromptBuilder;
+  log?: Logger;
 };
 
 export class SakuraTranslator implements Translator {
@@ -17,6 +23,7 @@ export class SakuraTranslator implements Translator {
   private version: SakuraVersion;
   private prevSegLength: number;
   private promptBuilder: PromptBuilder;
+  private log: Logger;
 
   constructor(config: SakuraTranslatorConfig) {
     this.api = createOpenAiApi(config.endpoint, 'no-key');
@@ -24,6 +31,7 @@ export class SakuraTranslator implements Translator {
     this.prevSegLength = config.prevSegLength ?? 500;
     this.promptBuilder =
       config.promptBuilder ?? createSakuraPromptBuilder(this.version);
+    this.log = config.log ?? (() => {});
   }
 
   async translate(
@@ -50,12 +58,22 @@ export class SakuraTranslator implements Translator {
 
       const splitText = text.replaceAll('<|im_end|>', '').split('\n');
       const linesNotMatched = lines.length !== splitText.length;
+      const parts: string[] = [`第${retry + 1}次`];
+      if (hasDegradation) {
+        parts.push('退化');
+      } else if (linesNotMatched) {
+        parts.push('行数不匹配');
+      } else {
+        parts.push('成功');
+      }
+      this.log(parts.join('　'), [lines.join('\n'), text]);
 
       if (!hasDegradation && !linesNotMatched) {
         return splitText;
       }
       retry++;
     }
+    this.log('逐行翻译');
     return this.translateLineByLine(lines, translateContext, signal);
   }
 
@@ -129,6 +147,7 @@ export class SakuraTranslator implements Translator {
 
       if (hasDegradation) {
         degradationLineCount++;
+        this.log(`单行退化${degradationLineCount}次`, [line, text]);
         if (degradationLineCount >= 2) {
           throw new Error('单个分段有2行退化，Sakura翻译器可能存在异常');
         }

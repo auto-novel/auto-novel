@@ -1,4 +1,9 @@
-import type { PromptBuilder, SegmentContext, Translator } from '@/types';
+import type {
+  Logger,
+  PromptBuilder,
+  SegmentContext,
+  Translator,
+} from '@/types';
 import { detectChinese } from '@/utils';
 
 import { createOpenAiApi } from './openai-api';
@@ -9,17 +14,20 @@ export type OpenAiTranslatorConfig = {
   key: string;
   model: string;
   promptBuilder?: PromptBuilder;
+  log?: Logger;
 };
 
 export class OpenAiTranslator implements Translator {
   private api: ReturnType<typeof createOpenAiApi>;
   private model: string;
   private promptBuilder: PromptBuilder;
+  private log: Logger;
 
   constructor(config: OpenAiTranslatorConfig) {
     this.api = createOpenAiApi(config.endpoint, config.key);
     this.model = config.model;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
+    this.log = config.log ?? (() => {});
   }
 
   async translate(
@@ -29,20 +37,31 @@ export class OpenAiTranslator implements Translator {
   ): Promise<string[]> {
     if (lines.length === 0) return [];
 
+    const logSegInfo = (retry: number, lineNumber: [number, number]) => {
+      const parts: string[] = [];
+      const [input, output] = lineNumber;
+      parts.push(`第${retry + 1}次`);
+      parts.push(`原文/输出：${input}/${output}行`);
+      this.log(parts.join('　'));
+    };
+
     let retry = 0;
     let failBecauseLineNumberNotMatch = 0;
 
     while (retry < 3) {
       const result = await this.translateLines(lines, context, signal);
+      logSegInfo(retry, [lines.length, result.length]);
 
       if (lines.length !== result.length) {
         failBecauseLineNumberNotMatch++;
+        this.log('输出错误：输出行数不匹配');
         retry++;
         continue;
       }
 
       const joined = result.join(' ');
       if (!detectChinese(joined)) {
+        this.log('输出错误：输出语言不是中文');
         retry++;
         continue;
       }
@@ -61,32 +80,29 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
+    const parseAnswer = (answer: string) => {
+      return answer
+        .split('\n')
+        .filter((s) => s.trim())
+        .map((s, i) =>
+          s
+            .replace(`#${i + 1}:`, '')
+            .replace(`#${i + 1}：`, '')
+            .trim(),
+        );
+    };
+
     const messages = this.promptBuilder(lines, context);
     const completion = await this.api.createChatCompletions(
       {
         model: this.model,
         messages,
-        temperature: 0.1,
-        top_p: 0.3,
-        max_tokens: Math.max(Math.ceil(lines.join('').length * 1.7), 100),
       },
       { signal },
     );
 
     const content = completion.choices[0]?.message?.content ?? '';
-    return this.parseAnswer(content);
-  }
-
-  private parseAnswer(answer: string): string[] {
-    return answer
-      .split('\n')
-      .filter((s) => s.trim())
-      .map((s, i) =>
-        s
-          .replace(`#${i + 1}:`, '')
-          .replace(`#${i + 1}：`, '')
-          .trim(),
-      );
+    return parseAnswer(content);
   }
 
   private async binaryTranslate(
@@ -112,6 +128,7 @@ export class OpenAiTranslator implements Translator {
         binary(left, mid),
         binary(mid, right),
       ]);
+      this.log(`翻译${left + 1}到${right}行`);
 
       // 校验子结果行数是否匹配，不匹配则继续递归
       const expectedLeftLen = mid - left;
@@ -125,6 +142,12 @@ export class OpenAiTranslator implements Translator {
           ? partRight
           : await binary(mid, right);
 
+      if (
+        fixedLeft.length !== expectedLeftLen ||
+        fixedRight.length !== expectedRightLen
+      ) {
+        this.log('失败，继续二分');
+      }
       return fixedLeft.concat(fixedRight);
     };
 
