@@ -13,7 +13,7 @@ type SmartImportCallback = {
 
 const parseTitle = (title: string) => {
   // 替换全角空格
-  title.replaceAll('　', ' ');
+  title = title.replaceAll('　', ' ');
 
   const irrelevantKeywords = [
     '特典',
