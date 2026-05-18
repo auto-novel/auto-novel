@@ -1,4 +1,4 @@
-import type { AddonApi, CookieStatus } from '@/util/useAddon';
+import type { AddonApi, CookieStatus } from '@/api/addon/types';
 
 function allCookiesAvailable(
   status: Record<string, CookieStatus | undefined>,
