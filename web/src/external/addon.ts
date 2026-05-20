@@ -4,7 +4,6 @@ export interface CookieStatus {
   domain: string;
   name: string;
   value: string;
-  hostOnly: boolean;
   httpOnly?: boolean;
   secure?: boolean;
   sameSite?: 'no_restriction' | 'lax' | 'strict' | 'unspecified';

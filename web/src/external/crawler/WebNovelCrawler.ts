@@ -14,13 +14,36 @@ import {
 import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
+let bypassHamelnR18: Promise<void> | undefined;
+const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
+  bypassHamelnR18 ??= addon
+    .cookiesPatch({
+      url: 'https://syosetu.org',
+      patches: {
+        over18: {
+          name: 'over18',
+          domain: 'syosetu.org',
+          value: 'off',
+        },
+      },
+    })
+    .catch((err) => {
+      console.error('Failed to set over18 cookie for Hameln:', err);
+      bypassHamelnR18 = undefined;
+    });
+  return bypassHamelnR18;
+};
+
 const getCrawler = lazy(async () => {
   const addon = getAddon();
 
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
+
   const hamelnClient = ky.create({
-    fetch: (input: string | URL | Request, init?: RequestInit) =>
-      addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, init),
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      await ensureBypassR18(addon);
+      return addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, init);
+    },
   });
 
   return new WebNovelCrawler({
