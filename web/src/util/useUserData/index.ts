@@ -92,7 +92,8 @@ function useUserDataWithAuth(app: string) {
   const refreshIfNeeded = () => {
     // 刷新 Access Token，冷却时间为1小时
     const cooldown = 60 * 60 * 1000;
-    const sinceIssuedAt = Date.now() - (userData.value.profile?.issuedAt ?? 0);
+    const sinceIssuedAt =
+      Date.now() - (userData.value.profile?.issuedAt ?? 0) * 1000;
     if (sinceIssuedAt < cooldown) {
       return;
     }
