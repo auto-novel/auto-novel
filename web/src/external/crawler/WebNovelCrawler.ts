@@ -16,6 +16,7 @@ import { lazy } from '@/util';
 
 let bypassHamelnR18: Promise<void> | undefined;
 const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
+  if (typeof addon?.cookiesPatch !== 'function') return true;
   bypassHamelnR18 ??= addon
     .cookiesPatch({
       url: 'https://syosetu.org',
