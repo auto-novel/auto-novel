@@ -84,4 +84,9 @@ export interface TranslationLoop {
   concurrency?: number;
 }
 
+export interface SegmentCache {
+  get(segment: Segment): Promise<string[] | undefined>;
+  set(segment: Segment, translatedLines: string[]): Promise<void>;
+}
+
 export class Visualizer {}

@@ -111,12 +111,21 @@ export class SakuraTranslator implements Translator {
 
     let retry = 0;
     while (retry < 3) {
-      const { text, hasDegradation } = await this.createChatCompletions(
-        lines,
-        translateContext,
-        retry > 0,
-        signal,
-      );
+      let text: string;
+      let hasDegradation: boolean;
+      try {
+        ({ text, hasDegradation } = await this.createChatCompletions(
+          lines,
+          translateContext,
+          retry > 0,
+          signal,
+        ));
+      } catch (err: any) {
+        if (err.name === 'AbortError') throw err;
+        this.log(`API 错误：${err}`);
+        retry++;
+        continue;
+      }
 
       const splitText = text.replaceAll('<|im_end|>', '').split('\n');
       const linesNotMatched = lines.length !== splitText.length;

@@ -12,6 +12,7 @@ import {
   TranslationLoop,
   Translator,
   Visualizer,
+  SegmentCache,
 } from '@/types';
 import { Semaphore } from '@/utils';
 
@@ -21,8 +22,13 @@ export class TranslationPipeline {
   protected visualizer?: Visualizer;
   private segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
+  private cache?: SegmentCache;
 
-  constructor(highWaterMark?: number, segmenter?: LineSegmenter) {
+  constructor(
+    highWaterMark?: number,
+    segmenter?: LineSegmenter,
+    cache?: SegmentCache,
+  ) {
     this.translatorLoops = new Map();
     this.queue = new DefaultSegmentQueue(highWaterMark ?? 50);
     this.segmenter = segmenter ?? createLineSegmenter(1500, 30);
@@ -123,6 +129,15 @@ export class TranslationPipeline {
       try {
         const segment = await this.queue.dequeue(loop.abortController.signal);
 
+        // 命中缓存
+        if (this.cache) {
+          const cached = await this.cache.get(segment);
+          if (cached) {
+            segment.onComplete(segment, cached);
+            continue;
+          }
+        }
+
         semaphore.use(async () => {
           if (loop.abortController.signal.aborted) return;
           try {
@@ -131,6 +146,11 @@ export class TranslationPipeline {
               segment.context,
               loop.abortController.signal,
             );
+            // 写入缓存
+            if (this.cache) {
+              await this.cache.set(segment, translatedLines);
+            }
+
             segment.onComplete(segment, translatedLines);
           } catch (err: any) {
             if (err.name === 'AbortError') return;

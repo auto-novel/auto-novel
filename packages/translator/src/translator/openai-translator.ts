@@ -49,9 +49,17 @@ export class OpenAiTranslator implements Translator {
     let failBecauseLineNumberNotMatch = 0;
 
     while (retry < 3) {
-      const result = await this.translateLines(lines, context, signal);
-      logSegInfo(retry, [lines.length, result.length]);
+      let result: string[];
+      try {
+        result = await this.translateLines(lines, context, signal);
+      } catch (err: any) {
+        if (err.name === 'AbortError') throw err;
+        this.log(`API 错误：${err}`);
+        retry++;
+        continue;
+      }
 
+      logSegInfo(retry, [lines.length, result.length]);
       if (lines.length !== result.length) {
         failBecauseLineNumberNotMatch++;
         this.log('输出错误：输出行数不匹配');
