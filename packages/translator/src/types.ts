@@ -61,10 +61,13 @@ export abstract class SegmentQueue {
   abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
 }
 
-export type PromptBuilder = (
-  lines: string[],
-  context?: SegmentContext,
-) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+export interface PromptBuilder {
+  build: (
+    lines: string[],
+    context?: SegmentContext,
+  ) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  parseAnswer: (answer: string, originalLines: string[]) => string[];
+}
 
 export type Logger = (message: string, detail?: string[]) => void;
 

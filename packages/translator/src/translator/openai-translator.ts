@@ -54,7 +54,7 @@ export class OpenAiTranslator implements Translator {
         result = await this.translateLines(lines, context, signal);
       } catch (err: any) {
         if (err.name === 'AbortError') throw err;
-        this.log(`API 错误：${err}`);
+        this.log(`翻译错误：${err}`);
         retry++;
         continue;
       }
@@ -88,19 +88,12 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
-    const parseAnswer = (answer: string) => {
-      return answer
-        .split('\n')
-        .filter((s) => s.trim())
-        .map((s, i) =>
-          s
-            .replace(`#${i + 1}:`, '')
-            .replace(`#${i + 1}：`, '')
-            .trim(),
-        );
-    };
+    if (lines.length === 0) return [];
+    if (lines.every((l) => l.trim().length === 0)) {
+      return lines;
+    }
 
-    const messages = this.promptBuilder(lines, context);
+    const messages = this.promptBuilder.build(lines, context);
     const completion = await this.api.createChatCompletions(
       {
         model: this.model,
@@ -110,7 +103,7 @@ export class OpenAiTranslator implements Translator {
     );
 
     const content = completion.choices[0]?.message?.content ?? '';
-    return parseAnswer(content);
+    return this.promptBuilder.parseAnswer(content, lines);
   }
 
   private async binaryTranslate(
