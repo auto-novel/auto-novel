@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
 
   const config: UserConfig = {
     resolve: {
+      tsconfigPaths: true,
       alias: {
         '@': path.resolve(__dirname, 'src'),
       },
@@ -82,9 +83,6 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
-    },
-    resolve: {
-      tsconfigPaths: true,
     },
     plugins: [
       vue(),
