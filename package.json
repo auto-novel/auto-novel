@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "pnpm --stream -r run build"
+    "build": "pnpm --stream -r run build",
+    "dev:web": "pnpm -pnpm run build:web-stream --filter '@auto-novel/web^...' run build && pnpm --stream --parallel --filter '@auto-novel/web' --filter '@auto-novel/web^...' run dev"
   }
 }
