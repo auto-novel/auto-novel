@@ -1,16 +1,10 @@
 <script lang="ts" setup>
 import { useKeyModifier } from '@vueuse/core';
-import ky from 'ky';
 
 import { WebNovelApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
 import { TranslateTaskDescriptor } from '@/model/Translator';
-import {
-  useLocalVolumeStore,
-  useSettingStore,
-  useWhoamiStore,
-  useWorkspaceStore,
-} from '@/stores';
+import { useSettingStore, useWhoamiStore, useWorkspaceStore } from '@/stores';
 
 const props = defineProps<{
   providerId: string;
@@ -78,18 +72,6 @@ const files = computed(() => {
     }),
   };
 });
-
-const importToWorkspace = async () => {
-  const blob = await ky.get(files.value.jp.url).blob();
-  const file = new File([blob], files.value.jp.filename);
-
-  const repo = await useLocalVolumeStore();
-  await repo
-    .createVolume(file, 'default')
-    .then(() => repo.updateGlossary(file.name, toRaw(props.glossary)))
-    .then(() => message.success('导入成功'))
-    .catch((error) => message.error(`导入失败:${error}`));
-};
 
 const pressControl = useKeyModifier('Control');
 const submitJob = (id: 'gpt' | 'sakura') => {
@@ -209,11 +191,6 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         :href="files.zh.url"
         :download="files.zh.filename"
         target="_blank"
-      />
-      <c-button
-        label="导入日文至工作区"
-        :round="false"
-        @action="importToWorkspace"
       />
     </n-button-group>
   </n-flex>
