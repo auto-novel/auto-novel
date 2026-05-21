@@ -4,8 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --stream -r run build",
-    "build:web-deps": "pnpm --stream --filter '@auto-novel/web^...' run build",
-    "dev": "pnpm run build:web-deps && pnpm --filter '@auto-novel/web' run dev",
-    "dev:watch": "pnpm run build:web-deps && pnpm --stream --parallel --filter '@auto-novel/web' --filter '@auto-novel/web^...' run dev"
+    "dev:web": "pnpm -pnpm run build:web-stream --filter '@auto-novel/web^...' run build && pnpm --stream --parallel --filter '@auto-novel/web' --filter '@auto-novel/web^...' run dev"
   }
 }
