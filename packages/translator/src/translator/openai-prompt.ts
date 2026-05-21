@@ -1,7 +1,7 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
-  return (lines: string[], context?: SegmentContext) => {
+  const build = (lines: string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
@@ -38,4 +38,40 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     messages.push({ role: 'user', content: parts.join('\n') });
     return messages;
   };
+
+  const parseAnswer = (answer: string, originalLines: string[]): string[] => {
+    const lineContentMap = new Map<number, string>();
+
+    for (const line of answer.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const match = trimmed.match(/^#(\d+)[:：]?\s*(.*)/);
+      if (match) {
+        const lineNum = parseInt(match[1]);
+        const content = match[2];
+        lineContentMap.set(lineNum, content);
+      }
+    }
+
+    const result: string[] = [];
+    for (let i = 0; i < originalLines.length; i++) {
+      const lineNum = i + 1;
+      const originalLine = originalLines[i];
+
+      if (originalLine.trim().length === 0) {
+        result.push(originalLine);
+      } else {
+        const translated = lineContentMap.get(lineNum);
+        if (translated === undefined) {
+          throw new Error(`行数未对齐`);
+        }
+        const heading = originalLine.match(/^(\s*)/)?.[1] ?? '';
+        result.push(heading + translated);
+      }
+    }
+    return result;
+  };
+
+  return { build, parseAnswer };
 };

@@ -56,7 +56,7 @@ export const allowModels: {
 export const createSakuraPromptBuilder = (
   version: SakuraVersion,
 ): PromptBuilder => {
-  return (lines: string[], context?: SegmentContext) => {
+  const build = (lines: string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
     const prevSegs = context?.prevSegs;
     const messages: Array<{
@@ -139,4 +139,11 @@ export const createSakuraPromptBuilder = (
 
     return messages;
   };
+
+  const parseAnswer = (answer: string, _originalLines: string[]): string[] => {
+    const splitText = answer.replaceAll('<|im_end|>', '').split('\n');
+    return splitText;
+  };
+
+  return { build, parseAnswer };
 };

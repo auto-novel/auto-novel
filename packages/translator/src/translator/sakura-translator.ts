@@ -127,7 +127,7 @@ export class SakuraTranslator implements Translator {
         continue;
       }
 
-      const splitText = text.replaceAll('<|im_end|>', '').split('\n');
+      const splitText = this.promptBuilder.parseAnswer(text, lines);
       const linesNotMatched = lines.length !== splitText.length;
       const parts: string[] = [`第${retry + 1}次`];
       if (hasDegradation) {
@@ -201,7 +201,7 @@ export class SakuraTranslator implements Translator {
     hasDegradation?: boolean,
     signal?: AbortSignal,
   ): Promise<{ text: string; hasDegradation: boolean }> {
-    const messages = this.promptBuilder(lines, context);
+    const messages = this.promptBuilder.build(lines, context);
     const text = lines.join('\n');
     const maxNewToken = Math.max(Math.ceil(text.length * 1.7), 100);
 
