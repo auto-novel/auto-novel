@@ -1,3 +1,10 @@
+import type {
+  AmazonProduct,
+  AmazonProductSerial,
+  AmazonProductSet,
+  AmazonProductVolume,
+} from './types';
+
 import { extractAsin } from './util';
 
 const parseAuthor = (elements: HTMLCollectionOf<Element>) => {
@@ -24,7 +31,7 @@ const parseAuthor = (elements: HTMLCollectionOf<Element>) => {
   return { authors, artists };
 };
 
-export const getProduct = (doc: Document) => {
+export const getProduct = (doc: Document): AmazonProduct => {
   if (doc.getElementsByClassName('series-childAsin-widget').item(0) !== null) {
     return {
       type: 'serial' as const,
@@ -43,7 +50,7 @@ export const getProduct = (doc: Document) => {
   }
 };
 
-const parseProductSerial = (doc: Document) => {
+const parseProductSerial = (doc: Document): AmazonProductSerial => {
   const title = doc.getElementById('collection-title')?.textContent?.trim();
 
   const total =
@@ -52,7 +59,7 @@ const parseProductSerial = (doc: Document) => {
   return { title, total };
 };
 
-const parseProductSet = (doc: Document) => {
+const parseProductSet = (doc: Document): AmazonProductSet => {
   const title = doc.getElementById('productTitle')!.textContent!;
   const { authors, artists } = parseAuthor(
     doc.getElementsByClassName('author'),
@@ -76,7 +83,7 @@ const parseProductSet = (doc: Document) => {
   };
 };
 
-const parseProductVolume = (doc: Document) => {
+const parseProductVolume = (doc: Document): AmazonProductVolume => {
   const title = doc.getElementById('productTitle')?.textContent;
   if (!title) throw new Error('解析错误：未找到标题');
 
@@ -169,7 +176,10 @@ const parseProductVolume = (doc: Document) => {
   };
 };
 
-export const resolveKindleAsin = (doc: Document, fallbackAsin: string) => {
+export const resolveKindleAsin = (
+  doc: Document,
+  fallbackAsin: string,
+): string => {
   const kindleLink = doc
     .getElementById('tmm-grid-swatch-KINDLE')
     ?.querySelector('a');

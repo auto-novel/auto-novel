@@ -1,4 +1,9 @@
 import type { KyInstance, Options } from 'ky';
+import type {
+  AmazonProduct,
+  AmazonSearchItem,
+  AmazonSerial,
+} from '@/amazon/types';
 
 import {
   resolveKindleAsin as parseKindleAsin,
@@ -12,7 +17,7 @@ const AMAZON_JP_URL = 'https://www.amazon.co.jp';
 export class AmazonCrawler {
   constructor(private readonly client: KyInstance) {}
 
-  private async getHtml(url: string, options?: Options) {
+  private async getHtml(url: string, options?: Options): Promise<Document> {
     const response = await this.client.get(url, {
       prefixUrl: AMAZON_JP_URL,
       redirect: 'manual',
@@ -34,16 +39,16 @@ export class AmazonCrawler {
     return parser.parseFromString(html, 'text/html');
   }
 
-  async getProduct(asin: string) {
+  async getProduct(asin: string): Promise<AmazonProduct> {
     return parseProduct(await this.getHtml(`dp/${asin}`));
   }
 
-  async resolveKindleAsin(asin: string) {
+  async resolveKindleAsin(asin: string): Promise<string> {
     if (asin.startsWith('B')) return asin;
     return parseKindleAsin(await this.getHtml(`dp/${asin}`), asin);
   }
 
-  async getSerial(asin: string, total: string) {
+  async getSerial(asin: string, total: string): Promise<AmazonSerial> {
     return parseSerial(
       await this.getHtml('kindle-dbs/productPage/ajax/seriesAsinList', {
         searchParams: {
@@ -55,7 +60,7 @@ export class AmazonCrawler {
     );
   }
 
-  async search(query: string) {
+  async search(query: string): Promise<AmazonSearchItem[]> {
     return parseSearch(
       await this.getHtml('s', {
         searchParams: {

@@ -1,6 +1,8 @@
+import type { AmazonSerial } from './types';
+
 import { extractAsin } from './util';
 
-export const getSerial = (doc: Document) => {
+export const getSerial = (doc: Document): AmazonSerial => {
   const authorsSet = new Set<string>();
   const artistsSet = new Set<string>();
   doc.querySelectorAll('[data-action="a-popover"]').forEach((element) => {

@@ -1,6 +1,8 @@
+import type { AmazonSearchItem } from './types';
+
 import { extractAsin } from './util';
 
-export const search = (doc: Document) => {
+export const search = (doc: Document): AmazonSearchItem[] => {
   const items = Array.from(
     doc.getElementsByClassName('s-search-results')[0].children,
   );
