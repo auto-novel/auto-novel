@@ -45,7 +45,7 @@ const getCrawler = lazy(async () => {
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
 
   const hamelnClient = ky.create({
-    fetch: (input: string | URL | Request, init?: RequestInit) => {
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
       await ensureBypassR18(addon);
 
       const headers = toHeaderRecord(init?.headers);
