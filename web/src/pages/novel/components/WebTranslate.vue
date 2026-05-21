@@ -192,6 +192,11 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         :download="files.zh.filename"
         target="_blank"
       />
+      <DownloadOptionsButton
+        :round="false"
+        :show-file-type="true"
+        :show-filename-type="true"
+      />
     </n-button-group>
   </n-flex>
 

@@ -219,6 +219,9 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
           :glossary="novel.glossary"
           style="margin-top: 16px"
         />
+        <n-flex style="margin-top: 16px">
+          <DownloadOptionsButton :round="false" />
+        </n-flex>
         <n-divider style="margin: 16px 0 0" />
 
         <n-list>
