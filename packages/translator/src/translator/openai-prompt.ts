@@ -64,7 +64,7 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
       } else {
         const translated = lineContentMap.get(lineNum);
         if (translated === undefined) {
-          throw new Error(`行数未对齐`);
+          throw new Error(`行数不匹配`);
         }
         const heading = originalLine.match(/^(\s*)/)?.[1] ?? '';
         result.push(heading + translated);
