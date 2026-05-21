@@ -7,6 +7,8 @@ import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
 
+import path from 'path';
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const apiMode = env.VITE_API_MODE;
@@ -23,6 +25,11 @@ export default defineConfig(({ mode }) => {
   const enableSonda = env.VITE_ENABLE_SONDA === 'true';
 
   const config: UserConfig = {
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+      },
+    },
     build: {
       target: ['es2015'],
       cssCodeSplit: false,
