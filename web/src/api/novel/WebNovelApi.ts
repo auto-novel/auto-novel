@@ -32,6 +32,10 @@ export interface WebNovelMutationBody {
   toc: WebNovelMutationTocItem[];
 }
 
+export interface WebNovelChapterMutationBody {
+  paragraphs: string[];
+}
+
 const listNovel = ({
   page,
   pageSize,
@@ -93,6 +97,22 @@ const updateNovel = (
   novelId: string,
   json: WebNovelMutationBody,
 ) => client.put(`novel/${providerId}/${novelId}`, { json });
+
+const createChapter = (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+  json: WebNovelChapterMutationBody,
+) =>
+  client.post(`novel/${providerId}/${novelId}/chapter/${chapterId}`, { json });
+
+const updateChapter = (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+  json: WebNovelChapterMutationBody,
+) =>
+  client.put(`novel/${providerId}/${novelId}/chapter/${chapterId}`, { json });
 
 const updateNovelTranslation = (
   providerId: string,
@@ -218,6 +238,8 @@ export const WebNovelApi = {
 
   createNovel,
   updateNovel,
+  createChapter,
+  updateChapter,
   updateNovelTranslation,
   updateNovelWenkuId,
   updateGlossary,

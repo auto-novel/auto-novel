@@ -132,8 +132,17 @@ export const WebNovelRepo = {
   useWebNovelFavoredList,
 
   createNovel: WebNovelApi.createNovel,
+  createChapter: WebNovelApi.createChapter,
   updateNovel: withOnSuccess(
     WebNovelApi.updateNovel,
+    (_, providerId, novelId) =>
+      useQueryCache().invalidateQueries({
+        key: [ItemKey, providerId, novelId],
+        exact: true,
+      }),
+  ),
+  updateChapter: withOnSuccess(
+    WebNovelApi.updateChapter,
     (_, providerId, novelId) =>
       useQueryCache().invalidateQueries({
         key: [ItemKey, providerId, novelId],
