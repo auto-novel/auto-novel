@@ -46,7 +46,7 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      const match = trimmed.match(/^#(\d+)[:：]?\s*(.*)/);
+      const match = trimmed.match(/^#(\d+)([:：]|\s+)(.*)/);
       if (match) {
         const lineNum = parseInt(match[1]);
         const content = match[2];
