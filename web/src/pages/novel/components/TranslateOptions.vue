@@ -2,12 +2,10 @@
 import { InfoOutlined } from '@vicons/material';
 
 import type { GenericNovelId } from '@/model/Common';
-import type { Glossary } from '@/model/Glossary';
 import type { TranslateTaskParams } from '@/model/Translator';
 
 const probs = defineProps<{
   gnid: GenericNovelId;
-  glossary: Glossary;
 }>();
 
 // 翻译设置
@@ -139,12 +137,6 @@ defineExpose({
           章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。均分任务只对排队生效，最大为10。
         </n-tooltip>
       </n-flex>
-    </c-action-wrapper>
-
-    <c-action-wrapper v-if="gnid.type !== 'local'" title="操作">
-      <n-button-group size="small">
-        <glossary-button :gnid="gnid" :value="glossary" :round="false" />
-      </n-button-group>
     </c-action-wrapper>
   </n-flex>
 </template>

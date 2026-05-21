@@ -143,7 +143,6 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     v-else
     ref="translateOptions"
     :gnid="GenericNovelId.web(providerId, novelId)"
-    :glossary="glossary"
   />
 
   <n-flex vertical style="margin-top: 16px">
@@ -171,6 +170,11 @@ const submitJob = (id: 'gpt' | 'sakura') => {
           label="排队Sakura"
           :round="false"
           @action="submitJob('sakura')"
+        />
+        <GlossaryButton
+          :gnid="GenericNovelId.web(providerId, novelId)"
+          :value="glossary"
+          :round="false"
         />
       </n-button-group>
     </template>
