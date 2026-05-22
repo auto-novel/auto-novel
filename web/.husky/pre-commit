@@ -1,2 +1,20 @@
+check_web_build() {
+  (
+    PNPM_BUILD_LOG=/tmp/pnpm-build-$RANDOM.log
+
+    echo "🏗️  Building web..."
+    FORCE_COLOR=1 pnpm build > "$PNPM_BUILD_LOG" 2>&1 || {
+      cat "$PNPM_BUILD_LOG"
+      rm "$PNPM_BUILD_LOG"
+      exit 1
+    }
+
+    rm "$PNPM_BUILD_LOG"
+    echo "✅  Web build succeeded!"
+  )
+}
+
+check_web_build
+
 cd web
 pnpm pretty-quick --staged
