@@ -84,3 +84,6 @@ export async function ensureCookie(
 
   throw new Error('Cookie is not available');
 }
+
+export const toHeaderDict = (headers?: HeadersInit): Record<string, string> =>
+  Object.fromEntries(new Headers(headers).entries());
