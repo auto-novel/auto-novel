@@ -16,6 +16,7 @@ export interface Segment {
   order: number;
   lines: string[];
   context?: SegmentContext;
+  onStart: (segment: Segment) => void;
   onComplete: (segment: Segment, translatedLines: string[]) => void;
   onError: (segment: Segment, reason: any) => void;
 }
@@ -47,6 +48,7 @@ export interface SegmentAssembler {
     lines: string[],
     ranges: LineRange[],
     glossary: Glossary,
+    onSegStart: (segment: Segment) => void,
     onSegComplete: (segment: Segment, translatedLines: string[]) => void,
     onSegError: (segment: Segment, reason: any) => void,
     history?: TranslationHistory,
@@ -92,4 +94,19 @@ export interface SegmentCache {
   set(segment: Segment, translatedLines: string[]): Promise<void>;
 }
 
-export class Visualizer {}
+export interface SegmentTracker {
+  /** 文本分段成功 */
+  onSegmentsReady?: (lines: string[], ranges: LineRange[]) => void;
+  /** 某段开始翻译 */
+  onSegStart?: (segmentOrder: number) => void;
+  /** 某段完成翻译 */
+  onSegComplete?: (segmentOrder: number, translatedLines: string[]) => void;
+  /** 某段翻译报错 */
+  onSegError?: (segmentOrder: number, error: any) => void;
+  /** 翻译被取消 */
+  onAbort?: () => void;
+}
+
+export interface TranslatorTracker {
+  onConcurrencyChange?: (current: number, max: number) => void;
+}

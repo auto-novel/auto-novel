@@ -6,20 +6,21 @@ import {
 import {
   Glossary,
   LineSegmenter,
+  Segment,
   SegmentAssembler,
   SegmentQueue,
   TranslationHistory,
   TranslationLoop,
   Translator,
-  Visualizer,
   SegmentCache,
+  SegmentTracker,
+  TranslatorTracker,
 } from '@/types';
 import { Semaphore } from '@/utils';
 
 export class TranslationPipeline {
   protected queue: SegmentQueue;
   protected translatorLoops: Map<string, TranslationLoop>;
-  protected visualizer?: Visualizer;
   private segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
   private cache?: SegmentCache;
@@ -33,6 +34,7 @@ export class TranslationPipeline {
     this.queue = new DefaultSegmentQueue(highWaterMark ?? 50);
     this.segmenter = segmenter ?? createLineSegmenter(1500, 30);
     this.assembler = createSegmentAssembler();
+    this.cache = cache;
   }
 
   async translate(
@@ -40,11 +42,13 @@ export class TranslationPipeline {
     glossary?: Glossary,
     history?: TranslationHistory,
     signal?: AbortSignal,
+    tracker?: SegmentTracker,
   ): Promise<string> {
     signal?.throwIfAborted();
 
     const lines = text.split('\n');
     const ranges = this.segmenter.segment(lines);
+    tracker?.onSegmentsReady?.(lines, ranges);
     glossary = glossary ?? {};
 
     type Deferred = {
@@ -53,20 +57,33 @@ export class TranslationPipeline {
     };
     const deferredMap = new Map<number, Deferred>();
 
+    const onSegStart = (segment: Segment) => {
+      tracker?.onSegStart?.(segment.order);
+    };
+
+    const onSegComplete = (segment: Segment, translatedLines: string[]) => {
+      deferredMap.get(segment.order)?.resolve({
+        order: segment.order,
+        text: translatedLines.join('\n'),
+      });
+      if (!signal?.aborted) {
+        tracker?.onSegComplete?.(segment.order, translatedLines);
+      }
+    };
+
+    const onSegError = (segment: Segment, reason: any) => {
+      tracker?.onSegError?.(segment.order, reason);
+      deferredMap.get(segment.order)?.reject(reason);
+    };
+
     const segments = this.assembler.assemble(
       crypto.randomUUID(),
       lines,
       ranges,
       glossary,
-      (segment, translatedLines) => {
-        deferredMap.get(segment.order)?.resolve({
-          order: segment.order,
-          text: translatedLines.join('\n'),
-        });
-      },
-      (segment, reason) => {
-        deferredMap.get(segment.order)?.reject(reason);
-      },
+      onSegStart,
+      onSegComplete,
+      onSegError,
       history,
     );
 
@@ -94,11 +111,17 @@ export class TranslationPipeline {
     await this.waitUntilBelowHighWaterMark(signal);
     this.queue.enqueueAll(segments);
     const results = await Promise.allSettled(segmentPromises);
+
+    if (signal?.aborted) {
+      tracker?.onAbort?.();
+      signal.throwIfAborted();
+    }
+
     const finalSegments = results.map((result, index) => {
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
-        // 如果该分片翻译失败或被取消，返回原文
+        // 如果该分片翻译失败，返回原文
         return {
           order: segments[index].order,
           text: segments[index].lines.join('\n'),
@@ -111,7 +134,11 @@ export class TranslationPipeline {
       .join('\n');
   }
 
-  registerTranslator(translator: Translator, concurrency?: number): void {
+  registerTranslator(
+    translator: Translator,
+    concurrency?: number,
+    tracker?: TranslatorTracker,
+  ): void {
     const id = crypto.randomUUID();
     const loop: TranslationLoop = {
       id,
@@ -120,11 +147,17 @@ export class TranslationPipeline {
       concurrency: concurrency ?? 1,
     };
     this.translatorLoops.set(id, loop);
-    this._startLoop(loop);
+    this._startLoop(loop, tracker);
   }
 
-  private async _startLoop(loop: TranslationLoop): Promise<void> {
+  private async _startLoop(
+    loop: TranslationLoop,
+    tracker?: TranslatorTracker,
+  ): Promise<void> {
     const semaphore = new Semaphore(loop.concurrency ?? 1);
+    const updateConcurrency = () => {
+      tracker?.onConcurrencyChange?.(semaphore.current, semaphore.max);
+    };
     while (!loop.abortController.signal.aborted) {
       try {
         const segment = await this.queue.dequeue(loop.abortController.signal);
@@ -138,25 +171,31 @@ export class TranslationPipeline {
           }
         }
 
-        semaphore.use(async () => {
-          if (loop.abortController.signal.aborted) return;
-          try {
-            const translatedLines = await loop.translator.translate(
-              segment.lines,
-              segment.context,
-              loop.abortController.signal,
-            );
-            // 写入缓存
-            if (this.cache) {
-              await this.cache.set(segment, translatedLines);
-            }
+        semaphore
+          .use(async () => {
+            updateConcurrency();
+            if (loop.abortController.signal.aborted) return;
+            try {
+              segment.onStart(segment);
+              const translatedLines = await loop.translator.translate(
+                segment.lines,
+                segment.context,
+                loop.abortController.signal,
+              );
+              // 写入缓存
+              if (this.cache) {
+                await this.cache.set(segment, translatedLines);
+              }
 
-            segment.onComplete(segment, translatedLines);
-          } catch (err: any) {
-            if (err.name === 'AbortError') return;
-            segment.onError(segment, err);
-          }
-        });
+              segment.onComplete(segment, translatedLines);
+            } catch (err: any) {
+              if (err.name === 'AbortError') return;
+              segment.onError(segment, err);
+            }
+          })
+          .then(() => {
+            updateConcurrency();
+          });
       } catch (err) {
         if (loop.abortController.signal.aborted) break;
       }
