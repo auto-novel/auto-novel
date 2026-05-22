@@ -2,7 +2,7 @@ import ky from 'ky';
 
 import { AmazonCrawler, extractAsin, prettyCover } from '@auto-novel/crawler';
 
-import { ensureCookie, getAddon } from '@/external/addon';
+import { ensureCookie, getAddon, toHeaderDict } from '@/external/addon';
 import { lazy } from '@/util';
 
 const getClient = async () => {
@@ -15,7 +15,12 @@ const getClient = async () => {
   await ensureCookie(addon, url, domain, keys);
 
   return ky.create({
-    fetch: addon.fetch.bind(addon),
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      const headers = toHeaderDict(init?.headers);
+      headers['accept-language'] =
+        'en-US, en;q=0.9, ja;q=0.8, zh-CN;q=0.7, zh;q=0.6, zh-TW;q=0.5, fr;q=0.4, pt;q=0.3';
+      return addon.fetch(input, { ...init, headers });
+    },
   });
 };
 
