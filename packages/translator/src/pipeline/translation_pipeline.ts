@@ -21,7 +21,7 @@ import { Semaphore } from '@/utils';
 export class TranslationPipeline {
   protected queue: SegmentQueue;
   protected translatorLoops: Map<string, TranslationLoop>;
-  private segmenter: LineSegmenter;
+  public segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
   private cache?: SegmentCache;
 
@@ -209,6 +209,13 @@ export class TranslationPipeline {
         this.translatorLoops.delete(id);
       }
     }
+  }
+
+  clearLoops(): void {
+    for (const [, loop] of this.translatorLoops) {
+      loop.abortController.abort();
+    }
+    this.translatorLoops.clear();
   }
 
   waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {

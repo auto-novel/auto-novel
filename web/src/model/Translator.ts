@@ -9,6 +9,10 @@ export interface GptWorker {
   key: string;
 }
 
+export interface GptPipelineWorker extends GptWorker {
+  concurrency: number;
+}
+
 export interface SakuraWorker {
   id: string;
   endpoint: string;

@@ -1,5 +1,6 @@
 import type {
   GptWorker,
+  GptPipelineWorker,
   SakuraWorker,
   TranslateJobRecord,
 } from '@/model/Translator';
@@ -123,6 +124,9 @@ const createGptWorkspaceStore = () =>
     });
   });
 
+const createGptPipelineWorkspaceStore = () =>
+  createWorkspaceStore<GptPipelineWorker>(LSKey.WorkspaceGptPipeline, []);
+
 const createSakuraWorkspaceStore = () =>
   createWorkspaceStore<SakuraWorker>(
     LSKey.WorkspaceSakura,
@@ -158,11 +162,16 @@ const createSakuraWorkspaceStore = () =>
   );
 
 export const useGptWorkspaceStore = lazy(createGptWorkspaceStore);
+export const useGptPipelineWorkspaceStore = lazy(
+  createGptPipelineWorkspaceStore,
+);
 export const useSakuraWorkspaceStore = lazy(createSakuraWorkspaceStore);
 
-export function useWorkspaceStore(type: 'gpt' | 'sakura') {
+export function useWorkspaceStore(type: 'gpt' | 'sakura' | 'gpt-pipeline') {
   if (type === 'gpt') {
     return useGptWorkspaceStore();
+  } else if (type === 'gpt-pipeline') {
+    return useGptPipelineWorkspaceStore();
   } else if (type === 'sakura') {
     return useSakuraWorkspaceStore();
   } else {
