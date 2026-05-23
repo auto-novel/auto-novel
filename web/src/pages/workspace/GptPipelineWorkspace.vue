@@ -60,6 +60,13 @@ const pipeline = new TranslationPipeline(
 let processLoopAbortController: AbortController | null = null;
 let processLoopPromise: Promise<void> | null = null;
 
+onUnmounted(() => {
+  pipeline.clearLoops();
+  processLoopAbortController?.abort();
+  processLoopAbortController = null;
+  processLoopPromise = null;
+  executingTasks.clear();
+});
 // ========== 任务过滤 ==========
 
 type TaskFilter = 'all' | 'done' | 'pending';
