@@ -12,6 +12,7 @@ import { buildChapterMetaList } from './utils';
 export class WenkuTranslationTask implements TranslationTask {
   readonly type = 'wenku' as const;
   readonly description: string;
+  readonly level: 'normal' | 'expire' | 'all' | 'sync';
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
@@ -26,6 +27,7 @@ export class WenkuTranslationTask implements TranslationTask {
     params: TranslateTaskParams,
   ) {
     this.description = `wenku/${novelId}/${volumeId}`;
+    this.level = params.level;
     this.params = params;
   }
 

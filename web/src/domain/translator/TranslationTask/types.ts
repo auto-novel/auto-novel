@@ -15,6 +15,7 @@ export interface TranslationTask {
   readonly chapters: ChapterMeta[];
   readonly glossary: Glossary;
   readonly glossaryId: string;
+  readonly level: 'normal' | 'expire' | 'all' | 'sync';
 
   /** 调用以初始化内部参数。防止多个Task初始化时发出大量请求 */
   initMeta(signal?: AbortSignal): Promise<void>;

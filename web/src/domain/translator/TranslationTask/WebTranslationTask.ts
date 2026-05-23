@@ -8,6 +8,7 @@ import { buildChapterMetaList } from './utils';
 export class WebTranslationTask implements TranslationTask {
   readonly type = 'web' as const;
   readonly description: string;
+  readonly level: 'normal' | 'expire' | 'all' | 'sync';
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
@@ -22,6 +23,7 @@ export class WebTranslationTask implements TranslationTask {
     params: TranslateTaskParams,
   ) {
     this.description = `web/${providerId}/${novelId}`;
+    this.level = params.level;
     this.params = params;
   }
 

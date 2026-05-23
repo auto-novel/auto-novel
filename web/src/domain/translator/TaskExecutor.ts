@@ -47,13 +47,14 @@ export class TaskExecutor {
       tracker.onLog(`[${chapter.title}] 开始翻译`);
 
       const original = detail.paragraphs.join('\n');
-      const history = detail.oldParagraphZh
-        ? {
-            lines: detail.paragraphs,
-            translatedLines: detail.oldParagraphZh,
-            glossary: detail.oldGlossary ?? {},
-          }
-        : undefined;
+      const history =
+        this.task.level !== 'all' && detail.oldParagraphZh
+          ? {
+              lines: detail.paragraphs,
+              translatedLines: detail.oldParagraphZh,
+              glossary: detail.oldGlossary ?? {},
+            }
+          : undefined;
       const translated = await this.pipeline.translate(
         original,
         detail.glossary,

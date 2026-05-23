@@ -4,11 +4,13 @@ import type { TranslateTaskParams } from '@/model/Translator';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
 import type { ChapterDetail, TranslationTask } from './types';
 import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
+import { useLocalVolumeStore } from '@/stores';
 import { buildChapterMetaList } from './utils';
 
 export class LocalTranslationTask implements TranslationTask {
   readonly type = 'local' as const;
   readonly description: string;
+  readonly level: 'normal' | 'expire' | 'all' | 'sync';
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
@@ -21,11 +23,11 @@ export class LocalTranslationTask implements TranslationTask {
     private params: TranslateTaskParams,
   ) {
     this.description = `local/${volumeId}`;
+    this.level = params.level;
   }
 
   private async _ensureStore(): Promise<void> {
     if (this.storeLoaded) return;
-    const { useLocalVolumeStore } = await import('@/stores');
     this.volumeStore = await useLocalVolumeStore();
     this.storeLoaded = true;
   }
