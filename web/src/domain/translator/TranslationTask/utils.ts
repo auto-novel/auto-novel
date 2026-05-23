@@ -5,6 +5,7 @@ export function buildChapterMetaList<T>(
   startIndex: number,
   level: 'normal' | 'expire' | 'all' | 'sync',
   isDone: (item: T) => boolean,
+  isExpired: (item: T) => boolean,
   toMeta: (item: T, order: number) => { chapterId: string; title: string },
 ): ChapterMeta[] {
   const chapters: ChapterMeta[] = [];
@@ -14,7 +15,13 @@ export function buildChapterMetaList<T>(
     const done = isDone(item);
     if (level === 'normal' && done) continue;
     const status: ChapterStatus =
-      level === 'all' ? 'pending' : done ? 'done' : 'pending';
+      level === 'all'
+        ? 'pending'
+        : level === 'expire' && done && isExpired(item)
+          ? 'pending'
+          : done
+            ? 'done'
+            : 'pending';
     chapters.push({ ...toMeta(item, order), order, status });
   }
   return chapters;

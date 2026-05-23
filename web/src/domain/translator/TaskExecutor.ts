@@ -38,7 +38,7 @@ export class TaskExecutor {
     tracker.onLog(`[${chapter.title}] 开始获取原文`);
 
     try {
-      const content = await this.task.fetchChapter(chapterId);
+      const detail = await this.task.fetchChapter(chapterId);
       if (signal?.aborted) {
         tracker.onChapterStatus(chapterId, 'pending');
         return 'abort';
@@ -47,11 +47,18 @@ export class TaskExecutor {
       tracker.onChapterStatus(chapterId, 'translating');
       tracker.onLog(`[${chapter.title}] 开始翻译`);
 
-      const original = content.paragraphs.join('\n');
+      const original = detail.paragraphs.join('\n');
+      const history = detail.oldParagraphZh
+        ? {
+            lines: detail.paragraphs,
+            translatedLines: detail.oldParagraphZh,
+            glossary: detail.oldGlossary ?? {},
+          }
+        : undefined;
       const translated = await this.pipeline.translate(
         original,
-        content.glossary,
-        undefined,
+        detail.glossary,
+        history,
         signal,
         tracker.segmentTracker,
       );
@@ -63,7 +70,7 @@ export class TaskExecutor {
 
       await this.task.uploadChapter(
         chapterId,
-        content.glossaryId,
+        detail.glossaryId,
         translated.split('\n'),
       );
 

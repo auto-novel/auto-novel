@@ -1,9 +1,5 @@
 import { reactive } from 'vue';
-import type {
-  SegmentTracker,
-  LineRange,
-  Glossary,
-} from '@auto-novel/translator';
+import type { SegmentTracker, LineRange } from '@auto-novel/translator';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
@@ -14,12 +10,6 @@ export interface ChapterMeta {
   order: number;
   status: ChapterStatus;
   segmentProgress?: { completed: number; total: number };
-}
-
-export interface ChapterContent {
-  paragraphs: string[];
-  glossary: Glossary;
-  glossaryId: string;
 }
 
 export interface SegmentInfo {

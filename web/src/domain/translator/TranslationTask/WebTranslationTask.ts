@@ -1,11 +1,7 @@
 import type { Glossary } from '@auto-novel/translator';
-import type { ChapterMeta, ChapterContent } from '../TaskState';
-import type {
-  TranslatorId,
-  TranslateTaskParams,
-  WebTranslateTask,
-} from '@/model/Translator';
-import type { TranslationTask } from './types';
+import type { ChapterMeta } from '../TaskState';
+import type { TranslateTaskParams, WebTranslateTask } from '@/model/Translator';
+import type { ChapterDetail, TranslationTask } from './types';
 import { WebNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 
@@ -33,7 +29,7 @@ export class WebTranslationTask implements TranslationTask {
     this.api = WebNovelApi.createTranslationApi(
       this.providerId,
       this.novelId,
-      this.translatorId as TranslatorId,
+      this.translatorId,
       this.params.level === 'sync',
       signal,
     );
@@ -44,34 +40,39 @@ export class WebTranslationTask implements TranslationTask {
 
     const { startIndex, endIndex, level } = this.params;
 
+    const validToc = task.toc
+      .filter((item) => item.chapterId !== undefined)
+      .slice(startIndex, endIndex);
+
     const isDone = (item: WebTranslateTask['toc'][number]) =>
       item.glossaryUuid !== undefined;
-    const toMeta = (item: WebTranslateTask['toc'][number], order: number) => ({
-      chapterId: item.chapterId ?? `${order}`,
+    const isExpired = (item: WebTranslateTask['toc'][number]) =>
+      item.glossaryUuid !== undefined &&
+      item.glossaryUuid !== task.glossaryUuid;
+    const toMeta = (item: WebTranslateTask['toc'][number], _order: number) => ({
+      chapterId: item.chapterId!,
       title: item.titleJp,
     });
 
     this.chapters = buildChapterMetaList(
-      task.toc.slice(startIndex, endIndex),
+      validToc,
       startIndex,
       level,
       isDone,
+      isExpired,
       toMeta,
     );
   }
 
-  async fetchChapter(chapterId: string): Promise<ChapterContent> {
+  async fetchChapter(chapterId: string): Promise<ChapterDetail> {
     const chapterTask = await this.api.getChapterTranslateTask(chapterId);
     return {
       paragraphs: chapterTask.paragraphJp,
       glossary: chapterTask.glossary,
       glossaryId: chapterTask.glossaryId,
+      oldParagraphZh: chapterTask.oldParagraphZh ?? null,
+      oldGlossary: chapterTask.oldGlossary,
     };
-  }
-
-  async fetchTranslation(chapterId: string): Promise<string[] | null> {
-    const chapterTask = await this.api.getChapterTranslateTask(chapterId);
-    return chapterTask.oldParagraphZh ?? null;
   }
 
   async uploadChapter(

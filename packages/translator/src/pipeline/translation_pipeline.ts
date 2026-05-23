@@ -171,6 +171,12 @@ export class TranslationPipeline {
           }
         }
 
+        // 旧译文未过期
+        if (segment.context?.expired === false && segment.context?.history) {
+          segment.onComplete(segment, segment.context.history.translatedLines);
+          continue;
+        }
+
         semaphore
           .use(async () => {
             updateConcurrency();

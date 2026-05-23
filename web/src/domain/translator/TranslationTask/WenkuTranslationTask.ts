@@ -1,11 +1,11 @@
 import type { Glossary } from '@auto-novel/translator';
-import type { ChapterMeta, ChapterContent } from '../TaskState';
+import type { ChapterMeta } from '../TaskState';
 import type {
   TranslatorId,
   TranslateTaskParams,
   WenkuTranslateTask,
 } from '@/model/Translator';
-import type { TranslationTask } from './types';
+import type { ChapterDetail, TranslationTask } from './types';
 import { WenkuNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 
@@ -33,7 +33,7 @@ export class WenkuTranslationTask implements TranslationTask {
     this.api = WenkuNovelApi.createTranslationApi(
       this.novelId,
       this.volumeId,
-      this.translatorId as TranslatorId,
+      this.translatorId,
       signal,
     );
 
@@ -45,6 +45,8 @@ export class WenkuTranslationTask implements TranslationTask {
 
     const isDone = (item: WenkuTranslateTask['toc'][number]) =>
       item.glossaryId !== undefined;
+    const isExpired = (item: WenkuTranslateTask['toc'][number]) =>
+      item.glossaryId !== undefined && item.glossaryId !== task.glossaryId;
     const toMeta = (
       item: WenkuTranslateTask['toc'][number],
       _order: number,
@@ -58,22 +60,20 @@ export class WenkuTranslationTask implements TranslationTask {
       startIndex,
       level,
       isDone,
+      isExpired,
       toMeta,
     );
   }
 
-  async fetchChapter(chapterId: string): Promise<ChapterContent> {
+  async fetchChapter(chapterId: string): Promise<ChapterDetail> {
     const chapterTask = await this.api.getChapterTranslateTask(chapterId);
     return {
       paragraphs: chapterTask.paragraphJp,
       glossary: chapterTask.glossary,
       glossaryId: chapterTask.glossaryId,
+      oldParagraphZh: chapterTask.oldParagraphZh ?? null,
+      oldGlossary: chapterTask.oldGlossary,
     };
-  }
-
-  async fetchTranslation(chapterId: string): Promise<string[] | null> {
-    const chapterTask = await this.api.getChapterTranslateTask(chapterId);
-    return chapterTask.oldParagraphZh ?? null;
   }
 
   async uploadChapter(
