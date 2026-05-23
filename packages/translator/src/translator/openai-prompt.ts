@@ -67,7 +67,7 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
           throw new Error(`行数不匹配`);
         }
         const heading = originalLine.match(/^(\s*)/)?.[1] ?? '';
-        result.push(heading + translated);
+        result.push(heading + translated.trimStart());
       }
     }
     return result;
