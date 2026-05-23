@@ -16,6 +16,7 @@ export type { YoudaoTranslatorConfig } from './translator/youdao-translator';
 export { YoudaoTranslator } from './translator/youdao-translator';
 
 export type {
+  Glossary,
   Segment,
   SegmentContext,
   SegmentCache,
