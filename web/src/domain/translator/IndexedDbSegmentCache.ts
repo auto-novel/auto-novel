@@ -15,6 +15,10 @@ export class IndexedDbSegmentCache implements SegmentCache {
     await TranslationCacheRepo.create(this.storeName, key, translatedLines);
   }
 
+  clear(): Promise<void> {
+    return TranslationCacheRepo.clear(this.storeName);
+  }
+
   private computeKey(segment: Segment): string {
     return MD5(
       JSON.stringify({
