@@ -57,8 +57,8 @@ export class TranslationPipeline {
     };
     const deferredMap = new Map<number, Deferred>();
 
-    const onSegStart = (segment: Segment) => {
-      tracker?.onSegStart?.(segment.order);
+    const onSegStart = (segment: Segment, translatorId: string) => {
+      tracker?.onSegStart?.(segment.order, translatorId);
     };
 
     const onSegComplete = (segment: Segment, translatedLines: string[]) => {
@@ -138,8 +138,9 @@ export class TranslationPipeline {
     translator: Translator,
     concurrency?: number,
     tracker?: TranslatorTracker,
-  ): void {
-    const id = crypto.randomUUID();
+    translatorId?: string,
+  ): string {
+    const id = translatorId ?? crypto.randomUUID();
     const loop: TranslationLoop = {
       id,
       translator,
@@ -148,6 +149,7 @@ export class TranslationPipeline {
     };
     this.translatorLoops.set(id, loop);
     this._startLoop(loop, tracker);
+    return id;
   }
 
   private async _startLoop(
@@ -182,7 +184,7 @@ export class TranslationPipeline {
             updateConcurrency();
             if (loop.abortController.signal.aborted) return;
             try {
-              segment.onStart(segment);
+              segment.onStart(segment, loop.id);
               const translatedLines = await loop.translator.translate(
                 segment.lines,
                 segment.context,
@@ -208,12 +210,11 @@ export class TranslationPipeline {
     }
   }
 
-  unregisterTranslator(translator: Translator): void {
-    for (const [id, loop] of this.translatorLoops) {
-      if (loop.translator === translator) {
-        loop.abortController.abort();
-        this.translatorLoops.delete(id);
-      }
+  unregisterTranslator(translatorId: string): void {
+    const loop = this.translatorLoops.get(translatorId);
+    if (loop) {
+      loop.abortController.abort();
+      this.translatorLoops.delete(translatorId);
     }
   }
 

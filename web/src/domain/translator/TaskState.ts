@@ -17,6 +17,7 @@ export interface SegmentInfo {
   lines: string[];
   translatedLines: string[];
   error: any;
+  translatorId?: string;
 }
 
 export class ChapterSegmentState implements SegmentTracker {
@@ -57,10 +58,11 @@ export class ChapterSegmentState implements SegmentTracker {
     this.ready = true;
   }
 
-  onSegStart(segmentOrder: number): void {
+  onSegStart(segmentOrder: number, translatorId: string): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
       seg.status = 'translating';
+      seg.translatorId = translatorId;
     }
   }
 
