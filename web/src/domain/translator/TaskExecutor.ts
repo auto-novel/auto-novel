@@ -1,13 +1,12 @@
 import { TranslationPipeline } from '@auto-novel/translator';
-import type { SegmentTracker } from '@auto-novel/translator';
-import type { ChapterStatus } from './TaskState';
+import type { ChapterStatus, ChapterSegmentState } from './TaskState';
 import type { TranslationTask } from './TranslationTask/types';
 
 export type ChapterTracker = {
   onChapterStatus: (chapterId: string, status: ChapterStatus) => void;
   onProgress: (finished: number, error: number, total: number) => void;
   onLog: (msg: string) => void;
-  segmentTracker?: SegmentTracker;
+  segmentTracker?: ChapterSegmentState;
 };
 
 export class TaskExecutor {
@@ -66,6 +65,17 @@ export class TaskExecutor {
       if (signal?.aborted) {
         tracker.onChapterStatus(chapterId, 'pending');
         return 'abort';
+      }
+
+      if (tracker.segmentTracker && tracker.segmentTracker.errorCount > 0) {
+        tracker.onChapterStatus(chapterId, 'error');
+        const finished = chapters.filter((ch) => ch.status === 'done').length;
+        const errors = chapters.filter((ch) => ch.status === 'error').length;
+        tracker.onProgress(finished, errors, chapters.length);
+        tracker.onLog(
+          `[${chapter.title}] ⚠️ ${tracker.segmentTracker.errorCount} 个分段翻译失败，已回退为原文`,
+        );
+        return 'error';
       }
 
       await this.task.uploadChapter(
