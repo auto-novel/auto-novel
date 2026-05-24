@@ -1,4 +1,4 @@
-import { checkIsMobile } from '@/pages/util';
+import { checkIsMobile } from '@/util';
 
 export function getFakeDesktopUA(): string {
   const ua = navigator.userAgent;
