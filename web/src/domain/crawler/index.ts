@@ -69,6 +69,7 @@ const updateWebNovelChapter = async (
   providerId: string,
   novelId: string,
   chapterId: string,
+  force: boolean,
 ) => {
   const chapter = await WebNovelCrawlerApi.getChapter(
     providerId,
@@ -76,6 +77,11 @@ const updateWebNovelChapter = async (
     chapterId,
   );
   const body = toChapterMutationBody(chapter);
+
+  if (!force) {
+    await WebNovelRepo.createChapter(providerId, novelId, chapterId, body);
+    return 'updated' as const;
+  }
 
   try {
     await WebNovelRepo.updateChapter(providerId, novelId, chapterId, body);

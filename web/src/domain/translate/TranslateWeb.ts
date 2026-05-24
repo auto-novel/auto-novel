@@ -230,6 +230,7 @@ export const translateWeb = async (
           providerId,
           novelId,
           chapterId,
+          forceSeg,
         );
         callback.log(action === 'created' ? '章节已创建' : '章节已更新');
       }
