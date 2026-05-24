@@ -737,7 +737,6 @@ class WebNovelApi(
         chapterId: String,
         paragraphs: List<String>,
     ) {
-        user.requireAdmin() // temp admin only
         user.requireNovelAccess()
         validateId(providerId, novelId)
 
@@ -765,7 +764,6 @@ class WebNovelApi(
         chapterId: String,
         paragraphs: List<String>,
     ) {
-        user.requireAdmin() // temp admin only
         user.requireNovelAccess()
         validateId(providerId, novelId)
 
