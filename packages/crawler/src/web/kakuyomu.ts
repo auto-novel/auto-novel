@@ -249,7 +249,6 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
     );
 
     $('rp, rt').remove();
-    $('br').replaceWith('\n');
 
     const paragraphs = $('div.widget-episodeBody > p')
       .map((_, el) => $(el).text())

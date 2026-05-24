@@ -221,10 +221,20 @@ export class Alphapolis implements WebNovelProvider {
     }
 
     $content.find('rp, rt').remove();
-    $content.find('br').replaceWith('\n');
-
-    const rawText = $content.text();
-    const paragraphs = rawText.split(/\r?\n/).map((line) => line.trim());
+    const rawText = $content
+      .contents()
+      .toArray()
+      .map((node) => {
+        if (node.type === 'text') {
+          return node.data ?? '';
+        }
+        if (node.type === 'tag') {
+          return node.tagName === 'br' ? '\n' : $(node).text();
+        }
+        return '';
+      })
+      .join('');
+    const paragraphs = rawText.split(/\r?\n/).map((line) => line.trimStart());
 
     if (paragraphs.length < 5) {
       throw new CrawlerParseError('章节内容太少，爬取频率太快导致未加载');

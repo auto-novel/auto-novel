@@ -183,12 +183,8 @@ export class Novelup implements WebNovelProvider {
 
     const $content = $('p#episode_content').first();
     $content.find('rp, rt').remove();
-    $content.find('br').replaceWith('\n');
 
-    const paragraphs = $content
-      .text()
-      .split(/\r?\n/)
-      .map((line) => line.trim());
+    const paragraphs = $content.text().split(/\r?\n/);
 
     return { paragraphs };
   }

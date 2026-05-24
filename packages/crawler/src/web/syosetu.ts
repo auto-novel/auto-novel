@@ -405,7 +405,6 @@ export class Syosetu implements WebNovelProvider<GetRankOptions> {
     const $ = await fetchDocument(this.client, url);
 
     $('rp, rt').remove();
-    $('br').replaceWith('\n');
 
     const paragraphs = $('div.p-novel__body > div > p')
       .map((_, paragraph) => {

@@ -205,7 +205,6 @@ export class Hameln implements WebNovelProvider {
       .map((_, el) => {
         const $el = $(el);
         $el.find('rp, rt').remove();
-        $el.find('br').replaceWith('\n');
         return $el;
       })
       .filter((_, el) => Boolean(el.attr('id')))
