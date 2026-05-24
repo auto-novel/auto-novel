@@ -81,16 +81,24 @@ export const delay = (ms: number, signal?: AbortSignal) =>
   });
 
 export class Semaphore {
-  private current = 0;
+  private _current = 0;
   private queue: Array<() => void> = [];
-  constructor(private max: number) {
-    if (max <= 0)
+  constructor(private _max: number) {
+    if (_max <= 0)
       throw new Error('Semaphore max capacity must be greater than 0');
   }
 
+  get max(): number {
+    return this._max;
+  }
+
+  get current(): number {
+    return this._current;
+  }
+
   private async _acquire(): Promise<void> {
-    if (this.current < this.max) {
-      this.current++;
+    if (this._current < this._max) {
+      this._current++;
       return;
     }
     return new Promise<void>((resolve) => {
@@ -103,16 +111,16 @@ export class Semaphore {
       const next = this.queue.shift()!;
       next();
     } else {
-      this.current--;
+      this._current--;
     }
   }
 
   setMax(max: number): void {
     if (max <= 0)
       throw new Error('Semaphore max capacity must be greater than 0');
-    this.max = max;
-    while (this.queue.length > 0 && this.current < this.max) {
-      this.current++;
+    this._max = max;
+    while (this.queue.length > 0 && this._current < this._max) {
+      this._current++;
       const next = this.queue.shift()!;
       next();
     }

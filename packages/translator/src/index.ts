@@ -14,3 +14,13 @@ export { allowModels } from './translator/sakura-prompt';
 export type { ModelMeta } from './translator/sakura-prompt';
 export type { YoudaoTranslatorConfig } from './translator/youdao-translator';
 export { YoudaoTranslator } from './translator/youdao-translator';
+
+export type {
+  Glossary,
+  Segment,
+  SegmentContext,
+  SegmentCache,
+  SegmentTracker,
+  TranslatorTracker,
+  LineRange,
+} from './types';
