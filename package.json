@@ -2,6 +2,7 @@
   "name": "auto-novel",
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.33.4",
   "scripts": {
     "build": "pnpm --stream -r run build",
     "dev:web": "pnpm --stream --filter '@auto-novel/web^...' run build && pnpm --stream --parallel --filter '@auto-novel/web' --filter '@auto-novel/web^...' run dev"
