@@ -1,6 +1,6 @@
 import ky from 'ky';
 
-import type { WebNovelMetadata } from '@auto-novel/crawler';
+import type { WebNovelChapter, WebNovelMetadata } from '@auto-novel/crawler';
 import {
   Alphapolis,
   Hameln,
@@ -65,8 +65,18 @@ const getMetadata = async (
   return crawler.getMetadata(providerId, novelId);
 };
 
-export const WebNovelCrawlerApi = {
-  getMetadata,
+const getChapter = async (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+): Promise<WebNovelChapter> => {
+  const crawler = await getCrawler();
+  return crawler.getChapter(providerId, novelId, chapterId);
 };
 
-export type { WebNovelMetadata };
+export const WebNovelCrawlerApi = {
+  getMetadata,
+  getChapter,
+};
+
+export type { WebNovelChapter, WebNovelMetadata };

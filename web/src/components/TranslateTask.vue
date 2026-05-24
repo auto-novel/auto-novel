@@ -68,6 +68,9 @@ const startTask = async (
     if (params.forceMetadata) {
       suffixParts.push('重翻目录');
     }
+    if (desc.type === 'web' && params.useBrowserCrawler) {
+      suffixParts.push('浏览器爬虫');
+    }
     if (suffixParts.length > 0) {
       label = label + ` [${suffixParts.join('/')}]`;
     }

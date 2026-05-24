@@ -1,7 +1,7 @@
 import { isEqual } from 'lodash-es';
 
 import { WebNovelApi } from '@/api';
-import type { WebNovelMetadata } from '@/external';
+import type { WebNovelChapter, WebNovelMetadata } from '@/external';
 import { WebNovelCrawlerApi } from '@/external';
 import type { WebNovelDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
@@ -47,10 +47,14 @@ const toCurrentMutationBody = (novel: WebNovelDto) => ({
   })),
 });
 
-const updateWebNovel = async (providerId: string, novelId: string) => {
+const updateWebNovel = async (
+  providerId: string,
+  novelId: string,
+  current?: WebNovelDto,
+) => {
   const metadata = await WebNovelCrawlerApi.getMetadata(providerId, novelId);
   const body = toMutationBody(metadata);
-  const current = await WebNovelApi.getNovel(providerId, novelId);
+  current ??= await WebNovelApi.getNovel(providerId, novelId);
   if (body.toc.length < current.toc.length) {
     throw new Error('目录变短，放弃更新，请手动打开源站确保你有办法访问');
   }
@@ -61,6 +65,36 @@ const updateWebNovel = async (providerId: string, novelId: string) => {
   await WebNovelRepo.updateNovel(providerId, novelId, body);
 };
 
+const updateWebNovelChapter = async (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+) => {
+  const chapter = await WebNovelCrawlerApi.getChapter(
+    providerId,
+    novelId,
+    chapterId,
+  );
+  const body = toChapterMutationBody(chapter);
+
+  try {
+    await WebNovelRepo.updateChapter(providerId, novelId, chapterId, body);
+    return 'updated' as const;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes('404') || message.includes('章节不存在')) {
+      await WebNovelRepo.createChapter(providerId, novelId, chapterId, body);
+      return 'created' as const;
+    }
+    throw e;
+  }
+};
+
+const toChapterMutationBody = (chapter: WebNovelChapter) => ({
+  paragraphs: chapter.paragraphs,
+});
+
 export const CrawlerService = {
   updateWebNovel,
+  updateWebNovelChapter,
 };

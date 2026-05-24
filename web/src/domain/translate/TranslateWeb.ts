@@ -7,15 +7,45 @@ import type {
 } from '@/model/Translator';
 import { delay } from '@/util';
 
+import { CrawlerService } from '../crawler';
 import type { Translator } from './Translator';
 
 export const translateWeb = async (
   { providerId, novelId }: WebTranslateTaskDesc,
-  { level, forceMetadata, startIndex, endIndex }: TranslateTaskParams,
+  {
+    level,
+    forceMetadata,
+    useBrowserCrawler,
+    startIndex,
+    endIndex,
+  }: TranslateTaskParams,
   callback: TranslateTaskCallback,
   translator: Translator,
   signal?: AbortSignal,
 ) => {
+  if (useBrowserCrawler) {
+    try {
+      callback.log('获取小说信息');
+      const novel = await WebNovelApi.getNovel(providerId, novelId);
+      const sinceLastSyncMs = Date.now() - novel.syncAt * 1000;
+      const SYNC_EXPIRY_MS = 60 * 60 * 1000;
+      if (sinceLastSyncMs > SYNC_EXPIRY_MS) {
+        callback.log('通过浏览器爬虫更新目录');
+        await CrawlerService.updateWebNovel(providerId, novelId, novel);
+        callback.log('目录已更新');
+      } else {
+        callback.log(`syncAt 未过期，跳过目录更新`);
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        callback.log(`中止翻译任务`);
+        return 'abort';
+      } else {
+        callback.log(`目录更新跳过：${await formatError(e)}`);
+      }
+    }
+  }
+
   const {
     getTranslateTask,
     getChapterTranslateTask,
@@ -194,6 +224,15 @@ export const translateWeb = async (
   for (const { index, chapterId } of chapters) {
     try {
       callback.log(`\n[${index}] ${providerId}/${novelId}/${chapterId}`);
+      if (useBrowserCrawler) {
+        callback.log(`通过浏览器爬虫更新章节`);
+        const action = await CrawlerService.updateWebNovelChapter(
+          providerId,
+          novelId,
+          chapterId,
+        );
+        callback.log(action === 'created' ? '章节已创建' : '章节已更新');
+      }
       const cTask = await getChapterTranslateTask(chapterId);
 
       if (!forceSeg && cTask.glossaryId === cTask.oldGlossaryId) {
