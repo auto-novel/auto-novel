@@ -1,10 +1,7 @@
 import { checkIsMobile } from '@/util';
 
-export function getFakeDesktopUA(): string {
+function getFakeDesktopUA(): string {
   const ua = navigator.userAgent;
-  if (!checkIsMobile()) {
-    return ua;
-  }
 
   const appleWebKitVersion =
     ua.match(/\bAppleWebKit\/([\d.]+)/i)?.[1] ?? '537.36';
@@ -42,20 +39,13 @@ export function getFakeDesktopUA(): string {
     .replace(/\bFxiOS\//i, 'Firefox/');
 }
 
-export function toHeaderRecord(headers?: HeadersInit): Record<string, string> {
-  if (!headers) return {};
+export function toHeaders(headers?: HeadersInit): Headers {
+  return new Headers(headers);
+}
 
-  if (headers instanceof Headers) {
-    const result: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      result[key] = value;
-    });
-    return result;
+export function fakeDesktopHeader(headers: Headers): void {
+  if (checkIsMobile()) {
+    headers.set('User-Agent', getFakeDesktopUA());
+    headers.set('Viewport-Width', '2560');
   }
-
-  if (Array.isArray(headers)) {
-    return Object.fromEntries(headers);
-  }
-
-  return { ...headers };
 }

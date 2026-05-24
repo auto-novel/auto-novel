@@ -14,9 +14,7 @@ import {
 import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
-import { getFakeDesktopUA, toHeaderRecord } from './utils';
-
-const desktopUserAgent = getFakeDesktopUA();
+import { fakeDesktopHeader, toHeaders } from './utils';
 
 let bypassHamelnR18: Promise<void> | undefined;
 const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
@@ -47,11 +45,8 @@ const getCrawler = lazy(async () => {
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
       await ensureBypassR18(addon);
-
-      const headers = toHeaderRecord(init?.headers);
-      headers['User-Agent'] = desktopUserAgent;
-      headers['Viewport-Width'] = '2560';
-
+      const headers = toHeaders(init?.headers);
+      fakeDesktopHeader(headers);
       return addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
         ...init,
         headers,
