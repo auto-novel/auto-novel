@@ -39,13 +39,17 @@ function getFakeDesktopUA(): string {
     .replace(/\bFxiOS\//i, 'Firefox/');
 }
 
-export function toHeaders(headers?: HeadersInit): Headers {
-  return new Headers(headers);
+export function toHeaders(headers?: HeadersInit): Record<string, string> {
+  const headerDict: Record<string, string> = {};
+  new Headers(headers).forEach((value, key) => {
+    headerDict[key] = value;
+  });
+  return headerDict;
 }
 
-export function fakeDesktopHeader(headers: Headers): void {
+export function fakeDesktopHeader(headers: Record<string, string>): void {
   if (checkIsMobile()) {
-    headers.set('User-Agent', getFakeDesktopUA());
-    headers.set('Viewport-Width', '2560');
+    headers['User-Agent'] = getFakeDesktopUA();
+    headers['Viewport-Width'] = '2560';
   }
 }
