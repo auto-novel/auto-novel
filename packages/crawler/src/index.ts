@@ -1,6 +1,7 @@
 export {
   CrawlerAuthError,
   CrawlerError,
+  CrawlerHttpError,
   CrawlerInputError,
   CrawlerParseError,
 } from '@/errors';
