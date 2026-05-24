@@ -226,13 +226,17 @@ export const translateWeb = async (
       callback.log(`\n[${index}] ${providerId}/${novelId}/${chapterId}`);
       if (useBrowserCrawler) {
         callback.log(`通过浏览器爬虫更新章节`);
-        const action = await CrawlerService.updateWebNovelChapter(
-          providerId,
-          novelId,
-          chapterId,
-          level === 'sync',
-        );
-        callback.log(action === 'created' ? '章节已创建' : '章节已更新');
+        try {
+          const action = await CrawlerService.updateWebNovelChapter(
+            providerId,
+            novelId,
+            chapterId,
+            level === 'sync',
+          );
+          callback.log(action === 'created' ? '章节已创建' : '章节已更新');
+        } catch (e) {
+          callback.log(`章节更新跳过：${await formatError(e)}`);
+        }
       }
       const cTask = await getChapterTranslateTask(chapterId);
 
