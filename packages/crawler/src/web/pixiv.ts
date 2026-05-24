@@ -12,7 +12,11 @@ import {
   WebNovelType,
   emptyPage,
 } from './types';
-import { CrawlerAuthError, CrawlerInputError } from '@/errors';
+import {
+  CrawlerAuthError,
+  CrawlerInputError,
+  CrawlerParseError,
+} from '@/errors';
 
 function parsePixivAttention(xRestrict: number): WebNovelAttention[] {
   return xRestrict === 0 ? [] : [WebNovelAttention.R18];
@@ -310,6 +314,10 @@ export class Pixiv implements WebNovelProvider {
         return imageUrl == null ? this.cleanFormat(line) : `<图片>${imageUrl}`;
       }),
     );
+    if (paragraphs.length <= 1) {
+      console.error('Pixiv chapter data:', data);
+      throw new CrawlerParseError('Pixiv 章节解析结果行数异常');
+    }
 
     return { paragraphs };
   }
