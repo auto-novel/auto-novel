@@ -3,10 +3,13 @@ import { InfoOutlined } from '@vicons/material';
 
 import type { GenericNovelId } from '@/model/Common';
 import type { TranslateTaskParams } from '@/model/Translator';
+import { useWhoamiStore } from '@/stores';
 
 const probs = defineProps<{
   gnid: GenericNovelId;
 }>();
+const whoamiStore = useWhoamiStore();
+const { whoami } = storeToRefs(whoamiStore);
 
 // 翻译设置
 const translateLevel = ref<'normal' | 'expire' | 'all' | 'sync'>(
@@ -79,9 +82,9 @@ defineExpose({
           v-model:checked="forceMetadata"
         />
         <tag-button
-          v-if="gnid.type === 'web'"
+          v-if="gnid.type === 'web' && whoami.hasNovelAccess"
           type="warning"
-          label="浏览器爬虫[测试]"
+          label="浏览器爬虫"
           v-model:checked="useBrowserCrawler"
         />
 
@@ -94,7 +97,7 @@ defineExpose({
         </n-text>
 
         <n-text
-          v-if="gnid.type === 'web'"
+          v-if="gnid.type === 'web' && whoami.hasNovelAccess"
           type="warning"
           style="font-size: 12px; flex-basis: 100%"
         >
