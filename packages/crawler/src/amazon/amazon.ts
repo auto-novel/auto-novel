@@ -1,3 +1,5 @@
+import type { CheerioAPI } from 'cheerio';
+import * as cheerio from 'cheerio';
 import type { KyInstance, Options } from 'ky';
 import type {
   AmazonProduct,
@@ -17,7 +19,7 @@ const AMAZON_JP_URL = 'https://www.amazon.co.jp';
 export class AmazonCrawler {
   constructor(private readonly client: KyInstance) {}
 
-  private async getHtml(url: string, options?: Options): Promise<Document> {
+  private async getHtml(url: string, options?: Options): Promise<CheerioAPI> {
     const response = await this.client.get(url, {
       prefixUrl: AMAZON_JP_URL,
       redirect: 'manual',
@@ -35,8 +37,7 @@ export class AmazonCrawler {
     }
 
     const html = await response.text();
-    const parser = new DOMParser();
-    return parser.parseFromString(html, 'text/html');
+    return cheerio.load(html);
   }
 
   async getProduct(asin: string): Promise<AmazonProduct> {

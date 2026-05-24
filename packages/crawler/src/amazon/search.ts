@@ -1,45 +1,49 @@
+import type { CheerioAPI } from 'cheerio';
 import type { AmazonSearchItem } from './types';
 
 import { extractAsin } from './util';
 
-export const search = (doc: Document): AmazonSearchItem[] => {
-  const items = Array.from(
-    doc.getElementsByClassName('s-search-results')[0].children,
-  );
+export const search = ($: CheerioAPI): AmazonSearchItem[] => {
+  const items = $('.s-search-results').first().children().toArray();
   return items
     .filter((item) => {
-      if (!item.getAttribute('data-asin')) {
+      const asin = $(item).attr('data-asin');
+      if (!asin) {
         return false;
       }
 
       // 排除漫画
-      if (
-        Array.from(item.getElementsByTagName('a'))
-          .map((el) => el.text)
-          .some((text) => text === 'コミック (紙)' || text === 'コミック')
-      ) {
+      const isComic = $(item)
+        .find('a')
+        .toArray()
+        .map((element) => $(element).text())
+        .some((text) => text === 'コミック (紙)' || text === 'コミック');
+      if (isComic) {
         return false;
       }
 
       return true;
     })
     .map((it) => {
-      const asin = it.getAttribute('data-asin')!;
-      const title = it.getElementsByTagName('h2')[0].textContent!;
-      const cover = it.getElementsByTagName('img')[0].getAttribute('src')!;
+      const item = $(it);
+      const asin = item.attr('data-asin')!;
+      const title = item.find('h2').first().text();
+      const cover = item.find('img').first().attr('src')!;
 
-      const serialAsin = Array.from(it.getElementsByTagName('a'))
-        .filter((it) => {
-          const href = it.getAttribute('href')!;
-          const child = it.firstElementChild;
+      const serialAsin = item
+        .find('a')
+        .toArray()
+        .filter((element) => {
+          const href = $(element).attr('href') ?? '';
+          const child = $(element).children().first();
           return (
-            child &&
-            child.tagName === 'SPAN' &&
-            child.classList.length === 0 &&
+            child.length > 0 &&
+            child.get(0)?.tagName === 'span' &&
+            (child.attr('class')?.trim() ?? '') === '' &&
             (href.startsWith('/-/zh/dp/') || href.startsWith('/dp/'))
           );
         })
-        .map((it) => extractAsin(it.getAttribute('href')!))
+        .map((element) => extractAsin($(element).attr('href') ?? ''))
         .find((asin) => asin);
       return { asin, title, cover, serialAsin };
     });

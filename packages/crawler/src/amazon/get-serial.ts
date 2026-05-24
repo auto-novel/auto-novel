@@ -1,13 +1,13 @@
+import type { CheerioAPI } from 'cheerio';
 import type { AmazonSerial } from './types';
 
 import { extractAsin } from './util';
 
-export const getSerial = (doc: Document): AmazonSerial => {
+export const getSerial = ($: CheerioAPI): AmazonSerial => {
   const authorsSet = new Set<string>();
   const artistsSet = new Set<string>();
-  doc.querySelectorAll('[data-action="a-popover"]').forEach((element) => {
-    element
-      .getAttribute('data-a-popover')!
+  $('[data-action="a-popover"]').each((_, element) => {
+    ($(element).attr('data-a-popover') ?? '')
       .split('\\n')
       .map((it) => it.trim())
       .forEach((contribution) => {
@@ -18,10 +18,8 @@ export const getSerial = (doc: Document): AmazonSerial => {
         }
       });
   });
-  Array.from(
-    doc.getElementsByClassName('series-childAsin-item-details-contributor'),
-  ).forEach((element) => {
-    const contribution = element.textContent!.trim().replace(/(,)$/, '').trim();
+  $('.series-childAsin-item-details-contributor').each((_, element) => {
+    const contribution = $(element).text().trim().replace(/(,)$/, '').trim();
     if (contribution.endsWith('(著)')) {
       authorsSet.add(contribution.replace(/(\(著\))$/, '').trim());
     } else if (contribution.endsWith('(イラスト)')) {
@@ -32,17 +30,19 @@ export const getSerial = (doc: Document): AmazonSerial => {
   const authors = [...authorsSet].filter((it) => !artistsSet.has(it));
   const artists = [...artistsSet];
 
-  const volumes = Array.from(
-    doc.getElementById('series-childAsin-batch_1')!.children,
-  ).map((it) => {
-    const titleLink = it.getElementsByClassName(
-      'a-size-base-plus a-link-normal itemBookTitle a-text-bold',
-    )[0]!;
-    const asin = extractAsin(titleLink.getAttribute('href')!)!;
-    const title = titleLink.textContent!;
-    const cover = it.getElementsByTagName('img')[0].getAttribute('src')!;
-    return { asin, title, cover };
-  });
+  const volumes = $('#series-childAsin-batch_1')
+    .children()
+    .toArray()
+    .map((element) => {
+      const item = $(element);
+      const titleLink = item
+        .find('.a-size-base-plus.a-link-normal.itemBookTitle.a-text-bold')
+        .first();
+      const asin = extractAsin(titleLink.attr('href') ?? '')!;
+      const title = titleLink.text();
+      const cover = item.find('img').first().attr('src')!;
+      return { asin, title, cover };
+    });
 
   return { authors, artists, volumes };
 };

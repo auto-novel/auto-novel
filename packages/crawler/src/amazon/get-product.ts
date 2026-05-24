@@ -1,3 +1,4 @@
+import type { CheerioAPI } from 'cheerio';
 import type {
   AmazonProduct,
   AmazonProductSerial,
@@ -7,18 +8,18 @@ import type {
 
 import { extractAsin } from './util';
 
-const parseAuthor = (elements: HTMLCollectionOf<Element>) => {
+const parseAuthor = ($: CheerioAPI) => {
   const authors: string[] = [];
   const artists: string[] = [];
-  Array.from(elements).forEach((element) => {
+  $('.author').each((_, element) => {
     const contribution =
-      element
-        .getElementsByClassName('contribution')
-        .item(0)
-        ?.textContent?.trim()
-        ?.replace(/,$/, '') ?? '';
-    const name =
-      element.getElementsByTagName('a').item(0)?.textContent?.trim() ?? '';
+      $(element)
+        .find('.contribution')
+        .first()
+        .text()
+        .trim()
+        .replace(/,$/, '') ?? '';
+    const name = $(element).find('a').first().text().trim();
     if (contribution.endsWith('(著)') || contribution.endsWith('(作者)')) {
       authors.push(name);
     } else if (
@@ -31,50 +32,55 @@ const parseAuthor = (elements: HTMLCollectionOf<Element>) => {
   return { authors, artists };
 };
 
-export const getProduct = (doc: Document): AmazonProduct => {
-  if (doc.getElementsByClassName('series-childAsin-widget').item(0) !== null) {
+export const getProduct = ($: CheerioAPI): AmazonProduct => {
+  if ($('.series-childAsin-widget').length > 0) {
     return {
       type: 'serial' as const,
-      serial: parseProductSerial(doc),
+      serial: parseProductSerial($),
     };
-  } else if (doc.getElementsByClassName('bundle-components').item(0) !== null) {
+  } else if ($('.bundle-components').length > 0) {
     return {
       type: 'set' as const,
-      set: parseProductSet(doc),
+      set: parseProductSet($),
     };
   } else {
     return {
       type: 'volume' as const,
-      volume: parseProductVolume(doc),
+      volume: parseProductVolume($),
     };
   }
 };
 
-const parseProductSerial = (doc: Document): AmazonProductSerial => {
-  const title = doc.getElementById('collection-title')?.textContent?.trim();
+const parseProductSerial = ($: CheerioAPI): AmazonProductSerial => {
+  const title = $('#collection-title').text().trim() || undefined;
 
-  const total =
-    doc.getElementById('collection-size')?.textContent?.match(/\d+/)?.[0] ??
-    '100';
+  const total = $('#collection-size').text().match(/\d+/)?.[0] ?? '100';
   return { title, total };
 };
 
-const parseProductSet = (doc: Document): AmazonProductSet => {
-  const title = doc.getElementById('productTitle')!.textContent!;
-  const { authors, artists } = parseAuthor(
-    doc.getElementsByClassName('author'),
-  );
-  const volumes = Array.from(
-    doc.getElementsByClassName('bundle-components')[0].children,
-  ).map((el) => {
-    const img = el.children[0].getElementsByTagName('img')[0];
-    const a = el.children[1].children[0].getElementsByTagName('a')[0];
+const parseProductSet = ($: CheerioAPI): AmazonProductSet => {
+  const title = $('#productTitle').text().trim();
+  const { authors, artists } = parseAuthor($);
+  const volumes = $('.bundle-components')
+    .first()
+    .children()
+    .toArray()
+    .map((element) => {
+      const container = $(element);
+      const img = container.children().first().find('img').first();
+      const link = container
+        .children()
+        .eq(1)
+        .children()
+        .first()
+        .find('a')
+        .first();
 
-    const asin = extractAsin(a.getAttribute('href')!)!;
-    const title = a.text;
-    const cover = img.getAttribute('src')!;
-    return { asin, title, cover };
-  });
+      const asin = extractAsin(link.attr('href') ?? '')!;
+      const title = link.text();
+      const cover = img.attr('src')!;
+      return { asin, title, cover };
+    });
   return {
     title,
     authors,
@@ -83,46 +89,35 @@ const parseProductSet = (doc: Document): AmazonProductSet => {
   };
 };
 
-const parseProductVolume = (doc: Document): AmazonProductVolume => {
-  const title = doc.getElementById('productTitle')?.textContent;
+const parseProductVolume = ($: CheerioAPI): AmazonProductVolume => {
+  const title = $('#productTitle').text().trim();
   if (!title) throw new Error('解析错误：未找到标题');
 
-  const subtitle = doc.getElementById('productSubtitle')?.textContent ?? '';
+  const subtitle = $('#productSubtitle').text();
   const r18 = subtitle.includes('成人') || subtitle.includes('アダルト');
 
-  const { authors, artists } = parseAuthor(
-    doc.getElementsByClassName('author'),
-  );
+  const { authors, artists } = parseAuthor($);
 
-  const introduction = Array.from(
-    doc
-      .getElementById('bookDescription_feature_div')
-      ?.querySelectorAll('span:not(.a-expander-prompt)') ?? [],
-  )
-    .map((el) => el.innerHTML.replaceAll('<br>', '\n'))
+  const introduction = $('#bookDescription_feature_div')
+    .find('span:not(.a-expander-prompt)')
+    .toArray()
+    .map((element) => $(element).html()?.replaceAll('<br>', '\n') ?? '')
     .join('\n');
 
-  const cover = doc.getElementById('landingImage')?.getAttribute('src');
+  const cover = $('#landingImage').attr('src');
   if (!cover) throw new Error('解析错误：未找到封面');
 
   const coverHires =
-    doc.querySelector('img[data-old-hires]')?.getAttribute('data-old-hires') ??
-    '';
+    $('img[data-old-hires]').first().attr('data-old-hires') ?? '';
   if (!coverHires) console.warn('解析错误：未找到高分辨率封面');
 
-  const getElementContain = (tag: string, content: string) => {
-    return doc.evaluate(
-      `//${tag}[text()='${content}']`,
-      doc,
-      null,
-      XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null,
-    ).singleNodeValue;
+  const getCarouselElement = (label: string) => {
+    const labelNode = $('span')
+      .toArray()
+      .find((element) => $(element).text().trim() === label);
+    if (!labelNode) return undefined;
+    return $(labelNode).parent().next().next().text() || undefined;
   };
-
-  const getCarouselElement = (label: string) =>
-    getElementContain('span', label)?.parentElement?.nextElementSibling
-      ?.nextElementSibling?.textContent;
 
   const getPublisher = () => getCarouselElement('出版社') ?? undefined;
 
@@ -150,16 +145,12 @@ const parseProductVolume = (doc: Document): AmazonProductVolume => {
   const publishAt = getPublishAt();
 
   const breadcrumbs =
-    doc
-      .getElementById('wayfinding-breadcrumbs_container')
-      ?.textContent?.split('›')
-      ?.pop()
-      ?.trim() ?? '';
+    $('#wayfinding-breadcrumbs_container').text().split('›').pop()?.trim() ??
+    '';
 
-  const otherVersion = Array.from(
-    doc.getElementById('tmmSwatches')?.getElementsByClassName('slot-title') ??
-      [],
-  ).map((el) => el.textContent?.trim() ?? '');
+  const otherVersion = $('#tmmSwatches .slot-title')
+    .toArray()
+    .map((element) => $(element).text().trim());
 
   return {
     title,
@@ -177,14 +168,12 @@ const parseProductVolume = (doc: Document): AmazonProductVolume => {
 };
 
 export const resolveKindleAsin = (
-  doc: Document,
+  $: CheerioAPI,
   fallbackAsin: string,
 ): string => {
-  const kindleLink = doc
-    .getElementById('tmm-grid-swatch-KINDLE')
-    ?.querySelector('a');
-  if (kindleLink) {
-    const kindleAsin = extractAsin(kindleLink.getAttribute('href')!);
+  const kindleLink = $('#tmm-grid-swatch-KINDLE a').first();
+  if (kindleLink.length > 0) {
+    const kindleAsin = extractAsin(kindleLink.attr('href') ?? '');
     if (kindleAsin) return kindleAsin;
   }
   return fallbackAsin;
