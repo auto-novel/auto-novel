@@ -209,7 +209,7 @@ export class Hameln implements WebNovelProvider {
         return $el;
       })
       .filter((_, el) => Boolean(el.attr('id')))
-      .map((_, el) => el.text().trim())
+      .map((_, el) => el.text())
       .get();
 
     return { paragraphs };
