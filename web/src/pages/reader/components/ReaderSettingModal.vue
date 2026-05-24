@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { checkIsMobile, useIsWideScreen } from '@/pages/util';
+import { useIsWideScreen } from '@/pages/util';
 import { ReaderSetting, useReaderSettingStore } from '@/stores';
+import { checkIsMobile } from '@/util';
 import { AddOutlined, MinusOutlined } from '@vicons/material';
 
 const isMobile = checkIsMobile();
