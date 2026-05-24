@@ -80,7 +80,8 @@ defineExpose({
         />
         <tag-button
           v-if="gnid.type === 'web'"
-          label="浏览器爬虫"
+          type="warning"
+          label="浏览器爬虫[测试]"
           v-model:checked="useBrowserCrawler"
         />
 
@@ -90,6 +91,14 @@ defineExpose({
           style="font-size: 12px; flex-basis: 100%"
         >
           <b>* 请确保你知道自己在干啥，不要随便使用危险功能</b>
+        </n-text>
+
+        <n-text
+          v-if="gnid.type === 'web'"
+          type="warning"
+          style="font-size: 12px; flex-basis: 100%"
+        >
+          <b>* 浏览器爬虫还处于测试阶段，翻译后务必检查结果</b>
         </n-text>
       </n-flex>
     </c-action-wrapper>
