@@ -2,8 +2,10 @@
 import { computedAsync } from '@vueuse/core';
 
 import { formatError } from '@/api';
+import { CrawlerService } from '@/domain/crawler';
 import { useIsWideScreen } from '@/pages/util';
 import { WebNovelRepo } from '@/repos';
+import { useWhoamiStore } from '@/stores';
 
 const { providerId, novelId } = defineProps<{
   providerId: string;
@@ -13,11 +15,25 @@ const { providerId, novelId } = defineProps<{
 const isWideScreen = useIsWideScreen();
 const router = useRouter();
 
+const whoamiStore = useWhoamiStore();
+const { whoami } = storeToRefs(whoamiStore);
+
 const { data: novel, error } = WebNovelRepo.useWebNovel(providerId, novelId);
 
-watch(novel, (novel) => {
+watch(novel, async (novel) => {
   if (novel) {
     document.title = novel.titleJp;
+    if (!whoami.value.hasNovelAccess) return;
+
+    const sinceLastSyncMs = Date.now() - novel.syncAt * 1000;
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    if (sinceLastSyncMs < ONE_DAY_MS) return;
+
+    try {
+      await CrawlerService.updateWebNovel(providerId, novelId, novel);
+    } catch (error) {
+      console.error('自动更新目录失败：', error);
+    }
   }
 });
 
