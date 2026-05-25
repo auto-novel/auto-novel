@@ -162,20 +162,28 @@ function runProcessLoop(): Promise<void> | null {
 
       const segmentTracker = state.getChapterState(chapterId);
       if (!segmentTracker) continue;
-      await executor.executeChapter(
-        chapterId,
-        {
-          onChapterStatus: (cid: string, st: ChapterStatus) => {
-            state.updateStatus(cid, st);
+      await executor
+        .executeChapter(
+          chapterId,
+          {
+            onChapterStatus: (cid: string, st: ChapterStatus) => {
+              state.updateStatus(cid, st);
+            },
+            onProgress: (finished: number, error: number, total: number) => {
+              (job as TranslateJobRecord).progress = { finished, error, total };
+            },
+            onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
+            segmentTracker,
           },
-          onProgress: (finished: number, error: number, total: number) => {
-            (job as TranslateJobRecord).progress = { finished, error, total };
-          },
-          onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
-          segmentTracker,
-        },
-        signal,
-      );
+          signal,
+        )
+        .then(() => {
+          const allDone = state.chapters.every((c) => c.status === 'done');
+          if (allDone) {
+            executingTasks.delete(job.task);
+            (job as TranslateJobRecord).finishAt = Date.now();
+          }
+        });
     }
   };
 
@@ -186,11 +194,6 @@ function runProcessLoop(): Promise<void> | null {
   processLoopPromise = Promise.all(workers).then(() => {
     for (const t of [...executingTasks]) {
       executingTasks.delete(t);
-      const state = taskStates.value.get(t);
-      if (state && state.chapters.every((c) => c.status === 'done')) {
-        const job = jobs.value.find((j) => j.task === t);
-        if (job) job.finishAt = Date.now();
-      }
     }
     processLoopPromise = null;
     processLoopAbortController = null;
