@@ -96,7 +96,7 @@ export class Semaphore {
     return this._current;
   }
 
-  private async _acquire(): Promise<void> {
+  async acquire(): Promise<void> {
     if (this._current < this._max) {
       this._current++;
       return;
@@ -106,7 +106,7 @@ export class Semaphore {
     });
   }
 
-  private _release(): void {
+  release(): void {
     if (this.queue.length > 0) {
       const next = this.queue.shift()!;
       next();
@@ -127,12 +127,12 @@ export class Semaphore {
   }
 
   async use<T>(fn: () => Promise<T> | T): Promise<T> {
-    await this._acquire();
+    await this.acquire();
     let released = false;
     const safeRelease = () => {
       if (!released) {
         released = true;
-        this._release();
+        this.release();
       }
     };
     try {

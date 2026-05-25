@@ -106,14 +106,15 @@ const GLOBAL_WINDOW = 3;
 function getNextJob(
   jobs: TranslateJob[],
   taskStatesMap: Map<string, TaskState>,
-): { job: TranslateJob; chapterId: string } | null {
+): { job: TranslateJob; chapterId: string; state: TaskState } | null {
   for (const job of jobs) {
     if (job.finishAt) continue;
     const state = taskStatesMap.get(job.task);
     if (!state) continue;
     for (const ch of state.chapters) {
       if (ch.status !== 'pending') continue;
-      return { job, chapterId: ch.chapterId };
+      ch.status = 'translating';
+      return { job, chapterId: ch.chapterId, state };
     }
   }
   return null;
@@ -148,14 +149,8 @@ function runProcessLoop(): Promise<void> | null {
       const item = getNextJob(jobs.value, taskStates.value);
       if (!item) break;
 
-      const { job, chapterId } = item;
+      const { job, chapterId, state } = item;
       executingTasks.add(job.task);
-
-      const state = taskStates.value.get(job.task);
-      if (!state) continue;
-
-      const ch = state.chapters.find((c) => c.chapterId === chapterId);
-      if (ch) ch.status = 'translating';
 
       const task = await getOrCreateTask(job.task);
       const executor = new TaskExecutor(task, pipeline);

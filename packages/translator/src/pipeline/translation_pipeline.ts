@@ -109,7 +109,7 @@ export class TranslationPipeline {
     }
 
     await this.waitUntilBelowHighWaterMark(signal);
-    this.queue.enqueueAll(segments);
+    await this.queue.enqueueAll(segments);
     const results = await Promise.allSettled(segmentPromises);
 
     if (signal?.aborted) {
@@ -157,54 +157,57 @@ export class TranslationPipeline {
     tracker?: TranslatorTracker,
   ): Promise<void> {
     const semaphore = new Semaphore(loop.concurrency ?? 1);
-    const updateConcurrency = () => {
-      tracker?.onConcurrencyChange?.(semaphore.current, semaphore.max);
+    let activeCount = 0;
+    const updateConcurrency = (delta: number) => {
+      activeCount = activeCount + delta;
+      tracker?.onConcurrencyChange?.(activeCount, semaphore.max);
     };
+
+    const processSegment = async (segment: Segment) => {
+      // 命中缓存
+      if (this.cache) {
+        const cached = await this.cache.get(segment);
+        if (cached) {
+          segment.onComplete(segment, cached);
+          return;
+        }
+      }
+      // 旧译文未过期
+      if (segment.context?.expired === false && segment.context?.history) {
+        segment.onComplete(segment, segment.context.history.translatedLines);
+        return;
+      }
+      if (loop.abortController.signal.aborted) return;
+      segment.onStart(segment, loop.id);
+      updateConcurrency(1);
+      const translatedLines = await loop.translator.translate(
+        segment.lines,
+        segment.context,
+        loop.abortController.signal,
+      );
+      if (this.cache) {
+        await this.cache.set(segment, translatedLines);
+      }
+      segment.onComplete(segment, translatedLines);
+    };
+
     while (!loop.abortController.signal.aborted) {
+      await semaphore.acquire();
       try {
         const segment = await this.queue.dequeue(loop.abortController.signal);
-
-        // 命中缓存
-        if (this.cache) {
-          const cached = await this.cache.get(segment);
-          if (cached) {
-            segment.onComplete(segment, cached);
-            continue;
-          }
-        }
-
-        // 旧译文未过期
-        if (segment.context?.expired === false && segment.context?.history) {
-          segment.onComplete(segment, segment.context.history.translatedLines);
-          continue;
-        }
-
-        semaphore
-          .use(async () => {
-            updateConcurrency();
-            if (loop.abortController.signal.aborted) return;
-            try {
-              segment.onStart(segment, loop.id);
-              const translatedLines = await loop.translator.translate(
-                segment.lines,
-                segment.context,
-                loop.abortController.signal,
-              );
-              // 写入缓存
-              if (this.cache) {
-                await this.cache.set(segment, translatedLines);
-              }
-
-              segment.onComplete(segment, translatedLines);
-            } catch (err: any) {
-              if (err.name === 'AbortError') return;
+        processSegment(segment)
+          .catch((err: any) => {
+            if (err.name !== 'AbortError') {
               segment.onError(segment, err);
             }
           })
-          .then(() => {
-            updateConcurrency();
+          .finally(() => {
+            semaphore.release();
+            updateConcurrency(-1);
           });
-      } catch (err) {
+      } catch (err: any) {
+        semaphore.release();
+        updateConcurrency(-1);
         if (loop.abortController.signal.aborted) break;
       }
     }

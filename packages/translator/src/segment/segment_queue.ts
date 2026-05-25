@@ -1,4 +1,5 @@
 import type { Segment, SegmentQueue } from '@/types';
+import { Semaphore } from '@/utils';
 
 export class DefaultSegmentQueue implements SegmentQueue {
   private readonly _items: Segment[] = [];
@@ -9,6 +10,8 @@ export class DefaultSegmentQueue implements SegmentQueue {
 
   /** 等待水位下降的生产者 resolve 回调 */
   private _hwResolver: (() => void) | null = null;
+  /** 入队锁，防止多任务 enqueueAll 交错 */
+  private readonly _enqueueLock = new Semaphore(1);
   private _hwPromise: Promise<void> | null = null;
 
   constructor(highWaterMark: number) {
@@ -23,7 +26,13 @@ export class DefaultSegmentQueue implements SegmentQueue {
     return this._highWaterMark;
   }
 
-  enqueueAll(segments: Segment[]): void {
+  async enqueueAll(segments: Segment[]): Promise<void> {
+    await this._enqueueLock.use(async () => {
+      this._enqueue(segments);
+    });
+  }
+
+  private _enqueue(segments: Segment[]): void {
     const segLen = segments.length;
     if (segLen === 0) return;
 
