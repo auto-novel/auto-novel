@@ -5,7 +5,11 @@ import {
   PlusOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
-import { OpenAiTranslator, TranslationPipeline } from '@auto-novel/translator';
+import {
+  Semaphore,
+  OpenAiTranslator,
+  TranslationPipeline,
+} from '@auto-novel/translator';
 import type { TranslatorTracker } from '@auto-novel/translator';
 
 import { doAction } from '@/pages/util';
@@ -26,6 +30,19 @@ const jobs = computed(() => gptWorkspace.ref.value.jobs);
 
 const showWorkerModal = ref(false);
 const showLocalVolumeDrawer = ref(false);
+
+/** 同时处理的章节数上限 */
+const GLOBAL_WINDOW = 66;
+/** 同时 fetch 的章节数上限 */
+const FETCH_CONCURRENCY = 1;
+const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
+/** pipeline 内同时翻译的分块的高水位标记 */
+const HIGH_WATER_MARK = 100;
+const pipeline = new TranslationPipeline(
+  HIGH_WATER_MARK,
+  undefined,
+  new IndexedDbSegmentCache('gpt-seg-cache'),
+);
 
 // ========== 任务状态管理 ==========
 
@@ -52,11 +69,6 @@ const workerErrors = computed(() => {
 });
 const executingTasks = reactive(new Set<string>());
 
-const pipeline = new TranslationPipeline(
-  100,
-  undefined,
-  new IndexedDbSegmentCache('gpt-seg-cache'),
-);
 let processLoopAbortController: AbortController | null = null;
 let processLoopPromise: Promise<void> | null = null;
 
@@ -97,11 +109,6 @@ async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
   }
   return task;
 }
-
-// ========== 全局滑动窗口 ==========
-
-/** 同时处理的章节数 */
-const GLOBAL_WINDOW = 3;
 
 function getNextJob(
   jobs: TranslateJob[],
@@ -153,7 +160,7 @@ function runProcessLoop(): Promise<void> | null {
       executingTasks.add(job.task);
 
       const task = await getOrCreateTask(job.task);
-      const executor = new TaskExecutor(task, pipeline);
+      const executor = new TaskExecutor(task, pipeline, fetchSemaphore);
 
       const segmentTracker = state.getChapterState(chapterId);
       if (!segmentTracker) continue;

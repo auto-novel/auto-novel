@@ -177,7 +177,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         <n-input-number
           v-model:value="formValue.concurrency"
           :min="1"
-          :max="10"
+          :max="100"
         />
       </n-form-item-row>
     </n-form>
