@@ -15,6 +15,7 @@ import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
 import { fakeDesktopHeader, toHeaders } from './utils';
+import { compareVersion } from '../errors';
 
 let bypassHamelnR18: Promise<void> | undefined;
 const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
@@ -56,6 +57,15 @@ const getCrawler = lazy(async () => {
 
   const alphapolisClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      const featVersion: string =
+        addon.compat?.['tab']?.['domQuery']?.['base'] || '0.0.0';
+      const result = compareVersion(addon.version, featVersion);
+      if (result == null || result < 0) {
+        throw new Error(
+          '当前版本的插件不兼容，无法爬取 Alphapolis，请更新插件到最新版本',
+        );
+      }
+
       const headers = toHeaders(
         input instanceof Request ? input.headers : init?.headers,
       );

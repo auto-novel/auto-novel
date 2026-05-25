@@ -14,6 +14,7 @@ import {
 } from './types';
 import { CrawlerHttpError, CrawlerParseError } from '@/errors';
 import {
+  assertNoAWSChallenge,
   assertNoCFChallenge,
   fetchDocument,
   numExtractor,
@@ -289,15 +290,24 @@ export class Alphapolis implements WebNovelProvider {
     chapterId: string,
   ): Promise<WebNovelChapter> {
     let worker = async () => {
-      const $ = await fetchDocument(
+      let $ = await fetchDocument(
         this.client,
         this.getEpisodeUrl(novelId, chapterId),
       );
 
-      assertNoCFChallenge($.html() || '');
+      try {
+        // 对于第一次遇到，等待 5s 旧的 tab 关闭后重试。
+        assertNoAWSChallenge($.html() || '');
+      } catch (e) {
+        await new Promise((resolve) => setTimeout(resolve, 10_000));
+        $ = await fetchDocument(
+          this.client,
+          this.getEpisodeUrl(novelId, chapterId),
+        );
+      }
+      assertNoAWSChallenge($.html() || '');
 
       let $content = $('div#novelBody');
-      console.log($content.html());
       if ($content.length === 0) {
         throw new CrawlerParseError('章节内容解析失败');
       }

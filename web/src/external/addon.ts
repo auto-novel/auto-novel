@@ -1,5 +1,11 @@
 import { AddonNotFoundError, assertAddonVersion } from '@/external/errors';
 
+export type AddonCapabilityVersion = `${number}.${number}.${number}`;
+
+export type AddonCapabilityManifest = {
+  [capability: string]: AddonCapabilityVersion | AddonCapabilityManifest;
+};
+
 export interface CookieStatus {
   domain: string;
   name: string;
@@ -22,6 +28,9 @@ export type DomQueryResults = {
 
 export interface AddonApi {
   version: string;
+
+  compat: any;
+  capabilities: AddonCapabilityManifest;
 
   ping(): Promise<string>;
 
