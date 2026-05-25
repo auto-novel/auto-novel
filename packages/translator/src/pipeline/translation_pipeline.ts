@@ -193,21 +193,23 @@ export class TranslationPipeline {
     while (!loop.abortController.signal.aborted) {
       await semaphore.acquire();
       try {
-        const segment = await this.queue.dequeue(loop.abortController.signal);
-        updateConcurrency(1);
-        processSegment(segment)
-          .catch((err: any) => {
-            if (err.name !== 'AbortError') {
-              segment.onError(segment, err);
-            }
-          })
-          .finally(() => {
-            semaphore.release();
-            updateConcurrency(-1);
+        await this.queue
+          .dequeue(loop.abortController.signal)
+          .then((segment) => {
+            updateConcurrency(1);
+            processSegment(segment)
+              .catch((err: any) => {
+                if (err.name !== 'AbortError') {
+                  segment.onError(segment, err);
+                }
+              })
+              .finally(() => {
+                semaphore.release();
+                updateConcurrency(-1);
+              });
           });
       } catch (err: any) {
         semaphore.release();
-        updateConcurrency(-1);
         if (loop.abortController.signal.aborted) break;
       }
     }
