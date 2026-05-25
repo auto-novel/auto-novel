@@ -1,4 +1,3 @@
-import { reactive } from 'vue';
 import type { SegmentTracker, LineRange } from '@auto-novel/translator';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
