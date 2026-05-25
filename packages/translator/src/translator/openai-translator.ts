@@ -36,7 +36,9 @@ export class OpenAiTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
-
+    if (lines.every((l) => l.trim().length === 0)) {
+      return lines;
+    }
     const logSegInfo = (retry: number, lineNumber: [number, number]) => {
       const parts: string[] = [];
       const [input, output] = lineNumber;
