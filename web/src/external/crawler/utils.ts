@@ -39,9 +39,15 @@ function getFakeDesktopUA(): string {
     .replace(/\bFxiOS\//i, 'Firefox/');
 }
 
-export function toHeaders(headers?: HeadersInit): Record<string, string> {
+export function mergeHeaders(
+  headersA?: HeadersInit,
+  headersB?: HeadersInit,
+): Record<string, string> {
   const headerDict: Record<string, string> = {};
-  new Headers(headers).forEach((value, key) => {
+  new Headers(headersA).forEach((value, key) => {
+    headerDict[key] = value;
+  });
+  new Headers(headersB).forEach((value, key) => {
     headerDict[key] = value;
   });
   return headerDict;

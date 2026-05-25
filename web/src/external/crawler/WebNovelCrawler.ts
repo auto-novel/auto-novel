@@ -14,7 +14,7 @@ import {
 import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
-import { fakeDesktopHeader, toHeaders } from './utils';
+import { fakeDesktopHeader, mergeHeaders } from './utils';
 import { compareVersion } from '../errors';
 
 let bypassHamelnR18: Promise<void> | undefined;
@@ -46,7 +46,10 @@ const getCrawler = lazy(async () => {
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
       await ensureBypassR18(addon);
-      const headers = toHeaders(init?.headers);
+      const headers = mergeHeaders(
+        input instanceof Request ? input.headers : {},
+        init?.headers,
+      );
       fakeDesktopHeader(headers);
       return addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
         ...init,
@@ -66,8 +69,9 @@ const getCrawler = lazy(async () => {
         );
       }
 
-      const headers = toHeaders(
-        input instanceof Request ? input.headers : init?.headers,
+      const headers = mergeHeaders(
+        input instanceof Request ? input.headers : {},
+        init?.headers,
       );
       fakeDesktopHeader(headers);
 
