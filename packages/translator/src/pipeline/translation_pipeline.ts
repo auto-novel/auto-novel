@@ -179,7 +179,6 @@ export class TranslationPipeline {
       }
       if (loop.abortController.signal.aborted) return;
       segment.onStart(segment, loop.id);
-      updateConcurrency(1);
       const translatedLines = await loop.translator.translate(
         segment.lines,
         segment.context,
@@ -195,6 +194,7 @@ export class TranslationPipeline {
       await semaphore.acquire();
       try {
         const segment = await this.queue.dequeue(loop.abortController.signal);
+        updateConcurrency(1);
         processSegment(segment)
           .catch((err: any) => {
             if (err.name !== 'AbortError') {
