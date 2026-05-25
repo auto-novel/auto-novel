@@ -15,8 +15,8 @@ import type { TranslationTask } from '@/domain/translator/TranslationTask/types'
 
 const props = defineProps<{
   job: TranslateJob;
-  taskStates: Map<string, TaskState>;
-  executingTasks: Set<string>;
+  taskState?: TaskState;
+  taskCacheEntry?: TranslationTask;
 }>();
 
 const emit = defineEmits<{
@@ -26,23 +26,23 @@ const emit = defineEmits<{
 }>();
 
 const jobRecord = computed(() => props.job as TranslateJobRecord);
-async function getOrLoadChapters(taskDesc: string): Promise<ChapterMeta[]> {
-  const state = props.taskStates.get(taskDesc);
-  if (state?.chapters.length) return state.chapters;
-  const task = createTask(taskDesc);
-  await task.initMeta();
-  const chapters = task.chapters;
-  if (state) state.chapters = chapters;
-  return chapters;
+const chapterMetas = computed(() => props.taskState?.chapters ?? []);
+async function getChapterMetas(): Promise<ChapterMeta[]> {
+  if (props.taskState?.initialized) return chapterMetas.value;
+
+  let task = props.taskCacheEntry;
+  if (!task) {
+    task = createTask(props.job.task);
+  }
+  if (!task.initialized) {
+    await task.initMeta();
+  }
+  return task.chapters;
 }
 
-function getOrCreateTaskState(taskDesc: string): TaskState {
-  let state = props.taskStates.get(taskDesc);
-  if (!state) {
-    state = reactive(new TaskState(taskDesc)) as TaskState;
-    props.taskStates.set(taskDesc, state);
-  }
-  return state;
+function getOrCreateTaskState(): TaskState {
+  if (props.taskState) return props.taskState;
+  return reactive(new TaskState(props.job.task)) as TaskState;
 }
 
 function updateJobProgress(job: TranslateJobRecord, chapters: ChapterMeta[]) {
@@ -61,11 +61,13 @@ const toggleExpand = async () => {
     return;
   }
 
-  const state = getOrCreateTaskState(props.job.task);
-  if (state.chapters.length === 0) {
-    const chapters = await getOrLoadChapters(props.job.task);
+  const state = getOrCreateTaskState();
+  if (!state.initialized) {
+    const chapters = await getChapterMetas();
     if (jobRecord.value.finishAt) {
-      state.chapters = chapters.map((c) => ({ ...c, status: 'done' as const }));
+      state.initChapters(
+        chapters.map((c) => ({ ...c, status: 'done' as const })),
+      );
     } else {
       updateJobProgress(jobRecord.value, chapters);
     }
@@ -75,46 +77,27 @@ const toggleExpand = async () => {
 
 const themeVars = useThemeVars();
 
-const taskDesc = () => props.job.task;
-
-function getTaskStatus(): 'done' | 'pending' {
-  return props.job.finishAt ? 'done' : 'pending';
-}
+const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
+  if (props.job.finishAt) return 'done';
+  if (!chapterMetas.value.length) return 'done';
+  if (chapterMetas.value.some((c) => c.status === 'translating'))
+    return 'executing';
+  return 'pending';
+});
 
 function retryAllFailed() {
-  const state = props.taskStates.get(props.job.task);
-  if (!state) return;
-  for (const ch of state.chapters) {
+  for (const ch of chapterMetas.value) {
     if (ch.status === 'error') {
       ch.status = 'pending';
-      state.chapterStates.delete(ch.chapterId);
+      props.taskState?.chapterStates.delete(ch.chapterId);
     }
   }
   delete props.job.finishAt;
 }
 
 function hasFailedChapters(): boolean {
-  return (
-    props.taskStates
-      .get(taskDesc())
-      ?.chapters.some((c) => c.status === 'error') ?? false
-  );
+  return chapterMetas.value.some((c) => c.status === 'error');
 }
-
-const chapters = computed(() => {
-  const state = props.taskStates.get(props.job.task);
-  return (state?.chapters ?? []).map((ch) => {
-    const chState = state?.chapterStates.get(ch.chapterId);
-    const liveProgress = chState?.ready
-      ? { completed: chState.completedCount, total: chState.segments.length }
-      : undefined;
-    return {
-      ...ch,
-      status: ch.status,
-      segmentProgress: liveProgress ?? ch.segmentProgress,
-    };
-  });
-});
 
 const message = useMessage();
 
@@ -128,36 +111,39 @@ const previewData = ref<{
   title: string;
   chapterState: ChapterSegmentState | null;
 } | null>(null);
-const loadingChapterId = ref<string | null>(null);
-
 const openPreview = async (chapterId: string) => {
-  loadingChapterId.value = chapterId;
   try {
-    const chapters = await getOrLoadChapters(props.job.task);
+    const chapters = await getChapterMetas();
     const meta = chapters.find((c) => c.chapterId === chapterId);
     const title = meta?.title ?? chapterId;
 
-    // 创建独立的 Task 实例用于预览（不使用缓存，避免 worker 的 AbortSignal 污染）
-    const previewTask = createTask(props.job.task);
-    await previewTask.initMeta();
-
-    const detail = await previewTask.fetchChapter(chapterId);
-
-    const state = props.taskStates.get(props.job.task);
-    const chapterState = state?.chapterStates.get(chapterId);
+    const chapterState = props.taskState?.chapterStates.get(chapterId);
 
     let chapterStateForPreview: ChapterSegmentState | null = null;
     if (chapterState?.ready) {
       chapterStateForPreview = chapterState;
-    } else if (state?.getChapterStatus(chapterId) === 'done') {
-      const tlParagraphs = detail.oldParagraphZh;
-      if (tlParagraphs?.length) {
-        const loadedState = new ChapterSegmentState(chapterId);
-        loadedState.injectDoneTranslation(detail.paragraphs, tlParagraphs);
-        chapterStateForPreview = loadedState;
-      }
     } else {
-      chapterStateForPreview = chapterState ?? null;
+      let previewTask = props.taskCacheEntry;
+      if (!previewTask) {
+        previewTask = createTask(props.job.task);
+      }
+      if (!previewTask.initialized) {
+        await previewTask.initMeta();
+      }
+      const detail = await previewTask.fetchChapter(chapterId);
+
+      if (chapterState?.ready) {
+        chapterStateForPreview = chapterState;
+      } else if (props.taskState?.getStatus(chapterId) === 'done') {
+        const tlParagraphs = detail.oldParagraphZh;
+        if (tlParagraphs?.length) {
+          const loadedState = new ChapterSegmentState(chapterId);
+          loadedState.injectDoneTranslation(detail.paragraphs, tlParagraphs);
+          chapterStateForPreview = loadedState;
+        }
+      } else {
+        chapterStateForPreview = chapterState ?? null;
+      }
     }
 
     previewData.value = { title, chapterState: chapterStateForPreview };
@@ -165,8 +151,6 @@ const openPreview = async (chapterId: string) => {
   } catch (e) {
     console.error('加载预览失败', e);
     message.error('加载预览失败');
-  } finally {
-    loadingChapterId.value = null;
   }
 };
 
@@ -203,22 +187,16 @@ const closePreview = () => {
             <job-task-link :task="job.task" class="task-link" />
           </div>
           <n-flex :size="8" align="center" :wrap="false" style="flex-shrink: 0">
-            <n-tag v-if="executingTasks.has(job.task)" size="tiny" type="info">
+            <n-tag v-if="taskStatus === 'executing'" size="tiny" type="info">
               翻译中
             </n-tag>
-            <n-tag
-              v-else-if="getTaskStatus() === 'done'"
-              size="tiny"
-              type="success"
-            >
+            <n-tag v-else-if="taskStatus === 'done'" size="tiny" type="success">
               已完成
             </n-tag>
             <n-tag v-else size="tiny" type="default">等待中</n-tag>
             <span class="task-progress">
               {{ jobRecord.progress?.finished ?? 0 }}/{{
-                jobRecord.progress?.total ??
-                taskStates.get(job.task)?.chapters.length ??
-                0
+                jobRecord.progress?.total ?? chapterMetas.length ?? 0
               }}
             </span>
           </n-flex>
@@ -296,9 +274,9 @@ const closePreview = () => {
       </div>
     </template>
 
-    <div v-if="expanded && chapters.length">
+    <div v-if="expanded && chapterMetas.length">
       <chapter-grid
-        :chapters="chapters"
+        :task-state="taskState"
         @preview="(cid: string) => openPreview(cid)"
       />
     </div>
