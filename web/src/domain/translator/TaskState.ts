@@ -24,6 +24,7 @@ export class ChapterSegmentState implements SegmentTracker {
   readonly chapterId: string;
   ranges: LineRange[] = [];
   segments: SegmentInfo[] = [];
+  /** 是否完成 Segment 切分 */
   ready = false;
 
   get allDone(): boolean {
@@ -114,23 +115,29 @@ export class TaskState {
   readonly taskDesc: string;
   chapters: ChapterMeta[] = [];
   readonly chapterStates = new Map<string, ChapterSegmentState>();
+  /** initChapters 执行完毕后设为 true */
+  initialized = false;
 
   constructor(taskDesc: string) {
     this.taskDesc = taskDesc;
   }
 
-  getChapterStatus(chapterId: string): ChapterStatus {
-    return (
-      this.chapters.find((c) => c.chapterId === chapterId)?.status ?? 'pending'
-    );
+  initChapters(chapters: ChapterMeta[]): void {
+    this.chapters = chapters;
+    this.initialized = true;
   }
 
-  updateChapterStatus(chapterId: string, status: ChapterStatus): void {
+  getStatus(chapterId: string): ChapterStatus | undefined {
+    return this.chapters.find((c) => c.chapterId === chapterId)?.status;
+  }
+
+  updateStatus(chapterId: string, status: ChapterStatus): void {
     const ch = this.chapters.find((c) => c.chapterId === chapterId);
     if (ch) ch.status = status;
   }
 
-  getOrCreateChapterState(chapterId: string): ChapterSegmentState {
+  getChapterState(chapterId: string): ChapterSegmentState | undefined {
+    if (!this.chapters.some((c) => c.chapterId === chapterId)) return undefined;
     let state = this.chapterStates.get(chapterId);
     if (!state) {
       state = new ChapterSegmentState(chapterId);

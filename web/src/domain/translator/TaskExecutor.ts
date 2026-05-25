@@ -10,8 +10,6 @@ export type ChapterTracker = {
 };
 
 export class TaskExecutor {
-  private _initialized = false;
-
   constructor(
     private task: TranslationTask,
     private pipeline: TranslationPipeline,
@@ -25,9 +23,8 @@ export class TaskExecutor {
     tracker: ChapterTracker,
     signal?: AbortSignal,
   ): Promise<'success' | 'error' | 'abort'> {
-    if (!this._initialized) {
-      await this.task.initMeta(signal);
-      this._initialized = true;
+    if (!this.task.initialized) {
+      await this.task.initMeta();
     }
 
     const chapters = this.task.chapters;
