@@ -14,6 +14,12 @@ export type InfoResult = {
   homepage_url: string;
 };
 
+export type DomQueryResults = {
+  tabId: number;
+  results: string[];
+  readyState: DocumentReadyState;
+};
+
 export interface AddonApi {
   version: string;
 
@@ -37,7 +43,12 @@ export interface AddonApi {
 
   fetch(input: string | URL | Request, init?: RequestInit): Promise<Response>;
   tabFetch(
-    options: { tabUrl: string; forceNewTab?: boolean },
+    options: {
+      tabUrl: string;
+      tabId?: number;
+      forceNewTab?: boolean;
+      forceWaitForLoad?: boolean;
+    },
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response>;
@@ -46,6 +57,17 @@ export interface AddonApi {
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response>;
+
+  tabDomQuery(params: {
+    tabUrl: string;
+    selector: string;
+    options?: {
+      tabId?: number;
+      forceNewTab?: boolean;
+      forceWaitForLoad?: boolean;
+      closeTimeout?: number;
+    };
+  }): Promise<DomQueryResults>;
 }
 
 declare global {

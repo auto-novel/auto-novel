@@ -56,12 +56,41 @@ const getCrawler = lazy(async () => {
 
   const alphapolisClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
-      const headers = toHeaders(init?.headers);
+      const headers = toHeaders(
+        input instanceof Request ? input.headers : init?.headers,
+      );
       fakeDesktopHeader(headers);
-      return addon.tabFetch({ tabUrl: 'https://www.alphapolis.co.jp' }, input, {
-        ...init,
-        headers,
+
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      let data = await addon.tabDomQuery({
+        tabUrl: url,
+        selector: 'html',
+        options: {
+          forceWaitForLoad: true,
+          closeTimeout: 5_000,
+        },
       });
+
+      if (data.results.length === 0) {
+        // 可能是反爬，复用 tab 重新来一次
+        data = await addon.tabDomQuery({
+          tabUrl: url,
+          selector: 'html',
+          options: {
+            tabId: data?.tabId,
+            forceWaitForLoad: true,
+            closeTimeout: 5_000,
+          },
+        });
+      }
+      const html = data.results?.[0] || '';
+      return new Response(html);
     },
   });
 
