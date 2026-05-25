@@ -23,6 +23,7 @@ const emit = defineEmits<{
   delete: [task: string];
   top: [task: string];
   bottom: [task: string];
+  retry: [task: string];
 }>();
 
 const jobRecord = computed(() => props.job as TranslateJobRecord);
@@ -93,6 +94,7 @@ function retryAllFailed() {
     }
   }
   delete props.job.finishAt;
+  emit('retry', props.job.task);
 }
 
 function hasFailedChapters(): boolean {
