@@ -14,6 +14,7 @@ export class LocalTranslationTask implements TranslationTask {
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
+  initialized = false;
   private volumeStore!: LocalVolumeStore;
   private storeLoaded = false;
 
@@ -63,6 +64,7 @@ export class LocalTranslationTask implements TranslationTask {
       isExpired,
       toMeta,
     );
+    this.initialized = true;
   }
 
   async fetchChapter(chapterId: string): Promise<ChapterDetail> {

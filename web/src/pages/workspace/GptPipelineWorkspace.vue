@@ -160,12 +160,13 @@ function runProcessLoop(): Promise<void> | null {
       const task = await getOrCreateTask(job.task);
       const executor = new TaskExecutor(task, pipeline);
 
-      const segmentTracker = state.getOrCreateChapterState(chapterId);
+      const segmentTracker = state.getChapterState(chapterId);
+      if (!segmentTracker) continue;
       await executor.executeChapter(
         chapterId,
         {
           onChapterStatus: (cid: string, st: ChapterStatus) => {
-            state.updateChapterStatus(cid, st);
+            state.updateStatus(cid, st);
           },
           onProgress: (finished: number, error: number, total: number) => {
             (job as TranslateJobRecord).progress = { finished, error, total };
@@ -277,9 +278,9 @@ const clearCache = () =>
 watch(
   () => [...jobs.value],
   async (jobs) => {
-    const pending: TranslateJob[] = [];
+    const uninitialized: TranslateJob[] = [];
     for (const job of jobs) {
-      if (taskStates.value.get(job.task)?.chapters.length) continue;
+      if (taskStates.value.get(job.task)?.initialized) continue;
       if (job.finishAt) {
         taskStates.value.set(
           job.task,
@@ -287,16 +288,16 @@ watch(
         );
         continue;
       }
-      pending.push(job);
+      uninitialized.push(job);
     }
     await Promise.all(
-      pending.map(async (job) => {
+      uninitialized.map(async (job) => {
         try {
           const task = await getOrCreateTask(job.task);
-          await task.initMeta();
+          if (!task.initialized) await task.initMeta();
           const chapters = task.chapters;
           const state = reactive(new TaskState(job.task)) as TaskState;
-          state.chapters = chapters;
+          state.initChapters(chapters);
           taskStates.value.set(job.task, state);
           const doneCount = chapters.filter((c) => c.status === 'done').length;
           (job as TranslateJobRecord).progress = {
@@ -304,7 +305,7 @@ watch(
             error: 0,
             total: chapters.length,
           };
-          if (chapters.length > 0 && doneCount === chapters.length) {
+          if (chapters.length === 0 || doneCount === chapters.length) {
             job.finishAt = Date.now();
           }
         } catch (e) {
@@ -419,8 +420,8 @@ watch(
         v-for="job of filteredJobs"
         :key="job.task"
         :job="job"
-        :task-states="taskStates"
-        :executing-tasks="executingTasks"
+        :task-state="taskStates.get(job.task)"
+        :task-cache-entry="taskCache.get(job.task)"
         @delete="deleteJob"
         @top="
           (task: string) =>

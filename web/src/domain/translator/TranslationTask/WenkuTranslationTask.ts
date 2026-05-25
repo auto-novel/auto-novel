@@ -16,6 +16,7 @@ export class WenkuTranslationTask implements TranslationTask {
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
+  initialized = false;
 
   private api!: ReturnType<typeof WenkuNovelApi.createTranslationApi>;
   private params: TranslateTaskParams;
@@ -65,6 +66,7 @@ export class WenkuTranslationTask implements TranslationTask {
       isExpired,
       toMeta,
     );
+    this.initialized = true;
   }
 
   async fetchChapter(chapterId: string): Promise<ChapterDetail> {
