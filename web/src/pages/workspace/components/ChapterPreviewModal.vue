@@ -28,14 +28,13 @@ const previewState = computed(() => {
     }
   }
 
-  const errorMsgPrefix = seg?.translatorId ? `[${seg?.translatorId}] ` : '';
-  const rawError =
+  const errorMsg =
     seg && seg.status === 'error'
       ? state?.getSegmentError(selectedSegmentIndex.value)
       : undefined;
-  const errorMsg = rawError ? `${errorMsgPrefix}${rawError}`.trim() : undefined;
 
   return {
+    translatorId: seg?.translatorId,
     currentSegment: seg,
     previewParagraphs: paragraphs,
     currentSegmentError: errorMsg,
@@ -135,7 +134,9 @@ const onUpdateShow = (val: boolean) => {
         {{ i + 1 }}
       </n-button>
     </div>
-
+    <div class="preview-translator" v-if="previewState.translatorId">
+      翻译器：{{ previewState.translatorId }}
+    </div>
     <n-alert
       v-if="previewState.currentSegmentError"
       type="error"
@@ -200,6 +201,12 @@ const onUpdateShow = (val: boolean) => {
   .preview-zh {
     opacity: 1;
   }
+}
+
+.preview-translator {
+  font-size: 0.85em;
+  opacity: 0.6;
+  padding: 4px 2px;
 }
 
 @media (max-width: 768px) {
