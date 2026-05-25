@@ -423,6 +423,7 @@ watch(
         :task-state="taskStates.get(job.task)"
         :task-cache-entry="taskCache.get(job.task)"
         @delete="deleteJob"
+        @retry="(task: string) => runProcessLoop()"
         @top="
           (task: string) =>
             gptWorkspace.topJob(
