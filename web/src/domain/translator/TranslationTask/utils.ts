@@ -15,7 +15,7 @@ export function buildChapterMetaList<T>(
     const done = isDone(item);
     if (level === 'normal' && done) continue;
     const status: ChapterStatus =
-      level === 'all'
+      level === 'all' || level === 'sync'
         ? 'pending'
         : level === 'expire' && done && isExpired(item)
           ? 'pending'
