@@ -16,7 +16,7 @@ import {
   SegmentTracker,
   TranslatorTracker,
 } from '@/types';
-import { Semaphore } from '@/utils';
+import { Semaphore, randomUUID } from '@/utils';
 
 export class TranslationPipeline {
   protected queue: SegmentQueue;
@@ -77,7 +77,7 @@ export class TranslationPipeline {
     };
 
     const segments = this.assembler.assemble(
-      crypto.randomUUID(),
+      randomUUID(),
       lines,
       ranges,
       glossary,
@@ -140,7 +140,7 @@ export class TranslationPipeline {
     tracker?: TranslatorTracker,
     translatorId?: string,
   ): string {
-    const id = translatorId ?? crypto.randomUUID();
+    const id = translatorId ?? randomUUID();
     const loop: TranslationLoop = {
       id,
       translator,
