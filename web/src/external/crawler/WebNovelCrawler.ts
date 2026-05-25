@@ -54,8 +54,19 @@ const getCrawler = lazy(async () => {
     },
   });
 
+  const alphapolisClient = ky.create({
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      const headers = toHeaders(init?.headers);
+      fakeDesktopHeader(headers);
+      return addon.tabFetch({ tabUrl: 'https://www.alphapolis.co.jp' }, input, {
+        ...init,
+        headers,
+      });
+    },
+  });
+
   return new WebNovelCrawler({
-    alphapolis: () => new Alphapolis(client),
+    alphapolis: () => new Alphapolis(alphapolisClient),
     hameln: () => new Hameln(hamelnClient),
     kakuyomu: () => new Kakuyomu(client),
     novelup: () => new Novelup(client),

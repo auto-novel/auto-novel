@@ -104,7 +104,7 @@ class Hameln(
         val points = row("総合評価")
             .text()
             .filter { it.isDigit() }
-            .toIntOrNull()
+            .toLongOrNull()
 
         val totalCharacters = row("合計文字数")
             .text()

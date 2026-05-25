@@ -209,7 +209,7 @@ class Syosetu(
         val points = row("総合評価")
             ?.text()
             ?.filter { it.isDigit() }
-            ?.toIntOrNull()
+            ?.toLongOrNull()
 
         val totalCharacters = row("文字数")!!
             .text()
