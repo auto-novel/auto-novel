@@ -101,6 +101,8 @@ function hasFailedChapters(): boolean {
   return chapterMetas.value.some((c) => c.status === 'error');
 }
 
+defineExpose({ retryAllFailed, hasFailedChapters });
+
 const message = useMessage();
 
 function createTask(taskDesc: string): TranslationTask {
