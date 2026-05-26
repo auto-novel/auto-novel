@@ -128,17 +128,10 @@ export class Semaphore {
 
   async use<T>(fn: () => Promise<T> | T): Promise<T> {
     await this.acquire();
-    let released = false;
-    const safeRelease = () => {
-      if (!released) {
-        released = true;
-        this.release();
-      }
-    };
     try {
       return await fn();
     } finally {
-      safeRelease();
+      this.release();
     }
   }
 }

@@ -19,7 +19,7 @@ import {
 import { Semaphore, randomUUID } from '@/utils';
 
 export class TranslationPipeline {
-  protected queue: SegmentQueue;
+  public queue: SegmentQueue;
   protected translatorLoops: Map<string, TranslationLoop>;
   public segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
@@ -44,6 +44,27 @@ export class TranslationPipeline {
     signal?: AbortSignal,
     tracker?: SegmentTracker,
   ): Promise<string> {
+    const { segments, segmentPromises } = this.prepareSegments(
+      text,
+      glossary,
+      history,
+      signal,
+      tracker,
+    );
+    await this.queue.enqueueAll(segments, signal);
+    return this.resolveTranslation(segments, segmentPromises, signal, tracker);
+  }
+
+  prepareSegments(
+    text: string,
+    glossary?: Glossary,
+    history?: TranslationHistory,
+    signal?: AbortSignal,
+    tracker?: SegmentTracker,
+  ): {
+    segments: Segment[];
+    segmentPromises: Promise<{ order: number; text: string }>[];
+  } {
     signal?.throwIfAborted();
 
     const lines = text.split('\n');
@@ -108,8 +129,15 @@ export class TranslationPipeline {
       segmentPromises.push(promise);
     }
 
-    await this.waitUntilBelowHighWaterMark(signal);
-    await this.queue.enqueueAll(segments);
+    return { segments, segmentPromises };
+  }
+
+  async resolveTranslation(
+    segments: Segment[],
+    segmentPromises: Promise<{ order: number; text: string }>[],
+    signal?: AbortSignal,
+    tracker?: SegmentTracker,
+  ): Promise<string> {
     const results = await Promise.allSettled(segmentPromises);
 
     if (signal?.aborted) {
@@ -204,6 +232,7 @@ export class TranslationPipeline {
                 }
               })
               .finally(() => {
+                this.queue.ack();
                 semaphore.release();
                 updateConcurrency(-1);
               });

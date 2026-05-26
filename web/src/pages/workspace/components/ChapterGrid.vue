@@ -19,8 +19,16 @@ const chapters = computed(() => {
     const liveProgress = chState?.ready
       ? { completed: chState.completedCount, total: chState.segments.length }
       : ch.segmentProgress;
+    let displayStatus = ch.status;
+    if (
+      displayStatus === 'translating' &&
+      (!chState?.ready || chState.translatingCount === 0)
+    ) {
+      displayStatus = 'pending';
+    }
     return {
       ...ch,
+      status: displayStatus,
       segmentProgress: liveProgress,
     } as ChapterMeta;
   });
