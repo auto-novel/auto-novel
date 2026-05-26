@@ -3,6 +3,7 @@ import {
   BookOutlined,
   DeleteOutlineOutlined,
   PlusOutlined,
+  RefreshOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
@@ -22,6 +23,7 @@ import { TaskState } from '@/domain/translator/TaskState';
 import type { ChapterStatus } from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
+import PipelineTaskCard from './components/PipelineTaskCard.vue';
 
 const message = useMessage();
 const pipelineWorkspace = useGptPipelineWorkspaceStore();
@@ -147,6 +149,9 @@ function countPendingChapters(
 
 function runProcessLoop(): Promise<void> | null {
   if (processLoopPromise) return processLoopPromise;
+  if ([...workerStates.value.values()].every((s) => !s.running)) {
+    return null;
+  }
 
   processLoopAbortController = new AbortController();
   const signal = processLoopAbortController.signal;
@@ -273,6 +278,20 @@ const deleteJob = (task: string) => {
 const deleteAllJobs = () =>
   filteredJobs.value.forEach((j) => deleteJob(j.task));
 
+const taskCardRefs = ref<InstanceType<typeof PipelineTaskCard>[]>([]);
+function retryTaskCards() {
+  let hasFailed = false;
+  for (const card of taskCardRefs.value) {
+    if (card?.hasFailedChapters?.()) {
+      card.retryAllFailed();
+      hasFailed = true;
+    }
+  }
+  if (!hasFailed) {
+    message.info('没有需要重试的失败任务');
+  }
+}
+
 const clearCache = () =>
   doAction(
     new IndexedDbSegmentCache('gpt-seg-cache').clear(),
@@ -332,17 +351,17 @@ watch(
       </n-p>
     </bulletin>
 
-    <section-header title="翻译器" />
+    <section-header title="翻译器">
+      <c-button
+        label="添加翻译器"
+        :icon="PlusOutlined"
+        @action="showWorkerModal = true"
+      />
+    </section-header>
 
     <n-flex vertical>
       <c-action-wrapper title="操作" align="center">
         <n-button-group size="small">
-          <c-button
-            label="添加翻译器"
-            :icon="PlusOutlined"
-            :round="false"
-            @action="showWorkerModal = true"
-          />
           <c-button label="启动全部" :round="false" @action="startAllWorkers" />
           <c-button label="停止全部" :round="false" @action="stopAllWorkers" />
           <c-button-confirm
@@ -415,6 +434,12 @@ watch(
             :round="false"
             @action="deleteAllJobs"
           />
+          <c-button
+            label="重试失败任务"
+            :icon="RefreshOutlined"
+            :round="false"
+            @action="retryTaskCards"
+          />
         </n-button-group>
       </c-action-wrapper>
     </n-flex>
@@ -423,6 +448,7 @@ watch(
     <div v-else class="task-list">
       <pipeline-task-card
         v-for="job of filteredJobs"
+        ref="taskCardRefs"
         :key="job.task"
         :job="job"
         :task-state="taskStates.get(job.task)"
