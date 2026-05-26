@@ -66,11 +66,14 @@ const toggleExpand = async () => {
 
   const state = getOrCreateTaskState();
   if (!state.initialized) {
+    const wasFinished = jobRecord.value.finishAt !== undefined;
     const chapters = await getChapterMetas();
     state.initChapters(chapters);
-    updateJobProgress(jobRecord.value, chapters);
-    if (chapters.some((ch) => ch.status === 'pending')) {
-      emit('retry', props.job.task);
+    if (!wasFinished) {
+      updateJobProgress(jobRecord.value, chapters);
+      if (chapters.some((ch) => ch.status === 'pending')) {
+        emit('retry', props.job.task);
+      }
     }
   }
   expanded.value = true;

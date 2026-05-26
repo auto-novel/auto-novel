@@ -317,13 +317,12 @@ watch(
   async (workspaceJobs) => {
     const uninitialized: TranslateJob[] = [];
     const activeTasks = new Set(workspaceJobs.map((job) => job.task));
-    for (const task of [...taskStates.value.keys()]) {
-      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
-    }
-    for (const task of [...taskCache.keys()]) {
-      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
-    }
-    for (const task of [...taskVersions.value.keys()]) {
+    const knownTasks = new Set([
+      ...taskStates.value.keys(),
+      ...taskCache.keys(),
+      ...taskVersions.value.keys(),
+    ]);
+    for (const task of knownTasks) {
       if (!activeTasks.has(task)) clearTaskRuntimeState(task);
     }
 
