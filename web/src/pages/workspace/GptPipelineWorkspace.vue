@@ -50,6 +50,7 @@ const pipeline = new TranslationPipeline(
 
 const taskStates = ref(new Map<string, TaskState>());
 const taskCache = new Map<string, TranslationTask>();
+const taskVersions = ref(new Map<string, number>());
 
 interface WorkerState {
   running: boolean;
@@ -145,11 +146,21 @@ function countPendingChapters(
   return count;
 }
 
+function hasRunningWorker(): boolean {
+  return [...workerStates.value.values()].some((s) => s.running);
+}
+
+function clearTaskRuntimeState(task: string): void {
+  taskStates.value.delete(task);
+  taskCache.delete(task);
+  taskVersions.value.delete(task);
+}
+
 // ========== 全局处理循环 ==========
 
 function runProcessLoop(): Promise<void> | null {
   if (processLoopPromise) return processLoopPromise;
-  if ([...workerStates.value.values()].every((s) => !s.running)) {
+  if (!hasRunningWorker()) {
     return null;
   }
 
@@ -204,6 +215,9 @@ function runProcessLoop(): Promise<void> | null {
     }
     processLoopPromise = null;
     processLoopAbortController = null;
+    if (countPendingChapters(jobs.value, taskStates.value) > 0) {
+      runProcessLoop();
+    }
   });
 
   return processLoopPromise;
@@ -271,8 +285,7 @@ const deleteJob = (task: string) => {
     return;
   }
   gptWorkspace.deleteJob(task);
-  taskStates.value.delete(task);
-  taskCache.delete(task);
+  clearTaskRuntimeState(task);
 };
 
 const deleteAllJobs = () =>
@@ -301,15 +314,36 @@ const clearCache = () =>
 
 watch(
   () => [...jobs.value],
-  async (jobs) => {
+  async (workspaceJobs) => {
     const uninitialized: TranslateJob[] = [];
-    for (const job of jobs) {
-      if (taskStates.value.get(job.task)?.initialized) continue;
+    const activeTasks = new Set(workspaceJobs.map((job) => job.task));
+    for (const task of [...taskStates.value.keys()]) {
+      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
+    }
+    for (const task of [...taskCache.keys()]) {
+      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
+    }
+    for (const task of [...taskVersions.value.keys()]) {
+      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
+    }
+
+    for (const job of workspaceJobs) {
+      if (taskVersions.value.get(job.task) !== job.createAt) {
+        clearTaskRuntimeState(job.task);
+      }
+      const state = taskStates.value.get(job.task);
+      if (
+        taskVersions.value.get(job.task) === job.createAt &&
+        state?.initialized
+      ) {
+        continue;
+      }
       if (job.finishAt) {
         taskStates.value.set(
           job.task,
           reactive(new TaskState(job.task)) as TaskState,
         );
+        taskVersions.value.set(job.task, job.createAt);
         continue;
       }
       uninitialized.push(job);
@@ -319,10 +353,13 @@ watch(
         try {
           const task = await getOrCreateTask(job.task);
           if (!task.initialized) await task.initMeta();
+          const currentJob = jobs.value.find((it) => it.task === job.task);
+          if (!currentJob || currentJob.createAt !== job.createAt) return;
           const chapters = task.chapters;
           const state = reactive(new TaskState(job.task)) as TaskState;
           state.initChapters(chapters);
           taskStates.value.set(job.task, state);
+          taskVersions.value.set(job.task, job.createAt);
           const doneCount = chapters.filter((c) => c.status === 'done').length;
           (job as TranslateJobRecord).progress = {
             finished: doneCount,
@@ -337,6 +374,7 @@ watch(
         }
       }),
     );
+    if (uninitialized.length > 0) runProcessLoop();
   },
   { immediate: true },
 );

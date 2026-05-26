@@ -50,7 +50,9 @@ function updateJobProgress(job: TranslateJobRecord, chapters: ChapterMeta[]) {
   const doneCount = chapters.filter((c) => c.status === 'done').length;
   job.progress = { finished: doneCount, error: 0, total: chapters.length };
   if (doneCount === chapters.length) {
-    job.finishAt = Date.now();
+    job.finishAt ??= Date.now();
+  } else {
+    delete job.finishAt;
   }
 }
 
@@ -65,12 +67,10 @@ const toggleExpand = async () => {
   const state = getOrCreateTaskState();
   if (!state.initialized) {
     const chapters = await getChapterMetas();
-    if (jobRecord.value.finishAt) {
-      state.initChapters(
-        chapters.map((c) => ({ ...c, status: 'done' as const })),
-      );
-    } else {
-      updateJobProgress(jobRecord.value, chapters);
+    state.initChapters(chapters);
+    updateJobProgress(jobRecord.value, chapters);
+    if (chapters.some((ch) => ch.status === 'pending')) {
+      emit('retry', props.job.task);
     }
   }
   expanded.value = true;
