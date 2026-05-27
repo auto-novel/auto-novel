@@ -9,6 +9,50 @@ import { createHtmlPlugin } from 'vite-plugin-html';
 
 import path from 'path';
 
+function setupRemoteAuthProxy(config: UserConfig) {
+  const AuthUrl = 'https://auth.novelia.cc';
+  const proxy = config.server!.proxy!;
+
+  // 解决 /api /api/v1/auth 代理冲突问题
+  proxy['^/api(?!/v1/auth)'] = proxy['/api'];
+  delete proxy['/api'];
+
+  // 代理 api
+  config.server!.proxy!['/api/v1/auth'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+  };
+  // 代理 /assets
+  config.server!.proxy!['/auth-proxy-assets'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/auth-proxy-assets/, '/assets'),
+  };
+  // 代理首页
+  config.server!.proxy!['/auth-proxy'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/auth-proxy/, ''),
+    selfHandleResponse: true,
+    configure(proxy) {
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.setHeader('accept-encoding', 'identity');
+      });
+      proxy.on('proxyRes', (proxyRes, _req, res) => {
+        const chunks: Buffer[] = [];
+        proxyRes.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+        proxyRes.on('end', () => {
+          let body = Buffer.concat(chunks).toString();
+          body = body.replaceAll('/assets', '/auth-proxy-assets');
+          res.end(body);
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const apiMode = env.VITE_API_MODE;
@@ -123,6 +167,10 @@ export default defineConfig(({ mode }) => {
         brotli: true,
       }),
     );
+  }
+
+  if (apiMode === 'remote') {
+    setupRemoteAuthProxy(config);
   }
 
   return config;

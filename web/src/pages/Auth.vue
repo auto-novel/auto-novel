@@ -20,11 +20,25 @@ useEventListener('message', async (event: MessageEvent) => {
     });
   }
 });
+
+const iframeSrc = computed(() => {
+  const theme = setting.value.theme;
+  const url = new URL(AuthUrl);
+  url.searchParams.set('app', 'n');
+  url.searchParams.set('theme', theme);
+
+  if (import.meta.env.VITE_API_MODE === 'remote') {
+    // vite.config.ts 中配置了 /auth-proxy 代理到 AuthUrl 了
+    url.pathname = '/auth-proxy';
+  }
+
+  return url.toString();
+});
 </script>
 
 <template>
   <iframe
-    :src="AuthUrl + '?app=n&theme=' + setting.theme"
+    :src="iframeSrc"
     frameborder="0"
     allowfullscreen
     style="
