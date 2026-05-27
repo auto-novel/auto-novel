@@ -13,7 +13,10 @@ const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
 useEventListener('message', async (event: MessageEvent) => {
-  if (event.origin === AuthUrl && event.data.type === 'login_success') {
+  if (
+    event.origin === new URL(AuthUrl).origin &&
+    event.data.type === 'login_success'
+  ) {
     await whoamiStore.refresh().then(() => {
       const from = props.from ?? '/';
       router.replace(from);
@@ -22,16 +25,9 @@ useEventListener('message', async (event: MessageEvent) => {
 });
 
 const iframeSrc = computed(() => {
-  const theme = setting.value.theme;
   const url = new URL(AuthUrl);
   url.searchParams.set('app', 'n');
-  url.searchParams.set('theme', theme);
-
-  if (import.meta.env.VITE_API_MODE === 'remote') {
-    // vite.config.ts 中配置了 /auth-proxy 代理到 AuthUrl 了
-    url.pathname = '/auth-proxy';
-  }
-
+  url.searchParams.set('theme', setting.value.theme);
   return url.toString();
 });
 </script>

@@ -17,17 +17,19 @@ function setupRemoteAuthProxy(config: UserConfig) {
   proxy['^/api(?!/v1/auth)'] = proxy['/api'];
   delete proxy['/api'];
 
-  // 代理 api
+  // 兼容旧接口路径
   proxy['/api/v1/auth'] = {
     target: AuthUrl,
     changeOrigin: true,
   };
-  // 代理 /assets
-  proxy['/auth-proxy-assets'] = {
+
+  // 代理静态资源
+  proxy['/auth-proxy/assets'] = {
     target: AuthUrl,
     changeOrigin: true,
-    rewrite: (path: string) => path.replace(/^\/auth-proxy-assets/, '/assets'),
+    rewrite: (path: string) => path.replace(/^\/auth-proxy\/assets/, '/assets'),
   };
+
   // 代理首页
   proxy['/auth-proxy'] = {
     target: AuthUrl,
@@ -44,8 +46,18 @@ function setupRemoteAuthProxy(config: UserConfig) {
           chunks.push(chunk);
         });
         proxyRes.on('end', () => {
-          let body = Buffer.concat(chunks).toString();
-          body = body.replaceAll('/assets', '/auth-proxy-assets');
+          const body = Buffer.concat(chunks)
+            .toString()
+            .replaceAll('/assets', '/auth-proxy/assets');
+
+          res.statusCode = proxyRes.statusCode ?? 200;
+          res.statusMessage = proxyRes.statusMessage ?? '';
+          for (const [key, value] of Object.entries(proxyRes.headers)) {
+            if (value !== undefined) {
+              res.setHeader(key, value);
+            }
+          }
+          res.removeHeader('content-length');
           res.end(body);
         });
       });
