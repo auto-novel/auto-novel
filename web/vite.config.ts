@@ -18,18 +18,18 @@ function setupRemoteAuthProxy(config: UserConfig) {
   delete proxy['/api'];
 
   // 代理 api
-  config.server!.proxy!['/api/v1/auth'] = {
+  proxy['/api/v1/auth'] = {
     target: AuthUrl,
     changeOrigin: true,
   };
   // 代理 /assets
-  config.server!.proxy!['/auth-proxy-assets'] = {
+  proxy['/auth-proxy-assets'] = {
     target: AuthUrl,
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/auth-proxy-assets/, '/assets'),
   };
   // 代理首页
-  config.server!.proxy!['/auth-proxy'] = {
+  proxy['/auth-proxy'] = {
     target: AuthUrl,
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/auth-proxy/, ''),
