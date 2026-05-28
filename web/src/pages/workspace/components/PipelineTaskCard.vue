@@ -46,16 +46,6 @@ function getOrCreateTaskState(): TaskState {
   return reactive(new TaskState(props.job.task)) as TaskState;
 }
 
-function updateJobProgress(job: TranslateJobRecord, chapters: ChapterMeta[]) {
-  const doneCount = chapters.filter((c) => c.status === 'done').length;
-  job.progress = { finished: doneCount, error: 0, total: chapters.length };
-  if (doneCount === chapters.length) {
-    job.finishAt ??= Date.now();
-  } else {
-    delete job.finishAt;
-  }
-}
-
 const expanded = ref(false);
 
 const toggleExpand = async () => {
@@ -66,15 +56,8 @@ const toggleExpand = async () => {
 
   const state = getOrCreateTaskState();
   if (!state.initialized) {
-    const wasFinished = jobRecord.value.finishAt !== undefined;
     const chapters = await getChapterMetas();
     state.initChapters(chapters);
-    if (!wasFinished) {
-      updateJobProgress(jobRecord.value, chapters);
-      if (chapters.some((ch) => ch.status === 'pending')) {
-        emit('retry', props.job.task);
-      }
-    }
   }
   expanded.value = true;
 };
