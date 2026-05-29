@@ -1,13 +1,38 @@
 <script lang="ts" setup>
 import type { ChapterMeta } from '@/domain/translator/TaskState';
+import type { TaskState } from '@/domain/translator/TaskState';
 
-defineProps<{ chapters: ChapterMeta[] }>();
+const props = defineProps<{
+  taskState?: TaskState;
+}>();
 
 const emit = defineEmits<{
   preview: [chapterId: string];
 }>();
 
 const themeVars = useThemeVars();
+
+const chapters = computed(() => {
+  const metas = props.taskState?.chapters ?? [];
+  return metas.map((ch) => {
+    const chState = props.taskState?.chapterStates.get(ch.chapterId);
+    const liveProgress = chState?.ready
+      ? { completed: chState.completedCount, total: chState.segments.length }
+      : ch.segmentProgress;
+    let displayStatus = ch.status;
+    if (
+      displayStatus === 'translating' &&
+      (!chState?.ready || chState.translatingCount === 0)
+    ) {
+      displayStatus = 'pending';
+    }
+    return {
+      ...ch,
+      status: displayStatus,
+      segmentProgress: liveProgress,
+    } as ChapterMeta;
+  });
+});
 
 function pct(sp: { completed: number; total: number } | undefined): number {
   if (!sp || sp.total <= 0) return 0;
@@ -17,34 +42,31 @@ function pct(sp: { completed: number; total: number } | undefined): number {
 
 <template>
   <div class="grid">
-    <n-tooltip v-for="(ch, i) of chapters" :key="ch.chapterId" placement="top">
-      <template #trigger>
-        <n-button
-          class="c"
-          :focusable="false"
-          :class="`c--${ch.status}`"
-          :style="{ '--i': i }"
-          quaternary
-          @click="emit('preview', ch.chapterId)"
-        >
-          <span class="o">{{ ch.order }}</span>
-          <span v-if="ch.segmentProgress" class="p">
-            {{ ch.segmentProgress.completed }}/{{ ch.segmentProgress.total }}
-          </span>
+    <n-button
+      v-for="(ch, i) of chapters"
+      :key="ch.chapterId"
+      class="c"
+      :focusable="false"
+      :class="`c--${ch.status}`"
+      :style="{ '--i': i }"
+      quaternary
+      @click="emit('preview', ch.chapterId)"
+    >
+      <span class="o">{{ ch.order }}</span>
+      <span v-if="ch.segmentProgress" class="p">
+        {{ ch.segmentProgress.completed }}/{{ ch.segmentProgress.total }}
+      </span>
 
-          <n-progress
-            v-if="ch.segmentProgress && ch.status !== 'done'"
-            type="line"
-            :percentage="pct(ch.segmentProgress)"
-            :height="3"
-            :show-indicator="false"
-            :fill-border-radius="0"
-            class="bar"
-          />
-        </n-button>
-      </template>
-      {{ ch.title || `第 ${ch.order} 章` }}
-    </n-tooltip>
+      <n-progress
+        v-if="ch.segmentProgress && ch.status !== 'done'"
+        type="line"
+        :percentage="pct(ch.segmentProgress)"
+        :height="3"
+        :show-indicator="false"
+        :fill-border-radius="0"
+        class="bar"
+      />
+    </n-button>
   </div>
 </template>
 

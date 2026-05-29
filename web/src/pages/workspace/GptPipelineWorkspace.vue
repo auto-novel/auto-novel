@@ -3,9 +3,14 @@ import {
   BookOutlined,
   DeleteOutlineOutlined,
   PlusOutlined,
+  RefreshOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
-import { OpenAiTranslator, TranslationPipeline } from '@auto-novel/translator';
+import {
+  Semaphore,
+  OpenAiTranslator,
+  TranslationPipeline,
+} from '@auto-novel/translator';
 import type { TranslatorTracker } from '@auto-novel/translator';
 
 import { doAction } from '@/pages/util';
@@ -18,6 +23,7 @@ import { TaskState } from '@/domain/translator/TaskState';
 import type { ChapterStatus } from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
+import PipelineTaskCard from './components/PipelineTaskCard.vue';
 
 const message = useMessage();
 const pipelineWorkspace = useGptPipelineWorkspaceStore();
@@ -27,10 +33,24 @@ const jobs = computed(() => gptWorkspace.ref.value.jobs);
 const showWorkerModal = ref(false);
 const showLocalVolumeDrawer = ref(false);
 
+/** 同时处理的章节数上限 */
+const GLOBAL_WINDOW = 66;
+/** 同时 fetch 的章节数上限 */
+const FETCH_CONCURRENCY = 1;
+const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
+/** pipeline 内同时翻译的分块的高水位标记 */
+const HIGH_WATER_MARK = 100;
+const pipeline = new TranslationPipeline(
+  HIGH_WATER_MARK,
+  undefined,
+  new IndexedDbSegmentCache('gpt-seg-cache'),
+);
+
 // ========== 任务状态管理 ==========
 
 const taskStates = ref(new Map<string, TaskState>());
 const taskCache = new Map<string, TranslationTask>();
+const taskVersions = ref(new Map<string, number>());
 
 interface WorkerState {
   running: boolean;
@@ -52,11 +72,6 @@ const workerErrors = computed(() => {
 });
 const executingTasks = reactive(new Set<string>());
 
-const pipeline = new TranslationPipeline(
-  100,
-  undefined,
-  new IndexedDbSegmentCache('gpt-seg-cache'),
-);
 let processLoopAbortController: AbortController | null = null;
 let processLoopPromise: Promise<void> | null = null;
 
@@ -98,22 +113,18 @@ async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
   return task;
 }
 
-// ========== 全局滑动窗口 ==========
-
-/** 同时处理的章节数 */
-const GLOBAL_WINDOW = 3;
-
 function getNextJob(
   jobs: TranslateJob[],
   taskStatesMap: Map<string, TaskState>,
-): { job: TranslateJob; chapterId: string } | null {
+): { job: TranslateJob; chapterId: string; state: TaskState } | null {
   for (const job of jobs) {
     if (job.finishAt) continue;
     const state = taskStatesMap.get(job.task);
     if (!state) continue;
     for (const ch of state.chapters) {
       if (ch.status !== 'pending') continue;
-      return { job, chapterId: ch.chapterId };
+      ch.status = 'translating';
+      return { job, chapterId: ch.chapterId, state };
     }
   }
   return null;
@@ -135,10 +146,23 @@ function countPendingChapters(
   return count;
 }
 
+function hasRunningWorker(): boolean {
+  return [...workerStates.value.values()].some((s) => s.running);
+}
+
+function clearTaskRuntimeState(task: string): void {
+  taskStates.value.delete(task);
+  taskCache.delete(task);
+  taskVersions.value.delete(task);
+}
+
 // ========== 全局处理循环 ==========
 
 function runProcessLoop(): Promise<void> | null {
   if (processLoopPromise) return processLoopPromise;
+  if (!hasRunningWorker()) {
+    return null;
+  }
 
   processLoopAbortController = new AbortController();
   const signal = processLoopAbortController.signal;
@@ -148,33 +172,36 @@ function runProcessLoop(): Promise<void> | null {
       const item = getNextJob(jobs.value, taskStates.value);
       if (!item) break;
 
-      const { job, chapterId } = item;
+      const { job, chapterId, state } = item;
       executingTasks.add(job.task);
 
-      const state = taskStates.value.get(job.task);
-      if (!state) continue;
-
-      const ch = state.chapters.find((c) => c.chapterId === chapterId);
-      if (ch) ch.status = 'translating';
-
       const task = await getOrCreateTask(job.task);
-      const executor = new TaskExecutor(task, pipeline);
+      const executor = new TaskExecutor(task, pipeline, fetchSemaphore);
 
-      const segmentTracker = state.getOrCreateChapterState(chapterId);
-      await executor.executeChapter(
-        chapterId,
-        {
-          onChapterStatus: (cid: string, st: ChapterStatus) => {
-            state.updateChapterStatus(cid, st);
+      const segmentTracker = state.getChapterState(chapterId);
+      if (!segmentTracker) continue;
+      await executor
+        .executeChapter(
+          chapterId,
+          {
+            onChapterStatus: (cid: string, st: ChapterStatus) => {
+              state.updateStatus(cid, st);
+            },
+            onProgress: (finished: number, error: number, total: number) => {
+              (job as TranslateJobRecord).progress = { finished, error, total };
+            },
+            onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
+            segmentTracker,
           },
-          onProgress: (finished: number, error: number, total: number) => {
-            (job as TranslateJobRecord).progress = { finished, error, total };
-          },
-          onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
-          segmentTracker,
-        },
-        signal,
-      );
+          signal,
+        )
+        .then(() => {
+          const allDone = state.chapters.every((c) => c.status === 'done');
+          if (allDone) {
+            executingTasks.delete(job.task);
+            (job as TranslateJobRecord).finishAt = Date.now();
+          }
+        });
     }
   };
 
@@ -185,14 +212,12 @@ function runProcessLoop(): Promise<void> | null {
   processLoopPromise = Promise.all(workers).then(() => {
     for (const t of [...executingTasks]) {
       executingTasks.delete(t);
-      const state = taskStates.value.get(t);
-      if (state && state.chapters.every((c) => c.status === 'done')) {
-        const job = jobs.value.find((j) => j.task === t);
-        if (job) job.finishAt = Date.now();
-      }
     }
     processLoopPromise = null;
     processLoopAbortController = null;
+    if (countPendingChapters(jobs.value, taskStates.value) > 0) {
+      runProcessLoop();
+    }
   });
 
   return processLoopPromise;
@@ -260,12 +285,25 @@ const deleteJob = (task: string) => {
     return;
   }
   gptWorkspace.deleteJob(task);
-  taskStates.value.delete(task);
-  taskCache.delete(task);
+  clearTaskRuntimeState(task);
 };
 
 const deleteAllJobs = () =>
   filteredJobs.value.forEach((j) => deleteJob(j.task));
+
+const taskCardRefs = ref<InstanceType<typeof PipelineTaskCard>[]>([]);
+function retryTaskCards() {
+  let hasFailed = false;
+  for (const card of taskCardRefs.value) {
+    if (card?.hasFailedChapters?.()) {
+      card.retryAllFailed();
+      hasFailed = true;
+    }
+  }
+  if (!hasFailed) {
+    message.info('没有需要重试的失败任务');
+  }
+}
 
 const clearCache = () =>
   doAction(
@@ -276,35 +314,58 @@ const clearCache = () =>
 
 watch(
   () => [...jobs.value],
-  async (jobs) => {
-    const pending: TranslateJob[] = [];
-    for (const job of jobs) {
-      if (taskStates.value.get(job.task)?.chapters.length) continue;
+  async (workspaceJobs) => {
+    const uninitialized: TranslateJob[] = [];
+    const activeTasks = new Set(workspaceJobs.map((job) => job.task));
+    const knownTasks = new Set([
+      ...taskStates.value.keys(),
+      ...taskCache.keys(),
+      ...taskVersions.value.keys(),
+    ]);
+    for (const task of knownTasks) {
+      if (!activeTasks.has(task)) clearTaskRuntimeState(task);
+    }
+
+    for (const job of workspaceJobs) {
+      if (taskVersions.value.get(job.task) !== job.createAt) {
+        clearTaskRuntimeState(job.task);
+      }
+      const state = taskStates.value.get(job.task);
+      if (
+        taskVersions.value.get(job.task) === job.createAt &&
+        state?.initialized
+      ) {
+        continue;
+      }
       if (job.finishAt) {
         taskStates.value.set(
           job.task,
           reactive(new TaskState(job.task)) as TaskState,
         );
+        taskVersions.value.set(job.task, job.createAt);
         continue;
       }
-      pending.push(job);
+      uninitialized.push(job);
     }
     await Promise.all(
-      pending.map(async (job) => {
+      uninitialized.map(async (job) => {
         try {
           const task = await getOrCreateTask(job.task);
-          await task.initMeta();
+          if (!task.initialized) await task.initMeta();
+          const currentJob = jobs.value.find((it) => it.task === job.task);
+          if (!currentJob || currentJob.createAt !== job.createAt) return;
           const chapters = task.chapters;
           const state = reactive(new TaskState(job.task)) as TaskState;
-          state.chapters = chapters;
+          state.initChapters(chapters);
           taskStates.value.set(job.task, state);
+          taskVersions.value.set(job.task, job.createAt);
           const doneCount = chapters.filter((c) => c.status === 'done').length;
           (job as TranslateJobRecord).progress = {
             finished: doneCount,
             error: 0,
             total: chapters.length,
           };
-          if (chapters.length > 0 && doneCount === chapters.length) {
+          if (chapters.length === 0 || doneCount === chapters.length) {
             job.finishAt = Date.now();
           }
         } catch (e) {
@@ -312,6 +373,7 @@ watch(
         }
       }),
     );
+    if (uninitialized.length > 0) runProcessLoop();
   },
   { immediate: true },
 );
@@ -326,17 +388,17 @@ watch(
       </n-p>
     </bulletin>
 
-    <section-header title="翻译器" />
+    <section-header title="翻译器">
+      <c-button
+        label="添加翻译器"
+        :icon="PlusOutlined"
+        @action="showWorkerModal = true"
+      />
+    </section-header>
 
     <n-flex vertical>
       <c-action-wrapper title="操作" align="center">
         <n-button-group size="small">
-          <c-button
-            label="添加翻译器"
-            :icon="PlusOutlined"
-            :round="false"
-            @action="showWorkerModal = true"
-          />
           <c-button label="启动全部" :round="false" @action="startAllWorkers" />
           <c-button label="停止全部" :round="false" @action="stopAllWorkers" />
           <c-button-confirm
@@ -409,6 +471,12 @@ watch(
             :round="false"
             @action="deleteAllJobs"
           />
+          <c-button
+            label="重试失败任务"
+            :icon="RefreshOutlined"
+            :round="false"
+            @action="retryTaskCards"
+          />
         </n-button-group>
       </c-action-wrapper>
     </n-flex>
@@ -417,11 +485,13 @@ watch(
     <div v-else class="task-list">
       <pipeline-task-card
         v-for="job of filteredJobs"
+        ref="taskCardRefs"
         :key="job.task"
         :job="job"
-        :task-states="taskStates"
-        :executing-tasks="executingTasks"
+        :task-state="taskStates.get(job.task)"
+        :task-cache-entry="taskCache.get(job.task)"
         @delete="deleteJob"
+        @retry="(task: string) => runProcessLoop()"
         @top="
           (task: string) =>
             gptWorkspace.topJob(

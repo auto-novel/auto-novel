@@ -1,4 +1,4 @@
-import { TranslationPipeline } from '@auto-novel/translator';
+import { TranslationPipeline, Semaphore } from '@auto-novel/translator';
 import type { ChapterStatus, ChapterSegmentState } from './TaskState';
 import type { TranslationTask } from './TranslationTask/types';
 
@@ -10,11 +10,10 @@ export type ChapterTracker = {
 };
 
 export class TaskExecutor {
-  private _initialized = false;
-
   constructor(
     private task: TranslationTask,
     private pipeline: TranslationPipeline,
+    private fetchSemaphore: Semaphore,
   ) {}
 
   /**
@@ -25,9 +24,8 @@ export class TaskExecutor {
     tracker: ChapterTracker,
     signal?: AbortSignal,
   ): Promise<'success' | 'error' | 'abort'> {
-    if (!this._initialized) {
-      await this.task.initMeta(signal);
-      this._initialized = true;
+    if (!this.task.initialized) {
+      await this.task.initMeta();
     }
 
     const chapters = this.task.chapters;
@@ -37,28 +35,39 @@ export class TaskExecutor {
     tracker.onLog(`[${chapter.title}] 开始获取原文`);
 
     try {
-      const detail = await this.task.fetchChapter(chapterId);
-      if (signal?.aborted) {
-        tracker.onChapterStatus(chapterId, 'pending');
-        return 'abort';
-      }
+      const fetchAndEnqueue = async () => {
+        await this.pipeline.waitUntilBelowHighWaterMark(signal);
+        const detail = await this.task.fetchChapter(chapterId);
 
-      tracker.onChapterStatus(chapterId, 'translating');
-      tracker.onLog(`[${chapter.title}] 开始翻译`);
+        const original = detail.paragraphs.join('\n');
+        const history =
+          this.task.level !== 'all' && detail.oldParagraphZh
+            ? {
+                lines: detail.paragraphs,
+                translatedLines: detail.oldParagraphZh,
+                glossary: detail.oldGlossary ?? {},
+              }
+            : undefined;
+        const { segments, segmentPromises } = this.pipeline.prepareSegments(
+          original,
+          detail.glossary,
+          history,
+          signal,
+          tracker.segmentTracker,
+        );
+        await this.pipeline.queue.enqueueAll(segments, signal);
+        tracker.onChapterStatus(chapterId, 'translating');
+        tracker.onLog(`[${chapter.title}] 开始翻译`);
 
-      const original = detail.paragraphs.join('\n');
-      const history =
-        this.task.level !== 'all' && detail.oldParagraphZh
-          ? {
-              lines: detail.paragraphs,
-              translatedLines: detail.oldParagraphZh,
-              glossary: detail.oldGlossary ?? {},
-            }
-          : undefined;
-      const translated = await this.pipeline.translate(
-        original,
-        detail.glossary,
-        history,
+        return { detail, segments, segmentPromises };
+      };
+      const { detail, segments, segmentPromises } = this.fetchSemaphore
+        ? await this.fetchSemaphore.use(fetchAndEnqueue)
+        : await fetchAndEnqueue();
+
+      const translated = await this.pipeline.resolveTranslation(
+        segments,
+        segmentPromises,
         signal,
         tracker.segmentTracker,
       );

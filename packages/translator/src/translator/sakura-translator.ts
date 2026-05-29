@@ -102,6 +102,9 @@ export class SakuraTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
+    if (lines.every((l) => l.trim().length === 0)) {
+      return lines;
+    }
     const prevSegs = context?.prevSegs ?? [];
     const truncatedPrevSegs = this.truncatePrevSegs(prevSegs);
     const translateContext: SegmentContext = {

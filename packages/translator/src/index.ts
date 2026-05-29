@@ -1,5 +1,6 @@
 export { TranslationPipeline } from './pipeline/translation_pipeline';
 export { DefaultSegmentQueue } from './segment';
+export { Semaphore } from './utils';
 
 export type { Translator } from './types';
 export { createOpenAiApi, OpenAiError } from './translator/openai-api';

@@ -12,6 +12,7 @@ export class WebTranslationTask implements TranslationTask {
   chapters: ChapterMeta[] = [];
   glossary: Glossary = {};
   glossaryId = '';
+  initialized = false;
 
   private api!: ReturnType<typeof WebNovelApi.createTranslationApi>;
   private params: TranslateTaskParams;
@@ -64,6 +65,7 @@ export class WebTranslationTask implements TranslationTask {
       isExpired,
       toMeta,
     );
+    this.initialized = true;
   }
 
   async fetchChapter(chapterId: string): Promise<ChapterDetail> {

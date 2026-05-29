@@ -96,7 +96,7 @@ export class Semaphore {
     return this._current;
   }
 
-  private async _acquire(): Promise<void> {
+  async acquire(): Promise<void> {
     if (this._current < this._max) {
       this._current++;
       return;
@@ -106,7 +106,7 @@ export class Semaphore {
     });
   }
 
-  private _release(): void {
+  release(): void {
     if (this.queue.length > 0) {
       const next = this.queue.shift()!;
       next();
@@ -127,18 +127,37 @@ export class Semaphore {
   }
 
   async use<T>(fn: () => Promise<T> | T): Promise<T> {
-    await this._acquire();
-    let released = false;
-    const safeRelease = () => {
-      if (!released) {
-        released = true;
-        this._release();
-      }
-    };
+    await this.acquire();
     try {
       return await fn();
     } finally {
-      safeRelease();
+      this.release();
     }
   }
+}
+
+export function randomUUID(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.getRandomValues === 'function'
+  ) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(
+      '',
+    );
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
