@@ -8,6 +8,7 @@ import { TranslateJob } from '@/model/Translator';
 import { lazy, useLocalStorage } from '@/util';
 
 import { LSKey } from './key';
+import { addWorkspaceJob } from './workspaceJob';
 
 interface Workspace<T> {
   workers: T[];
@@ -39,13 +40,7 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
   };
 
   const addJob = (job: TranslateJob) => {
-    const conflictJob = ref.value.jobs.find((it) => it.task === job.task);
-    if (conflictJob !== undefined) {
-      return false;
-    } else {
-      ref.value.jobs.push(job);
-      return true;
-    }
+    return addWorkspaceJob(ref.value.jobs, job);
   };
   const deleteJob = (task: string) => {
     ref.value.jobs = ref.value.jobs.filter((j) => j.task !== task);
