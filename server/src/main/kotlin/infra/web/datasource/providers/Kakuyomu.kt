@@ -139,7 +139,7 @@ class Kakuyomu(
             .array("tagLabels")
             .map { it.jsonPrimitive.content }
 
-        val points = work.int("totalReviewPoint")
+        val points = work.long("totalReviewPoint")
         val totalCharacters = work.int("totalCharacterCount")
 
         val introduction = work.string("introduction")

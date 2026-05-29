@@ -22,7 +22,7 @@ data class RemoteNovelMetadata(
     val type: WebNovelType,
     val attentions: List<WebNovelAttention>,
     val keywords: List<String>,
-    val points: Int?,
+    val points: Long?,
     val totalCharacters: Int,
     val introduction: String,
     val toc: List<TocItem>,
@@ -66,6 +66,7 @@ fun parseJapanDateString(pattern: String, dateString: String): Instant =
 // Json util
 fun JsonObject.boolean(field: String) = get(field)!!.jsonPrimitive.boolean
 fun JsonObject.int(field: String) = get(field)!!.jsonPrimitive.int
+fun JsonObject.long(field: String) = get(field)!!.jsonPrimitive.long
 fun JsonObject.array(field: String) = get(field)!!.jsonArray
 
 fun JsonObject.string(field: String) = get(field)!!.jsonPrimitive.content
