@@ -13,18 +13,28 @@ const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
 useEventListener('message', async (event: MessageEvent) => {
-  if (event.origin === AuthUrl && event.data.type === 'login_success') {
+  if (
+    event.origin === new URL(AuthUrl).origin &&
+    event.data.type === 'login_success'
+  ) {
     await whoamiStore.refresh().then(() => {
       const from = props.from ?? '/';
       router.replace(from);
     });
   }
 });
+
+const iframeSrc = computed(() => {
+  const url = new URL(AuthUrl);
+  url.searchParams.set('app', 'n');
+  url.searchParams.set('theme', setting.value.theme);
+  return url.toString();
+});
 </script>
 
 <template>
   <iframe
-    :src="AuthUrl + '?app=n&theme=' + setting.theme"
+    :src="iframeSrc"
     frameborder="0"
     allowfullscreen
     style="
