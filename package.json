@@ -5,6 +5,6 @@
   "packageManager": "pnpm@10.33.4",
   "scripts": {
     "build": "pnpm --stream -r run build",
-    "dev:web": "pnpm --stream --filter '@auto-novel/web^...' run build && pnpm --stream --parallel --filter '@auto-novel/web' --filter '@auto-novel/web^...' run dev"
+    "dev:web": "pnpm --stream --filter \"@auto-novel/web^...\" run build && pnpm --stream --parallel --filter \"@auto-novel/web...\" run dev"
   }
 }
