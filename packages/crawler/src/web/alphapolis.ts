@@ -260,7 +260,11 @@ export class Alphapolis implements WebNovelProvider {
       .map((_, el) => $(el).text().trim())
       .get();
 
-    const points = numExtractor(row('累計ポイント').text().trim());
+    // 累計ポイント	682,917 pt (8,033位)
+    const pointsRaw = row('累計ポイント').text().trim();
+    const pointsText = /([\d,]+)\s*pt\b/i.exec(pointsRaw)?.[1]?.trim();
+    const points = pointsText ? numExtractor(pointsText) : null;
+
     const totalCharacters = numExtractor(row('文字数').text().trim()) ?? 0;
     const introduction = $contentMain
       .find('div.abstract')
