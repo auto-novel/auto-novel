@@ -81,9 +81,16 @@ const listRank = (providerId: string, params: { [key: string]: string }) =>
 const getNovel = (providerId: string, novelId: string) =>
   client.get(`novel/${providerId}/${novelId}`).json<WebNovelDto>();
 
-const getChapter = (providerId: string, novelId: string, chapterId: string) =>
+const getChapter = (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+  options?: { retry?: number },
+) =>
   client
-    .get(`novel/${providerId}/${novelId}/chapter/${chapterId}`)
+    .get(`novel/${providerId}/${novelId}/chapter/${chapterId}`, {
+      retry: options?.retry,
+    })
     .json<WebNovelChapterDto>();
 
 const createNovel = (

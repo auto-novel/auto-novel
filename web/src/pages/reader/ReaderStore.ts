@@ -1,4 +1,5 @@
 import { WebNovelApi } from '@/api';
+import { requiresAddonChapterUpdate } from '@/domain/crawler';
 import { GenericNovelId } from '@/model/Common';
 import { useLocalVolumeStore } from '@/stores';
 import type { Result } from '@/util/result';
@@ -81,6 +82,7 @@ const getChapter = async (
       gnid.providerId,
       gnid.novelId,
       chapterId,
+      { retry: requiresAddonChapterUpdate(gnid.providerId) ? 0 : undefined },
     );
     return { ...res, chapterId };
   } else if (gnid.type === 'wenku') {

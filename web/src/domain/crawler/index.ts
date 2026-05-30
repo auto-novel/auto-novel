@@ -6,6 +6,8 @@ import { WebNovelCrawlerApi } from '@/external';
 import type { WebNovelDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
 
+export * from './providerConfig';
+
 const toMutationBody = (metadata: WebNovelMetadata) => ({
   title: metadata.title,
   authors: metadata.authors.map((author) => ({
