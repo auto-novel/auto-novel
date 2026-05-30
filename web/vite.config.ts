@@ -1,4 +1,7 @@
 import vue from '@vitejs/plugin-vue';
+import { execFileSync } from 'node:child_process';
+import path from 'path';
+import { ProxyAgent } from 'proxy-agent';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
@@ -6,9 +9,6 @@ import Components from 'unplugin-vue-components/vite';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
-
-import { execFileSync } from 'node:child_process';
-import path from 'path';
 
 function resolveGitCommit(env: Record<string, string>) {
   const injectedCommit =
@@ -216,6 +216,17 @@ export default defineConfig(({ mode }) => {
   if (apiMode === 'remote') {
     setupRemoteAuthProxy(config);
   }
+
+  // 为 proxy 注入代理能力
+  const agent = new ProxyAgent();
+  const proxy = config.server!.proxy!;
+  Object.entries(proxy).forEach(([key, config]) => {
+    if (typeof config === 'object') {
+      config.agent = agent;
+    } else {
+      proxy[key] = { target: config, changeOrigin: true, agent };
+    }
+  });
 
   return config;
 });
