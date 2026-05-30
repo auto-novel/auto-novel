@@ -185,14 +185,19 @@ export default defineConfig(({ mode }) => {
     setupRemoteAuthProxy(config);
   }
 
-  // 为 proxy 注入代理能力
-  const agent = new ProxyAgent();
+  // 注入代理能力以解决系统代理时的外网访问问题
+  // ProxyAgent 会自动使用系统代理设置，如果没有系统代理则直接连接目标服务器
+  const upstreamAgent = new ProxyAgent();
   const proxy = config.server!.proxy!;
-  Object.entries(proxy).forEach(([key, config]) => {
-    if (typeof config === 'object') {
-      config.agent = agent;
+  Object.entries(proxy).forEach(([key, proxyConfig]) => {
+    if (typeof proxyConfig === 'object') {
+      proxyConfig.agent = upstreamAgent;
     } else {
-      proxy[key] = { target: config, changeOrigin: true, agent };
+      proxy[key] = {
+        target: proxyConfig,
+        changeOrigin: true,
+        agent: upstreamAgent,
+      };
     }
   });
 
