@@ -100,7 +100,7 @@ class Alphapolis(
             .text()
             .substringBefore("pt")
             .filter { it.isDigit() }
-            .toLong()
+            .toInt()
 
         val totalCharacters = row("文字数")
             .text()

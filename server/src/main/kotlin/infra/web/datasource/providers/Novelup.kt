@@ -75,7 +75,7 @@ class Novelup(
         val points = row("応援ポイント")
             .text()
             .filter { it.isDigit() }
-            .toLong()
+            .toInt()
 
         val totalCharacters = row("文字数")
             .text()
