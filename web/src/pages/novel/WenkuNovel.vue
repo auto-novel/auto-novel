@@ -145,7 +145,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         </router-link>
 
         <favorite-button
-          v-model:favored="novel.favored"
+          :favored="novel.favored"
           :novel="{ type: 'wenku', novelId }"
         />
 

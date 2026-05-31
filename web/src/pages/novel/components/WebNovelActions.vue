@@ -47,7 +47,7 @@ const startReadChapter = computed(() => {
     <c-button v-else label="开始阅读" :round="false" disabled />
 
     <FavoriteButton
-      v-model:favored="novel.favored"
+      :favored="novel.favored"
       :novel="{ type: 'web', providerId, novelId }"
     />
 
