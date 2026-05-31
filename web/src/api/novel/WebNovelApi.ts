@@ -151,10 +151,15 @@ const createTranslationApi = (
   const getTranslateTask = () =>
     client.get(endpointV2, { signal }).json<WebTranslateTask>();
 
-  const getChapterTranslateTask = (chapterId: string) =>
+  const getChapterTranslateTask = (
+    chapterId: string,
+    options?: { syncFromProvider?: boolean },
+  ) =>
     client
       .post(`${endpointV2}/chapter-task/${chapterId}`, {
-        searchParams: { sync: syncFromProvider },
+        searchParams: {
+          sync: options?.syncFromProvider ?? syncFromProvider,
+        },
         signal,
       })
       .json<WebChapterTranslateTask>();

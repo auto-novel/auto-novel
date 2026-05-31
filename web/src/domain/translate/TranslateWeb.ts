@@ -224,6 +224,7 @@ export const translateWeb = async (
   for (const { index, chapterId } of chapters) {
     try {
       callback.log(`\n[${index}] ${providerId}/${novelId}/${chapterId}`);
+      let shouldSyncFromProvider = level === 'sync';
       if (useBrowserCrawler) {
         callback.log(`通过浏览器爬虫更新章节`);
         try {
@@ -234,11 +235,14 @@ export const translateWeb = async (
             level === 'sync',
           );
           callback.log(action === 'created' ? '章节已创建' : '章节已更新');
+          shouldSyncFromProvider = false;
         } catch (e) {
           callback.log(`章节更新跳过：${await formatError(e)}`);
         }
       }
-      const cTask = await getChapterTranslateTask(chapterId);
+      const cTask = await getChapterTranslateTask(chapterId, {
+        syncFromProvider: shouldSyncFromProvider,
+      });
 
       if (!forceSeg && cTask.glossaryId === cTask.oldGlossaryId) {
         callback.log(`无需翻译`);
