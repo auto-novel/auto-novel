@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 defineProps<{
-  error: Error | null;
+  error: Error | string | null;
   title: string;
 }>();
 </script>
@@ -10,7 +10,7 @@ defineProps<{
     v-if="error"
     status="error"
     :title="title"
-    :description="error.message"
+    :description="typeof error === 'string' ? error : error?.message"
   />
   <n-spin
     v-else

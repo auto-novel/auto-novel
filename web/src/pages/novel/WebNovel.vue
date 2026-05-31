@@ -39,13 +39,18 @@ watch(novel, async (novel) => {
 
 const formatedError = computedAsync(async () => {
   if (!error.value) return '';
-  const message = await formatError(error.value);
+  let message = await formatError(error.value);
+  if (message.includes('该小说包含法西斯内容，不予显示')) {
+    message = '该小说不符合国家法律法规相关规定，已被屏蔽';
+  }
   return message;
 });
 
-watch(formatedError, async (error) => {
-  if (error.includes('小说ID不合适，应当使用：')) {
-    const targetNovelPath = error.split('小说ID不合适，应当使用：')[1];
+watch(formatedError, async (errorMessage) => {
+  if (errorMessage.includes('小说ID不合适，应当使用：')) {
+    const targetNovelPath = errorMessage
+      .split('小说ID不合适，应当使用：')[1]
+      .trim();
     router.push({ path: `/novel${targetNovelPath}` });
   }
 });
@@ -68,6 +73,6 @@ watch(formatedError, async (error) => {
       />
     </template>
 
-    <CResultX v-else :error="error" title="加载错误" />
+    <CResultX v-else :error="formatedError" title="加载错误" />
   </div>
 </template>
