@@ -5,6 +5,7 @@ import type { WebNovelChapter, WebNovelMetadata } from '@/external';
 import { WebNovelCrawlerApi } from '@/external';
 import type { WebNovelDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
+import { ServerErrorMsg } from '@/api/serverError';
 
 const toMutationBody = (metadata: WebNovelMetadata) => ({
   title: metadata.title,
@@ -88,7 +89,10 @@ const updateWebNovelChapter = async (
     return 'updated' as const;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    if (message.includes('404') || message.includes('章节不存在')) {
+    if (
+      message.includes('404') ||
+      message.includes(ServerErrorMsg.ChapterNotFound)
+    ) {
       await WebNovelRepo.createChapter(providerId, novelId, chapterId, body);
       return 'created' as const;
     }
