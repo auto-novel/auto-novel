@@ -3,7 +3,6 @@ import { FavoriteBorderOutlined, FavoriteOutlined } from '@vicons/material';
 
 import { doAction } from '@/pages/util';
 import { FavoredRepo } from '@/stores';
-import { useQueryCache } from '@pinia/colada';
 
 const props = defineProps<{
   favored: string | undefined;
@@ -22,20 +21,10 @@ const favoredTitle = computed(
   () => favoreds.value.find((it) => it.id === props.favored)?.title,
 );
 
-const queryCache = useQueryCache();
-const queryKey = computed(() => {
-  if (props.novel.type === 'web') {
-    return ['web-novel', props.novel.providerId, props.novel.novelId];
-  } else {
-    return ['wenku-novel', props.novel.novelId];
-  }
-});
-
 const favoriteNovel = (favoredId: string) =>
   doAction(
-    FavoredRepo.favoriteNovel(favoredId, props.novel).then(async () => {
+    FavoredRepo.favoriteNovel(favoredId, props.novel).then(() => {
       showFavoredModal.value = false;
-      await queryCache.invalidateQueries({ key: queryKey.value });
     }),
     '收藏',
     message,
@@ -44,9 +33,8 @@ const favoriteNovel = (favoredId: string) =>
 const unfavoriteNovel = async () => {
   if (props.favored === undefined) return;
   await doAction(
-    FavoredRepo.unfavoriteNovel(props.favored, props.novel).then(async () => {
+    FavoredRepo.unfavoriteNovel(props.favored, props.novel).then(() => {
       showFavoredModal.value = false;
-      await queryCache.invalidateQueries({ key: queryKey.value });
     }),
     '取消收藏',
     message,

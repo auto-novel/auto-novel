@@ -1,4 +1,4 @@
-import { useQuery } from '@pinia/colada';
+import { useQuery, useQueryCache } from '@pinia/colada';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { Favored } from '@/api';
@@ -96,14 +96,23 @@ const favoriteNovel = async (
     | { type: 'web'; providerId: string; novelId: string }
     | { type: 'wenku'; novelId: string },
 ) => {
+  const queryCache = useQueryCache();
   if (novel.type === 'web') {
     await FavoredApi.favoriteWebNovel(
       favoredId,
       novel.providerId,
       novel.novelId,
     );
+    await queryCache.invalidateQueries({
+      key: ['web-novel', novel.providerId, novel.novelId],
+      exact: true,
+    });
   } else if (novel.type === 'wenku') {
     await FavoredApi.favoriteWenkuNovel(favoredId, novel.novelId);
+    await queryCache.invalidateQueries({
+      key: ['wenku-novel', novel.novelId],
+      exact: true,
+    });
   } else {
     novel satisfies never;
   }
@@ -115,14 +124,23 @@ const unfavoriteNovel = async (
     | { type: 'web'; providerId: string; novelId: string }
     | { type: 'wenku'; novelId: string },
 ) => {
+  const queryCache = useQueryCache();
   if (novel.type === 'web') {
     await FavoredApi.unfavoriteWebNovel(
       favoredId,
       novel.providerId,
       novel.novelId,
     );
+    await queryCache.invalidateQueries({
+      key: ['web-novel', novel.providerId, novel.novelId],
+      exact: true,
+    });
   } else if (novel.type === 'wenku') {
     await FavoredApi.unfavoriteWenkuNovel(favoredId, novel.novelId);
+    await queryCache.invalidateQueries({
+      key: ['wenku-novel', novel.novelId],
+      exact: true,
+    });
   } else {
     novel satisfies never;
   }
