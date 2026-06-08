@@ -155,7 +155,6 @@ const addFormRules: FormRules = {
         return items.length > 0;
       },
       message: '请至少输入一个模型',
-      trigger: 'input',
     },
     {
       validator: (_r: FormItemRule, value: string) => {
@@ -166,7 +165,6 @@ const addFormRules: FormRules = {
         return new Set(items).size === items.length;
       },
       message: '存在重复的模型名',
-      trigger: 'input',
     },
   ],
   keys: [
@@ -179,7 +177,6 @@ const addFormRules: FormRules = {
         return items.length > 0;
       },
       message: '请至少输入一个Key',
-      trigger: 'input',
     },
     {
       validator: (_r: FormItemRule, value: string) => {
@@ -190,12 +187,9 @@ const addFormRules: FormRules = {
         return new Set(items).size === items.length;
       },
       message: '存在重复的Key',
-      trigger: 'input',
     },
   ],
 };
-
-// ── 添加模式：批量生成（替换 id/model/key 为 textarea）──────
 
 const modelText = ref('');
 const keyText = ref('');
@@ -274,6 +268,10 @@ watch(defaultConcurrency, (val) => {
   }
 });
 
+watch([modelText, keyText], () => {
+  nextTick(() => formRef.value?.validate());
+});
+
 const validateIds = (): string | null => {
   const existingIds = new Set(workspaceRef.value.workers.map((w) => w.id));
   for (const w of generatedWorkers.value) {
@@ -294,8 +292,6 @@ const addWorkers = () => {
     });
   }
 };
-
-// ── 提交 ─────────────────────────────────────────────────────
 
 const submit = async () => {
   if (props.worker === undefined) {
