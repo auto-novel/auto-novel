@@ -238,7 +238,7 @@ const generatedWorkers = computed<GeneratedWorker[]>(() => {
   const result: GeneratedWorker[] = [];
   for (const model of ms) {
     for (let ki = 0; ki < ks.length; ki++) {
-      const id = ks.length === 1 ? model : `${model} (${ki + 1})`;
+      const id = ks.length === 1 ? model : `${model}[${ks[ki].slice(-4)}]`;
       result.push({ id, model, key: ks[ki] });
     }
   }
