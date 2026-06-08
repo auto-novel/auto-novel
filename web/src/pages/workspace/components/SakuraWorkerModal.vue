@@ -83,6 +83,7 @@ const submit = async () => {
 
   if (props.worker === undefined) {
     workspace.addWorker(worker);
+    emit('update:show', false);
   } else {
     const index = workspaceRef.value.workers.findIndex(
       ({ id }) => id === props.worker?.id,
