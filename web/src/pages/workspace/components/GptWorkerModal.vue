@@ -27,7 +27,7 @@ const initFormValue = (): {
   if (worker === undefined) {
     return {
       id: '',
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-pro',
       endpoint: 'https://api.deepseek.com',
       key: '',
     };
