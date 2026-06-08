@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import { useMessage } from 'naive-ui';
 
 import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 
 const workspace = useGptPipelineWorkspaceStore();
 const workspaceRef = workspace.ref;
+const message = useMessage();
 
 const initFormValue = (
   worker: GptPipelineWorker | undefined,
@@ -110,34 +112,50 @@ const formRules: FormRules = {
   ],
 };
 
-const submit = async () => {
+const doValidate = async () => {
   const validated = await new Promise<boolean>((resolve) => {
     formRef.value?.validate((errors) => {
       if (errors) resolve(false);
       else resolve(true);
     });
   });
-  if (!validated) return;
+  return validated;
+};
 
+const buildWorker = () => {
   const { id, model, endpoint, key, concurrency } = formValue.value;
-  const worker = {
+  return {
     id: id.trim(),
     model: model.trim(),
     endpoint: endpoint.trim(),
     key: key.trim(),
     concurrency,
   };
+};
+
+const submit = async () => {
+  if (!(await doValidate())) return;
+  const worker = buildWorker();
 
   if (props.worker === undefined) {
     workspace.addWorker(worker);
+    message.success(`已添加翻译器「${worker.id}」`);
     emit('update:show', false);
   } else {
     const index = workspaceRef.value.workers.findIndex(
       (w) => w.id === props.worker?.id,
     );
     workspaceRef.value.workers[index] = worker;
+    message.success(`已更新翻译器「${worker.id}」`);
     emit('update:show', false);
   }
+};
+
+const submitAndContinue = async () => {
+  if (!(await doValidate())) return;
+  const worker = buildWorker();
+  workspace.addWorker(worker);
+  message.success(`已添加翻译器「${worker.id}」`);
 };
 
 const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
@@ -183,7 +201,11 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
       </n-form-item-row>
     </n-form>
     <template #action>
-      <c-button :label="verb" type="primary" @action="submit" />
+      <n-flex v-if="props.worker === undefined" :size="12">
+        <c-button label="添加并继续" @action="submitAndContinue" />
+        <c-button label="添加" type="primary" @action="submit" />
+      </n-flex>
+      <c-button v-else label="更新" type="primary" @action="submit" />
     </template>
   </c-modal>
 </template>
