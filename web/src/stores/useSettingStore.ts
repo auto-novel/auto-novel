@@ -3,6 +3,7 @@ import { defaultConverter, useLocalStorage, useOpenCC } from '@/util';
 import { LSKey } from './key';
 
 export interface Setting {
+  version?: number;
   theme: 'light' | 'dark' | 'system';
   enabledTranslator: TranslatorId[];
   tocSortReverse: boolean;
@@ -32,7 +33,7 @@ export interface Setting {
     desc: boolean;
   };
   //
-  locale: 'zh-cn' | 'zh-tw';
+  locale: 'origin' | 'zh-cn' | 'zh-tw';
   searchLocaleAware: boolean;
 }
 
@@ -89,40 +90,48 @@ export namespace Setting {
       desc: true,
     },
     //
-    locale: 'zh-cn',
+    locale: 'origin',
     searchLocaleAware: false,
   };
 
   export const migrate = (setting: Setting) => {
-    if ('isDark' in setting && typeof setting.isDark !== undefined) {
-      if (setting.isDark === true) {
-        setting.theme = 'dark';
+    if ((setting.version ?? 0) < 1) {
+      if (setting.locale === 'zh-cn') {
+        setting.locale = 'origin';
       }
-      delete setting.isDark;
+
+      if ('isDark' in setting && typeof setting.isDark !== undefined) {
+        if (setting.isDark === true) {
+          setting.theme = 'dark';
+        }
+        delete setting.isDark;
+      }
+      setting.enabledTranslator = sanitizeTranslators(
+        setting.enabledTranslator,
+        defaultEnabledTranslators,
+      );
+      if ((setting.downloadFormat.mode as string) === 'mix') {
+        setting.downloadFormat.mode = 'zh-jp';
+      } else if ((setting.downloadFormat.mode as string) === 'mix-reverse') {
+        setting.downloadFormat.mode = 'jp-zh';
+      } else if ((setting.downloadFormat.mode as string) === 'jp') {
+        setting.downloadFormat.mode = 'zh';
+      }
+      setting.downloadFormat.translations = sanitizeTranslators(
+        setting.downloadFormat.translations,
+        defaultTranslationPriority,
+      );
+      // 2024-03-05
+      if (setting.workspaceSound === undefined) {
+        setting.workspaceSound = false;
+      }
+      // 2024-05-28
+      if ((setting.paginationMode as unknown) === 'auto') {
+        setting.paginationMode = 'pagination';
+      }
     }
-    setting.enabledTranslator = sanitizeTranslators(
-      setting.enabledTranslator,
-      defaultEnabledTranslators,
-    );
-    if ((setting.downloadFormat.mode as string) === 'mix') {
-      setting.downloadFormat.mode = 'zh-jp';
-    } else if ((setting.downloadFormat.mode as string) === 'mix-reverse') {
-      setting.downloadFormat.mode = 'jp-zh';
-    } else if ((setting.downloadFormat.mode as string) === 'jp') {
-      setting.downloadFormat.mode = 'zh';
-    }
-    setting.downloadFormat.translations = sanitizeTranslators(
-      setting.downloadFormat.translations,
-      defaultTranslationPriority,
-    );
-    // 2024-03-05
-    if (setting.workspaceSound === undefined) {
-      setting.workspaceSound = false;
-    }
-    // 2024-05-28
-    if ((setting.paginationMode as unknown) === 'auto') {
-      setting.paginationMode = 'pagination';
-    }
+
+    setting.version = 1;
   };
 
   export const downloadModeOptions = [
