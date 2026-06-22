@@ -99,4 +99,10 @@ export const WenkuNovelRepo = {
       exact: true,
     }),
   ),
+  linkWeb: withOnSuccess(WenkuNovelApi.linkWeb, (_, novelId) =>
+    cache.invalidateQueries({
+      key: [ItemKey, novelId],
+      exact: true,
+    }),
+  ),
 };

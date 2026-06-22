@@ -75,6 +75,7 @@ data class WebNovelListItem(
     val gpt: Long = 0,
     val sakura: Long,
     val extra: String? = null,
+    val wenkuId: String? = null,
     @Contextual val updateAt: Instant? = null,
 )
 
