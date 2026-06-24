@@ -6,7 +6,7 @@ import Components from 'unplugin-vue-components/vite';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
-
+import { ProxyAgent } from 'proxy-agent';
 import path from 'path';
 
 function setupRemoteAuthProxy(config: UserConfig) {
@@ -184,6 +184,22 @@ export default defineConfig(({ mode }) => {
   if (apiMode === 'remote') {
     setupRemoteAuthProxy(config);
   }
+
+  // 注入代理能力以解决系统代理时的外网访问问题
+  // ProxyAgent 会自动使用系统代理设置，如果没有系统代理则直接连接目标服务器
+  const upstreamAgent = new ProxyAgent();
+  const proxy = config.server!.proxy!;
+  Object.entries(proxy).forEach(([key, proxyConfig]) => {
+    if (typeof proxyConfig === 'object') {
+      proxyConfig.agent = upstreamAgent;
+    } else {
+      proxy[key] = {
+        target: proxyConfig,
+        changeOrigin: true,
+        agent: upstreamAgent,
+      };
+    }
+  });
 
   return config;
 });
