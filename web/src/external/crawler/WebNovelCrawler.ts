@@ -14,7 +14,8 @@ import {
 import { getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
-import { fakeDesktopHeader, toHeaders } from './utils';
+import { fakeDesktopHeader, mergeHeaders } from './utils';
+import { compareVersion } from '../errors';
 
 let bypassHamelnR18: Promise<void> | undefined;
 const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
@@ -45,7 +46,10 @@ const getCrawler = lazy(async () => {
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
       await ensureBypassR18(addon);
-      const headers = toHeaders(init?.headers);
+      const headers = mergeHeaders(
+        input instanceof Request ? input.headers : {},
+        init?.headers,
+      );
       fakeDesktopHeader(headers);
       return addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
         ...init,
@@ -54,8 +58,58 @@ const getCrawler = lazy(async () => {
     },
   });
 
+  const alphapolisClient = ky.create({
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      const featVersion: string =
+        addon.compat?.['tab']?.['domQuery']?.['base'] || '0.0.0';
+      const result = compareVersion(addon.version, featVersion);
+      if (result == null || result < 0) {
+        throw new Error(
+          '当前版本的插件不兼容，无法爬取 Alphapolis，请更新插件到最新版本',
+        );
+      }
+
+      const headers = mergeHeaders(
+        input instanceof Request ? input.headers : {},
+        init?.headers,
+      );
+      fakeDesktopHeader(headers);
+
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      let data = await addon.tabDomQuery({
+        tabUrl: url,
+        selector: 'html',
+        options: {
+          forceWaitForLoad: true,
+          closeTimeout: 5_000,
+        },
+      });
+
+      if (data.results.length === 0) {
+        // 可能是反爬，复用 tab 重新来一次
+        data = await addon.tabDomQuery({
+          tabUrl: url,
+          selector: 'html',
+          options: {
+            tabId: data?.tabId,
+            forceWaitForLoad: true,
+            closeTimeout: 5_000,
+          },
+        });
+      }
+      const html = data.results?.[0] || '';
+      return new Response(html);
+    },
+  });
+
   return new WebNovelCrawler({
-    alphapolis: () => new Alphapolis(client),
+    alphapolis: () => new Alphapolis(alphapolisClient),
     hameln: () => new Hameln(hamelnClient),
     kakuyomu: () => new Kakuyomu(client),
     novelup: () => new Novelup(client),

@@ -21,6 +21,20 @@ export function assertNoCFChallenge(html: string): void {
   }
 }
 
+export function assertNoAWSChallenge(html: string): void {
+  if (
+    html.includes('challenge-container') ||
+    html.includes(
+      "In order to continue, we need to verify that you're not a robot",
+    ) ||
+    html.includes('challenge.js')
+  ) {
+    throw new CrawlerAuthError(
+      '触发 CloudFront 人机验证，请先访问小说原站完成人机验证后再重试',
+    );
+  }
+}
+
 export async function fetchDocument(
   client: KyInstance,
   url: string,
