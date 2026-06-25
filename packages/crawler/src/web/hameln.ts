@@ -46,21 +46,6 @@ export class Hameln implements WebNovelProvider {
     this.client = client;
   }
 
-  readonly URL_ORIGIN = 'https://syosetu.org';
-  readonly URL_PROXY = 'https://hml.xkvi.top';
-
-  private options = {
-    useProxy: false,
-  };
-
-  private get baseUrl() {
-    return this.options.useProxy ? this.URL_PROXY : this.URL_ORIGIN;
-  }
-
-  setOptions(options: typeof this.options) {
-    this.options = options;
-  }
-
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
@@ -69,10 +54,10 @@ export class Hameln implements WebNovelProvider {
 
   async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const [$list, $detail] = await Promise.all([
-      fetchDocument(this.client, `${this.baseUrl}/novel/${novelId}`),
+      fetchDocument(this.client, `https://syosetu.org/novel/${novelId}`),
       fetchDocument(
         this.client,
-        `${this.baseUrl}/?mode=ss_detail&nid=${novelId}`,
+        `https://syosetu.org/?mode=ss_detail&nid=${novelId}`,
       ),
     ]);
 
@@ -98,7 +83,7 @@ export class Hameln implements WebNovelProvider {
     const authorLink = authorCell.find('a').first();
     const author: WebNovelAuthor = {
       name: authorCell.text().trim(),
-      link: authorLink.attr('href')?.replace(this.URL_ORIGIN, this.baseUrl),
+      link: authorLink.attr('href'),
     };
 
     const type = parseWebNovelType(row('話数').text().trim());
@@ -194,8 +179,8 @@ export class Hameln implements WebNovelProvider {
   ): Promise<WebNovelChapter> {
     const url =
       chapterId === 'default'
-        ? `${this.baseUrl}/novel/${novelId}`
-        : `${this.baseUrl}/novel/${novelId}/${chapterId}.html`;
+        ? `https://syosetu.org/novel/${novelId}`
+        : `https://syosetu.org/novel/${novelId}/${chapterId}.html`;
 
     const $ = await fetchDocument(this.client, url);
 
