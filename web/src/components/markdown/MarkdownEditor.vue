@@ -43,35 +43,17 @@ const getDrafts = () => {
 };
 
 const saveDraft = (text: string) => {
-  if (props.draftId && text.trim() !== '' && hasBeenModified.value) {
+  if (props.draftId && text.trim() !== '') {
     draftStore.addDraft(props.draftId, createdAt, text);
   }
 };
 
-const drafts = ref(
-  getDrafts().filter((d) => d.createdAt.getTime() !== createdAt),
-);
-
-watch(
-  () => getDrafts(),
-  (newDrafts) => {
-    const filtered = newDrafts.filter(
-      (d) => d.createdAt.getTime() !== createdAt,
-    );
-    if (JSON.stringify(filtered) !== JSON.stringify(drafts.value)) {
-      drafts.value = filtered;
-    }
-  },
-  { deep: true },
-);
-
-onBeforeUnmount(() => {
-  saveDraft(value.value);
-});
+const drafts = ref(getDrafts());
 
 const clearDraft = () => {
   if (!props.draftId) return;
   draftStore.removeDraft(props.draftId);
+  drafts.value = getDrafts();
 };
 
 const elEditor = useTemplateRef('editor');
