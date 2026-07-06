@@ -181,23 +181,29 @@ const submit = async () => {
     <MarkdownEditorStickyTab
       v-model:active-tab="activeTab"
       :el-editor="elEditor ?? undefined"
-    />
-
-    <c-button
-      label="提交"
-      :icon="UploadOutlined"
-      require-login
-      size="large"
-      type="primary"
-      class="float"
-      style="bottom: 48px"
-      @action="submit"
-    />
+    >
+      <template #right-actions>
+        <c-button
+          label="提交"
+          :icon="UploadOutlined"
+          require-login
+          size="large"
+          type="primary"
+          @action="submit"
+        />
+      </template>
+    </MarkdownEditorStickyTab>
   </div>
 </template>
 
 <style scoped>
 .layout-content {
   padding-bottom: 60px;
+}
+
+@media only screen and (max-width: 540px) {
+  .layout-content {
+    padding-bottom: 120px;
+  }
 }
 </style>

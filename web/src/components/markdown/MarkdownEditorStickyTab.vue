@@ -4,9 +4,11 @@ import {
   KeyboardArrowUpOutlined,
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
+  VisibilityOffOutlined,
+  VisibilityOutlined,
 } from '@vicons/material';
 
-import { useIsWideScreen } from '@/pages/util';
+import { useBreakPoints } from '@/pages/util';
 import { useSettingStore } from '@/stores';
 import { useLocalStorage } from '@/util';
 import MarkdownToolbar from './MarkdownToolbar.vue';
@@ -21,18 +23,30 @@ const props = defineProps<{
   };
 }>();
 
-const isWideScreen = useIsWideScreen();
+const bp = useBreakPoints();
+const hasSider = bp.greater('tablet');
+const menuShowTrigger = bp.greater('desktop');
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
+const menuCollapsed = computed(() => {
+  if (menuShowTrigger.value) {
+    return setting.value.menuCollapsed;
+  } else {
+    return true;
+  }
+});
+
 const stickyBarLeftOffset = computed(() => {
-  if (!isWideScreen.value) return '0';
-  return setting.value.menuCollapsed ? '64px' : '240px';
+  if (!hasSider.value) return '0';
+  return menuCollapsed.value ? '64px' : '240px';
 });
 
 const isCollapsed = useLocalStorage('markdown-editor-collapsed', {
   collapsed: false,
 });
+
+const showActions = ref(true);
 
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -47,6 +61,9 @@ const scrollToBottom = () => {
 
 const toggleCollapse = () => {
   isCollapsed.value.collapsed = !isCollapsed.value.collapsed;
+  if (isCollapsed.value.collapsed) {
+    showActions.value = true;
+  }
 };
 </script>
 
@@ -77,51 +94,79 @@ const toggleCollapse = () => {
       class="sliding-container"
       :class="{ collapsed: isCollapsed.collapsed }"
     >
+      <transition name="actions">
+        <div class="right-actions-wrapper" v-show="showActions">
+          <slot name="right-actions" />
+        </div>
+      </transition>
+
       <div class="container">
-        <n-flex class="content" align="center" :wrap="false">
-          <n-button quaternary size="small" title="最上" @click="scrollToTop">
-            <template #icon>
-              <n-icon :component="VerticalAlignTopOutlined" />
-            </template>
-          </n-button>
-          <n-button
-            quaternary
-            size="small"
-            title="最下"
-            @click="scrollToBottom"
-          >
-            <template #icon>
-              <n-icon :component="VerticalAlignBottomOutlined" />
-            </template>
-          </n-button>
-
-          <n-tabs
-            v-model:value="activeTab"
-            type="card"
-            size="small"
-            class="tabs"
-          >
-            <n-tab :name="0">编辑</n-tab>
-            <n-tab :name="1">预览</n-tab>
-          </n-tabs>
-
-          <div class="toolbar-wrapper">
-            <n-flex
-              v-show="activeTab === 0"
-              :size="0"
-              align="center"
-              :wrap="false"
-            >
-              <n-divider vertical />
-              <MarkdownToolbar
-                :el-textarea="elEditor?.elTextarea"
-                :drafts="elEditor?.drafts ?? []"
-                dropdown-placement="top-start"
-                @clear-draft="elEditor?.clearDraft()"
-              />
-            </n-flex>
+        <div class="toolbar-row" v-show="activeTab === 0">
+          <n-divider vertical class="desktop-divider" />
+          <div class="toolbar-content">
+            <MarkdownToolbar
+              :el-textarea="elEditor?.elTextarea"
+              :drafts="elEditor?.drafts ?? []"
+              dropdown-placement="top-start"
+              @clear-draft="elEditor?.clearDraft()"
+            />
           </div>
-        </n-flex>
+        </div>
+        <div class="management-row">
+          <n-flex class="content" align="center" :wrap="false" :size="12">
+            <n-flex :size="0">
+              <n-button
+                quaternary
+                size="small"
+                title="最上"
+                @click="scrollToTop"
+              >
+                <template #icon>
+                  <n-icon :component="VerticalAlignTopOutlined" />
+                </template>
+              </n-button>
+              <n-button
+                quaternary
+                size="small"
+                title="最下"
+                @click="scrollToBottom"
+              >
+                <template #icon>
+                  <n-icon :component="VerticalAlignBottomOutlined" />
+                </template>
+              </n-button>
+            </n-flex>
+
+            <n-tabs
+              v-model:value="activeTab"
+              type="card"
+              size="small"
+              class="tabs"
+            >
+              <n-tab :name="0">编辑</n-tab>
+              <n-tab :name="1">预览</n-tab>
+            </n-tabs>
+
+            <template v-if="!hasSider">
+              <div style="flex: 1" />
+              <n-button
+                quaternary
+                size="small"
+                :title="showActions ? '隐藏提交' : '显示提交'"
+                style="margin-right: 8px"
+                @click="showActions = !showActions"
+              >
+                <template #icon>
+                  <n-icon
+                    :component="
+                      showActions ? VisibilityOffOutlined : VisibilityOutlined
+                    "
+                  />
+                </template>
+              </n-button>
+            </template>
+          </n-flex>
+        </div>
       </div>
     </div>
   </div>
@@ -176,30 +221,61 @@ const toggleCollapse = () => {
   z-index: -1;
 }
 
+.right-actions-wrapper {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  right: 16px;
+  pointer-events: auto;
+}
+
+.actions-enter-active,
+.actions-leave-active {
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.actions-enter-from,
+.actions-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 .sticky-bottom-tab .container {
   max-width: 1000px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   padding: 0 16px 0 56px;
-  height: 42px;
+  min-height: 42px;
+}
+
+.toolbar-row {
+  order: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.toolbar-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.management-row {
+  order: 1;
 }
 
 .sticky-bottom-tab .content {
   flex: 1;
 }
 
-.toolbar-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  overflow-x: auto;
-}
-
 .sticky-bottom-tab .tabs {
   width: auto;
-  margin-left: 8px;
+  /* margin-left: 8px; */
 }
 
 .sticky-bottom-tab .tabs :deep(.n-tabs-nav) {
@@ -211,10 +287,35 @@ const toggleCollapse = () => {
   background-color: transparent !important;
 }
 
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 540px) {
   .sticky-bottom-tab .container {
-    padding-left: 44px;
+    padding-left: 12px;
     padding-right: 4px;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .toolbar-row {
+    order: 1;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+
+  .management-row {
+    order: 2;
+    padding-left: 38px;
+  }
+
+  .desktop-divider {
+    display: none;
+  }
+
+  .fold-button-fixed {
+    bottom: 10px;
+    left: 4px;
   }
 }
 </style>
