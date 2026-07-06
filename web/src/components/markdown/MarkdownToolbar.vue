@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DropdownOption, DropdownProps } from 'naive-ui';
 import {
   FormatBoldOutlined,
   FormatItalicOutlined,
@@ -9,14 +10,18 @@ import {
   StrikethroughSOutlined,
   WarningAmberOutlined,
 } from '@vicons/material';
-import type { DropdownOption } from 'naive-ui';
-
 import type { Draft } from '@/stores';
 
-const props = defineProps<{
-  elTextarea?: HTMLTextAreaElement;
-  drafts: Draft[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    elTextarea?: HTMLTextAreaElement;
+    drafts: Draft[];
+    dropdownPlacement?: DropdownProps['placement'];
+  }>(),
+  {
+    dropdownPlacement: 'bottom',
+  },
+);
 
 const emit = defineEmits<{
   clearDraft: [];
@@ -29,7 +34,7 @@ const emit = defineEmits<{
 const draftOptions = ref<DropdownOption[]>([]);
 
 watch(
-  props.drafts,
+  () => props.drafts,
   (drafts) => {
     const draftOptionsValue: DropdownOption[] = [];
     for (const draft of drafts.slice().reverse()) {
@@ -40,9 +45,14 @@ watch(
       });
     }
     draftOptionsValue.push({ type: 'divider' }, { label: '清空', key: '清空' });
-    draftOptions.value = draftOptionsValue;
+
+    if (
+      JSON.stringify(draftOptionsValue) !== JSON.stringify(draftOptions.value)
+    ) {
+      draftOptions.value = draftOptionsValue;
+    }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const handleSelectDraft = (key: string, option: DropdownOption) => {
@@ -148,6 +158,7 @@ const formatCollapsibleBlock = () =>
     v-if="drafts.length"
     :options="draftOptions"
     trigger="click"
+    :placement="dropdownPlacement"
     @select="handleSelectDraft"
   >
     <n-button size="small" quaternary>

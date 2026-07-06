@@ -16,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const value = defineModel<string>('value', { required: true });
+const activeTab = defineModel<number>('activeTab', { default: 0 });
 
 useEventListener(window, 'beforeunload', (e) => {
   if (value.value.trim()) {
@@ -26,10 +27,7 @@ useEventListener(window, 'beforeunload', (e) => {
 
 const isWideScreen = useIsWideScreen(620);
 
-const showEditorToolbar = ref(true);
-const onTabUpdate = (value: number) => {
-  showEditorToolbar.value = value === 0;
-};
+const showEditorToolbar = computed(() => activeTab.value === 0);
 
 // ==============================
 // 草稿
@@ -37,6 +35,7 @@ const onTabUpdate = (value: number) => {
 
 const createdAt = Date.now();
 const draftStore = useDraftStore();
+const hasBeenModified = ref(false);
 
 const getDrafts = () => {
   if (props.draftId === undefined) return [];
@@ -44,30 +43,54 @@ const getDrafts = () => {
 };
 
 const saveDraft = (text: string) => {
-  if (props.draftId && text.trim() !== '') {
+  if (props.draftId && text.trim() !== '' && hasBeenModified.value) {
     draftStore.addDraft(props.draftId, createdAt, text);
   }
 };
 
-const drafts = ref(getDrafts());
+const drafts = ref(
+  getDrafts().filter((d) => d.createdAt.getTime() !== createdAt),
+);
+
+watch(
+  () => getDrafts(),
+  (newDrafts) => {
+    const filtered = newDrafts.filter(
+      (d) => d.createdAt.getTime() !== createdAt,
+    );
+    if (JSON.stringify(filtered) !== JSON.stringify(drafts.value)) {
+      drafts.value = filtered;
+    }
+  },
+  { deep: true },
+);
+
+onBeforeUnmount(() => {
+  saveDraft(value.value);
+});
 
 const clearDraft = () => {
   if (!props.draftId) return;
   draftStore.removeDraft(props.draftId);
-  drafts.value = getDrafts();
 };
 
 const elEditor = useTemplateRef('editor');
+
+defineExpose({
+  elTextarea: computed(() => elEditor.value?.textareaElRef ?? undefined),
+  drafts,
+  clearDraft,
+});
 </script>
 
 <template>
   <n-el tag="div" class="markdown-input">
     <n-tabs
       ref="tab"
+      v-model:value="activeTab"
       class="tabs"
       type="card"
       size="small"
-      @update:value="onTabUpdate"
     >
       <template v-if="showEditorToolbar && isWideScreen" #suffix>
         <MarkdownToolbar
@@ -98,7 +121,12 @@ const elEditor = useTemplateRef('editor');
             type="textarea"
             show-count
             :input-props="{ spellcheck: false }"
-            @input="saveDraft"
+            @input="
+              (text: string) => {
+                hasBeenModified = true;
+                saveDraft(text);
+              }
+            "
             :autosize="autosize || { minRows: 8 }"
           />
         </div>

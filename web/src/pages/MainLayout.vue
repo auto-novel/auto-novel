@@ -50,6 +50,7 @@ const shortCommit =
     ? '未知'
     : __BUILD_INFO__.gitCommit.slice(0, 12);
 const buildTime = new Date(__BUILD_INFO__.buildTime);
+const osTheme = useOsTheme();
 
 const menuCollapsed = computed(() => {
   if (menuShowTrigger.value) {
@@ -67,7 +68,6 @@ const renderIcon = (icon: Component) => () =>
 const menuOptions = computed<MenuOption[]>(() => {
   const resolveTheme = () => {
     if (setting.value.theme === 'system') {
-      const osTheme = useOsTheme();
       return osTheme.value ?? 'light';
     } else {
       return setting.value.theme;
