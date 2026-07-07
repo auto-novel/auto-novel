@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   KeyboardArrowDownOutlined,
+  BlurOffOutlined,
+  BlurOnOutlined,
   KeyboardArrowUpOutlined,
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
@@ -46,6 +48,15 @@ const isCollapsed = useLocalStorage('markdown-editor-collapsed', {
   collapsed: false,
 });
 
+const isBlur = useLocalStorage('markdown-editor-blur', {
+  enabled: true,
+});
+
+const backgroundColor = computed(() =>
+  isBlur.value.enabled ? 'var(--tab-color)' : 'var(--n-color)',
+);
+const backgroundOpacity = computed(() => (isBlur.value.enabled ? 0.8 : 1));
+
 const showActions = ref(true);
 
 const scrollToTop = () => {
@@ -70,27 +81,32 @@ const toggleCollapse = () => {
 <template>
   <div class="sticky-bottom-tab">
     <div class="fold-button-fixed">
-      <n-button
-        quaternary
-        size="small"
-        :focusable="false"
-        :title="isCollapsed.collapsed ? '展开' : '折叠'"
-        @click="toggleCollapse"
-        @mouseup="(e: any) => (e.target as HTMLElement).blur()"
-      >
-        <template #icon>
-          <n-icon
-            :component="
-              isCollapsed.collapsed
-                ? KeyboardArrowUpOutlined
-                : KeyboardArrowDownOutlined
-            "
-          />
+      <n-tooltip placement="top">
+        <template #trigger>
+          <n-button
+            quaternary
+            size="small"
+            :focusable="false"
+            @click="toggleCollapse"
+            @mouseup="(e: any) => (e.target as HTMLElement).blur()"
+          >
+            <template #icon>
+              <n-icon
+                :component="
+                  isCollapsed.collapsed
+                    ? KeyboardArrowUpOutlined
+                    : KeyboardArrowDownOutlined
+                "
+              />
+            </template>
+          </n-button>
         </template>
-      </n-button>
+        {{ isCollapsed.collapsed ? '展开' : '折叠' }}
+      </n-tooltip>
     </div>
 
-    <div
+    <n-el
+      tag="div"
       class="sliding-container"
       :class="{ collapsed: isCollapsed.collapsed }"
     >
@@ -108,33 +124,39 @@ const toggleCollapse = () => {
               :el-textarea="elEditor?.elTextarea"
               :drafts="elEditor?.drafts ?? []"
               dropdown-placement="top-start"
+              tooltip-placement="top"
               @clear-draft="elEditor?.clearDraft()"
             />
           </div>
         </div>
         <div class="management-row">
-          <n-flex class="content" align="center" :wrap="false" :size="12">
-            <n-flex :size="0">
-              <n-button
-                quaternary
-                size="small"
-                title="最上"
-                @click="scrollToTop"
-              >
-                <template #icon>
-                  <n-icon :component="VerticalAlignTopOutlined" />
+          <n-flex
+            class="content"
+            align="center"
+            :wrap="false"
+            :size="hasSider ? 12 : 0"
+          >
+            <n-flex :size="0" style="margin-right: 6px">
+              <n-tooltip placement="top">
+                <template #trigger>
+                  <n-button quaternary size="small" @click="scrollToTop">
+                    <template #icon>
+                      <n-icon :component="VerticalAlignTopOutlined" />
+                    </template>
+                  </n-button>
                 </template>
-              </n-button>
-              <n-button
-                quaternary
-                size="small"
-                title="最下"
-                @click="scrollToBottom"
-              >
-                <template #icon>
-                  <n-icon :component="VerticalAlignBottomOutlined" />
+                最上
+              </n-tooltip>
+              <n-tooltip placement="top">
+                <template #trigger>
+                  <n-button quaternary size="small" @click="scrollToBottom">
+                    <template #icon>
+                      <n-icon :component="VerticalAlignBottomOutlined" />
+                    </template>
+                  </n-button>
                 </template>
-              </n-button>
+                最下
+              </n-tooltip>
             </n-flex>
 
             <n-tabs
@@ -149,26 +171,71 @@ const toggleCollapse = () => {
 
             <template v-if="!hasSider">
               <div style="flex: 1" />
-              <n-button
-                quaternary
-                size="small"
-                :title="showActions ? '隐藏提交' : '显示提交'"
-                style="margin-right: 8px"
-                @click="showActions = !showActions"
-              >
-                <template #icon>
-                  <n-icon
-                    :component="
-                      showActions ? VisibilityOffOutlined : VisibilityOutlined
-                    "
-                  />
+              <n-tooltip placement="top">
+                <template #trigger>
+                  <n-button
+                    quaternary
+                    size="small"
+                    style="margin-right: 8px"
+                    @click="isBlur.enabled = !isBlur.enabled"
+                  >
+                    <template #icon>
+                      <n-icon
+                        :component="
+                          isBlur.enabled ? BlurOffOutlined : BlurOnOutlined
+                        "
+                      />
+                    </template>
+                  </n-button>
                 </template>
-              </n-button>
+                {{ isBlur.enabled ? '关闭毛玻璃' : '开启毛玻璃' }}
+              </n-tooltip>
+              <n-tooltip placement="top">
+                <template #trigger>
+                  <n-button
+                    quaternary
+                    size="small"
+                    style="margin-right: 8px"
+                    @click="showActions = !showActions"
+                  >
+                    <template #icon>
+                      <n-icon
+                        :component="
+                          showActions
+                            ? VisibilityOffOutlined
+                            : VisibilityOutlined
+                        "
+                      />
+                    </template>
+                  </n-button>
+                </template>
+                {{ showActions ? '隐藏提交' : '显示提交' }}
+              </n-tooltip>
             </template>
           </n-flex>
         </div>
       </div>
-    </div>
+
+      <div class="blur-button-fixed" v-if="hasSider">
+        <n-tooltip placement="top">
+          <template #trigger>
+            <n-button
+              quaternary
+              size="small"
+              @click="isBlur.enabled = !isBlur.enabled"
+              @mouseup="(e: any) => (e.target as HTMLElement).blur()"
+            >
+              <template #icon>
+                <n-icon
+                  :component="isBlur.enabled ? BlurOffOutlined : BlurOnOutlined"
+                />
+              </template>
+            </n-button>
+          </template>
+          {{ isBlur.enabled ? '关闭毛玻璃' : '开启毛玻璃' }}
+        </n-tooltip>
+      </div>
+    </n-el>
   </div>
 </template>
 
@@ -198,10 +265,11 @@ const toggleCollapse = () => {
 }
 
 .sliding-container {
+  position: relative;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
+  backdrop-filter: v-bind('isBlur.enabled ? "blur(8px)" : "none"');
   pointer-events: auto;
 }
 
@@ -216,8 +284,8 @@ const toggleCollapse = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--tab-color);
-  opacity: 0.8;
+  background-color: v-bind(backgroundColor);
+  opacity: v-bind(backgroundOpacity);
   z-index: -1;
 }
 
@@ -267,6 +335,14 @@ const toggleCollapse = () => {
 
 .management-row {
   order: 1;
+}
+
+.blur-button-fixed {
+  position: absolute;
+  bottom: 6px;
+  right: 16px;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .sticky-bottom-tab .content {

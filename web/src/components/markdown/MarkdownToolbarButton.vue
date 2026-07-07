@@ -10,20 +10,24 @@ defineEmits<{
 </script>
 
 <template>
-  <n-button
-    quaternary
-    size="small"
-    :title="label"
-    @mousedown="
-      (e: any) => {
-        $emit('action');
-        e.preventDefault();
-      }
-    "
-    style="padding-left: 8px; padding-right: 8px"
-  >
-    <template #icon>
-      <n-icon :component="icon" />
+  <n-tooltip trigger="hover" placement="top">
+    <template #trigger>
+      <n-button
+        quaternary
+        size="small"
+        @mousedown="
+          (e: any) => {
+            $emit('action');
+            e.preventDefault();
+          }
+        "
+        style="padding-left: 8px; padding-right: 8px"
+      >
+        <template #icon>
+          <n-icon :component="icon" />
+        </template>
+      </n-button>
     </template>
-  </n-button>
+    {{ label }}
+  </n-tooltip>
 </template>

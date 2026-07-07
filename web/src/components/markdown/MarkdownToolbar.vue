@@ -161,9 +161,14 @@ const formatCollapsibleBlock = () =>
     :placement="dropdownPlacement"
     @select="handleSelectDraft"
   >
-    <n-button size="small" quaternary>
-      <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
-    </n-button>
+    <n-tooltip placement="top">
+      <template #trigger>
+        <n-button size="small" quaternary>
+          <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
+        </n-button>
+      </template>
+      历史草稿
+    </n-tooltip>
   </n-dropdown>
 
   <MarkdownToolbarButton
