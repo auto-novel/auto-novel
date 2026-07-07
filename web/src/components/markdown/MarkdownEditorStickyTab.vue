@@ -44,18 +44,15 @@ const stickyBarLeftOffset = computed(() => {
   return menuCollapsed.value ? '64px' : '240px';
 });
 
-const isCollapsed = useLocalStorage('markdown-editor-collapsed', {
+const editorState = useLocalStorage('markdown-editor', {
   collapsed: false,
-});
-
-const isBlur = useLocalStorage('markdown-editor-blur', {
-  enabled: true,
+  isBlur: true,
 });
 
 const backgroundColor = computed(() =>
-  isBlur.value.enabled ? 'var(--tab-color)' : 'var(--n-color)',
+  editorState.value.isBlur ? 'var(--tab-color)' : 'var(--n-color)',
 );
-const backgroundOpacity = computed(() => (isBlur.value.enabled ? 0.8 : 1));
+const backgroundOpacity = computed(() => (editorState.value.isBlur ? 0.8 : 1));
 
 const showActions = ref(true);
 
@@ -71,8 +68,8 @@ const scrollToBottom = () => {
 };
 
 const toggleCollapse = () => {
-  isCollapsed.value.collapsed = !isCollapsed.value.collapsed;
-  if (isCollapsed.value.collapsed) {
+  editorState.value.collapsed = !editorState.value.collapsed;
+  if (editorState.value.collapsed) {
     showActions.value = true;
   }
 };
@@ -93,7 +90,7 @@ const toggleCollapse = () => {
             <template #icon>
               <n-icon
                 :component="
-                  isCollapsed.collapsed
+                  editorState.collapsed
                     ? KeyboardArrowUpOutlined
                     : KeyboardArrowDownOutlined
                 "
@@ -101,14 +98,18 @@ const toggleCollapse = () => {
             </template>
           </n-button>
         </template>
-        {{ isCollapsed.collapsed ? '展开' : '折叠' }}
+        {{ editorState.collapsed ? '展开' : '折叠' }}
       </n-tooltip>
     </div>
 
     <n-el
       tag="div"
       class="sliding-container"
-      :class="{ collapsed: isCollapsed.collapsed }"
+      :class="{ collapsed: editorState.collapsed }"
+      :style="{
+        '--bg-color': backgroundColor,
+        '--bg-opacity': backgroundOpacity,
+      }"
     >
       <transition name="actions">
         <div class="right-actions-wrapper" v-show="showActions">
@@ -177,18 +178,18 @@ const toggleCollapse = () => {
                     quaternary
                     size="small"
                     style="margin-right: 8px"
-                    @click="isBlur.enabled = !isBlur.enabled"
+                    @click="editorState.isBlur = !editorState.isBlur"
                   >
                     <template #icon>
                       <n-icon
                         :component="
-                          isBlur.enabled ? BlurOffOutlined : BlurOnOutlined
+                          editorState.isBlur ? BlurOffOutlined : BlurOnOutlined
                         "
                       />
                     </template>
                   </n-button>
                 </template>
-                {{ isBlur.enabled ? '关闭毛玻璃' : '开启毛玻璃' }}
+                {{ editorState.isBlur ? '关闭毛玻璃' : '开启毛玻璃' }}
               </n-tooltip>
               <n-tooltip placement="top">
                 <template #trigger>
@@ -222,17 +223,19 @@ const toggleCollapse = () => {
             <n-button
               quaternary
               size="small"
-              @click="isBlur.enabled = !isBlur.enabled"
+              @click="editorState.isBlur = !editorState.isBlur"
               @mouseup="(e: any) => (e.target as HTMLElement).blur()"
             >
               <template #icon>
                 <n-icon
-                  :component="isBlur.enabled ? BlurOffOutlined : BlurOnOutlined"
+                  :component="
+                    editorState.isBlur ? BlurOffOutlined : BlurOnOutlined
+                  "
                 />
               </template>
             </n-button>
           </template>
-          {{ isBlur.enabled ? '关闭毛玻璃' : '开启毛玻璃' }}
+          {{ editorState.isBlur ? '关闭毛玻璃' : '开启毛玻璃' }}
         </n-tooltip>
       </div>
     </n-el>
@@ -266,10 +269,12 @@ const toggleCollapse = () => {
 
 .sliding-container {
   position: relative;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: v-bind('isBlur.enabled ? "blur(8px)" : "none"');
+  backdrop-filter: v-bind('editorState.isBlur ? "blur(8px)" : "none"');
   pointer-events: auto;
 }
 
@@ -284,9 +289,12 @@ const toggleCollapse = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: v-bind(backgroundColor);
-  opacity: v-bind(backgroundOpacity);
+  background-color: var(--bg-color);
+  opacity: var(--bg-opacity);
   z-index: -1;
+  transition:
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .right-actions-wrapper {

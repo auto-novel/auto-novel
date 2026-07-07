@@ -154,65 +154,67 @@ const formatCollapsibleBlock = () =>
 </script>
 
 <template>
-  <n-dropdown
-    v-if="drafts.length"
-    :options="draftOptions"
-    trigger="click"
-    :placement="dropdownPlacement"
-    @select="handleSelectDraft"
-  >
-    <n-tooltip placement="top">
-      <template #trigger>
-        <n-button size="small" quaternary>
-          <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
-        </n-button>
-      </template>
-      历史草稿
-    </n-tooltip>
-  </n-dropdown>
+  <n-flex :size="0" align="center" :wrap="false">
+    <n-dropdown
+      v-if="drafts.length"
+      :options="draftOptions"
+      trigger="click"
+      :placement="dropdownPlacement"
+      @select="handleSelectDraft"
+    >
+      <n-tooltip placement="top">
+        <template #trigger>
+          <n-button size="small" quaternary>
+            <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
+          </n-button>
+        </template>
+        历史草稿
+      </n-tooltip>
+    </n-dropdown>
 
-  <MarkdownToolbarButton
-    label="粗体"
-    :icon="FormatBoldOutlined"
-    @action="formatBold"
-  />
-  <MarkdownToolbarButton
-    label="斜体"
-    :icon="FormatItalicOutlined"
-    @action="formatItalic"
-  />
-  <MarkdownToolbarButton
-    label="删除线"
-    :icon="StrikethroughSOutlined"
-    @action="formatStrikethrough"
-  />
-  <MarkdownToolbarButton
-    label="链接"
-    :icon="LinkOutlined"
-    @action="formatLink"
-  />
-  <MarkdownToolbarButton
-    label="剧透"
-    :icon="WarningAmberOutlined"
-    @action="formatSpoiler"
-  />
-  <n-divider vertical />
-  <MarkdownToolbarButton
-    label="评分"
-    :icon="StarOutlineFilled"
-    @action="formatStar"
-  />
-  <MarkdownToolbarButton
-    label="折叠"
-    :icon="MenuOpenOutlined"
-    @action="formatCollapsibleBlock"
-  />
-  <MarkdownToolbarButton
-    label="格式帮助"
-    :icon="HelpOutlineOutlined"
-    @action="() => (showGuideModal = true)"
-  />
-  <div style="width: 8px" />
+    <MarkdownToolbarButton
+      label="粗体"
+      :icon="FormatBoldOutlined"
+      @action="formatBold"
+    />
+    <MarkdownToolbarButton
+      label="斜体"
+      :icon="FormatItalicOutlined"
+      @action="formatItalic"
+    />
+    <MarkdownToolbarButton
+      label="删除线"
+      :icon="StrikethroughSOutlined"
+      @action="formatStrikethrough"
+    />
+    <MarkdownToolbarButton
+      label="链接"
+      :icon="LinkOutlined"
+      @action="formatLink"
+    />
+    <MarkdownToolbarButton
+      label="剧透"
+      :icon="WarningAmberOutlined"
+      @action="formatSpoiler"
+    />
+    <n-divider vertical />
+    <MarkdownToolbarButton
+      label="评分"
+      :icon="StarOutlineFilled"
+      @action="formatStar"
+    />
+    <MarkdownToolbarButton
+      label="折叠"
+      :icon="MenuOpenOutlined"
+      @action="formatCollapsibleBlock"
+    />
+    <MarkdownToolbarButton
+      label="格式帮助"
+      :icon="HelpOutlineOutlined"
+      @action="() => (showGuideModal = true)"
+    />
+    <div style="width: 8px" />
 
-  <MarkdownGuideModal v-model:show="showGuideModal" />
+    <MarkdownGuideModal v-model:show="showGuideModal" />
+  </n-flex>
 </template>
