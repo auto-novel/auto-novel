@@ -196,8 +196,10 @@ function runProcessLoop(): Promise<void> | null {
           signal,
         )
         .then(() => {
-          const allDone = state.chapters.every((c) => c.status === 'done');
-          if (allDone) {
+          const allProcessed = state.chapters.every(
+            (c) => c.status === 'done' || c.status === 'error',
+          );
+          if (allProcessed) {
             executingTasks.delete(job.task);
             (job as TranslateJobRecord).finishAt = Date.now();
           }
