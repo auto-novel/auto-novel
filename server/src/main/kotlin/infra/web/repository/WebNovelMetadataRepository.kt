@@ -563,10 +563,13 @@ private fun simpleMergeToc(
 ): List<WebNovelTocItem> {
     return remoteToc.map { itemNew ->
         val itemOld = localToc.find { it.titleJp == itemNew.titleJp }
-        if (itemOld?.titleZh == null) {
+        if (itemOld == null) {
             itemNew
         } else {
-            itemNew.copy(titleZh = itemOld.titleZh)
+            itemNew.copy(
+                chapterId = itemOld.chapterId ?: itemNew.chapterId,
+                titleZh = itemOld.titleZh ?: itemNew.titleZh,
+            )
         }
     }
 }
@@ -585,7 +588,10 @@ private fun mergeUpdatedToc(
             ?.let(localByChapterId::get)
             ?: localByTitle[remoteItem.titleJp]
         if (localItem != null && localItem.titleJp == remoteItem.titleJp) {
-            remoteItem.copy(titleZh = localItem.titleZh)
+            remoteItem.copy(
+                chapterId = localItem.chapterId ?: remoteItem.chapterId,
+                titleZh = localItem.titleZh ?: remoteItem.titleZh,
+            )
         } else {
             remoteItem
         }
