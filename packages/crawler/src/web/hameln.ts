@@ -34,6 +34,49 @@ function parseWebNovelType(text: string): WebNovelType {
   throw new Error(`无法解析的小说类型:${text}`);
 }
 
+function parseTocFromEpisodeList(
+  $list: Awaited<ReturnType<typeof fetchDocument>>,
+) {
+  return $list('.episode-list__items')
+    .first()
+    .children('li')
+    .map((_, li) => {
+      const $li = $list(li);
+
+      if ($li.hasClass('episode-list__chapter')) {
+        return {
+          title:
+            $li.find('.episode-list__chapter-title').text().trim() ||
+            $li.text().trim(),
+          chapterId: null,
+          createAt: null,
+        } satisfies WebNovelTocItem;
+      }
+
+      const $a = $li.find('a').first();
+      if ($a.length === 0) {
+        return {
+          title: $li.text().trim(),
+          chapterId: null,
+          createAt: null,
+        } satisfies WebNovelTocItem;
+      }
+
+      const href = $a.attr('href') ?? '';
+      const rawDate = $a.find('time.episode-list__date').text().trim();
+
+      return {
+        title:
+          $a.find('.episode-list__title').text().trim() || $a.text().trim(),
+        chapterId: removeSuffix('.html')(removePrefix('./')(href)),
+        createAt:
+          parseJapanDateString('yyyy/MM/dd HH:mm', rawDate)?.toISOString() ??
+          null,
+      } satisfies WebNovelTocItem;
+    })
+    .get();
+}
+
 export class Hameln implements WebNovelProvider {
   readonly id = 'hameln';
   readonly version = '1.0.0';
@@ -82,7 +125,7 @@ export class Hameln implements WebNovelProvider {
         throw new Error(`Failed to find row: ${label}`);
       }
 
-      const value = $detail(cell).next();
+      const value = $detail(cell).next('td');
       if (value.length === 0) {
         throw new Error(`Failed to find row: ${label}`);
       }
@@ -90,88 +133,64 @@ export class Hameln implements WebNovelProvider {
       return value;
     };
 
-    const title = row('タイトル').text().trim();
+    const attentions: WebNovelAttention[] = [];
+    const keywords: string[] = [];
 
-    const authorCell = row('作者');
+    const title = $list('span[itemprop=name]').first().text().trim();
+    const authorCell = $list('span[itemprop=author]').first();
     const authorLink = authorCell.find('a').first();
     const author: WebNovelAuthor = {
       name: authorCell.text().trim(),
       link: authorLink.attr('href')?.replace(this.URL_ORIGIN, this.baseUrl),
     };
 
-    const type = parseWebNovelType(row('話数').text().trim());
+    const topBlock = $list('#maind > div.ss').first();
+    topBlock.find('span[itemprop=genre] a').each((_, el) => {
+      const tag = $list(el).text().trim();
+      if (tag) {
+        keywords.push(tag);
+      }
+    });
 
-    const attentions: WebNovelAttention[] = [];
-    const keywords: string[] = [];
+    topBlock.find('a.alert_color, span[itemprop=keywords] a').each((_, el) => {
+      const tag = $list(el).text().trim();
+      if (!tag) {
+        return;
+      }
 
-    row('原作')
-      .find('a')
-      .each((_, el) => {
-        const tag = $detail(el).text().trim();
-        if (tag) {
-          keywords.push(tag);
-        }
-      });
+      const attention = stringToAttentionEnum(tag);
+      if (attention) {
+        attentions.push(attention);
+      } else {
+        keywords.push(tag);
+      }
+    });
 
-    for (const label of ['タグ', '必須タグ']) {
-      row(label)
-        .find('a')
-        .each((_, el) => {
-          const tag = $detail(el).text().trim();
-          if (!tag) {
-            return;
-          }
-
-          const attention = stringToAttentionEnum(tag);
-          if (attention) {
-            attentions.push(attention);
-          } else {
-            keywords.push(tag);
-          }
-        });
-    }
-
-    const points = numExtractor(row('総合評価').text().trim());
-    const totalCharacters = numExtractor(row('合計文字数').text().trim()) ?? 0;
-    const introductionCell = row('あらすじ').clone();
+    const introductionCell = $list('#maind > div.ss').eq(1).clone();
     introductionCell.find('br').replaceWith('\n');
     const introduction = introductionCell.text().trim();
 
+    const points = numExtractor(row('総合評価').text().trim());
+    const totalCharacters = numExtractor(row('合計文字数').text().trim()) ?? 0;
+    const defaultCreateAt =
+      parseJapanDateString(
+        'yyyy年MM月dd日 HH:mm',
+        row('掲載開始')
+          .text()
+          .replace(/\(.*?\)/g, '')
+          .trim(),
+      )?.toISOString() ?? null;
+
     const toc: WebNovelTocItem[] =
-      $list('span[itemprop=name]').length === 0
-        ? [{ title: '无名', chapterId: 'default', createAt: null }]
-        : $list('tbody > tr')
-            .map((_, tr) => {
-              const $tr = $list(tr);
-              const $a = $tr.find('a').first();
-              if ($a.length === 0) {
-                return {
-                  title: $tr.text().trim(),
-                  chapterId: null,
-                  createAt: null,
-                } satisfies WebNovelTocItem;
-              }
+      $list('.episode-list__items').length > 0
+        ? parseTocFromEpisodeList($list)
+        : [{ title: '无名', chapterId: 'default', createAt: defaultCreateAt }];
 
-              const href = $a.attr('href') ?? '';
-              const rawDate = $tr
-                .find('nobr')
-                .contents()
-                .first()
-                .text()
-                .replace(/\(.*?\)/g, '')
-                .trim();
-
-              return {
-                title: $a.text().trim(),
-                chapterId: removeSuffix('.html')(removePrefix('./')(href)),
-                createAt:
-                  parseJapanDateString(
-                    'yyyy年MM月dd日 HH:mm',
-                    rawDate,
-                  )?.toISOString() ?? null,
-              } satisfies WebNovelTocItem;
-            })
-            .get();
+    const typeCell = row('話数');
+    if (!typeCell) {
+      throw new Error('Failed to find row: 話数');
+    }
+    const type = parseWebNovelType(typeCell.text().trim());
 
     return {
       title,
