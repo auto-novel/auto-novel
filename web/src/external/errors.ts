@@ -11,7 +11,7 @@ function normalizeVersion(version: string): [number, number, number] | null {
   ];
 }
 
-function compareVersion(version: string, target: string): number | null {
+export function compareVersion(version: string, target: string): number | null {
   const left = normalizeVersion(version);
   const right = normalizeVersion(target);
   if (!left || !right) return null;

@@ -25,14 +25,21 @@ docker compose up -d
 - ElasticSearch: localhost:5002
 - Redis: localhost:5003
 
+## 构建工作区包
+
+本项目是一个 monorepo，`web` 依赖 `packages/` 下的工作区包。因此，在启动前端服务器前，需要先在根目录下执行以下命令构建工作区包：
+
+```bash
+pnpm install # 安装依赖并 web prepare
+pnpm build
+```
+
 ## 前端开发
 
 基于 Vue3 / TypeScript / Vite / [Naive UI](https://www.naiveui.com/zh-CN) 构建。
 
 ```bash
 cd web
-pnpm install
-pnpm prepare
 
 pnpm dev     # 启动开发服务器
 pnpm build   # 编译项目
