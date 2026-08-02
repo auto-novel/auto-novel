@@ -35,6 +35,21 @@ const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
       console.error('Failed to set over18 cookie for Hameln:', err);
       bypassHamelnR18 = undefined;
     });
+  bypassHamelnR18 ??= addon
+    .cookiesPatch({
+      url: 'https://h.syosetu.org',
+      patches: {
+        over18: {
+          name: 'over18',
+          domain: 'h.syosetu.org',
+          value: 'off',
+        },
+      },
+    })
+    .catch((err) => {
+      console.error('Failed to set over18 cookie for HamelnR18:', err);
+      bypassHamelnR18 = undefined;
+    });
   return bypassHamelnR18;
 };
 
@@ -51,7 +66,7 @@ const getCrawler = lazy(async () => {
         init?.headers,
       );
       fakeDesktopHeader(headers);
-      return addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
+      return await addon.fetch(input, {
         ...init,
         headers,
       });
