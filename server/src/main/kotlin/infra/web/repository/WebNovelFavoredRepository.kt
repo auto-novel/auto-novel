@@ -31,6 +31,7 @@ import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
+import org.bson.Document
 
 class WebNovelFavoredRepository(
     mongo: MongoClient,
@@ -317,12 +318,16 @@ internal data class FavoredNovelLookup(
 }
 
 private fun favoredNovelLookup(): Bson =
-    lookup(
-        MongoCollectionNames.WEB_NOVEL,
-        WebNovelFavoriteDbModel::novelId.field(),
-        WebNovel::id.field(),
-        favoredNovelLookupProjectionPipeline(),
-        "novel",
+    // Aggregates.lookup 没有 (from, localField, foreignField, pipeline, as) 重载，
+    // 用 Document 构造 MongoDB 5.0+ 支持的 localField + pipeline 形态。
+    Document(
+        "\$lookup",
+        Document()
+            .append("from", MongoCollectionNames.WEB_NOVEL)
+            .append("localField", WebNovelFavoriteDbModel::novelId.field())
+            .append("foreignField", WebNovel::id.field())
+            .append("pipeline", favoredNovelLookupProjectionPipeline())
+            .append("as", "novel"),
     )
 
 private fun favoredNovelLookupProjectionPipeline(): List<Bson> =
