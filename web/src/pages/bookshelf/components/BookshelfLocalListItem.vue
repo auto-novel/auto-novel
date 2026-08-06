@@ -25,6 +25,7 @@ const startTranslateTask = (translatorId: 'youdao') =>
     {
       level: 'expire',
       forceMetadata: false,
+      useBrowserCrawler: false,
       startIndex: 0,
       endIndex: 65535,
     },

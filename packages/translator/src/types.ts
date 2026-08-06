@@ -16,6 +16,7 @@ export interface Segment {
   order: number;
   lines: string[];
   context?: SegmentContext;
+  onStart: (segment: Segment, translatorId: string) => void;
   onComplete: (segment: Segment, translatedLines: string[]) => void;
   onError: (segment: Segment, reason: any) => void;
 }
@@ -47,6 +48,7 @@ export interface SegmentAssembler {
     lines: string[],
     ranges: LineRange[],
     glossary: Glossary,
+    onSegStart: (segment: Segment, translatorId: string) => void,
     onSegComplete: (segment: Segment, translatedLines: string[]) => void,
     onSegError: (segment: Segment, reason: any) => void,
     history?: TranslationHistory,
@@ -56,15 +58,21 @@ export interface SegmentAssembler {
 export abstract class SegmentQueue {
   abstract readonly length: number;
   abstract readonly highWaterMark: number;
-  abstract enqueueAll(segments: Segment[]): void;
+  abstract enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void>;
   abstract dequeue(signal?: AbortSignal): Promise<Segment>;
   abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
+  abstract ack(): void;
 }
 
-export type PromptBuilder = (
-  lines: string[],
-  context?: SegmentContext,
-) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+export interface PromptBuilder {
+  build: (
+    lines: string[],
+    context?: SegmentContext,
+  ) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  parseAnswer: (answer: string, originalLines: string[]) => string[];
+}
+
+export type Logger = (message: string, detail?: string[]) => void;
 
 export interface Translator {
   translate(
@@ -82,4 +90,24 @@ export interface TranslationLoop {
   concurrency?: number;
 }
 
-export class Visualizer {}
+export interface SegmentCache {
+  get(segment: Segment): Promise<string[] | undefined>;
+  set(segment: Segment, translatedLines: string[]): Promise<void>;
+}
+
+export interface SegmentTracker {
+  /** 文本分段成功 */
+  onSegmentsReady?: (lines: string[], ranges: LineRange[]) => void;
+  /** 某段开始翻译 */
+  onSegStart?: (segmentOrder: number, translatorId: string) => void;
+  /** 某段完成翻译 */
+  onSegComplete?: (segmentOrder: number, translatedLines: string[]) => void;
+  /** 某段翻译报错 */
+  onSegError?: (segmentOrder: number, error: any) => void;
+  /** 翻译被取消 */
+  onAbort?: () => void;
+}
+
+export interface TranslatorTracker {
+  onConcurrencyChange?: (current: number, max: number) => void;
+}

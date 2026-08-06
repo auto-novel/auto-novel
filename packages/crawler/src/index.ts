@@ -1,5 +1,22 @@
-export { Amazon } from '@/amazon/amazon';
+export {
+  CrawlerAuthError,
+  CrawlerError,
+  CrawlerHttpError,
+  CrawlerInputError,
+  CrawlerParseError,
+} from '@/errors';
+
+export { AmazonCrawler } from '@/amazon/amazon';
 export { extractAsin, prettyCover } from '@/amazon/util';
+export type {
+  AmazonProduct,
+  AmazonProductSerial,
+  AmazonProductSet,
+  AmazonProductVolume,
+  AmazonSearchItem,
+  AmazonSerial,
+  AmazonVolumeItem,
+} from '@/amazon/types';
 
 export { Alphapolis } from '@/web/alphapolis';
 export { WebNovelCrawler } from '@/web/crawler';

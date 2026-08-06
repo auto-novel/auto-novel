@@ -58,6 +58,14 @@ export const detectChinese = (text: string) => {
   return pZh > 0.75 || (pZh > pJp && pZh > pEn * 2 && pJp < 0.1);
 };
 
+export const safeJson = <T extends object>(text: string) => {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined;
+  }
+};
+
 export const delay = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     let timeout: any = null;
@@ -73,16 +81,24 @@ export const delay = (ms: number, signal?: AbortSignal) =>
   });
 
 export class Semaphore {
-  private current = 0;
+  private _current = 0;
   private queue: Array<() => void> = [];
-  constructor(private max: number) {
-    if (max <= 0)
+  constructor(private _max: number) {
+    if (_max <= 0)
       throw new Error('Semaphore max capacity must be greater than 0');
   }
 
-  private async _acquire(): Promise<void> {
-    if (this.current < this.max) {
-      this.current++;
+  get max(): number {
+    return this._max;
+  }
+
+  get current(): number {
+    return this._current;
+  }
+
+  async acquire(): Promise<void> {
+    if (this._current < this._max) {
+      this._current++;
       return;
     }
     return new Promise<void>((resolve) => {
@@ -90,39 +106,58 @@ export class Semaphore {
     });
   }
 
-  private _release(): void {
+  release(): void {
     if (this.queue.length > 0) {
       const next = this.queue.shift()!;
       next();
     } else {
-      this.current--;
+      this._current--;
     }
   }
 
   setMax(max: number): void {
     if (max <= 0)
       throw new Error('Semaphore max capacity must be greater than 0');
-    this.max = max;
-    while (this.queue.length > 0 && this.current < this.max) {
-      this.current++;
+    this._max = max;
+    while (this.queue.length > 0 && this._current < this._max) {
+      this._current++;
       const next = this.queue.shift()!;
       next();
     }
   }
 
   async use<T>(fn: () => Promise<T> | T): Promise<T> {
-    await this._acquire();
-    let released = false;
-    const safeRelease = () => {
-      if (!released) {
-        released = true;
-        this._release();
-      }
-    };
+    await this.acquire();
     try {
       return await fn();
     } finally {
-      safeRelease();
+      this.release();
     }
   }
+}
+
+export function randomUUID(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.getRandomValues === 'function'
+  ) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(
+      '',
+    );
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }

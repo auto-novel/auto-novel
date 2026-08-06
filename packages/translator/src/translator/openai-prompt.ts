@@ -1,7 +1,7 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
-  return (lines: string[], context?: SegmentContext) => {
+  const build = (lines: string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
@@ -19,7 +19,9 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     const parts: string[] = [];
 
     //术语表处理
-    const pairs = Object.entries(glossary);
+    const pairs = Object.entries(glossary).filter(([jp]) =>
+      lines.some((line) => line.includes(jp)),
+    );
     if (pairs.length > 0) {
       parts.push('翻译的时候参考下面的术语表：');
       for (const [jp, zh] of pairs) {
@@ -36,4 +38,40 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     messages.push({ role: 'user', content: parts.join('\n') });
     return messages;
   };
+
+  const parseAnswer = (answer: string, originalLines: string[]): string[] => {
+    const lineContentMap = new Map<number, string>();
+
+    for (const line of answer.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const match = trimmed.match(/^#(\d+)(?:[:：]|\s+)(.*)/);
+      if (match) {
+        const lineNum = parseInt(match[1]);
+        const content = match[2];
+        lineContentMap.set(lineNum, content);
+      }
+    }
+
+    const result: string[] = [];
+    for (let i = 0; i < originalLines.length; i++) {
+      const lineNum = i + 1;
+      const originalLine = originalLines[i];
+
+      if (originalLine.trim().length === 0) {
+        result.push(originalLine);
+      } else {
+        const translated = lineContentMap.get(lineNum);
+        if (translated === undefined) {
+          throw new Error(`行数不匹配`);
+        }
+        const heading = originalLine.match(/^(\s*)/)?.[1] ?? '';
+        result.push(heading + translated.trimStart());
+      }
+    }
+    return result;
+  };
+
+  return { build, parseAnswer };
 };

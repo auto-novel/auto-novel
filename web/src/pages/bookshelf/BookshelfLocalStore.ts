@@ -153,6 +153,7 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
             const task = TranslateTaskDescriptor.local(id, {
               level,
               forceMetadata: false,
+              useBrowserCrawler: false,
               startIndex: start,
               endIndex: end,
             });
@@ -163,8 +164,9 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         const task = TranslateTaskDescriptor.local(id, {
           level,
           forceMetadata: false,
-          startIndex: 0,
-          endIndex: 65535,
+          useBrowserCrawler: false,
+          startIndex,
+          endIndex,
         });
         tasks.push(task);
       }
@@ -200,6 +202,7 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         const task = TranslateTaskDescriptor.local(id, {
           level,
           forceMetadata: false,
+          useBrowserCrawler: false,
           startIndex: 0,
           endIndex: 65535,
         });

@@ -1,5 +1,6 @@
 import type {
   GptWorker,
+  GptPipelineWorker,
   SakuraWorker,
   TranslateJobRecord,
 } from '@/model/Translator';
@@ -7,6 +8,7 @@ import { TranslateJob } from '@/model/Translator';
 import { lazy, useLocalStorage } from '@/util';
 
 import { LSKey } from './key';
+import { addWorkspaceJob } from './workspaceJob';
 
 interface Workspace<T> {
   workers: T[];
@@ -38,13 +40,7 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
   };
 
   const addJob = (job: TranslateJob) => {
-    const conflictJob = ref.value.jobs.find((it) => it.task === job.task);
-    if (conflictJob !== undefined) {
-      return false;
-    } else {
-      ref.value.jobs.push(job);
-      return true;
-    }
+    return addWorkspaceJob(ref.value.jobs, job);
   };
   const deleteJob = (task: string) => {
     ref.value.jobs = ref.value.jobs.filter((j) => j.task !== task);
@@ -123,6 +119,9 @@ const createGptWorkspaceStore = () =>
     });
   });
 
+const createGptPipelineWorkspaceStore = () =>
+  createWorkspaceStore<GptPipelineWorker>(LSKey.WorkspaceGptPipeline, []);
+
 const createSakuraWorkspaceStore = () =>
   createWorkspaceStore<SakuraWorker>(
     LSKey.WorkspaceSakura,
@@ -158,11 +157,16 @@ const createSakuraWorkspaceStore = () =>
   );
 
 export const useGptWorkspaceStore = lazy(createGptWorkspaceStore);
+export const useGptPipelineWorkspaceStore = lazy(
+  createGptPipelineWorkspaceStore,
+);
 export const useSakuraWorkspaceStore = lazy(createSakuraWorkspaceStore);
 
-export function useWorkspaceStore(type: 'gpt' | 'sakura') {
+export function useWorkspaceStore(type: 'gpt' | 'sakura' | 'gpt-pipeline') {
   if (type === 'gpt') {
     return useGptWorkspaceStore();
+  } else if (type === 'gpt-pipeline') {
+    return useGptPipelineWorkspaceStore();
   } else if (type === 'sakura') {
     return useSakuraWorkspaceStore();
   } else {

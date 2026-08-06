@@ -387,9 +387,12 @@ private val disgustingFascistNovelList = mapOf(
         "n5149kv",
         "n3756im",
         "n4899kw",
+        "n3603jk",
     ),
     Kakuyomu.id to listOf(
         "16816927860373250234",
+        "16816927861512481543",
+        "16817139557157831931",
         "16817330660019717771",
         "1177354054901629921",
         "16818093082836701336",
@@ -735,7 +738,6 @@ class WebNovelApi(
         chapterId: String,
         paragraphs: List<String>,
     ) {
-        user.requireAdmin() // temp admin only
         user.requireNovelAccess()
         validateId(providerId, novelId)
 
@@ -763,7 +765,6 @@ class WebNovelApi(
         chapterId: String,
         paragraphs: List<String>,
     ) {
-        user.requireAdmin() // temp admin only
         user.requireNovelAccess()
         validateId(providerId, novelId)
 

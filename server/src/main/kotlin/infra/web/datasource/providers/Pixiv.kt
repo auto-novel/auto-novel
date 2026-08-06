@@ -182,7 +182,7 @@ class Pixiv(
     }
 
     private val rubyPattern = """\[\[rb:([^>]+) > ([^]]+)]]""".toRegex()
-    private val chapterPattern = """\[charpter:([^]]+)]""".toRegex()
+    private val chapterPattern = """\[chapter:([^]]+)]""".toRegex()
     private fun cleanFormat(line: String): String {
         return line
             .replace(rubyPattern, "$1")

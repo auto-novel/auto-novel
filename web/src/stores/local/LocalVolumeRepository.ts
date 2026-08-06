@@ -99,3 +99,7 @@ export const createLocalVolumeStore = async () => {
     getTranslationFile: bind(getTranslationFile),
   };
 };
+
+export type LocalVolumeStore = Awaited<
+  ReturnType<typeof createLocalVolumeStore>
+>;

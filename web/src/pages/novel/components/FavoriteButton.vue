@@ -10,9 +10,6 @@ const props = defineProps<{
     | { type: 'web'; providerId: string; novelId: string }
     | { type: 'wenku'; novelId: string };
 }>();
-const emit = defineEmits<{
-  'update:favored': [string | undefined];
-}>();
 
 const message = useMessage();
 
@@ -27,7 +24,6 @@ const favoredTitle = computed(
 const favoriteNovel = (favoredId: string) =>
   doAction(
     FavoredRepo.favoriteNovel(favoredId, props.novel).then(() => {
-      emit('update:favored', favoredId);
       showFavoredModal.value = false;
     }),
     '收藏',
@@ -38,7 +34,6 @@ const unfavoriteNovel = async () => {
   if (props.favored === undefined) return;
   await doAction(
     FavoredRepo.unfavoriteNovel(props.favored, props.novel).then(() => {
-      emit('update:favored', undefined);
       showFavoredModal.value = false;
     }),
     '取消收藏',

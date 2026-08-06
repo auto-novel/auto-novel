@@ -447,11 +447,16 @@ const levelOptions = [
       </n-form-item-row>
 
       <n-form-item-row path="cover" label="封面链接">
-        <n-input
-          v-model:value="formValue.cover"
-          placeholder="请输入封面链接"
-          :input-props="{ spellcheck: false }"
-        />
+        <n-space vertical :size="6" style="width: 100%">
+          <n-input
+            v-model:value="formValue.cover"
+            placeholder="请输入封面链接"
+            :input-props="{ spellcheck: false }"
+          />
+          <n-text depth="3" type="warning">
+            <b>* 如果已经有封面就不要修改，其他人会认不出来</b>
+          </n-text>
+        </n-space>
       </n-form-item-row>
 
       <n-form-item-row path="authors" label="作者">

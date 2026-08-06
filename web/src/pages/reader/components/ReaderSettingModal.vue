@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { checkIsMobile, useIsWideScreen } from '@/pages/util';
+import { useIsWideScreen } from '@/pages/util';
 import { ReaderSetting, useReaderSettingStore } from '@/stores';
+import { checkIsMobile } from '@/util';
 import { AddOutlined, MinusOutlined } from '@vicons/material';
 
 const isMobile = checkIsMobile();
@@ -9,10 +10,6 @@ const isWideScreen = useIsWideScreen(600);
 const readerSettingStore = useReaderSettingStore();
 const { readerSetting } = storeToRefs(readerSettingStore);
 
-const setCustomBodyColor = (color: string) =>
-  (readerSetting.value.theme.bodyColor = color);
-const setCustomFontColor = (color: string) =>
-  (readerSetting.value.theme.fontColor = color);
 const setIndentSize = (diff: number) => {
   readerSetting.value.indentSize = Math.min(
     Math.max(readerSetting.value.indentSize! + diff, 0),
@@ -220,8 +217,7 @@ const setIndentSize = (diff: number) => {
                   <n-color-picker
                     :modes="['hex']"
                     :show-alpha="false"
-                    :default-value="readerSetting.theme.bodyColor"
-                    :on-complete="setCustomBodyColor"
+                    v-model:value="readerSetting.theme.bodyColor"
                     style="width: 8.2em"
                   >
                     <template #label="color">背景：{{ color }}</template>
@@ -229,8 +225,7 @@ const setIndentSize = (diff: number) => {
                   <n-color-picker
                     :modes="['hex']"
                     :show-alpha="false"
-                    :default-value="readerSetting.theme.fontColor"
-                    :on-complete="setCustomFontColor"
+                    v-model:value="readerSetting.theme.fontColor"
                     style="width: 8.2em"
                   >
                     <template #label="color">文字：{{ color }}</template>

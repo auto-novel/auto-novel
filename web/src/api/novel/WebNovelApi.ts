@@ -32,6 +32,10 @@ export interface WebNovelMutationBody {
   toc: WebNovelMutationTocItem[];
 }
 
+export interface WebNovelChapterMutationBody {
+  paragraphs: string[];
+}
+
 const listNovel = ({
   page,
   pageSize,
@@ -94,6 +98,22 @@ const updateNovel = (
   json: WebNovelMutationBody,
 ) => client.put(`novel/${providerId}/${novelId}`, { json });
 
+const createChapter = (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+  json: WebNovelChapterMutationBody,
+) =>
+  client.post(`novel/${providerId}/${novelId}/chapter/${chapterId}`, { json });
+
+const updateChapter = (
+  providerId: string,
+  novelId: string,
+  chapterId: string,
+  json: WebNovelChapterMutationBody,
+) =>
+  client.put(`novel/${providerId}/${novelId}/chapter/${chapterId}`, { json });
+
 const updateNovelTranslation = (
   providerId: string,
   novelId: string,
@@ -131,10 +151,15 @@ const createTranslationApi = (
   const getTranslateTask = () =>
     client.get(endpointV2, { signal }).json<WebTranslateTask>();
 
-  const getChapterTranslateTask = (chapterId: string) =>
+  const getChapterTranslateTask = (
+    chapterId: string,
+    options?: { syncFromProvider?: boolean },
+  ) =>
     client
       .post(`${endpointV2}/chapter-task/${chapterId}`, {
-        searchParams: { sync: syncFromProvider },
+        searchParams: {
+          sync: options?.syncFromProvider ?? syncFromProvider,
+        },
         signal,
       })
       .json<WebChapterTranslateTask>();
@@ -218,6 +243,8 @@ export const WebNovelApi = {
 
   createNovel,
   updateNovel,
+  createChapter,
+  updateChapter,
   updateNovelTranslation,
   updateNovelWenkuId,
   updateGlossary,

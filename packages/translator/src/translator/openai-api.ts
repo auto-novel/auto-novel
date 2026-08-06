@@ -2,27 +2,6 @@
 import type { Options } from 'ky';
 import ky, { HTTPError } from 'ky';
 
-/**
- * Parses a server-sent event stream.
- * @param text The event stream text.
- */
-function* parseEventStream<T>(text: string) {
-  for (const line of text.split('\n')) {
-    if (line == '[DONE]') {
-      return;
-    } else if (!line.trim() || line.startsWith(': ping')) {
-      continue;
-    } else {
-      try {
-        const obj: T = JSON.parse(line.replace(/^data\:/, '').trim());
-        yield obj;
-      } catch {
-        continue;
-      }
-    }
-  }
-}
-
 const safeJson = <T extends object>(text: string) => {
   try {
     return JSON.parse(text) as T;
@@ -51,15 +30,6 @@ export const createOpenAiApi = (endpoint: string, key: string) => {
   const listModels = (options?: Options): Promise<ModelsPage> =>
     client.get('models', options).json<ModelsPage>();
 
-  const createChatCompletionsStream = (
-    json: ChatCompletion.Params & { stream: true },
-    options?: Options,
-  ): Promise<Generator<ChatCompletionChunk>> =>
-    client
-      .post('chat/completions', { json, ...options })
-      .text()
-      .then(parseEventStream<ChatCompletionChunk>);
-
   const createChatCompletions = (
     json: ChatCompletion.Params & { stream?: false },
     options?: Options,
@@ -70,7 +40,6 @@ export const createOpenAiApi = (endpoint: string, key: string) => {
 
   return {
     listModels,
-    createChatCompletionsStream,
     createChatCompletions,
   };
 };
@@ -86,22 +55,6 @@ interface Model {
   created: number;
   owned_by: string;
   meta: unknown;
-}
-
-interface ChatCompletionChunk {
-  id: string;
-  choices: Array<{
-    delta: {
-      content?: string | null;
-    };
-    finish_reason:
-      | 'stop'
-      | 'length'
-      | 'function_call'
-      | 'content_filter'
-      | null;
-    index: number;
-  }>;
 }
 
 interface ChatCompletion {

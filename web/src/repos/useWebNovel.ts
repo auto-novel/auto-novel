@@ -1,13 +1,9 @@
 import { HTTPError } from 'ky';
 import { useQuery, useQueryCache } from '@pinia/colada';
 
-import type { WebNovelMetadata } from '@/api';
-import {
-  FavoredApi,
-  ReadHistoryApi,
-  WebNovelApi,
-  WebNovelCrawlerApi,
-} from '@/api';
+import { FavoredApi, ReadHistoryApi, WebNovelApi } from '@/api';
+import type { WebNovelMetadata } from '@/external';
+import { WebNovelCrawlerApi } from '@/external';
 import { withOnSuccess } from './cache';
 
 const ItemKey = 'web-novel';
@@ -45,9 +41,6 @@ const getOrCreateWebNovel = async (providerId: string, novelId: string) => {
   }
 
   const metadata = await WebNovelCrawlerApi.getMetadata(providerId, novelId);
-  if (metadata == null) {
-    throw new Error('前端爬虫未找到小说');
-  }
   await WebNovelApi.createNovel(providerId, novelId, toMutationBody(metadata));
 
   return WebNovelApi.getNovel(providerId, novelId);
@@ -139,8 +132,17 @@ export const WebNovelRepo = {
   useWebNovelFavoredList,
 
   createNovel: WebNovelApi.createNovel,
+  createChapter: WebNovelApi.createChapter,
   updateNovel: withOnSuccess(
     WebNovelApi.updateNovel,
+    (_, providerId, novelId) =>
+      useQueryCache().invalidateQueries({
+        key: [ItemKey, providerId, novelId],
+        exact: true,
+      }),
+  ),
+  updateChapter: withOnSuccess(
+    WebNovelApi.updateChapter,
     (_, providerId, novelId) =>
       useQueryCache().invalidateQueries({
         key: [ItemKey, providerId, novelId],

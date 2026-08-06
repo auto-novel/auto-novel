@@ -84,21 +84,32 @@ function useUserDataWithAuth(app: string) {
     userData.value.profile = undefined;
   }
 
+  let skipAnonymousRefresh = false;
+
   const refresh = () =>
     AuthApi.refresh(app).then((token: string) => {
       userData.value.profile = parseJwt(token);
+      skipAnonymousRefresh = false;
     });
 
   const refreshIfNeeded = () => {
     // 刷新 Access Token，冷却时间为1小时
     const cooldown = 60 * 60 * 1000;
-    const sinceIssuedAt = Date.now() - (userData.value.profile?.issuedAt ?? 0);
+    const profile = userData.value.profile;
+    if (!profile && skipAnonymousRefresh) {
+      return;
+    }
+    const sinceIssuedAt = Date.now() - (profile?.issuedAt ?? 0) * 1000;
     if (sinceIssuedAt < cooldown) {
       return;
     }
     return refresh().catch(async (e: unknown) => {
       let msg = `${e}`;
       if (e instanceof HTTPError) {
+        if (e.response.status === 401) {
+          userData.value.profile = undefined;
+          skipAnonymousRefresh = true;
+        }
         msg = await e.response.text();
       }
       console.warn('更新授权失败：' + msg);
@@ -111,6 +122,7 @@ function useUserDataWithAuth(app: string) {
 
   const logout = () => {
     userData.value.profile = undefined;
+    skipAnonymousRefresh = true;
     return AuthApi.logout();
   };
 

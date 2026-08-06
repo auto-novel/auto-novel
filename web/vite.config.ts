@@ -7,6 +7,64 @@ import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
 
+import path from 'path';
+
+function setupRemoteAuthProxy(config: UserConfig) {
+  const AuthUrl = 'https://auth.novelia.cc';
+  const proxy = config.server!.proxy!;
+
+  // 解决 /api /api/v1/auth 代理冲突问题
+  proxy['^/api(?!/v1/auth)'] = proxy['/api'];
+  delete proxy['/api'];
+
+  // 兼容旧接口路径
+  proxy['/api/v1/auth'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+  };
+
+  // 代理静态资源
+  proxy['/auth-proxy/assets'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/auth-proxy\/assets/, '/assets'),
+  };
+
+  // 代理首页
+  proxy['/auth-proxy'] = {
+    target: AuthUrl,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/auth-proxy/, ''),
+    selfHandleResponse: true,
+    configure(proxy) {
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.setHeader('accept-encoding', 'identity');
+      });
+      proxy.on('proxyRes', (proxyRes, _req, res) => {
+        const chunks: Buffer[] = [];
+        proxyRes.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+        proxyRes.on('end', () => {
+          const body = Buffer.concat(chunks)
+            .toString()
+            .replaceAll('/assets', '/auth-proxy/assets');
+
+          res.statusCode = proxyRes.statusCode ?? 200;
+          res.statusMessage = proxyRes.statusMessage ?? '';
+          for (const [key, value] of Object.entries(proxyRes.headers)) {
+            if (value !== undefined) {
+              res.setHeader(key, value);
+            }
+          }
+          res.removeHeader('content-length');
+          res.end(body);
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const apiMode = env.VITE_API_MODE;
@@ -23,6 +81,12 @@ export default defineConfig(({ mode }) => {
   const enableSonda = env.VITE_ENABLE_SONDA === 'true';
 
   const config: UserConfig = {
+    resolve: {
+      tsconfigPaths: true,
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+      },
+    },
     build: {
       target: ['es2015'],
       cssCodeSplit: false,
@@ -76,9 +140,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    resolve: {
-      tsconfigPaths: true,
-    },
     plugins: [
       vue(),
       createHtmlPlugin({
@@ -118,6 +179,10 @@ export default defineConfig(({ mode }) => {
         brotli: true,
       }),
     );
+  }
+
+  if (apiMode === 'remote') {
+    setupRemoteAuthProxy(config);
   }
 
   return config;

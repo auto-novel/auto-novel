@@ -4,16 +4,56 @@ import { parse } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import type { KyInstance } from 'ky';
 
+import { CrawlerAuthError, CrawlerHttpError } from '@/errors';
+
 import { WebNovelAttention } from './types';
 
-export const fetchDocument = async (
+export function assertNoCFChallenge(html: string): void {
+  if (
+    html.includes('#challenge-error-text') ||
+    html.includes('cf-browser-verification') ||
+    html.includes('Just a moment...') ||
+    html.includes('Attention Required!')
+  ) {
+    throw new CrawlerAuthError(
+      '触发 Cloudflare 人机验证，请先访问小说原站完成人机验证后再重试',
+    );
+  }
+}
+
+export function assertNoAWSChallenge(html: string): void {
+  if (
+    html.includes('challenge-container') ||
+    html.includes(
+      "In order to continue, we need to verify that you're not a robot",
+    ) ||
+    html.includes('challenge.js')
+  ) {
+    throw new CrawlerAuthError(
+      '触发 CloudFront 人机验证，请先访问小说原站完成人机验证后再重试',
+    );
+  }
+}
+
+export async function fetchDocument(
   client: KyInstance,
   url: string,
-): Promise<CheerioAPI> =>
-  client
-    .get(url)
-    .text()
-    .then((text) => cheerio.load(text));
+): Promise<CheerioAPI> {
+  const resp = await client.get(url, { throwHttpErrors: false });
+  const text = await resp.text();
+
+  assertNoCFChallenge(text);
+
+  if (!resp.ok) {
+    throw new CrawlerHttpError(
+      `获取页面失败：${resp.status} ${resp.statusText} (${url})`,
+      resp.status,
+      url,
+    );
+  }
+
+  return cheerio.load(text);
+}
 
 export const removeSuffix = (suffix: string) => (input: string) =>
   input.endsWith(suffix) ? input.slice(0, -suffix.length) : input;
@@ -26,9 +66,7 @@ export const substringAfterLast = (delimiter: string) => (input: string) => {
   return index === -1 ? input : input.slice(index + delimiter.length);
 };
 
-export const stringToAttentionEnum = (
-  tag: string,
-): WebNovelAttention | null => {
+export function stringToAttentionEnum(tag: string): WebNovelAttention | null {
   switch (tag) {
     case 'R15':
     case 'R-15':
@@ -50,9 +88,9 @@ export const stringToAttentionEnum = (
     default:
       return null;
   }
-};
+}
 
-export const numExtractor = (text: string): number | null => {
+export function numExtractor(text: string): number | null {
   const digits = text.replace(/[^0-9]/g, '');
   if (digits.length === 0) {
     return null;
@@ -60,7 +98,7 @@ export const numExtractor = (text: string): number | null => {
 
   const value = Number(digits);
   return Number.isFinite(value) ? value : null;
-};
+}
 
 export function parseJapanDateString(
   pattern: string,
@@ -73,11 +111,7 @@ export function parseJapanDateString(
       return undefined;
     }
     return utcDate;
-  } catch (error) {
-    console.error(
-      `日期解析失败: pattern='${pattern}', dateString='${dateString}'`,
-      error,
-    );
+  } catch {
     return undefined;
   }
 }

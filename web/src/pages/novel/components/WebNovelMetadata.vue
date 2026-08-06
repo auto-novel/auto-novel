@@ -66,7 +66,7 @@ const latestChapterCreateAt = computed(() => {
   <WebNovelIntroduction
     :introduction-jp="novel.introductionJp"
     :introduction-zh="novel.introductionZh"
-    style="margin-top: 24px"
+    style="margin-top: 16px"
   />
 
   <WebNovelTags

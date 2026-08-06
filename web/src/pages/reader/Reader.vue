@@ -4,13 +4,13 @@ import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
 import type { TranslatorId } from '@/model/Translator';
-import { checkIsMobile } from '@/pages/util';
 import { ReadPositionRepo } from '@/repos';
 import {
   useLocalVolumeStore,
   useReaderSettingStore,
   useWhoamiStore,
 } from '@/stores';
+import { checkIsMobile } from '@/util';
 import type { Result } from '@/util/result';
 import type { ReaderChapter } from './ReaderStore';
 import { useReaderStore } from './ReaderStore';

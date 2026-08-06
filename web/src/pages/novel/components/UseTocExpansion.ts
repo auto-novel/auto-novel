@@ -1,5 +1,5 @@
 import type { ReadableTocItem } from '@/pages/novel/components/common';
-import { checkIsMobile } from '@/pages/util';
+import { checkIsMobile } from '@/util';
 
 interface TocSection {
   separator: ReadableTocItem | null;

@@ -1,13 +1,7 @@
 <script lang="ts" setup>
 import { useKeyModifier } from '@vueuse/core';
 
-import { useIsWideScreen } from '@/pages/util';
-import {
-  FavoredRepo,
-  Setting,
-  useLocalVolumeStore,
-  useSettingStore,
-} from '@/stores';
+import { FavoredRepo, useLocalVolumeStore, useSettingStore } from '@/stores';
 import { useBookshelfLocalStore } from '../BookshelfLocalStore';
 
 const props = defineProps<{
@@ -20,7 +14,6 @@ defineEmits<{
 }>();
 
 const message = useMessage();
-const isWideScreen = useIsWideScreen(600);
 
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
@@ -44,9 +37,6 @@ const deleteSelected = async () => {
   const { success, failed } = await store.deleteVolumes(ids);
   message.info(`${success}本小说被删除，${failed}本失败`);
 };
-
-// 下载小说
-const showDownloadModal = ref(false);
 
 const downloadSelected = async () => {
   const ids = props.selectedIds;
@@ -159,11 +149,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
               :round="false"
               @action="downloadSelected"
             />
-            <c-button
-              label="下载设置"
-              :round="false"
-              @action="showDownloadModal = true"
-            />
+            <DownloadOptionsButton size="small" :round="false" />
           </n-button-group>
 
           <c-button
@@ -274,33 +260,4 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
       </n-flex>
     </n-list-item>
   </n-list>
-
-  <c-modal title="下载设置" v-model:show="showDownloadModal">
-    <n-flex vertical size="large">
-      <c-action-wrapper title="语言">
-        <c-radio-group
-          v-model:value="setting.downloadFormat.mode"
-          :options="Setting.downloadModeOptions"
-        />
-      </c-action-wrapper>
-
-      <c-action-wrapper title="翻译">
-        <n-flex>
-          <c-radio-group
-            v-model:value="setting.downloadFormat.translationsMode"
-            :options="Setting.downloadTranslationModeOptions"
-          />
-          <translator-check
-            v-model:value="setting.downloadFormat.translations"
-            show-order
-            :two-line="!isWideScreen"
-          />
-        </n-flex>
-      </c-action-wrapper>
-
-      <n-text depth="3" style="font-size: 12px">
-        # 某些EPUB阅读器无法正确显示日文段落的浅色字体
-      </n-text>
-    </n-flex>
-  </c-modal>
 </template>

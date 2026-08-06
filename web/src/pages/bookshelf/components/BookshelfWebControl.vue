@@ -112,6 +112,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
     const task = TranslateTaskDescriptor.web(providerId, novelId, {
       level: translateLevel.value,
       forceMetadata: forceMetadata.value,
+      useBrowserCrawler: false,
       startIndex: 0,
       endIndex: first5.value ? 5 : 65535,
     });

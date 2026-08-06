@@ -145,7 +145,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         </router-link>
 
         <favorite-button
-          v-model:favored="novel.favored"
+          :favored="novel.favored"
           :novel="{ type: 'wenku', novelId }"
         />
 
@@ -216,9 +216,18 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         <TranslateOptions
           ref="translateOptions"
           :gnid="GenericNovelId.wenku(novelId)"
-          :glossary="novel.glossary"
           style="margin-top: 16px"
         />
+        <n-flex style="margin-top: 16px">
+          <n-button-group>
+            <GlossaryButton
+              :gnid="GenericNovelId.wenku(novelId)"
+              :value="novel.glossary"
+              :round="false"
+            />
+            <DownloadOptionsButton :round="false" />
+          </n-button-group>
+        </n-flex>
         <n-divider style="margin: 16px 0 0" />
 
         <n-list>

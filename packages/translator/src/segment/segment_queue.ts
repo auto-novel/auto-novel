@@ -1,15 +1,19 @@
 import type { Segment, SegmentQueue } from '@/types';
+import { Semaphore } from '@/utils';
 
 export class DefaultSegmentQueue implements SegmentQueue {
   private readonly _items: Segment[] = [];
   private readonly _highWaterMark: number;
+  /** 系统中所有在途（排队中+翻译中）的分片总数 */
+  private _enqueuedCount = 0;
 
   /** 等待出队的消费者 resolve 回调队列（FIFO） */
   private readonly _dequeueResolvers: Array<(seg: Segment) => void> = [];
 
-  /** 等待水位下降的生产者 resolve 回调 */
-  private _hwResolver: (() => void) | null = null;
-  private _hwPromise: Promise<void> | null = null;
+  /** 等待水位下降的生产者 resolve 回调队列（FIFO），每次只释放一个 */
+  private _hwResolvers: Array<() => void> = [];
+  /** 入队锁，防止多任务 enqueueAll 交错 */
+  private readonly _enqueueLock = new Semaphore(1);
 
   constructor(highWaterMark: number) {
     this._highWaterMark = Math.max(1, highWaterMark);
@@ -23,9 +27,17 @@ export class DefaultSegmentQueue implements SegmentQueue {
     return this._highWaterMark;
   }
 
-  enqueueAll(segments: Segment[]): void {
+  async enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void> {
+    await this._enqueueLock.use(async () => {
+      await this.waitUntilBelowHighWaterMark(signal);
+      this._enqueue(segments);
+    });
+  }
+
+  private _enqueue(segments: Segment[]): void {
     const segLen = segments.length;
     if (segLen === 0) return;
+    this._enqueuedCount += segLen;
 
     const resolverLen = this._dequeueResolvers.length;
     const matchCount = Math.min(segLen, resolverLen);
@@ -48,7 +60,6 @@ export class DefaultSegmentQueue implements SegmentQueue {
 
     if (this._items.length > 0) {
       const item = this._items.shift()!;
-      this._tryResolveHw();
       return item;
     }
     return new Promise<Segment>((resolve, reject) => {
@@ -70,39 +81,35 @@ export class DefaultSegmentQueue implements SegmentQueue {
   async waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
 
-    if (this._items.length < this._highWaterMark) return;
+    if (this._enqueuedCount < this._highWaterMark) return;
 
-    if (!this._hwPromise) {
-      this._hwPromise = new Promise<void>((resolve) => {
-        this._hwResolver = resolve;
-      });
-    }
+    return new Promise<void>((resolve, reject) => {
+      this._hwResolvers.push(resolve);
 
-    if (!signal) return this._hwPromise;
-
-    return new Promise((resolve, reject) => {
-      const onAbort = () => reject(signal.reason);
-      signal.addEventListener('abort', onAbort, { once: true });
-
-      this._hwPromise!.then(
-        () => {
-          signal.removeEventListener('abort', onAbort);
-          resolve();
-        },
-        (err) => {
-          signal.removeEventListener('abort', onAbort);
-          reject(err);
-        },
-      );
+      if (signal) {
+        const onAbort = () => {
+          const idx = this._hwResolvers.indexOf(resolve);
+          if (idx !== -1) this._hwResolvers.splice(idx, 1);
+          reject(signal.reason);
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
     });
   }
 
-  /** 检查并尝试唤醒等待水位下降的生产者 */
+  /** 消费者完成一个分片后调用，释放一个槽位 */
+  ack(): void {
+    this._enqueuedCount--;
+    this._tryResolveHw();
+  }
+
+  /** 检查并尝试唤醒一个等待水位下降的生产者 */
   private _tryResolveHw(): void {
-    if (this._hwResolver && this._items.length < this._highWaterMark) {
-      const resolve = this._hwResolver;
-      this._hwResolver = null;
-      this._hwPromise = null;
+    if (
+      this._hwResolvers.length > 0 &&
+      this._enqueuedCount < this._highWaterMark
+    ) {
+      const resolve = this._hwResolvers.shift()!;
       resolve();
     }
   }

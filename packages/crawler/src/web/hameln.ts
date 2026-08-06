@@ -10,7 +10,9 @@ import {
   type WebNovelTocItem,
   WebNovelAttention,
   WebNovelType,
+  emptyPage,
 } from './types';
+import { CrawlerParseError } from '@/errors';
 import {
   fetchDocument,
   numExtractor,
@@ -31,7 +33,7 @@ function parseWebNovelType(text: string): WebNovelType {
     return WebNovelType.ShortStory;
   }
 
-  throw new Error(`无法解析的小说类型:${text}`);
+  throw new CrawlerParseError(`无法解析的小说类型:${text}`);
 }
 
 function parseTocFromEpisodeList(
@@ -87,33 +89,18 @@ export class Hameln implements WebNovelProvider {
     this.client = client;
   }
 
-  readonly URL_ORIGIN = 'https://syosetu.org';
-  readonly URL_PROXY = 'https://hml.xkvi.top';
-
-  private options = {
-    useProxy: false,
-  };
-
-  private get baseUrl() {
-    return this.options.useProxy ? this.URL_PROXY : this.URL_ORIGIN;
-  }
-
-  setOptions(options: typeof this.options) {
-    this.options = options;
-  }
-
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
-    throw new Error('Not implemented');
+    return emptyPage();
   }
 
-  async getMetadata(novelId: string): Promise<WebNovelMetadata | null> {
+  async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const [$list, $detail] = await Promise.all([
-      fetchDocument(this.client, `${this.baseUrl}/novel/${novelId}`),
+      fetchDocument(this.client, `https://syosetu.org/novel/${novelId}`),
       fetchDocument(
         this.client,
-        `${this.baseUrl}/?mode=ss_detail&nid=${novelId}`,
+        `https://syosetu.org/?mode=ss_detail&nid=${novelId}`,
       ),
     ]);
 
@@ -122,12 +109,12 @@ export class Hameln implements WebNovelProvider {
         .toArray()
         .find((el) => $detail(el).text().trim() === label);
       if (!cell) {
-        throw new Error(`Failed to find row: ${label}`);
+        throw new CrawlerParseError(`未找到字段：${label}`);
       }
 
       const value = $detail(cell).next('td');
       if (value.length === 0) {
-        throw new Error(`Failed to find row: ${label}`);
+        throw new CrawlerParseError(`未找到字段：${label}`);
       }
 
       return value;
@@ -141,7 +128,7 @@ export class Hameln implements WebNovelProvider {
     const authorLink = authorCell.find('a').first();
     const author: WebNovelAuthor = {
       name: authorCell.text().trim(),
-      link: authorLink.attr('href')?.replace(this.URL_ORIGIN, this.baseUrl),
+      link: authorLink.attr('href'),
     };
 
     const topBlock = $list('#maind > div.ss').first();
@@ -211,8 +198,8 @@ export class Hameln implements WebNovelProvider {
   ): Promise<WebNovelChapter> {
     const url =
       chapterId === 'default'
-        ? `${this.baseUrl}/novel/${novelId}`
-        : `${this.baseUrl}/novel/${novelId}/${chapterId}.html`;
+        ? `https://syosetu.org/novel/${novelId}`
+        : `https://syosetu.org/novel/${novelId}/${chapterId}.html`;
 
     const $ = await fetchDocument(this.client, url);
 
@@ -222,11 +209,10 @@ export class Hameln implements WebNovelProvider {
       .map((_, el) => {
         const $el = $(el);
         $el.find('rp, rt').remove();
-        $el.find('br').replaceWith('\n');
         return $el;
       })
       .filter((_, el) => Boolean(el.attr('id')))
-      .map((_, el) => el.text().trim())
+      .map((_, el) => el.text())
       .get();
 
     return { paragraphs };

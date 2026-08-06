@@ -62,12 +62,7 @@ export interface WebNovelProvider<GetRankOptionsT = Record<string, string>> {
   readonly id: string;
   readonly version: string;
 
-  getRank(
-    options: GetRankOptionsT,
-  ): Promise<Page<WebNovelListItem> | null | undefined>;
-  getMetadata(novelId: string): Promise<WebNovelMetadata | null | undefined>;
-  getChapter(
-    novelId: string,
-    chapterId: string,
-  ): Promise<WebNovelChapter | null | undefined>;
+  getRank(options: GetRankOptionsT): Promise<Page<WebNovelListItem>>;
+  getMetadata(novelId: string): Promise<WebNovelMetadata>;
+  getChapter(novelId: string, chapterId: string): Promise<WebNovelChapter>;
 }
