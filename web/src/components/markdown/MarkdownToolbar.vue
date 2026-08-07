@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DropdownOption, DropdownProps } from 'naive-ui';
+import type { DropdownOption, DropdownProps, TooltipProps } from 'naive-ui';
 import {
   FormatBoldOutlined,
   FormatItalicOutlined,
@@ -17,9 +17,11 @@ const props = withDefaults(
     elTextarea?: HTMLTextAreaElement;
     drafts: Draft[];
     dropdownPlacement?: DropdownProps['placement'];
+    tooltipPlacement?: TooltipProps['placement'];
   }>(),
   {
     dropdownPlacement: 'bottom',
+    tooltipPlacement: 'top',
   },
 );
 
@@ -162,7 +164,7 @@ const formatCollapsibleBlock = () =>
       :placement="dropdownPlacement"
       @select="handleSelectDraft"
     >
-      <n-tooltip placement="top">
+      <n-tooltip :placement="tooltipPlacement">
         <template #trigger>
           <n-button size="small" quaternary>
             <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
@@ -175,42 +177,50 @@ const formatCollapsibleBlock = () =>
     <MarkdownToolbarButton
       label="粗体"
       :icon="FormatBoldOutlined"
+      :placement="tooltipPlacement"
       @action="formatBold"
     />
     <MarkdownToolbarButton
       label="斜体"
       :icon="FormatItalicOutlined"
+      :placement="tooltipPlacement"
       @action="formatItalic"
     />
     <MarkdownToolbarButton
       label="删除线"
       :icon="StrikethroughSOutlined"
+      :placement="tooltipPlacement"
       @action="formatStrikethrough"
     />
     <MarkdownToolbarButton
       label="链接"
       :icon="LinkOutlined"
+      :placement="tooltipPlacement"
       @action="formatLink"
     />
     <MarkdownToolbarButton
       label="剧透"
       :icon="WarningAmberOutlined"
+      :placement="tooltipPlacement"
       @action="formatSpoiler"
     />
     <n-divider vertical />
     <MarkdownToolbarButton
       label="评分"
       :icon="StarOutlineFilled"
+      :placement="tooltipPlacement"
       @action="formatStar"
     />
     <MarkdownToolbarButton
       label="折叠"
       :icon="MenuOpenOutlined"
+      :placement="tooltipPlacement"
       @action="formatCollapsibleBlock"
     />
     <MarkdownToolbarButton
       label="格式帮助"
       :icon="HelpOutlineOutlined"
+      :placement="tooltipPlacement"
       @action="() => (showGuideModal = true)"
     />
     <div style="width: 8px" />

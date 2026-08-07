@@ -6,18 +6,11 @@ import { ArticleRepo } from '@/repos';
 import type { ArticleCategory } from '@/model/Article';
 import { doAction, useIsWideScreen } from '@/pages/util';
 import { useDraftStore, useWhoamiStore } from '@/stores';
-import MarkdownEditorStickyTab from '@/components/markdown/MarkdownEditorStickyTab.vue';
 
-const props = withDefaults(
-  defineProps<{
-    articleId?: string;
-    category?: ArticleCategory;
-  }>(),
-  {
-    articleId: undefined,
-    category: undefined,
-  },
-);
+const props = defineProps<{
+  articleId: string | undefined;
+  category: ArticleCategory | undefined;
+}>();
 
 const router = useRouter();
 const isWideScreen = useIsWideScreen();
@@ -25,9 +18,6 @@ const message = useMessage();
 
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
-
-const activeTab = ref(0);
-const elEditor = useTemplateRef('editor');
 
 const draftStore = useDraftStore();
 const draftId = computed(() => `article-${props.articleId ?? 'new'}`);
@@ -81,28 +71,41 @@ const formRules: FormRules = {
     {
       validator: (_rule: FormItemRule, value: string | undefined) =>
         value !== undefined,
-      message: '未选择要发表的版塊',
+      message: '未选择要发表的版块',
       trigger: 'input',
     },
   ],
 };
 
-if (props.articleId !== undefined) {
-  ArticleRepo.useArticle(props.articleId, true)
-    .refresh()
-    .then(({ data, error }) => {
-      if (data) {
-        formValue.value = {
-          title: data.title,
-          content: data.content,
-          category: data.category,
-        };
-        allowSubmit.value = true;
-      } else {
-        message.error(`载入失败: ${error?.message}`);
-      }
-    });
-}
+watch(
+  () => props.articleId,
+  (newId) => {
+    if (newId !== undefined) {
+      ArticleRepo.useArticle(newId, true)
+        .refresh()
+        .then(({ data, error }) => {
+          if (data) {
+            formValue.value = {
+              title: data.title,
+              content: data.content,
+              category: data.category,
+            };
+            allowSubmit.value = true;
+          } else {
+            message.error(`载入失败: ${error?.message}`);
+          }
+        });
+    } else {
+      formValue.value = {
+        title: '',
+        content: '',
+        category: props.category ?? 'General',
+      };
+      allowSubmit.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 const submit = async () => {
   if (!allowSubmit.value) {
@@ -165,45 +168,27 @@ const submit = async () => {
       </n-form-item-row>
       <n-form-item-row path="content" label="正文">
         <MarkdownEditor
-          ref="editor"
           mode="article"
           :draft-id="draftId"
           v-model:value="formValue.content"
-          v-model:active-tab="activeTab"
           placeholder="请输入正文"
           :autosize="{ minRows: 8 }"
           maxlength="20000"
           style="width: 100%"
+          sticky
+          show-scroll-buttons
         />
       </n-form-item-row>
     </n-form>
 
-    <MarkdownEditorStickyTab
-      v-model:active-tab="activeTab"
-      :el-editor="elEditor ?? undefined"
-    >
-      <template #right-actions>
-        <c-button
-          label="提交"
-          :icon="UploadOutlined"
-          require-login
-          size="large"
-          type="primary"
-          @action="submit"
-        />
-      </template>
-    </MarkdownEditorStickyTab>
+    <c-button
+      label="提交"
+      :icon="UploadOutlined"
+      require-login
+      size="large"
+      type="primary"
+      class="float"
+      @action="submit"
+    />
   </div>
 </template>
-
-<style scoped>
-.layout-content {
-  padding-bottom: 60px;
-}
-
-@media only screen and (max-width: 540px) {
-  .layout-content {
-    padding-bottom: 120px;
-  }
-}
-</style>
