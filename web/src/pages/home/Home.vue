@@ -197,7 +197,7 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
         /
         <n-a :href="telegramLink" target="_blank">Telegram</n-a>
         /
-        <n-a :href="githubLink" target="_blank">Github</n-a>
+        <n-a :href="githubLink" target="_blank">GitHub</n-a>
       </n-flex>
       <n-p>
         禁止使用脚本绕过翻译器提交翻译文本，哪怕你觉得自己提交的是正经翻译。
