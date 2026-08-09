@@ -96,7 +96,7 @@ const showQQModal = ref(false);
 const qqLink =
   'http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Qa0SOMBYZoJZ4vuykz3MbPS0zbpeN0pW&authKey=q75E7fr5CIBSDhqX%2F4kuC%2B0mcPiDvj%2FSDfP%2FGZ8Rl8kDn6Z3M6XPSZ91yt4ZWonq&noverify=0&group_code=819513328';
 
-const telegramLink = 'https://t.me/+Mphy0wV4LYZkNTI1';
+const telegramLink = 'https://t.me/+hgUSCmuBReQzNmU1';
 const githubLink = 'https://github.com/auto-novel/auto-novel';
 </script>
 
