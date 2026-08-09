@@ -27,15 +27,11 @@ export const translateWeb = async (
     try {
       callback.log('获取小说信息');
       const novel = await WebNovelApi.getNovel(providerId, novelId);
-      const sinceLastSyncMs = Date.now() - novel.syncAt * 1000;
-      const SYNC_EXPIRY_MS = 60 * 60 * 1000;
-      if (sinceLastSyncMs > SYNC_EXPIRY_MS) {
-        callback.log('通过浏览器爬虫更新目录');
-        await CrawlerService.updateWebNovel(providerId, novelId, novel);
-        callback.log('目录已更新');
-      } else {
-        callback.log(`syncAt 未过期，跳过目录更新`);
-      }
+      callback.log('通过浏览器爬虫更新目录');
+      await CrawlerService.updateWebNovel(providerId, novelId, novel, {
+        safeUpdateToc: level !== 'sync',
+      });
+      callback.log('目录已更新');
     } catch (e) {
       if (e instanceof DOMException && e.name === 'AbortError') {
         callback.log(`中止翻译任务`);

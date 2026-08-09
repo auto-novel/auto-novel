@@ -6,6 +6,8 @@ import { WebNovelCrawlerApi } from '@/external';
 import type { WebNovelDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
 
+import { classifyTocUpdate } from './TocUpdate';
+
 const toMutationBody = (metadata: WebNovelMetadata) => ({
   title: metadata.title,
   authors: metadata.authors.map((author) => ({
@@ -51,15 +53,37 @@ const updateWebNovel = async (
   providerId: string,
   novelId: string,
   current?: WebNovelDto,
+  options?: { safeUpdateToc?: boolean },
 ) => {
+  const safeUpdateToc = options?.safeUpdateToc ?? true;
   const metadata = await WebNovelCrawlerApi.getMetadata(providerId, novelId);
   const body = toMutationBody(metadata);
   current ??= await WebNovelApi.getNovel(providerId, novelId);
+  const currentBody = toCurrentMutationBody(current);
+
+  const newChapterIds = body.toc.flatMap((item) =>
+    item.chapterId == null ? [] : [item.chapterId],
+  );
+
+  if (newChapterIds.length === 0) {
+    throw new Error('未获取到目录，请手动打开源站确保你有办法访问');
+  }
   if (body.toc.length < current.toc.length) {
     throw new Error('目录变短，放弃更新，请手动打开源站确保你有办法访问');
   }
-  if (isEqual(body, toCurrentMutationBody(current))) {
+
+  if (isEqual(body, currentBody)) {
     throw new Error('没有必要更新');
+  }
+
+  if (safeUpdateToc) {
+    const tocUpdateKind = classifyTocUpdate(currentBody.toc, body.toc);
+    if (tocUpdateKind === 'existing-updated') {
+      throw new Error('已有目录发生变化，非源站同步模式仅允许新增章节');
+    }
+    if (tocUpdateKind === 'unchanged') {
+      throw new Error('没有新增章节，放弃更新');
+    }
   }
 
   await WebNovelRepo.updateNovel(providerId, novelId, body);
