@@ -123,7 +123,12 @@ export class Hameln implements WebNovelProvider {
     const attentions: WebNovelAttention[] = [];
     const keywords: string[] = [];
 
-    const title = $list('span[itemprop=name]').first().text().trim();
+    const title =
+      $list('span[itemprop=name]').first().text().trim() ||
+      row('タイトル').text().trim();
+    if (!title) {
+      throw new CrawlerParseError('标题解析失败');
+    }
     const authorCell = $list('span[itemprop=author]').first();
     const authorLink = authorCell.find('a').first();
     const author: WebNovelAuthor = {
