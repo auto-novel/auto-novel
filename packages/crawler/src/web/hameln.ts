@@ -79,6 +79,89 @@ function parseTocFromEpisodeList(
     .get();
 }
 
+function collectMetadataTag(
+  tag: string,
+  attentions: WebNovelAttention[],
+  keywords: string[],
+) {
+  if (!tag) {
+    return;
+  }
+
+  const attention = stringToAttentionEnum(tag);
+  if (attention) {
+    if (!attentions.includes(attention)) {
+      attentions.push(attention);
+    }
+    return;
+  }
+
+  if (!keywords.includes(tag)) {
+    keywords.push(tag);
+  }
+}
+
+function parseTitle(
+  $list: Awaited<ReturnType<typeof fetchDocument>>,
+  detailTitle: string,
+) {
+  const itempropTitle = $list('span[itemprop=name]').first().text().trim();
+  if (itempropTitle) {
+    return itempropTitle;
+  }
+
+  return (
+    detailTitle ||
+    $list('#maind > div.ss')
+      .first()
+      .find('span[style*="font-size:120%"] a')
+      .first()
+      .text()
+      .trim()
+  );
+}
+
+function parseAuthor(
+  $list: Awaited<ReturnType<typeof fetchDocument>>,
+): WebNovelAuthor {
+  const authorCell = $list('span[itemprop=author]').first();
+  const authorLink =
+    authorCell.find('a').first().length > 0
+      ? authorCell.find('a').first()
+      : $list('#maind > div.ss').first().find('a[href*="/user/"]').first();
+
+  return {
+    name: (authorCell.text().trim() || authorLink.text().trim()).trim(),
+    link: authorLink.attr('href'),
+  };
+}
+
+function parseReaderChapterTitle(
+  $list: Awaited<ReturnType<typeof fetchDocument>>,
+) {
+  return $list('#honbun')
+    .prevAll('span[style*="font-size:120%"]')
+    .first()
+    .text()
+    .trim();
+}
+
+function parseIntroduction($list: Awaited<ReturnType<typeof fetchDocument>>) {
+  const introductionCell = $list('#maind > div.ss').eq(1).clone();
+  const hasReaderBody = introductionCell.find('#honbun').length > 0;
+
+  if (hasReaderBody) {
+    introductionCell.find('#maegaki, #maegaki_open, #honbun').remove();
+    introductionCell.find('div[style*="text-align:right"]').remove();
+    introductionCell.children('p').remove();
+    introductionCell.children('span[style*="font-size:120%"]').remove();
+  }
+
+  introductionCell.find('br').replaceWith('\n');
+
+  return introductionCell.text().trim();
+}
+
 export class Hameln implements WebNovelProvider {
   readonly id = 'hameln';
   readonly version = '1.0.0';
@@ -104,16 +187,16 @@ export class Hameln implements WebNovelProvider {
       ),
     ]);
 
-    const row = (label: string) => {
+    const optionalRow = (label: string) => {
       const cell = $detail('td')
         .toArray()
         .find((el) => $detail(el).text().trim() === label);
-      if (!cell) {
-        throw new CrawlerParseError(`未找到字段：${label}`);
-      }
+      return cell ? $detail(cell).next('td') : null;
+    };
 
-      const value = $detail(cell).next('td');
-      if (value.length === 0) {
+    const row = (label: string) => {
+      const value = optionalRow(label);
+      if (!value || value.length === 0) {
         throw new CrawlerParseError(`未找到字段：${label}`);
       }
 
@@ -123,44 +206,27 @@ export class Hameln implements WebNovelProvider {
     const attentions: WebNovelAttention[] = [];
     const keywords: string[] = [];
 
-    const title =
-      $list('span[itemprop=name]').first().text().trim() ||
-      row('タイトル').text().trim();
+    const title = parseTitle(
+      $list,
+      optionalRow('タイトル')?.text().trim() ?? '',
+    );
     if (!title) {
       throw new CrawlerParseError('标题解析失败');
     }
-    const authorCell = $list('span[itemprop=author]').first();
-    const authorLink = authorCell.find('a').first();
-    const author: WebNovelAuthor = {
-      name: authorCell.text().trim(),
-      link: authorLink.attr('href'),
-    };
+    const author = parseAuthor($list);
 
     const topBlock = $list('#maind > div.ss').first();
     topBlock.find('span[itemprop=genre] a').each((_, el) => {
-      const tag = $list(el).text().trim();
-      if (tag) {
-        keywords.push(tag);
-      }
+      collectMetadataTag($list(el).text().trim(), attentions, keywords);
     });
 
-    topBlock.find('a.alert_color, span[itemprop=keywords] a').each((_, el) => {
-      const tag = $list(el).text().trim();
-      if (!tag) {
-        return;
-      }
+    topBlock
+      .find('a[href*="search/?mode=search"], a[href*="/search/"]')
+      .each((_, el) => {
+        collectMetadataTag($list(el).text().trim(), attentions, keywords);
+      });
 
-      const attention = stringToAttentionEnum(tag);
-      if (attention) {
-        attentions.push(attention);
-      } else {
-        keywords.push(tag);
-      }
-    });
-
-    const introductionCell = $list('#maind > div.ss').eq(1).clone();
-    introductionCell.find('br').replaceWith('\n');
-    const introduction = introductionCell.text().trim();
+    const introduction = parseIntroduction($list);
 
     const points = numExtractor(row('総合評価').text().trim());
     const totalCharacters = numExtractor(row('合計文字数').text().trim()) ?? 0;
@@ -176,7 +242,13 @@ export class Hameln implements WebNovelProvider {
     const toc: WebNovelTocItem[] =
       $list('.episode-list__items').length > 0
         ? parseTocFromEpisodeList($list)
-        : [{ title: '无名', chapterId: 'default', createAt: defaultCreateAt }];
+        : [
+            {
+              title: parseReaderChapterTitle($list) || title || '无名',
+              chapterId: 'default',
+              createAt: defaultCreateAt,
+            },
+          ];
 
     const typeCell = row('話数');
     if (!typeCell) {
