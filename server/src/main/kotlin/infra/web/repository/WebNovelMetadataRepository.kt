@@ -233,6 +233,12 @@ class WebNovelMetadataRepository(
             set(WebNovel::pauseUpdate.field(), true),
             set(WebNovel::syncAt.field(), now),
         )
+        if (local.titleJp != titleJp) {
+            updates.add(set(WebNovel::titleZh.field(), null))
+        }
+        if (local.introductionJp != introductionJp) {
+            updates.add(set(WebNovel::introductionZh.field(), null))
+        }
         if (mergedToc.hasChanged) {
             updates.add(set(WebNovel::changeAt.field(), now))
             updates.add(set(WebNovel::updateAt.field(), now))
@@ -342,6 +348,12 @@ class WebNovelMetadataRepository(
             set(WebNovel::toc.field(), merged.toc),
             set(WebNovel::syncAt.field(), now),
         )
+        if (local.titleJp != remote.titleJp) {
+            list.add(set(WebNovel::titleZh.field(), null))
+        }
+        if (local.introductionJp != remote.introductionJp) {
+            list.add(set(WebNovel::introductionZh.field(), null))
+        }
         if (merged.hasChanged) {
             list.add(set(WebNovel::changeAt.field(), now))
             list.add(set(WebNovel::updateAt.field(), now))
