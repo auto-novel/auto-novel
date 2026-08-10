@@ -60,16 +60,45 @@ const getCrawler = lazy(async () => {
 
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      const featVersion: string =
+        addon.compat?.['tabFetch']?.['redirect'] || '0.0.0';
+      const result = compareVersion(addon.version, featVersion);
+      if (result == null || result < 0) {
+        throw new Error(
+          '当前版本的插件不兼容，无法爬取 Hameln，请更新插件到最新版本',
+        );
+      }
+
       await ensureBypassR18(addon);
       const headers = mergeHeaders(
         input instanceof Request ? input.headers : {},
         init?.headers,
       );
       fakeDesktopHeader(headers);
-      return await addon.fetch(input, {
+      let resp:
+        | (Response & { redirected?: boolean; redirectUrls?: string[] })
+        | undefined;
+      try {
+        resp = await addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
+          ...init,
+          headers,
+        });
+        if (!resp?.redirected) {
+          return resp;
+        }
+      } catch {
+        /* bypass */
+      }
+      if (!resp) throw new Error('Failed to fetch page for Hameln'); // 一般不会触发
+
+      // 如果触发了重定向，说明可能是 R18 内容，需要访问 h.syosetu.org
+      let newUrl = resp?.redirectUrls?.[resp?.redirectUrls.length - 1];
+      if (!newUrl) throw new Error('Failed to get redirect URL for Hameln');
+      resp = await addon.tabFetch({ tabUrl: 'https://h.syosetu.org' }, newUrl, {
         ...init,
         headers,
       });
+      return resp;
     },
   });
 
