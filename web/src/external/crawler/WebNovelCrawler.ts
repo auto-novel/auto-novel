@@ -94,7 +94,13 @@ const getCrawler = lazy(async () => {
       // 如果触发了重定向，说明可能是 R18 内容，需要访问 h.syosetu.org
       let newUrl = resp?.redirectUrls?.[resp?.redirectUrls.length - 1];
       if (!newUrl) throw new Error('Failed to get redirect URL for Hameln');
-      resp = await addon.tabFetch({ tabUrl: 'https://h.syosetu.org' }, newUrl, {
+
+      // 有概率原地 tp，从 novel/xxxx => novel/xxxx/
+      let baseUrl =
+        new URL(newUrl).hostname === 'h.syosetu.org'
+          ? 'https://h.syosetu.org'
+          : 'https://syosetu.org';
+      resp = await addon.tabFetch({ tabUrl: baseUrl }, newUrl, {
         ...init,
         headers,
       });
