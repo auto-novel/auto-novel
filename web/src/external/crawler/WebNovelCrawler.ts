@@ -132,29 +132,13 @@ const getCrawler = lazy(async () => {
             ? input.toString()
             : input.url;
 
-      let data = await addon.tabDomQuery({
-        tabUrl: url,
-        selector: 'html',
-        options: {
-          forceWaitForLoad: true,
-          closeTimeout: 5_000,
-        },
-      });
+      let resp = await addon.tabFetch(
+        { tabUrl: 'https://www.alphapolis.co.jp', forceWaitForLoad: true },
+        url,
+        { ...init, headers },
+      );
 
-      if (data.results.length === 0) {
-        // 可能是反爬，复用 tab 重新来一次
-        data = await addon.tabDomQuery({
-          tabUrl: url,
-          selector: 'html',
-          options: {
-            tabId: data?.tabId,
-            forceWaitForLoad: true,
-            closeTimeout: 5_000,
-          },
-        });
-      }
-      const html = data.results?.[0] || '';
-      return new Response(html);
+      return resp;
     },
   });
 
