@@ -53,6 +53,21 @@ const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
   return bypassHamelnR18;
 };
 
+const getLastRedirectUrl = (source: unknown): string | undefined => {
+  if (typeof source !== 'object' || source === null) return undefined;
+
+  if ('redirectUrls' in source && Array.isArray(source.redirectUrls)) {
+    const url = source.redirectUrls[source.redirectUrls.length - 1];
+    if (typeof url === 'string') return url;
+  }
+
+  if ('redirectUrl' in source && typeof source.redirectUrl === 'string') {
+    return source.redirectUrl;
+  }
+
+  return undefined;
+};
+
 const getCrawler = lazy(async () => {
   const addon = getAddon();
 
@@ -60,9 +75,10 @@ const getCrawler = lazy(async () => {
 
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
-      const featVersion: string =
-        addon.compat?.['tabFetch']?.['redirect'] || '0.0.0';
-      const result = compareVersion(addon.version, featVersion);
+      const featVersion: string = addon.compat?.['tabFetch']?.['redirect'];
+      const result = featVersion
+        ? compareVersion(addon.version, featVersion)
+        : null;
       if (result == null || result < 0) {
         throw new Error(
           '当前版本的插件不兼容，无法爬取 Hameln，请更新插件到最新版本',
@@ -75,36 +91,35 @@ const getCrawler = lazy(async () => {
         init?.headers,
       );
       fakeDesktopHeader(headers);
-      let resp:
-        | (Response & { redirected?: boolean; redirectUrls?: string[] })
-        | undefined;
-      try {
-        resp = await addon.tabFetch({ tabUrl: 'https://syosetu.org' }, input, {
-          ...init,
-          headers,
-        });
-        if (!resp?.redirected) {
-          return resp;
+
+      let reqUrl = new URL(
+        input instanceof Request ? input.url : input.toString(),
+      );
+      for (let i = 0; i < 5; i++) {
+        // SAFE(kuriko): 假定 Hameln 不会对用户发起重定向攻击 LOL
+        const baseUrl = reqUrl.origin;
+
+        try {
+          const resp = await addon.tabFetch({ tabUrl: baseUrl }, reqUrl, {
+            ...init,
+            headers,
+          });
+          if (!resp.redirected) {
+            return resp;
+          }
+
+          const redirectUrl = getLastRedirectUrl(resp);
+          if (!redirectUrl) {
+            throw new Error('Failed to get redirect URL for Hameln');
+          }
+          reqUrl = new URL(redirectUrl);
+        } catch (error) {
+          const redirectUrl = getLastRedirectUrl(error);
+          if (!redirectUrl) throw error;
+          reqUrl = new URL(redirectUrl);
         }
-      } catch {
-        /* bypass */
       }
-      if (!resp) throw new Error('Failed to fetch page for Hameln'); // 一般不会触发
-
-      // 如果触发了重定向，说明可能是 R18 内容，需要访问 h.syosetu.org
-      let newUrl = resp?.redirectUrls?.[resp?.redirectUrls.length - 1];
-      if (!newUrl) throw new Error('Failed to get redirect URL for Hameln');
-
-      // 有概率原地 tp，从 novel/xxxx => novel/xxxx/
-      let baseUrl =
-        new URL(newUrl).hostname === 'h.syosetu.org'
-          ? 'https://h.syosetu.org'
-          : 'https://syosetu.org';
-      resp = await addon.tabFetch({ tabUrl: baseUrl }, newUrl, {
-        ...init,
-        headers,
-      });
-      return resp;
+      throw new Error('Too many redirects for Hameln');
     },
   });
 
