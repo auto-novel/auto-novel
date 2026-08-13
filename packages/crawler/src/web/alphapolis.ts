@@ -1,5 +1,4 @@
 import type { KyInstance } from 'ky';
-import * as cheerio from 'cheerio';
 
 import {
   type Page,
@@ -12,10 +11,9 @@ import {
   WebNovelType,
   emptyPage,
 } from './types';
-import { CrawlerHttpError, CrawlerParseError } from '@/errors';
+import { CrawlerParseError } from '@/errors';
 import {
   assertNoAWSChallenge,
-  assertNoCFChallenge,
   fetchDocument,
   numExtractor,
   parseJapanDateString,
@@ -197,43 +195,49 @@ export class Alphapolis implements WebNovelProvider {
   async getMetadata(novelId: string): Promise<WebNovelMetadata> {
     const $ = await fetchDocument(this.client, this.getMetadataUrl(novelId));
 
-    const $contentInfo = $('#sidebar').first().find('.content-info').first();
+    const $contentInfo = $('#sidebar')
+      .first()
+      .find('.p-sidebar-content-info')
+      .first();
     if ($contentInfo.length === 0) {
       throw new CrawlerParseError('作品信息解析失败');
     }
 
-    const $contentMain = $('#main').first().find('.content-main').first();
+    const $contentMain = $('#main').first().find('.p-content-info').first();
     if ($contentMain.length === 0) {
       throw new CrawlerParseError('作品主体解析失败');
     }
 
-    const $info = $contentInfo.find('.content-statuses').first();
+    const $info = $contentInfo.find('.c-attribute-tags').first();
     if ($info.length === 0) {
       throw new CrawlerParseError('作品状态解析失败');
     }
 
-    const $table = $contentInfo.find('table.detail').first();
-    if ($table.length === 0) {
+    const $details = $contentInfo
+      .find('.p-sidebar-content-info__detail')
+      .first();
+    if ($details.length === 0) {
       throw new CrawlerParseError('作品详情解析失败');
     }
 
     const row = (label: string) =>
-      $table
-        .find('th')
+      $details
+        .find('.p-sidebar-content-info__detail-label')
         .filter((_, el) => {
-          const ownText = $(el)
-            .contents()
-            .filter((_, child) => child.type === 'text')
-            .text();
-          return ownText.includes(label);
+          return $(el).text().trim() === label;
         })
         .first()
         .next();
 
-    const title = $contentMain.find('h1.title').first().text().trim();
+    const title = $contentMain
+      .find('h1.p-content-info__title')
+      .first()
+      .text()
+      .replace(/[ \t\r\n]+/g, ' ')
+      .trim();
 
     const authors = $contentMain
-      .find('div.author a')
+      .find('a.p-content-info__author')
       .first()
       .map((_, a) => {
         const $a = $(a);
@@ -244,19 +248,25 @@ export class Alphapolis implements WebNovelProvider {
       })
       .get();
 
-    const typeText = textOrNull($info.find('span.complete').first().text());
+    const typeText = $info
+      .find('span.c-attribute-tag')
+      .toArray()
+      .map((el) => $(el).text().trim())
+      .find((text) => text === '連載中' || text === '完結');
     if (!typeText) {
       throw new CrawlerParseError('小说类型解析失败');
     }
     const type = parseWebNovelType(typeText);
 
-    const attentionText = textOrNull($info.find('span.rating').first().text());
+    const attentionText = textOrNull(
+      $info.find('.c-attribute-tag--rating').first().text(),
+    );
     const attention = attentionText
       ? stringToAttentionEnum(attentionText)
       : null;
 
     const keywords = $contentMain
-      .find('.content-tags > .tag')
+      .find('.p-content-info__tags > .c-tag')
       .map((_, el) => $(el).text().trim())
       .get();
 
@@ -267,7 +277,7 @@ export class Alphapolis implements WebNovelProvider {
 
     const totalCharacters = numExtractor(row('文字数').text().trim()) ?? 0;
     const introduction = $contentMain
-      .find('div.abstract')
+      .find('div.p-content-info__abstract')
       .first()
       .text()
       .trim();
@@ -293,7 +303,7 @@ export class Alphapolis implements WebNovelProvider {
     novelId: string,
     chapterId: string,
   ): Promise<WebNovelChapter> {
-    let worker = async () => {
+    const worker = async () => {
       let $ = await fetchDocument(
         this.client,
         this.getEpisodeUrl(novelId, chapterId),
@@ -301,6 +311,7 @@ export class Alphapolis implements WebNovelProvider {
 
       try {
         // 对于第一次遇到，等待 5s 旧的 tab 关闭后重试。
+        // TODO(kuriko): 已经迁移回了 addon.fetch，考虑去掉这个重试逻辑
         assertNoAWSChallenge($.html() || '');
       } catch (e) {
         await new Promise((resolve) => setTimeout(resolve, 10_000));

@@ -1,7 +1,112 @@
+import { readFile } from 'node:fs/promises';
+
+import ky from 'ky';
 import { describe, expect, test } from 'vitest';
 
 import { Alphapolis } from '@/web/alphapolis';
+import { WebNovelAttention, WebNovelType } from '@/web/types';
 import { client } from './utils';
+
+async function createFixtureProvider(filename: string): Promise<Alphapolis> {
+  const html = await readFile(
+    new URL(`../fixtures/alphapolis/${filename}`, import.meta.url),
+    'utf8',
+  );
+  return new Alphapolis(
+    ky.create({
+      fetch: async () =>
+        new Response(html, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }),
+    }),
+  );
+}
+
+describe('alphapolis fixtures', () => {
+  test('parses 702113882-606570085', async () => {
+    const provider = await createFixtureProvider(
+      '702113882-606570085.260811.html',
+    );
+
+    const data = await provider.getMetadata('702113882-606570085');
+
+    expect(data.title).toBe(
+      '間違い転生！！〜神様の加護をたくさん貰っても それでものんびり自由に生きたい〜',
+    );
+    expect(data.authors).toEqual([
+      {
+        name: '舞桜',
+        link: 'https://www.alphapolis.co.jp/author/detail/702113882',
+      },
+    ]);
+    expect(data.type).toBe(WebNovelType.Ongoing);
+    expect(data.attentions).toEqual([]);
+    expect(data.keywords).toContain('異世界転生チート');
+    expect(data.points).toBe(9_969_050);
+    expect(data.totalCharacters).toBe(3_505_100);
+    expect(data.introduction).toContain('神様の手違いにより死亡扱い');
+    expect(data.toc.slice(0, 3)).toEqual([
+      {
+        title: 'プロローグ',
+        chapterId: null,
+        createAt: '2022-01-13T13:07:00.000Z',
+      },
+      {
+        title: '転生',
+        chapterId: '5021358',
+        createAt: '2022-01-13T13:07:00.000Z',
+      },
+      {
+        title: '第1章　幼少期',
+        chapterId: null,
+        createAt: '2021-12-31T15:00:00.000Z',
+      },
+    ]);
+  });
+
+  test('parses 183268004-17064220', async () => {
+    const provider = await createFixtureProvider(
+      '183268004-17064220.260811.html',
+    );
+
+    const data = await provider.getMetadata('183268004-17064220');
+
+    expect(data.title).toBe(
+      '追放予定のモブ伯爵令嬢ですが、土魔法で生存ルートに入ります　～目立たず生きるつもりが、王太子から溺愛されることになりました～',
+    );
+    expect(data.authors).toEqual([
+      {
+        name: '水守真子',
+        link: 'https://www.alphapolis.co.jp/author/detail/183268004',
+      },
+    ]);
+    expect(data.type).toBe(WebNovelType.Ongoing);
+    expect(data.attentions).toEqual([WebNovelAttention.R15]);
+    expect(data.keywords).toEqual(['恋愛', '異世界', 'ラブコメ', '幼馴染']);
+    expect(data.points).toBe(267_682);
+    expect(data.totalCharacters).toBe(72_534);
+    expect(data.introduction).toContain('王太子の執愛ルート');
+    expect(data.toc).toHaveLength(27);
+    expect(data.toc.slice(0, 2)).toEqual([
+      {
+        title: '第一章　モブ伯爵令嬢、生存ルートに入ります',
+        chapterId: null,
+        createAt: '2026-07-11T05:26:00.000Z',
+      },
+      {
+        title: '１　ＴＫＧを知っているか',
+        chapterId: '11499518',
+        createAt: '2026-07-11T05:26:00.000Z',
+      },
+    ]);
+    expect(data.toc[data.toc.length - 1]).toEqual({
+      title: '２４　旅立ち',
+      chapterId: '11634067',
+      createAt: '2026-08-08T04:20:00.000Z',
+    });
+  });
+});
 
 const shouldSkip = !process.env.ALL_TEST;
 describe.skipIf(shouldSkip)('alphapolis', () => {
