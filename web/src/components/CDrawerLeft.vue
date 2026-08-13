@@ -4,6 +4,7 @@
       :native-scrollbar="false"
       :scrollbar-props="{ trigger: 'none' }"
       header-style="height: 100px; padding: 0"
+      footer-style="padding: 0; justify-content: center"
     >
       <template #header>
         <div
@@ -23,6 +24,9 @@
       <div style="margin-top: 36px">
         <slot />
       </div>
+      <template #footer>
+        <slot name="footer" />
+      </template>
     </n-drawer-content>
   </n-drawer>
 </template>

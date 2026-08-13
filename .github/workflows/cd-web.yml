@@ -48,6 +48,8 @@ jobs:
           file: web/Dockerfile
           push: true
           provenance: false
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
           tags: ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}:latest
 
       - uses: actions/delete-package-versions@v5
