@@ -9,7 +9,7 @@ import { client } from './utils';
 
 async function createFixtureProvider(filename: string): Promise<Alphapolis> {
   const html = await readFile(
-    new URL(`../samples/alphapolis/${filename}`, import.meta.url),
+    new URL(`../fixtures/alphapolis/${filename}`, import.meta.url),
     'utf8',
   );
   return new Alphapolis(
