@@ -99,6 +99,7 @@ const noSeparatorClass = computed(() => {
     style="overflow: auto"
     :class="noSeparatorClass"
     :scrollbar-props="{ trigger: 'none' }"
+    item-resizable
   >
     <template #default="{ item: chapter }">
       <div :key="chapter.chapterId">
