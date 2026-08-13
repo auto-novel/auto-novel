@@ -11,6 +11,10 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS builder
 WORKDIR /app
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME
+ENV VITE_GIT_COMMIT=$GIT_COMMIT
+ENV VITE_BUILD_TIME=$BUILD_TIME
 COPY packages/crawler ./packages/crawler
 COPY packages/translator ./packages/translator
 COPY web ./web

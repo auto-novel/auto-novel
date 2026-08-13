@@ -7,7 +7,29 @@ import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 import { createHtmlPlugin } from 'vite-plugin-html';
 
+import { execFileSync } from 'node:child_process';
 import path from 'path';
+
+function resolveGitCommit(env: Record<string, string>) {
+  const injectedCommit =
+    env.VITE_GIT_COMMIT ||
+    process.env.VITE_GIT_COMMIT ||
+    process.env.GIT_COMMIT ||
+    process.env.GITHUB_SHA;
+  if (injectedCommit) return injectedCommit;
+
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    }).trim();
+  } catch (error) {
+    // Some restricted build environments return the command output together
+    // with an execution error. The resolved hash is still safe to use.
+    const stdout = (error as { stdout?: string | Buffer }).stdout;
+    return stdout?.toString().trim() || 'unknown';
+  }
+}
 
 function setupRemoteAuthProxy(config: UserConfig) {
   const AuthUrl = 'https://auth.novelia.cc';
@@ -79,8 +101,18 @@ export default defineConfig(({ mode }) => {
     return 'https://n.novelia.cc';
   })();
   const enableSonda = env.VITE_ENABLE_SONDA === 'true';
+  const buildInfo = {
+    gitCommit: resolveGitCommit(env),
+    buildTime:
+      env.VITE_BUILD_TIME ||
+      process.env.VITE_BUILD_TIME ||
+      new Date().toISOString(),
+  };
 
   const config: UserConfig = {
+    define: {
+      __BUILD_INFO__: JSON.stringify(buildInfo),
+    },
     resolve: {
       tsconfigPaths: true,
       alias: {
