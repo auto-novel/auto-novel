@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import { useWindowSize } from '@vueuse/core';
 
-defineProps<{ maxHeightPercentage?: number; extraHeight?: number }>();
+defineProps<{
+  maxHeightPercentage?: number;
+  extraHeight?: number;
+  // 内容自身已是滚动容器时开启，跳过外层滚动条，避免嵌套出现两条滚动条
+  contentScrollable?: boolean;
+}>();
 
 const { height } = useWindowSize();
 </script>
@@ -22,7 +27,11 @@ const { height } = useWindowSize();
     </template>
     <slot name="header-extra" />
 
+    <div v-if="contentScrollable" style="padding-right: 16px">
+      <slot />
+    </div>
     <n-scrollbar
+      v-else
       trigger="none"
       :style="{
         'max-height': `${((maxHeightPercentage ?? 60) / 100) * height - (extraHeight ?? 0)}px`,
