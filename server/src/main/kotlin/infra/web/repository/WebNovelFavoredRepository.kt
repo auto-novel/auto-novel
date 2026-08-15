@@ -17,10 +17,13 @@ import infra.web.WebNovel
 import infra.web.WebNovelAttention
 import infra.web.WebNovelListItem
 import infra.web.WebNovelFilter
+import infra.web.WebNovelTocItem
 import infra.web.WebNovelType
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.bson.types.ObjectId
 import org.bson.conversions.Bson
@@ -28,6 +31,7 @@ import org.bson.BsonArray
 import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
+import org.bson.Document
 
 class WebNovelFavoredRepository(
     mongo: MongoClient,
@@ -64,8 +68,8 @@ class WebNovelFavoredRepository(
     ): Page<WebNovelListItem> {
         @Serializable
         data class NovelWithContext(
-            val novel: WebNovel,
-            val favoredId: String, // 小说所属的收藏夹ID
+            val novel: FavoredNovelLookup,
+            val favoredId: String,
         )
         @Serializable
         data class PageModel(
@@ -105,7 +109,7 @@ class WebNovelFavoredRepository(
                                 operator,
                                 BsonArray(
                                     listOf(
-                                        BsonDocument("\$size", BsonString("\$novel.toc")), // 获取 toc 数组的长度
+                                        BsonDocument("\$size", BsonString("\$novel.toc")),
                                         BsonInt32(number)
                                     )
                                 )
@@ -177,12 +181,7 @@ class WebNovelFavoredRepository(
             .aggregate<PageModel>(
                 match(initialFilter),
                 sort(sortBson),
-                lookup(
-                    /* from = */ MongoCollectionNames.WEB_NOVEL,
-                    /* localField = */ WebNovelFavoriteDbModel::novelId.field(),
-                    /* foreignField = */ WebNovel::id.field(),
-                    /* as = */ "novel"
-                ),
+                favoredNovelLookup(),
                 unwind("\$novel"),
                 project(
                     fields(
@@ -214,14 +213,11 @@ class WebNovelFavoredRepository(
             Page(
                 items = doc.items.map { novelWithContext ->
                     val favored = if (favoredId == null) {
-                        // favoredId为null时的模式为查询所有收藏夹，这时把查询小说的收藏夹发送回去
                         novelWithContext.favoredId
                     } else {
                         null
                     }
-                    novelWithContext.novel.toOutline(
-                        favored = favored
-                    )
+                    novelWithContext.novel.toOutline(favored = favored)
                 },
                 total = doc.total.toLong(),
                 pageSize = pageSize,
@@ -278,3 +274,97 @@ class WebNovelFavoredRepository(
             )
     }
 }
+
+@Serializable
+internal data class FavoredNovelTocLookup(
+    @SerialName("episodeId") val chapterId: String? = null,
+)
+
+@Serializable
+internal data class FavoredNovelLookup(
+    val providerId: String,
+    @SerialName("bookId") val novelId: String,
+    val titleJp: String,
+    val titleZh: String? = null,
+    val type: WebNovelType? = null,
+    val attentions: List<WebNovelAttention> = emptyList(),
+    val keywords: List<String> = emptyList(),
+    val toc: List<FavoredNovelTocLookup> = emptyList(),
+    val jp: Long = 0,
+    val baidu: Long = 0,
+    val youdao: Long = 0,
+    val gpt: Long = 0,
+    val sakura: Long = 0,
+    @Contextual val updateAt: Instant? = null,
+) {
+    fun toOutline(favored: String? = null) =
+        WebNovelListItem(
+            providerId = providerId,
+            novelId = novelId,
+            titleJp = titleJp,
+            titleZh = titleZh,
+            type = type,
+            attentions = attentions,
+            keywords = keywords,
+            favored = favored,
+            total = toc.count { it.chapterId != null }.toLong(),
+            jp = jp,
+            baidu = baidu,
+            youdao = youdao,
+            gpt = gpt,
+            sakura = sakura,
+            updateAt = updateAt,
+        )
+}
+
+private fun favoredNovelLookup(): Bson =
+    // Aggregates.lookup 没有 (from, localField, foreignField, pipeline, as) 重载，
+    // 用 Document 构造 MongoDB 5.0+ 支持的 localField + pipeline 形态。
+    Document(
+        "\$lookup",
+        Document()
+            .append("from", MongoCollectionNames.WEB_NOVEL)
+            .append("localField", WebNovelFavoriteDbModel::novelId.field())
+            .append("foreignField", WebNovel::id.field())
+            .append("pipeline", favoredNovelLookupProjectionPipeline())
+            .append("as", "novel"),
+    )
+
+private fun favoredNovelLookupProjectionPipeline(): List<Bson> =
+    listOf(
+        project(
+            fields(
+                include(
+                    WebNovel::providerId.field(),
+                    WebNovel::novelId.field(),
+                    WebNovel::titleJp.field(),
+                    WebNovel::titleZh.field(),
+                    WebNovel::type.field(),
+                    WebNovel::attentions.field(),
+                    WebNovel::keywords.field(),
+                    WebNovel::jp.field(),
+                    WebNovel::baidu.field(),
+                    WebNovel::youdao.field(),
+                    WebNovel::gpt.field(),
+                    WebNovel::sakura.field(),
+                    WebNovel::updateAt.field(),
+                ),
+                computed(
+                    WebNovel::toc.field(),
+                    BsonDocument(
+                        "\$map",
+                        BsonDocument()
+                            .append("input", BsonString("\$${WebNovel::toc.field()}"))
+                            .append("as", BsonString("item"))
+                            .append(
+                                "in",
+                                BsonDocument(
+                                    WebNovelTocItem::chapterId.field(),
+                                    BsonString("\$\$item.${WebNovelTocItem::chapterId.field()}"),
+                                ),
+                            ),
+                    ),
+                ),
+            ),
+        ),
+    )

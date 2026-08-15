@@ -31,7 +31,10 @@ export const createOpenAiApi = (endpoint: string, key: string) => {
     client.get('models', options).json<ModelsPage>();
 
   const createChatCompletions = (
-    json: ChatCompletion.Params & { stream?: false },
+    json: ChatCompletion.Params & {
+      [key: string]: unknown;
+      stream?: false;
+    },
     options?: Options,
   ): Promise<ChatCompletion> =>
     client
@@ -261,7 +264,6 @@ export class OpenAiError extends Error {
         if (err instanceof Error) return err.message;
         return `${err}`;
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errJson = safeJson<any>(errText);
       throw new OpenAiError(
         e.response.status,

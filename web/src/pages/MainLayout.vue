@@ -446,31 +446,30 @@ watch(
 
   <c-drawer-left v-if="!hasSider" v-model:show="showMenuModal">
     <n-menu :value="menuKey" :options="menuOptions" />
-    <template #footer>
-      <div class="sidebar-build-info sidebar-build-info--mobile">
-        <div class="sidebar-build-info-item">
-          <n-icon :component="AccessTimeOutlined" size="15" />
-          <n-text depth="3">构建于</n-text>
-          <n-time :time="buildTime" type="datetime" />
-        </div>
-        <div class="sidebar-build-info-item">
-          <n-icon :component="CommitOutlined" size="16" />
-          <n-text depth="3">Commit</n-text>
-          <n-a
-            v-if="commitUrl"
-            class="commit-link"
-            :href="commitUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <code>{{ shortCommit }}</code>
-          </n-a>
-          <n-text v-else depth="3">
-            <code>{{ shortCommit }}</code>
-          </n-text>
-        </div>
+    <div style="flex: 1" />
+    <div class="sidebar-build-info sidebar-build-info--mobile">
+      <div class="sidebar-build-info-item">
+        <n-icon :component="AccessTimeOutlined" size="15" />
+        <n-text depth="3">构建于</n-text>
+        <n-time :time="buildTime" type="datetime" />
       </div>
-    </template>
+      <div class="sidebar-build-info-item">
+        <n-icon :component="CommitOutlined" size="16" />
+        <n-text depth="3">Commit</n-text>
+        <n-a
+          v-if="commitUrl"
+          class="commit-link"
+          :href="commitUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <code>{{ shortCommit }}</code>
+        </n-a>
+        <n-text v-else depth="3">
+          <code>{{ shortCommit }}</code>
+        </n-text>
+      </div>
+    </div>
   </c-drawer-left>
 </template>
 
