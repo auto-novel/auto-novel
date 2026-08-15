@@ -24,6 +24,7 @@ export { Hameln } from '@/web/hameln';
 export { Kakuyomu } from '@/web/kakuyomu';
 export { Novelup } from '@/web/novelup';
 export { Pixiv } from '@/web/pixiv';
+export type { PixivOptions } from '@/web/pixiv';
 export { Syosetu } from '@/web/syosetu';
 export { WebNovelAttention, WebNovelType, emptyPage } from '@/web/types';
 export type {
