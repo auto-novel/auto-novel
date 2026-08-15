@@ -11,6 +11,7 @@ import {
   Novelup,
   Pixiv,
   Syosetu,
+  WEB_NOVEL_PROVIDER_IDS,
   WebNovelCrawler,
 } from '@auto-novel/crawler';
 import {
@@ -21,11 +22,7 @@ import {
 } from 'impit';
 import ky, { type Options } from 'ky';
 import { ProxyConfig, ProxyManager, type ProxyState } from './proxy';
-import {
-  PROVIDER_CONFIG_IDS,
-  PROVIDER_IDS,
-  type ProviderId,
-} from './providers';
+import { PROVIDER_CONFIG_IDS, type ProviderId } from './providers';
 import z from 'zod';
 import { CookieJar } from 'tough-cookie';
 
@@ -66,7 +63,7 @@ export class CrawlerService {
     };
 
     const defaultHeaders = options.headers?.default ?? {};
-    for (const providerId of PROVIDER_IDS) {
+    for (const providerId of WEB_NOVEL_PROVIDER_IDS) {
       const providerHeaders = options.headers?.[providerId] ?? {};
       const finalHeaders = {
         ...defaultHeaders,

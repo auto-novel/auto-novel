@@ -19,7 +19,8 @@ export type {
 } from '@/amazon/types';
 
 export { Alphapolis } from '@/web/alphapolis';
-export { WebNovelCrawler } from '@/web/crawler';
+export { WEB_NOVEL_PROVIDER_IDS, WebNovelCrawler } from '@/web/crawler';
+export type { WebNovelProviderId } from '@/web/crawler';
 export { Hameln } from '@/web/hameln';
 export { Kakuyomu } from '@/web/kakuyomu';
 export { Novelup } from '@/web/novelup';
