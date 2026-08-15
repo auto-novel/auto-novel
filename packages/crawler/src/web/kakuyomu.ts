@@ -160,7 +160,7 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
     const work = apollo[`Work:${novelId}`];
     if (!work) throw new CrawlerParseError('作品信息解析失败');
 
-    const title = work.alternativeTitle ?? work.title;
+    const title = work.alternateTitle ?? work.alternativeTitle ?? work.title;
     if (!title) throw new CrawlerParseError('标题解析失败');
 
     const authorData = unrefApollo(work.author);
@@ -191,9 +191,11 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
     const introduction = work.introduction ?? '';
 
     const toc: WebNovelTocItem[] = [];
-    const tableOfContents = Array.isArray(work.tableOfContents)
-      ? work.tableOfContents
-      : [];
+    const tableOfContents = Array.isArray(work.tableOfContentsV2)
+      ? work.tableOfContentsV2
+      : Array.isArray(work.tableOfContents)
+        ? work.tableOfContents
+        : [];
     for (const sectionRef of tableOfContents) {
       const section = unrefApollo(sectionRef);
       if (!section) {
