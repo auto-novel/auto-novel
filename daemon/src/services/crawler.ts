@@ -1,12 +1,18 @@
 import type {
   Page,
-  ProviderId,
-  RemoteChapter,
-  RemoteNovelListItem,
-  RemoteNovelMetadata,
-  WebNovelProvider,
+  WebNovelChapter,
+  WebNovelListItem,
+  WebNovelMetadata,
 } from '@auto-novel/crawler';
-import { Providers, PROVIDER_IDS } from '@auto-novel/crawler';
+import {
+  Alphapolis,
+  Hameln,
+  Kakuyomu,
+  Novelup,
+  Pixiv,
+  Syosetu,
+  WebNovelCrawler,
+} from '@auto-novel/crawler';
 import {
   Impit,
   type HttpMethod,
@@ -15,19 +21,23 @@ import {
 } from 'impit';
 import ky, { type Options } from 'ky';
 import { ProxyConfig, ProxyManager, type ProxyState } from './proxy';
+import {
+  PROVIDER_CONFIG_IDS,
+  PROVIDER_IDS,
+  type ProviderId,
+} from './providers';
 import z from 'zod';
 import { CookieJar } from 'tough-cookie';
-import { forEach } from 'lodash-es';
 
 type Fetcher = Options['fetch'];
-type ProviderHandler<T> = (provider: WebNovelProvider) => Promise<T>;
+type CrawlerHandler<T> = (crawler: WebNovelCrawler) => Promise<T>;
 
 // Record<ProviderId, Record<headerName, headerValue>>
 export const HeaderSchema = z.record(z.string(), z.string());
 export type HeaderArray = z.infer<typeof HeaderSchema>;
 
 export const HeadersByProviderConfigSchema = z.partialRecord(
-  z.enum(PROVIDER_IDS),
+  z.enum(PROVIDER_CONFIG_IDS),
   HeaderSchema,
 );
 export type HeadersByProviderConfig = z.infer<
@@ -45,7 +55,7 @@ export class CrawlerService {
   private readonly headers: Map<ProviderId, HeaderArray> = new Map();
   // TODO(kuriko): should we implement persistent cookie store?
   //    dump the cookies back to config?
-  private readonly cookieJar = new Map<ProviderId, CookieJar>();
+  private readonly cookieJars = new Map<ProviderId, CookieJar>();
 
   constructor(options: CrawlerServiceOptions) {
     this.proxyManager = options.proxyManager;
@@ -55,36 +65,32 @@ export class CrawlerService {
       followRedirects: true,
     };
 
-    const defaultHeaders = options?.headers?.['default'] ?? {};
-    forEach(options.headers, (headers, providerId) => {
-      if (providerId == 'default') {
-        return;
-      }
-      const finalHeader = {
+    const defaultHeaders = options.headers?.default ?? {};
+    for (const providerId of PROVIDER_IDS) {
+      const providerHeaders = options.headers?.[providerId] ?? {};
+      const finalHeaders = {
         ...defaultHeaders,
-        ...(headers ?? {}),
+        ...providerHeaders,
       };
-      console.debug('Setting initial headers for provider:', providerId);
-      console.debug(finalHeader);
-      this.headers.set(providerId as ProviderId, finalHeader);
-    });
+      this.headers.set(providerId, finalHeaders);
+    }
   }
 
   async getMetadata(
     providerId: ProviderId,
     novelId: string,
-  ): Promise<RemoteNovelMetadata | null> {
-    return this.fetchResource(providerId, (provider) =>
-      provider.getMetadata(novelId),
+  ): Promise<WebNovelMetadata> {
+    return this.fetchResource(providerId, (crawler) =>
+      crawler.getMetadata(providerId, novelId),
     );
   }
 
   async getRank(
     providerId: ProviderId,
     params: Record<string, string>,
-  ): Promise<Page<RemoteNovelListItem> | null> {
-    return this.fetchResource(providerId, (provider) =>
-      provider.getRank(params),
+  ): Promise<Page<WebNovelListItem>> {
+    return this.fetchResource(providerId, (crawler) =>
+      crawler.getRank(providerId, params),
     );
   }
 
@@ -92,24 +98,33 @@ export class CrawlerService {
     providerId: ProviderId,
     novelId: string,
     chapterId: string,
-  ): Promise<RemoteChapter | null> {
-    return this.fetchResource(providerId, (provider) =>
-      provider.getChapter(novelId, chapterId),
+  ): Promise<WebNovelChapter> {
+    return this.fetchResource(providerId, (crawler) =>
+      crawler.getChapter(providerId, novelId, chapterId),
     );
   }
 
   private async fetchResource<T>(
     providerId: ProviderId,
-    handler: ProviderHandler<T>,
+    handler: CrawlerHandler<T>,
   ): Promise<T> {
-    const providerInit = this.requireProvider(providerId);
     const proxy = this.proxyManager.pick();
     const { fetcher, finalize } = this.buildFetcher(providerId, proxy);
     const client = ky.create({ fetch: fetcher });
-    const provider = providerInit(client);
+    const crawler = new WebNovelCrawler({
+      alphapolis: () => new Alphapolis(client),
+      hameln: () => new Hameln(client),
+      kakuyomu: () => new Kakuyomu(client),
+      novelup: () => new Novelup(client),
+      pixiv: () =>
+        new Pixiv(client, {
+          precheckViewingSettings: false,
+        }),
+      syosetu: () => new Syosetu(client, { concurrency: 2 }),
+    });
 
     try {
-      const result = await handler(provider);
+      const result = await handler(crawler);
       finalize(true);
       return result;
     } catch (error) {
@@ -121,15 +136,13 @@ export class CrawlerService {
   private buildFetcher(providerId: ProviderId, proxy: ProxyState | null) {
     const headers = this.headers.get(providerId);
     const proxyUrl = proxy ? this.buildProxyUrl(proxy.config) : undefined;
-    const cookieJar = this.cookieJar.get(providerId);
+    const cookieJar = this.getCookieJar(providerId);
 
     const client = new Impit({
+      ...this.impitDefaults,
       proxyUrl,
       cookieJar,
-      headers: {
-        ...(this.impitDefaults.headers ?? {}),
-        ...(headers ?? {}),
-      },
+      headers,
     });
 
     const fetcher: Fetcher = async (input, init) => {
@@ -147,12 +160,6 @@ export class CrawlerService {
         `[Crawler.Internal] ${method} ${url} via proxy: ${proxyUrl ?? 'none'}`,
       );
       const response = await client.fetch(input, requestInit);
-      if (!response.ok) {
-        console.debug('response:', await response.text());
-        throw new Error(
-          `Request failed: ${response.status} ${response.statusText}`,
-        );
-      }
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
@@ -180,11 +187,12 @@ export class CrawlerService {
     return `${config.protocol}://${credentials}${config.host}:${config.port}`;
   }
 
-  private requireProvider(providerId: ProviderId) {
-    const providerInit = Providers[providerId];
-    if (!providerInit) {
-      throw new Error(`Unknown providerId: ${providerId}`);
+  private getCookieJar(providerId: ProviderId): CookieJar {
+    let cookieJar = this.cookieJars.get(providerId);
+    if (!cookieJar) {
+      cookieJar = new CookieJar();
+      this.cookieJars.set(providerId, cookieJar);
     }
-    return providerInit;
+    return cookieJar;
   }
 }

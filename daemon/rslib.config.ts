@@ -14,13 +14,23 @@ export default defineConfig({
   lib: [
     {
       format: 'esm',
-      dts: false,
+      dts: true,
       bundle: true,
+      // daemon is a deployable Node.js application: bundle package
+      // dependencies while keeping Node.js built-ins external.
+      autoExternal: false,
+      shims: {
+        esm: {
+          __dirname: true,
+          require: true,
+        },
+      },
       source: {
         entry: { app: 'src/index.ts' },
         tsconfigPath: 'tsconfig.app.json',
       },
       output: {
+        externals: ['impit'],
         target: 'node',
       },
       banner,
@@ -30,5 +40,12 @@ export default defineConfig({
     cleanDistPath: true,
     sourceMap: is_debug,
     minify: !is_debug,
+  },
+  tools: {
+    rspack(config) {
+      // CommonJS dependencies expect require('buffer'), require('util'), etc.
+      // Preserve that behavior for built-ins in the ESM application bundle.
+      config.externalsType = 'commonjs';
+    },
   },
 });

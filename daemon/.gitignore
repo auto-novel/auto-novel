@@ -1,3 +1,4 @@
+*.db
 
 .env
 config.json
