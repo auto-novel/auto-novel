@@ -12,6 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.jsoup.nodes.Document
 
 class Kakuyomu(
     private val client: HttpClient,
@@ -54,41 +55,7 @@ class Kakuyomu(
         val status = statusIds[options["status"]] ?: return emptyPage()
         val url = "https://kakuyomu.jp/rankings/${genre}/${range}?work_variation=${status}"
         val doc = client.get(url).document()
-        val items = doc.select("div.widget-media-genresWorkList-right > div.widget-work").map { workCard ->
-            val a = workCard.selectFirst("a.bookWalker-work-title")!!
-            val novelId = a.attr("href").removePrefix("/works/")
-            val title = a.text()
-
-            val attentions = workCard
-                .select("b.widget-workCard-flags > span")
-                .mapNotNull {
-                    when (it.text()) {
-                        "残酷描写有り" -> WebNovelAttention.残酷描写
-                        "暴力描写有り" -> WebNovelAttention.暴力描写
-                        "性描写有り" -> WebNovelAttention.性描写
-                        else -> null
-                    }
-                }
-
-            val keywords = workCard
-                .select("span.widget-workCard-tags > a")
-                .map { it.text() }
-
-            val extra = workCard.selectFirst("p.widget-workCard-meta")!!.children()
-                .joinToString(" / ") { it.text() }
-
-            RemoteNovelListItem(
-                novelId = novelId,
-                title = title,
-                attentions = attentions,
-                keywords = keywords,
-                extra = extra,
-            )
-        }
-        return Page(
-            items = items,
-            pageNumber = 1L,
-        )
+        return parseKakuyomuRankPage(doc)
     }
 
     override suspend fun getMetadata(novelId: String): RemoteNovelMetadata {
@@ -198,4 +165,43 @@ class Kakuyomu(
         }
         return RemoteChapter(paragraphs = paragraphs)
     }
+}
+
+internal fun parseKakuyomuRankPage(doc: Document): Page<RemoteNovelListItem> {
+    val items = doc.select("li[class*=Rankings_item__]").mapNotNull { workCard ->
+        val a = workCard.selectFirst("h3 a[href^=\"/works/\"]") ?: return@mapNotNull null
+        val novelId = a.attr("href").removePrefix("/works/")
+        val title = a.attr("title").ifBlank { a.text() }.trim()
+
+        val attentions = workCard
+            .select("ul[class*=Meta_slash__] > li")
+            .mapNotNull {
+                when (it.text().trim()) {
+                    "残酷描写有り" -> WebNovelAttention.残酷描写
+                    "暴力描写有り" -> WebNovelAttention.暴力描写
+                    "性描写有り" -> WebNovelAttention.性描写
+                    else -> null
+                }
+            }
+
+        val keywords = workCard
+            .select("a[href^=\"/tags/\"]")
+            .map { it.text().trim() }
+
+        val extra = workCard
+            .select("ul[class*=Meta_disc__] > li")
+            .joinToString(" / ") { it.text().trim() }
+
+        RemoteNovelListItem(
+            novelId = novelId,
+            title = title,
+            attentions = attentions,
+            keywords = keywords,
+            extra = extra,
+        )
+    }
+    return Page(
+        items = items,
+        pageNumber = 1L,
+    )
 }

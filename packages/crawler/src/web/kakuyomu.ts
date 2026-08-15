@@ -100,13 +100,13 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
       `https://kakuyomu.jp/rankings/${genreId}/${rangeId}?work_variation=${statusId}`,
     );
 
-    const items = $('div.widget-media-genresWorkList-right > div.widget-work')
+    const items = $('li[class*="Rankings_item__"]')
       .map((_, item) => {
         const root = $(item);
-        const titleLink = root.find('a.bookWalker-work-title').first();
+        const titleLink = root.find('h3 a[href^="/works/"]').first();
 
         const attentions: WebNovelAttention[] = [];
-        root.find('b.widget-workCard-flags > span').each((_, tagEl) => {
+        root.find('ul[class*="Meta_slash__"] > li').each((_, tagEl) => {
           const attention = parseAttention($(tagEl).text());
           if (attention) {
             attentions.push(attention);
@@ -117,15 +117,14 @@ export class Kakuyomu implements WebNovelProvider<GetRankOptions> {
           novelId: titleLink.attr('href')
             ? removePrefix('/works/')(titleLink.attr('href')!)
             : '',
-          title: titleLink.text().trim(),
+          title: (titleLink.attr('title') ?? titleLink.text()).trim(),
           attentions,
           keywords: root
-            .find('span.widget-workCard-tags > a')
+            .find('a[href^="/tags/"]')
             .map((_, el) => $(el).text().trim())
             .get(),
           extra: root
-            .find('p.widget-workCard-meta')
-            .children()
+            .find('ul[class*="Meta_disc__"] > li')
             .map((_, el) => $(el).text().trim())
             .get()
             .join(' / '),
