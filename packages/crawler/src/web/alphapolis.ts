@@ -109,14 +109,12 @@ export class Alphapolis implements WebNovelProvider {
     for (const [chapterIndex, chapter] of parsed.chapterEpisodes.entries()) {
       const chapterTitle =
         typeof chapter.title === 'string' ? textOrNull(chapter.title) : null;
-      if (!chapterTitle) {
-        throw new CrawlerParseError(
-          `目录解析失败：第 ${chapterIndex + 1} 个章节标题为空`,
-        );
-      }
+      const chapterContext = chapterTitle
+        ? `章节「${chapterTitle}」`
+        : `第 ${chapterIndex + 1} 个分组`;
       if (!Array.isArray(chapter.episodes) || chapter.episodes.length === 0) {
         throw new CrawlerParseError(
-          `目录解析失败：章节「${chapterTitle}」的分集为空`,
+          `目录解析失败：${chapterContext}的分集为空`,
         );
       }
 
@@ -126,18 +124,20 @@ export class Alphapolis implements WebNovelProvider {
           : null;
       if (!firstEpisodeCreateAt) {
         throw new CrawlerParseError(
-          `目录解析失败：章节「${chapterTitle}」缺少首话发布时间`,
+          `目录解析失败：${chapterContext}缺少首话发布时间`,
         );
       }
 
-      toc.push({
-        title: chapterTitle,
-        chapterId: null,
-        createAt: this.parseCreateAt(
-          firstEpisodeCreateAt,
-          `章节「${chapterTitle}」首话`,
-        ),
-      });
+      if (chapterTitle) {
+        toc.push({
+          title: chapterTitle,
+          chapterId: null,
+          createAt: this.parseCreateAt(
+            firstEpisodeCreateAt,
+            `${chapterContext}首话`,
+          ),
+        });
+      }
 
       for (const [episodeIndex, episode] of chapter.episodes.entries()) {
         const episodeTitle =
@@ -146,7 +146,7 @@ export class Alphapolis implements WebNovelProvider {
             : null;
         if (!episodeTitle) {
           throw new CrawlerParseError(
-            `目录解析失败：章节「${chapterTitle}」第 ${episodeIndex + 1} 话标题为空`,
+            `目录解析失败：${chapterContext}第 ${episodeIndex + 1} 话标题为空`,
           );
         }
 
@@ -156,12 +156,12 @@ export class Alphapolis implements WebNovelProvider {
             : null;
         if (!createAt) {
           throw new CrawlerParseError(
-            `目录解析失败：章节「${chapterTitle}」第 ${episodeIndex + 1} 话发布时间为空`,
+            `目录解析失败：${chapterContext}第 ${episodeIndex + 1} 话发布时间为空`,
           );
         }
         const parsedCreateAt = this.parseCreateAt(
           createAt,
-          `章节「${chapterTitle}」第 ${episodeIndex + 1} 话`,
+          `${chapterContext}第 ${episodeIndex + 1} 话`,
         );
 
         let chapterId: string | null = null;
@@ -177,7 +177,7 @@ export class Alphapolis implements WebNovelProvider {
         }
         if (!chapterId) {
           throw new CrawlerParseError(
-            `目录解析失败：章节「${chapterTitle}」第 ${episodeIndex + 1} 话 chapterId 为空`,
+            `目录解析失败：${chapterContext}第 ${episodeIndex + 1} 话 chapterId 为空`,
           );
         }
 
