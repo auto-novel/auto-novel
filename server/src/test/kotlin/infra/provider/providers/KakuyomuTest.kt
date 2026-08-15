@@ -22,7 +22,10 @@ class KakuyomuTest : DescribeSpec(), KoinTest {
     init {
         describe("getRank") {
             it("常规") {
-                provider.getRank(mapOf("genre" to "综合", "range" to "每周"))
+                val rank = provider.getRank(
+                    mapOf("genre" to "综合", "range" to "每周", "status" to "全部")
+                )
+                rank.items.isNotEmpty().shouldBe(true)
             }
         }
 
