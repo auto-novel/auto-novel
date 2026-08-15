@@ -11,6 +11,7 @@ const isSameTocItem = (left: CrawlerTocItem, right: CrawlerTocItem) =>
   left.chapterId === right.chapterId &&
   left.createAt === right.createAt;
 
+// 检测目录更新是否为仅追加（append-only）更新。
 export const classifyTocUpdate = (
   currentToc: readonly CrawlerTocItem[],
   newToc: readonly CrawlerTocItem[],

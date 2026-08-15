@@ -106,6 +106,38 @@ describe('alphapolis fixtures', () => {
       createAt: '2026-08-08T04:20:00.000Z',
     });
   });
+
+  test('parses episodes without a chapter title', async () => {
+    const provider = await createFixtureProvider(
+      '708432796-132027823.260815.html',
+    );
+
+    const data = await provider.getMetadata('708432796-132027823');
+
+    expect(data.title).toBe(
+      '異世界転移殺人事件　～推理しない探偵は初めから犯人を知っている',
+    );
+    expect(data.authors).toEqual([
+      {
+        name: '寿　利真',
+        link: 'https://www.alphapolis.co.jp/author/detail/708432796',
+      },
+    ]);
+    expect(data.type).toBe(WebNovelType.Completed);
+    expect(data.points).toBe(15_604);
+    expect(data.totalCharacters).toBe(550_086);
+    expect(data.toc).toHaveLength(189);
+    expect(data.toc[0]).toEqual({
+      title: 'プロローグ',
+      chapterId: '10746799',
+      createAt: '2026-01-28T00:16:00.000Z',
+    });
+    expect(data.toc[data.toc.length - 1]).toEqual({
+      title: 'エピローグ',
+      chapterId: '10937166',
+      createAt: '2026-03-18T12:32:00.000Z',
+    });
+  });
 });
 
 const shouldSkip = !process.env.ALL_TEST;
