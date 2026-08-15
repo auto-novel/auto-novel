@@ -9,10 +9,20 @@ import { detectChinese } from '@/utils';
 import { createOpenAiApi } from './openai-api';
 import { createOpenAiPromptBuilder } from './openai-prompt';
 
+import {
+  buildOpenAiProfileParams,
+  type openAiProfileId,
+} from './profiles/openai';
+import type { ProfileValues } from './profiles/types';
+
 export type OpenAiTranslatorConfig = {
   endpoint: string;
   key: string;
   model: string;
+  profile?: {
+    id: openAiProfileId;
+    values?: ProfileValues;
+  };
   promptBuilder?: PromptBuilder;
   log?: Logger;
 };
@@ -20,12 +30,17 @@ export type OpenAiTranslatorConfig = {
 export class OpenAiTranslator implements Translator {
   private api: ReturnType<typeof createOpenAiApi>;
   private model: string;
+  private profileParams: Record<string, unknown>;
   private promptBuilder: PromptBuilder;
   private log: Logger;
 
   constructor(config: OpenAiTranslatorConfig) {
     this.api = createOpenAiApi(config.endpoint, config.key);
     this.model = config.model;
+    this.profileParams = buildOpenAiProfileParams(
+      config.profile?.id,
+      config.profile?.values,
+    );
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
   }
@@ -98,6 +113,7 @@ export class OpenAiTranslator implements Translator {
     const messages = this.promptBuilder.build(lines, context);
     const completion = await this.api.createChatCompletions(
       {
+        ...this.profileParams,
         model: this.model,
         messages,
       },
