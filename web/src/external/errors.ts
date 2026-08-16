@@ -36,7 +36,14 @@ export class AddonNotFoundError extends Error {
 
 export class AddonLoadError extends Error {
   constructor() {
-    super('机翻站插件加载失败，请重试或联系开发者');
+    super('机翻站插件加载失败，请刷新网页重试或联系开发者');
+    this.name = new.target.name;
+  }
+}
+
+export class AddonLoadTimeoutError extends Error {
+  constructor() {
+    super('机翻站插件加载超时，请在不刷新网页的情况下重试');
     this.name = new.target.name;
   }
 }

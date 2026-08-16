@@ -1,5 +1,6 @@
 import {
   AddonLoadError,
+  AddonLoadTimeoutError,
   AddonNotFoundError,
   assertAddonVersion,
 } from '@/external/errors';
@@ -112,8 +113,8 @@ export async function getAddon(): Promise<AddonApi> {
   await new Promise<void>((resolve, reject) => {
     const timeoutId = window.setTimeout(() => {
       window.removeEventListener(addonReadyEvent, onReady);
-      reject(new AddonLoadError());
-    }, 2_000);
+      reject(new AddonLoadTimeoutError());
+    }, 5_000);
 
     const onReady = () => {
       window.clearTimeout(timeoutId);
