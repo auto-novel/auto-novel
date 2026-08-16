@@ -11,14 +11,14 @@ import {
   WebNovelCrawler,
 } from '@auto-novel/crawler';
 
-import { getAddon } from '@/external/addon';
+import { AddonApi, getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
 import { fakeDesktopHeader, mergeHeaders } from './utils';
 import { compareVersion } from '../errors';
 
 let bypassHamelnR18: Promise<void> | undefined;
-const ensureBypassR18 = (addon: ReturnType<typeof getAddon>) => {
+const ensureBypassR18 = (addon: AddonApi) => {
   if (typeof addon?.cookiesPatch !== 'function') return true;
   bypassHamelnR18 ??= addon
     .cookiesPatch({
@@ -69,7 +69,7 @@ const getLastRedirectUrl = (source: unknown): string | undefined => {
 };
 
 const getCrawler = lazy(async () => {
-  const addon = getAddon();
+  const addon = await getAddon();
 
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
 

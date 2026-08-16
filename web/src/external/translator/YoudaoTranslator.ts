@@ -7,7 +7,7 @@ import { ensureCookie, getAddon } from '@/external/addon';
 import { lazy } from '@/util';
 
 const getClient = lazy(async (): Promise<KyInstance> => {
-  const addon = getAddon();
+  const addon = await getAddon();
 
   await ensureCookie(addon, 'https://dict.youdao.com/', '.youdao.com', [
     'OUTFOX_SEARCH_USER_ID',

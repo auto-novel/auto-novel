@@ -200,14 +200,27 @@ export namespace Humanize {
 }
 
 export const lazy = <T>(factory: () => T) => {
+  let initialized = false;
   let value: T;
-  const get = () => {
-    if (value === undefined) {
-      value = factory();
+
+  return () => {
+    if (!initialized) {
+      initialized = true;
+      try {
+        value = factory();
+      } catch (error) {
+        initialized = false;
+        throw error;
+      }
+
+      if (value instanceof Promise) {
+        value.catch(() => {
+          initialized = false;
+        });
+      }
     }
     return value;
   };
-  return get;
 };
 
 export * from './useOpenCC';

@@ -1,4 +1,9 @@
-import { AddonNotFoundError, assertAddonVersion } from '@/external/errors';
+import {
+  AddonLoadError,
+  AddonLoadTimeoutError,
+  AddonNotFoundError,
+  assertAddonVersion,
+} from '@/external/errors';
 
 export type AddonCapabilityVersion = `${number}.${number}.${number}`;
 
@@ -85,10 +90,44 @@ declare global {
   }
 }
 
-export function getAddon(): AddonApi {
-  const addon = window.Addon;
-  if (!addon) throw new AddonNotFoundError();
+export async function getAddon(): Promise<AddonApi> {
+  const _getAddon = (): AddonApi => {
+    const addon = window.Addon;
+    if (!addon) throw new AddonNotFoundError();
+    assertAddonVersion(addon.version);
+    return addon;
+  };
 
+  // 兼容 1.9.3 版本以前的插件，如果旧版本及时注册了自身，则不会报错
+  const initialAddon = window.Addon;
+  if (initialAddon) return _getAddon();
+
+  const hasAddonMarker = document.documentElement.hasAttribute(
+    'data-auto-novel-addon',
+  );
+  if (!hasAddonMarker) {
+    throw new AddonNotFoundError();
+  }
+
+  const addonReadyEvent = 'auto-novel-addon-ready';
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      window.removeEventListener(addonReadyEvent, onReady);
+      reject(new AddonLoadTimeoutError());
+    }, 5_000);
+
+    const onReady = () => {
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    window.addEventListener(addonReadyEvent, onReady, { once: true });
+
+    // 防止 Addon 在注册监听器前的缝隙里完成挂载。
+    if (window.Addon) onReady();
+  });
+
+  const addon = window.Addon;
+  if (!addon) throw new AddonLoadError();
   assertAddonVersion(addon.version);
   return addon;
 }
