@@ -6,7 +6,7 @@ import { ensureCookie, getAddon, normalizeHeaders } from '@/external/addon';
 import { lazy } from '@/util';
 
 const getClient = async () => {
-  const addon = getAddon();
+  const addon = await getAddon();
 
   const url = 'https://www.amazon.co.jp';
   const domain = '.amazon.co.jp';
