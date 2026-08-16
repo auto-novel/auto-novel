@@ -1,8 +1,16 @@
 <script setup lang="ts">
-defineProps<{
-  label: string;
-  icon: Component;
-}>();
+import type { TooltipProps } from 'naive-ui';
+
+withDefaults(
+  defineProps<{
+    label: string;
+    icon: Component;
+    placement?: TooltipProps['placement'];
+  }>(),
+  {
+    placement: 'top',
+  }
+);
 
 defineEmits<{
   action: [];
@@ -10,7 +18,7 @@ defineEmits<{
 </script>
 
 <template>
-  <n-tooltip trigger="hover">
+  <n-tooltip trigger="hover" :placement="placement">
     <template #trigger>
       <n-button
         quaternary

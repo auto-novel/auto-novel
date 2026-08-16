@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DropdownOption, DropdownProps, TooltipProps } from 'naive-ui';
 import {
   FormatBoldOutlined,
   FormatItalicOutlined,
@@ -9,14 +10,20 @@ import {
   StrikethroughSOutlined,
   WarningAmberOutlined,
 } from '@vicons/material';
-import type { DropdownOption } from 'naive-ui';
-
 import type { Draft } from '@/stores';
 
-const props = defineProps<{
-  elTextarea?: HTMLTextAreaElement;
-  drafts: Draft[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    elTextarea?: HTMLTextAreaElement;
+    drafts: Draft[];
+    dropdownPlacement?: DropdownProps['placement'];
+    tooltipPlacement?: TooltipProps['placement'];
+  }>(),
+  {
+    dropdownPlacement: 'bottom',
+    tooltipPlacement: 'top',
+  },
+);
 
 const emit = defineEmits<{
   clearDraft: [];
@@ -29,7 +36,7 @@ const emit = defineEmits<{
 const draftOptions = ref<DropdownOption[]>([]);
 
 watch(
-  props.drafts,
+  () => props.drafts,
   (drafts) => {
     const draftOptionsValue: DropdownOption[] = [];
     for (const draft of drafts.slice().reverse()) {
@@ -40,9 +47,14 @@ watch(
       });
     }
     draftOptionsValue.push({ type: 'divider' }, { label: '清空', key: '清空' });
-    draftOptions.value = draftOptionsValue;
+
+    if (
+      JSON.stringify(draftOptionsValue) !== JSON.stringify(draftOptions.value)
+    ) {
+      draftOptions.value = draftOptionsValue;
+    }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 const handleSelectDraft = (key: string, option: DropdownOption) => {
@@ -144,59 +156,75 @@ const formatCollapsibleBlock = () =>
 </script>
 
 <template>
-  <n-dropdown
-    v-if="drafts.length"
-    :options="draftOptions"
-    trigger="click"
-    @select="handleSelectDraft"
-  >
-    <n-button size="small" quaternary>
-      <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
-    </n-button>
-  </n-dropdown>
+  <n-flex :size="0" align="center" :wrap="false">
+    <n-dropdown
+      v-if="drafts.length"
+      :options="draftOptions"
+      trigger="click"
+      :placement="dropdownPlacement"
+      @select="handleSelectDraft"
+    >
+      <n-tooltip :placement="tooltipPlacement">
+        <template #trigger>
+          <n-button size="small" quaternary>
+            <n-badge :value="drafts.length" dot :offset="[8, -4]">草稿</n-badge>
+          </n-button>
+        </template>
+        历史草稿
+      </n-tooltip>
+    </n-dropdown>
 
-  <MarkdownToolbarButton
-    label="粗体"
-    :icon="FormatBoldOutlined"
-    @action="formatBold"
-  />
-  <MarkdownToolbarButton
-    label="斜体"
-    :icon="FormatItalicOutlined"
-    @action="formatItalic"
-  />
-  <MarkdownToolbarButton
-    label="删除线"
-    :icon="StrikethroughSOutlined"
-    @action="formatStrikethrough"
-  />
-  <MarkdownToolbarButton
-    label="链接"
-    :icon="LinkOutlined"
-    @action="formatLink"
-  />
-  <MarkdownToolbarButton
-    label="剧透"
-    :icon="WarningAmberOutlined"
-    @action="formatSpoiler"
-  />
-  <n-divider vertical />
-  <MarkdownToolbarButton
-    label="评分"
-    :icon="StarOutlineFilled"
-    @action="formatStar"
-  />
-  <MarkdownToolbarButton
-    label="折叠"
-    :icon="MenuOpenOutlined"
-    @action="formatCollapsibleBlock"
-  />
-  <MarkdownToolbarButton
-    label="格式帮助"
-    :icon="HelpOutlineOutlined"
-    @action="() => (showGuideModal = true)"
-  />
-  <div style="width: 8px" />
+    <MarkdownToolbarButton
+      label="粗体"
+      :icon="FormatBoldOutlined"
+      :placement="tooltipPlacement"
+      @action="formatBold"
+    />
+    <MarkdownToolbarButton
+      label="斜体"
+      :icon="FormatItalicOutlined"
+      :placement="tooltipPlacement"
+      @action="formatItalic"
+    />
+    <MarkdownToolbarButton
+      label="删除线"
+      :icon="StrikethroughSOutlined"
+      :placement="tooltipPlacement"
+      @action="formatStrikethrough"
+    />
+    <MarkdownToolbarButton
+      label="链接"
+      :icon="LinkOutlined"
+      :placement="tooltipPlacement"
+      @action="formatLink"
+    />
+    <MarkdownToolbarButton
+      label="剧透"
+      :icon="WarningAmberOutlined"
+      :placement="tooltipPlacement"
+      @action="formatSpoiler"
+    />
+    <n-divider vertical />
+    <MarkdownToolbarButton
+      label="评分"
+      :icon="StarOutlineFilled"
+      :placement="tooltipPlacement"
+      @action="formatStar"
+    />
+    <MarkdownToolbarButton
+      label="折叠"
+      :icon="MenuOpenOutlined"
+      :placement="tooltipPlacement"
+      @action="formatCollapsibleBlock"
+    />
+    <MarkdownToolbarButton
+      label="格式帮助"
+      :icon="HelpOutlineOutlined"
+      :placement="tooltipPlacement"
+      @action="() => (showGuideModal = true)"
+    />
+    <div style="width: 8px" />
 
-  <MarkdownGuideModal v-model:show="showGuideModal" />
+    <MarkdownGuideModal v-model:show="showGuideModal" />
+  </n-flex>
 </template>

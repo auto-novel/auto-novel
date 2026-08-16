@@ -7,7 +7,7 @@ import type { ArticleCategory } from '@/model/Article';
 import { doAction, useIsWideScreen } from '@/pages/util';
 import { useDraftStore, useWhoamiStore } from '@/stores';
 
-const { articleId, category } = defineProps<{
+const props = defineProps<{
   articleId: string | undefined;
   category: ArticleCategory | undefined;
 }>();
@@ -20,7 +20,7 @@ const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 const draftStore = useDraftStore();
-const draftId = `article-${articleId ?? 'new'}`;
+const draftId = computed(() => `article-${props.articleId ?? 'new'}`);
 
 const articleCategoryOptions = whoami.value.asAdmin
   ? [
@@ -33,12 +33,12 @@ const articleCategoryOptions = whoami.value.asAdmin
       { value: 'Support', label: '反馈与建议' },
     ];
 
-const allowSubmit = ref(articleId === undefined);
+const allowSubmit = ref(props.articleId === undefined);
 const formRef = useTemplateRef<FormInst>('form');
 const formValue = ref({
   title: '',
   content: '',
-  category: category ?? 'General',
+  category: props.category ?? 'General',
 });
 const formRules: FormRules = {
   title: [
@@ -77,22 +77,35 @@ const formRules: FormRules = {
   ],
 };
 
-if (articleId !== undefined) {
-  ArticleRepo.useArticle(articleId, true)
-    .refresh()
-    .then(({ data, error }) => {
-      if (data) {
-        formValue.value = {
-          title: data.title,
-          content: data.content,
-          category: data.category,
-        };
-        allowSubmit.value = true;
-      } else {
-        message.error(`载入失败: ${error?.message}`);
-      }
-    });
-}
+watch(
+  () => props.articleId,
+  (newId) => {
+    if (newId !== undefined) {
+      ArticleRepo.useArticle(newId, true)
+        .refresh()
+        .then(({ data, error }) => {
+          if (data) {
+            formValue.value = {
+              title: data.title,
+              content: data.content,
+              category: data.category,
+            };
+            allowSubmit.value = true;
+          } else {
+            message.error(`载入失败: ${error?.message}`);
+          }
+        });
+    } else {
+      formValue.value = {
+        title: '',
+        content: '',
+        category: props.category ?? 'General',
+      };
+      allowSubmit.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 const submit = async () => {
   if (!allowSubmit.value) {
@@ -106,10 +119,10 @@ const submit = async () => {
     return;
   }
 
-  if (articleId === undefined) {
+  if (props.articleId === undefined) {
     await doAction(
       ArticleRepo.createArticle(formValue.value).then((id) => {
-        draftStore.removeDraft(draftId);
+        draftStore.removeDraft(draftId.value);
         router.push({ path: `/forum/${id}` });
       }),
       '发布',
@@ -117,9 +130,9 @@ const submit = async () => {
     );
   } else {
     await doAction(
-      ArticleRepo.updateArticle(articleId, formValue.value).then(() => {
-        draftStore.removeDraft(draftId);
-        router.push({ path: `/forum/${articleId}` });
+      ArticleRepo.updateArticle(props.articleId, formValue.value).then(() => {
+        draftStore.removeDraft(draftId.value);
+        router.push({ path: `/forum/${props.articleId}` });
       }),
       '更新',
       message,
@@ -130,7 +143,7 @@ const submit = async () => {
 
 <template>
   <div class="layout-content">
-    <n-h1>{{ articleId === undefined ? '发布' : '编辑' }}文章</n-h1>
+    <n-h1>{{ props.articleId === undefined ? '发布' : '编辑' }}文章</n-h1>
     <n-form
       ref="form"
       :model="formValue"
@@ -162,6 +175,8 @@ const submit = async () => {
           :autosize="{ minRows: 8 }"
           maxlength="20000"
           style="width: 100%"
+          sticky
+          show-scroll-buttons
         />
       </n-form-item-row>
     </n-form>
