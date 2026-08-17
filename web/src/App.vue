@@ -84,7 +84,6 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
           : { bodyColor: theme.bodyColor }),
       },
     }"
-    :to="false"
   >
     <n-global-style />
     <n-message-provider container-style="white-space: pre-wrap">
@@ -100,9 +99,6 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
 </template>
 
 <style>
-.v-binder-follower-container {
-  z-index: 1 !important;
-}
 a {
   text-decoration: none;
 }
