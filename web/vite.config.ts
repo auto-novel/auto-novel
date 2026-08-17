@@ -58,10 +58,10 @@ function setupRemoteAuthProxy(config: UserConfig) {
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/auth-proxy/, ''),
     selfHandleResponse: true,
+    headers: {
+      'accept-encoding': 'identity',
+    },
     configure(proxy) {
-      proxy.on('proxyReq', (proxyReq) => {
-        proxyReq.setHeader('accept-encoding', 'identity');
-      });
       proxy.on('proxyRes', (proxyRes, _req, res) => {
         const chunks: Buffer[] = [];
         proxyRes.on('data', (chunk) => {

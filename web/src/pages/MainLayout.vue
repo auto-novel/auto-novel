@@ -448,7 +448,7 @@ watch(
   </n-layout>
 
   <c-drawer-left v-if="!hasSider" v-model:show="showMenuModal">
-    <n-menu :value="menuKey" :options="menuOptions" />
+    <n-menu :value="menuKey" :options="menuOptions" style="flex-shrink: 0" />
     <div style="flex: 1" />
     <div class="sidebar-build-info sidebar-build-info--mobile">
       <div class="sidebar-build-info-item">
