@@ -16,6 +16,11 @@ interface RubyToken {
   start: number;
 }
 
+interface TextRange {
+  end: number;
+  start: number;
+}
+
 type SimplifiedToken = RubyToken;
 
 interface KanaChunk {
@@ -54,6 +59,8 @@ export function buildRubySegments(
 }
 
 function toKanjiTokens(tokens: SourceToken[], text: string): RubyToken[] {
+  const uncertainRanges = findUncertainKanjiRanges(tokens, text);
+
   return tokens
     .filter(
       (token) =>
@@ -66,7 +73,42 @@ function toKanjiTokens(tokens: SourceToken[], text: string): RubyToken[] {
       original: token.text,
       reading: token.reading,
     }))
+    .filter(
+      (token) =>
+        !uncertainRanges.some(
+          (range) => token.start < range.end && token.end > range.start,
+        ),
+    )
     .flatMap(splitMixedToken);
+}
+
+function findUncertainKanjiRanges(
+  tokens: SourceToken[],
+  text: string,
+): TextRange[] {
+  const unknownRanges = tokens
+    .filter(
+      (token) =>
+        /\p{Script=Han}/u.test(token.text) &&
+        (!token.reading || token.reading === '*'),
+    )
+    .map<TextRange>((token) => ({
+      start: byteToUtf16(token.byteStart, text),
+      end: byteToUtf16(token.byteEnd, text),
+    }));
+  if (unknownRanges.length === 0) return [];
+
+  return Array.from(
+    text.matchAll(/[\p{Script=Han}々〆ヵヶ]+/gu),
+    (match): TextRange => ({
+      start: match.index,
+      end: match.index + match[0].length,
+    }),
+  ).filter((range) =>
+    unknownRanges.some(
+      (unknown) => unknown.start < range.end && unknown.end > range.start,
+    ),
+  );
 }
 
 export function byteToUtf16(byteIndex: number, text: string): number {
