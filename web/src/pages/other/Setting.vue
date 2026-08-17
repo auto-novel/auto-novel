@@ -96,6 +96,15 @@ const playSound = (source: string) => {
 
       <n-list-item>
         <n-flex vertical>
+          <b>论坛</b>
+          <n-checkbox v-model:checked="setting.stickyToolbar">
+            编辑器吸顶工具栏
+          </n-checkbox>
+        </n-flex>
+      </n-list-item>
+
+      <n-list-item>
+        <n-flex vertical>
           <b>工作区</b>
           <n-checkbox v-model:checked="setting.autoTopJobWhenAddTask">
             工作区添加时自动置顶

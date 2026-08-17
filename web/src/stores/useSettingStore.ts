@@ -16,6 +16,7 @@ export interface Setting {
   favoriteCreateTimeFirst: boolean;
   //
   autoTopJobWhenAddTask: boolean;
+  stickyToolbar: boolean;
   //
   menuCollapsed: boolean;
   //
@@ -73,6 +74,7 @@ export namespace Setting {
     favoriteCreateTimeFirst: false,
     //
     autoTopJobWhenAddTask: false,
+    stickyToolbar: true,
     //
     menuCollapsed: false,
     //
@@ -129,6 +131,10 @@ export namespace Setting {
       if ((setting.paginationMode as unknown) === 'auto') {
         setting.paginationMode = 'pagination';
       }
+    }
+
+    if (setting.stickyToolbar === undefined) {
+      setting.stickyToolbar = true;
     }
 
     setting.version = 1;
@@ -325,7 +331,7 @@ export const useSettingStore = defineStore(LSKey.Setting, () => {
 
   watch(
     () => setting.value.locale,
-    async (locale) => {
+    async (locale: Setting['locale']) => {
       cc.value = await useOpenCC(locale);
     },
     { immediate: true },

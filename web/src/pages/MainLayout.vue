@@ -281,7 +281,10 @@ watch(
 
 <template>
   <n-layout :has-sider="hasSider" style="width: 100%; min-height: 100vh">
-    <n-layout-header bordered style="position: fixed; z-index: 2">
+    <n-layout-header
+      bordered
+      style="position: fixed; top: 0; left: 0; right: 0; z-index: 100"
+    >
       <n-flex align="center" style="height: 50px" :size="0">
         <n-button
           v-if="!hasSider"
@@ -359,7 +362,7 @@ watch(
           :collapsed="menuCollapsed"
           :collapsed-width="64"
           :collapsed-icon-size="22"
-          :style="{ marginBottom: menuCollapsed ? '64px' : '88px' }"
+          style="margin-bottom: 64px"
         />
       </n-scrollbar>
 

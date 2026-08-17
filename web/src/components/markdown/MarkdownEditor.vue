@@ -2,7 +2,7 @@
 import { useEventListener } from '@vueuse/core';
 import { ArrowDownwardOutlined, ArrowUpwardOutlined } from '@vicons/material';
 
-import { useDraftStore } from '@/stores';
+import { useDraftStore, useSettingStore } from '@/stores';
 import { useIsWideScreen } from '@/pages/util';
 
 const props = withDefaults(
@@ -39,7 +39,10 @@ const scrollToTop = (event: MouseEvent) => {
 };
 
 const scrollToBottom = (event: MouseEvent) => {
-  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  window.scrollTo({
+    top: document.documentElement.scrollHeight,
+    behavior: 'smooth',
+  });
   showBottomTooltip.value = false;
   if (event.currentTarget) {
     (event.currentTarget as HTMLButtonElement).blur();
@@ -51,7 +54,7 @@ const scrollToBottom = (event: MouseEvent) => {
 
 const value = defineModel<string>('value', { required: true });
 
-useEventListener(window, 'beforeunload', (e) => {
+useEventListener(window, 'beforeunload', (e: BeforeUnloadEvent) => {
   if (value.value.trim()) {
     e.preventDefault();
     return '有未保存的编辑，确定要离开吗？';
@@ -59,6 +62,10 @@ useEventListener(window, 'beforeunload', (e) => {
 });
 
 const isWideScreen = useIsWideScreen(620);
+const settingStore = useSettingStore();
+const isSticky = computed(
+  () => props.sticky && settingStore.setting.stickyToolbar,
+);
 
 const showEditorToolbar = ref(true);
 const onTabUpdate = (val: number) => {
@@ -95,7 +102,7 @@ const elEditor = useTemplateRef('editor');
 </script>
 
 <template>
-  <n-el tag="div" class="markdown-input" :class="{ 'is-sticky': sticky }">
+  <n-el tag="div" class="markdown-input" :class="{ 'is-sticky': isSticky }">
     <n-tabs
       ref="tab"
       class="tabs"
@@ -104,12 +111,26 @@ const elEditor = useTemplateRef('editor');
       @update:value="onTabUpdate"
     >
       <template #suffix>
-        <n-flex :size="8" align="center" style="padding: 0 8px; width: 100%" :wrap="false">
+        <n-flex
+          :size="8"
+          align="center"
+          style="padding: 0 8px; width: 100%"
+          :wrap="false"
+        >
           <!-- Scroll buttons on the left of suffix (right next to tabs) -->
           <template v-if="showScrollButtons">
-            <n-tooltip trigger="hover" :placement="sticky ? 'bottom' : 'top'" :show="showTopTooltip">
+            <n-tooltip
+              trigger="hover"
+              :placement="isSticky ? 'bottom' : 'top'"
+              :show="showTopTooltip"
+            >
               <template #trigger>
-                <n-button size="small" quaternary @click="scrollToTop" style="padding: 0 8px">
+                <n-button
+                  size="small"
+                  quaternary
+                  @click="scrollToTop"
+                  style="padding: 0 8px"
+                >
                   <template #icon>
                     <n-icon :component="ArrowUpwardOutlined" />
                   </template>
@@ -117,9 +138,18 @@ const elEditor = useTemplateRef('editor');
               </template>
               回到頁首
             </n-tooltip>
-            <n-tooltip trigger="hover" :placement="sticky ? 'bottom' : 'top'" :show="showBottomTooltip">
+            <n-tooltip
+              trigger="hover"
+              :placement="isSticky ? 'bottom' : 'top'"
+              :show="showBottomTooltip"
+            >
               <template #trigger>
-                <n-button size="small" quaternary @click="scrollToBottom" style="padding: 0 8px">
+                <n-button
+                  size="small"
+                  quaternary
+                  @click="scrollToBottom"
+                  style="padding: 0 8px"
+                >
                   <template #icon>
                     <n-icon :component="ArrowDownwardOutlined" />
                   </template>
@@ -127,7 +157,11 @@ const elEditor = useTemplateRef('editor');
               </template>
               回到頁尾
             </n-tooltip>
-            <n-divider vertical style="margin: 0 4px" v-if="showEditorToolbar && isWideScreen" />
+            <n-divider
+              vertical
+              style="margin: 0 4px"
+              v-if="showEditorToolbar && isWideScreen"
+            />
           </template>
 
           <div style="flex: 1" />
@@ -137,7 +171,7 @@ const elEditor = useTemplateRef('editor');
             v-if="showEditorToolbar && isWideScreen"
             :el-textarea="elEditor?.textareaElRef ?? undefined"
             :drafts="drafts"
-            :tooltip-placement="sticky ? 'bottom' : 'top'"
+            :tooltip-placement="isSticky ? 'bottom' : 'top'"
             @clear-draft="clearDraft"
           />
         </n-flex>
@@ -243,7 +277,7 @@ const elEditor = useTemplateRef('editor');
 .markdown-input.is-sticky .mobile-toolbar {
   position: sticky;
   top: 86px; /* 50px header + 36px tabs navigation height */
-  z-index: 1;
+  z-index: 9;
   background-color: var(--body-color) !important;
   padding: 4px 8px;
   margin-left: 0 !important;
