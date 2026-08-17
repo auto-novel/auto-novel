@@ -234,6 +234,9 @@ importers:
       ky:
         specifier: ^1.14.0
         version: 1.14.3
+      lindera-wasm-ipadic:
+        specifier: ^2.1.0
+        version: 2.1.0
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
@@ -288,6 +291,9 @@ importers:
       vue-tsc:
         specifier: ^2.2.12
         version: 2.2.12(typescript@5.9.3)
+      wanakana:
+        specifier: ^5.3.1
+        version: 5.3.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.35.0
@@ -4204,6 +4210,12 @@ packages:
       }
     engines: { node: '>= 12.0.0' }
 
+  lindera-wasm-ipadic@2.1.0:
+    resolution:
+      {
+        integrity: sha512-KdUku5OKNfbswatINoiTPAi63SskH4uw4OVTodtQZiZwOP3VkSjR4DIs+/MZmGS8ydUXBIDdCxxRl3+jBVHhZw==,
+      }
+
   linkify-it@5.0.0:
     resolution:
       {
@@ -5890,6 +5902,13 @@ packages:
       }
     peerDependencies:
       vue: ^3.0.11
+
+  wanakana@5.3.1:
+    resolution:
+      {
+        integrity: sha512-OSDqupzTlzl2LGyqTdhcXcl6ezMiFhcUwLBP8YKaBIbMYW1wAwDvupw2T9G9oVaKT9RmaSpyTXjxddFPUcFFIw==,
+      }
+    engines: { node: '>=12' }
 
   webpack-virtual-modules@0.6.2:
     resolution:
@@ -8279,6 +8298,8 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
 
+  lindera-wasm-ipadic@2.1.0: {}
+
   linkify-it@5.0.0:
     dependencies:
       uc.micro: 2.1.0
@@ -9399,6 +9420,8 @@ snapshots:
       vdirs: 0.1.8(vue@3.5.32(typescript@5.9.3))
       vooks: 0.2.12(vue@3.5.32(typescript@5.9.3))
       vue: 3.5.32(typescript@5.9.3)
+
+  wanakana@5.3.1: {}
 
   webpack-virtual-modules@0.6.2: {}
 

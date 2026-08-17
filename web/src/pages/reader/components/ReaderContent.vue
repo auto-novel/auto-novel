@@ -59,7 +59,12 @@ const chapterHref = computed(() => {
 <template>
   <div class="chapter" data-chapter :data-id="chapterId">
     <n-h4 class="chapter-title">
-      <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
+      <n-a :href="chapterHref">
+        <japanese-ruby-text
+          :text="chapter.titleJp"
+          :enabled="readerSetting.showJapaneseReading"
+        />
+      </n-a>
       <br />
       <n-text depth="3">{{ chapter.titleZh }}</n-text>
       <br />
@@ -82,7 +87,12 @@ const chapterHref = computed(() => {
             {{ p.indent }}
           </span>
           <span :class="[p.secondary ? 'second' : 'first', 'text-content']">
-            {{ p.text }}
+            <japanese-ruby-text
+              :text="p.text"
+              :enabled="
+                readerSetting.showJapaneseReading && p.language === 'jp'
+              "
+            />
           </span>
         </n-p>
         <br v-else-if="!p" />
