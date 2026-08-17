@@ -349,7 +349,13 @@ watch(
       @expand="setting.menuCollapsed = false"
     >
       <n-scrollbar
-        style="margin-top: 50px; position: fixed; top: 0"
+        content-style="display: flex; flex-direction: column; min-height: 100%"
+        style="
+          height: calc(100vh - 50px);
+          margin-top: 50px;
+          position: fixed;
+          top: 0;
+        "
         :style="{ width: menuCollapsed ? '64px' : '240px' }"
       >
         <n-menu
@@ -359,62 +365,62 @@ watch(
           :collapsed="menuCollapsed"
           :collapsed-width="64"
           :collapsed-icon-size="22"
-          :style="{ marginBottom: menuCollapsed ? '64px' : '88px' }"
+          style="flex-shrink: 0"
         />
-      </n-scrollbar>
-
-      <div
-        class="sidebar-build-info"
-        :class="{ 'sidebar-build-info--collapsed': menuCollapsed }"
-      >
-        <template v-if="!menuCollapsed">
-          <div class="sidebar-build-info-item">
-            <n-icon :component="AccessTimeOutlined" size="15" />
-            <n-text depth="3">构建于</n-text>
-            <n-time :time="buildTime" type="datetime" />
-          </div>
-          <div class="sidebar-build-info-item">
-            <n-icon :component="CommitOutlined" size="16" />
-            <n-text depth="3">Commit</n-text>
-            <n-a
-              v-if="commitUrl"
-              class="commit-link"
-              :href="commitUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <code>{{ shortCommit }}</code>
-            </n-a>
-            <n-text v-else depth="3">
-              <code>{{ shortCommit }}</code>
-            </n-text>
-          </div>
-        </template>
-
-        <n-tooltip v-else placement="right">
-          <template #trigger>
-            <n-a
-              v-if="commitUrl"
-              class="sidebar-build-info-trigger"
-              :href="commitUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="查看构建信息"
-            >
-              <n-icon :component="CommitOutlined" size="20" />
-            </n-a>
-            <n-icon v-else :component="CommitOutlined" size="20" />
+        <div style="flex: 1" />
+        <div
+          class="sidebar-build-info"
+          :class="{ 'sidebar-build-info--collapsed': menuCollapsed }"
+        >
+          <template v-if="!menuCollapsed">
+            <div class="sidebar-build-info-item">
+              <n-icon :component="AccessTimeOutlined" size="15" />
+              <n-text depth="3">构建于</n-text>
+              <n-time :time="buildTime" type="datetime" />
+            </div>
+            <div class="sidebar-build-info-item">
+              <n-icon :component="CommitOutlined" size="16" />
+              <n-text depth="3">Commit</n-text>
+              <n-a
+                v-if="commitUrl"
+                class="commit-link"
+                :href="commitUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <code>{{ shortCommit }}</code>
+              </n-a>
+              <n-text v-else depth="3">
+                <code>{{ shortCommit }}</code>
+              </n-text>
+            </div>
           </template>
-          <div>
-            构建于
-            <n-time :time="buildTime" type="datetime" />
-          </div>
-          <div>
-            Commit
-            <code>{{ shortCommit }}</code>
-          </div>
-        </n-tooltip>
-      </div>
+
+          <n-tooltip v-else placement="right">
+            <template #trigger>
+              <n-a
+                v-if="commitUrl"
+                class="sidebar-build-info-trigger"
+                :href="commitUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="查看构建信息"
+              >
+                <n-icon :component="CommitOutlined" size="20" />
+              </n-a>
+              <n-icon v-else :component="CommitOutlined" size="20" />
+            </template>
+            <div>
+              构建于
+              <n-time :time="buildTime" type="datetime" />
+            </div>
+            <div>
+              Commit
+              <code>{{ shortCommit }}</code>
+            </div>
+          </n-tooltip>
+        </div>
+      </n-scrollbar>
     </n-layout-sider>
 
     <n-layout-content
@@ -475,9 +481,6 @@ watch(
 
 <style>
 .sidebar-build-info {
-  position: fixed;
-  bottom: 0;
-  left: 0;
   box-sizing: border-box;
   width: 240px;
   padding: 12px 16px 14px;
