@@ -88,7 +88,7 @@ const setIndentSize = (diff: number) => {
               size="small"
             />
           </c-action-wrapper>
-          <c-action-wrapper title="显示日语读音" align="center">
+          <c-action-wrapper title="标注日语读音（仅参考）" align="center">
             <n-switch
               v-model:value="readerSetting.showJapaneseReading"
               size="small"
