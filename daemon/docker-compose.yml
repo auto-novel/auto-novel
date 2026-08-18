@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: daemon/Dockerfile
 
     image: auto-novel-crawler:latest
     container_name: auto-novel-crawler

@@ -7,6 +7,7 @@ describe('ProxyManager', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     while (stores.length) {
       const store = stores.pop();
       store?.close();
@@ -31,6 +32,7 @@ describe('ProxyManager', () => {
   });
 
   test('cycles through multiple proxies by weight', () => {
+    vi.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValue(0.999);
     const manager = createManager({ failThreshold: 3 });
     manager.add({ protocol: 'http', host: 'proxy.a', port: 8000 });
     manager.add({ protocol: 'http', host: 'proxy.b', port: 8001 });

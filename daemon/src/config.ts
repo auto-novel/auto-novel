@@ -1,9 +1,10 @@
 import path from 'node:path';
 import fs from 'fs/promises';
 
-import { ProviderIdSchema } from '@auto-novel/crawler';
 import * as z from 'zod';
-import { HeaderSchema, ProxyConfigSchema } from '@/services';
+import { HeaderSchema } from '@/services/crawler';
+import { ProxyConfigSchema } from '@/services/proxy/manager';
+import { ProviderConfigIdSchema } from '@/services/providers';
 
 export const ProviderConfigSchema = z.object({
   headers: HeaderSchema.optional(),
@@ -16,7 +17,7 @@ export const ConfigSchema = z
     proxyDbPath: z.string().default('crawler-proxies.db'),
     defaultProxies: z.array(ProxyConfigSchema).default([]),
     providerConfig: z
-      .partialRecord(ProviderIdSchema, ProviderConfigSchema)
+      .partialRecord(ProviderConfigIdSchema, ProviderConfigSchema)
       .optional(),
   })
   .strict();

@@ -47,6 +47,20 @@ describe('classifyTocUpdate', () => {
     ).toBe('existing-updated');
   });
 
+  it('treats equivalent createAt representations as unchanged', () => {
+    const left = [chapter('10542618', '无名', '2018-12-27T10:07:14.000Z')];
+    const right = [chapter('10542618', '无名', '2018-12-27T10:07:14+00:00')];
+
+    expect(classifyTocUpdate(left, right)).toBe('unchanged');
+  });
+
+  it('rejects a changed createAt instant', () => {
+    const left = [chapter('10542618', '无名', '2018-12-27T10:07:14.000Z')];
+    const right = [chapter('10542618', '无名', '2018-12-27T10:07:15+00:00')];
+
+    expect(classifyTocUpdate(left, right)).toBe('existing-updated');
+  });
+
   it('rejects an existing chapter update even when a chapter was added', () => {
     expect(
       classifyTocUpdate(current, [
