@@ -4,6 +4,11 @@ import { useMessage } from 'naive-ui';
 
 import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
+import {
+  openAiProfiles,
+  type openAiProfileId,
+  type ProfileValues,
+} from '@auto-novel/translator';
 
 const props = defineProps<{
   show: boolean;
@@ -27,7 +32,12 @@ const initFormValue = (
   endpoint: string;
   key: string;
   concurrency: number;
+  profileId: openAiProfileId;
+  profileValues: ProfileValues;
 } => {
+  const profileId = worker?.profile?.id ?? 'openai';
+  const defaultValues = defaultProfileValues(profileId);
+
   if (worker === undefined) {
     return {
       id: '',
@@ -35,6 +45,8 @@ const initFormValue = (
       endpoint: 'https://api.deepseek.com',
       key: '',
       concurrency: 1,
+      profileId: 'openai',
+      profileValues: defaultValues,
     };
   } else {
     return {
@@ -43,12 +55,37 @@ const initFormValue = (
       endpoint: worker.endpoint,
       key: worker.key,
       concurrency: worker.concurrency,
+      profileId: worker.profile?.id ?? 'openai',
+      profileValues: {
+        ...defaultValues,
+        ...(worker.profile?.values ?? {}),
+      },
     };
   }
 };
 
 const formRef = useTemplateRef<FormInst>('form');
 const formValue = ref(initFormValue(props.worker));
+
+const currentProfile = computed(() =>
+  openAiProfiles.find((p) => p.id === formValue.value.profileId),
+);
+
+function defaultProfileValues(profileId: openAiProfileId): ProfileValues {
+  const profile = openAiProfiles.find((p) => p.id === profileId);
+  const values: ProfileValues = {};
+  for (const field of profile?.fields ?? []) {
+    if (field.type === 'select') {
+      values[field.key] = field.options[0].value;
+    }
+  }
+  return values;
+}
+
+const onProfileChange = (id: openAiProfileId) => {
+  formValue.value.profileId = id;
+  formValue.value.profileValues = defaultProfileValues(id);
+};
 
 watch(
   () => props.worker,
@@ -282,6 +319,10 @@ const validateIds = (): string | null => {
 
 const addWorkers = () => {
   const endpoint = formValue.value.endpoint.trim();
+  const profile = {
+    id: formValue.value.profileId,
+    values: { ...formValue.value.profileValues },
+  };
   for (const w of generatedWorkers.value) {
     workspace.addWorker({
       id: w.id,
@@ -289,6 +330,7 @@ const addWorkers = () => {
       endpoint,
       key: w.key,
       concurrency: workerConcurrencies[w.id] ?? defaultConcurrency.value,
+      profile,
     });
   }
 };
@@ -306,13 +348,18 @@ const submit = async () => {
     emit('update:show', false);
   } else {
     if (!(await doValidate())) return;
-    const { id, model, endpoint, key, concurrency } = formValue.value;
+    const { id, model, endpoint, key, concurrency, profileId, profileValues } =
+      formValue.value;
     const worker = {
       id: id.trim(),
       model: model.trim(),
       endpoint: endpoint.trim(),
       key: key.trim(),
       concurrency,
+      profile: {
+        id: profileId,
+        values: { ...profileValues },
+      },
     };
     const index = workspaceRef.value.workers.findIndex(
       (w) => w.id === props.worker?.id,
@@ -351,6 +398,34 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
       label-placement="left"
       label-width="auto"
     >
+      <n-form-item-row label="接口格式">
+        <n-select
+          :value="formValue.profileId"
+          :options="
+            openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
+          "
+          @update:value="onProfileChange"
+        />
+      </n-form-item-row>
+
+      <template v-if="currentProfile?.fields.length">
+        <n-form-item-row
+          v-for="field in currentProfile.fields"
+          :key="`${formValue.profileId}-${field.key}`"
+          :label="field.label"
+        >
+          <n-select
+            v-if="field.type === 'select'"
+            :value="formValue.profileValues[field.key]"
+            :options="
+              field.options.map((o) => ({ label: o.label, value: o.value }))
+            "
+            @update:value="
+              (v) => (formValue.profileValues[field.key] = v ?? undefined)
+            "
+          />
+        </n-form-item-row>
+      </template>
       <!-- 添加模式：批量 -->
       <template v-if="props.worker === undefined">
         <n-form-item-row path="endpoint" label="链接">
