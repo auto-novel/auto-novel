@@ -4,7 +4,7 @@ type SelectField = {
   type: 'select';
   options: readonly {
     label: string;
-    value: string | number | boolean;
+    value: string | number;
   }[];
 };
 
@@ -25,6 +25,8 @@ type FieldValue<Field extends ProfileField> = Field extends SelectField
     ? number
     : never;
 
+export const DEFAULT_FIELD_VALUE = '__default__' as const;
+
 export type ProfileValues<
   Fields extends readonly ProfileField[] = readonly ProfileField[],
 > = {
@@ -43,6 +45,8 @@ export interface TranslatorProfile<
   buildRequestParams?(
     values: ProfileValues<NoInfer<Fields>>,
   ): Record<string, unknown>;
+
+  extractReasoning?(message: Record<string, any>): string | undefined;
 }
 
 export const defineProfile = <

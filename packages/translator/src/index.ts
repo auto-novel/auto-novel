@@ -26,7 +26,7 @@ export type {
   LineRange,
 } from './types';
 
-export { openAiProfies } from './translator/profiles/openai';
+export { openAiProfiles } from './translator/profiles/openai';
 
 export type { openAiProfileId } from './translator/profiles/openai';
 
