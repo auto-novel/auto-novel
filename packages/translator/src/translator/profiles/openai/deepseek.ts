@@ -1,4 +1,4 @@
-import { defineProfile } from '../types';
+import { defineProfile, DEFAULT_FIELD_VALUE } from '../types';
 
 export const profile = defineProfile({
   id: 'deepseek',
@@ -10,6 +10,7 @@ export const profile = defineProfile({
       label: '思考强度',
       type: 'select',
       options: [
+        { label: '默认', value: DEFAULT_FIELD_VALUE },
         { label: 'none', value: 'none' },
         { label: 'low', value: 'low' },
         { label: 'high', value: 'high' },
@@ -34,5 +35,9 @@ export const profile = defineProfile({
       },
       reasoning_effort,
     };
+  },
+
+  extractReasoning(message) {
+    return message.reasoning_content;
   },
 });

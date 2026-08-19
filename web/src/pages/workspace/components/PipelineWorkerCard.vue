@@ -36,18 +36,25 @@ const testWorker = async () => {
   const textJp = [
     '国境の長いトンネルを抜けると雪国であった。夜の底が白くなった。信号所に汽車が止まった。',
   ];
+  const reasoningLogs: string[] = [];
   try {
     const translator = new OpenAiTranslator({
       endpoint: props.worker.endpoint,
       key: props.worker.key,
       model: props.worker.model,
+      profile: props.worker.profile,
+      log: (msg) => {
+        if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+      },
     });
     const textZh = await translator.translate(
       textJp,
       undefined,
       new AbortController().signal,
     );
-    message.success(`原文：${textJp[0]}\n译文：${textZh.join('')}`);
+    const parts = [`原文：${textJp[0]}`, `译文：${textZh.join('')}`];
+    if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
+    message.success(parts.join('\n'));
   } catch (e: unknown) {
     message.error(`翻译器错误：${e}`);
   }

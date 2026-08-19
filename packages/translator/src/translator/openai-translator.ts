@@ -11,9 +11,10 @@ import { createOpenAiPromptBuilder } from './openai-prompt';
 
 import {
   buildOpenAiProfileParams,
+  openAiProfiles,
   type openAiProfileId,
 } from './profiles/openai';
-import type { ProfileValues } from './profiles/types';
+import type { ProfileValues, TranslatorProfile } from './profiles/types';
 
 export type OpenAiTranslatorConfig = {
   endpoint: string;
@@ -33,6 +34,7 @@ export class OpenAiTranslator implements Translator {
   private profileParams: Record<string, unknown>;
   private promptBuilder: PromptBuilder;
   private log: Logger;
+  private extractReasoning?: TranslatorProfile['extractReasoning'];
 
   constructor(config: OpenAiTranslatorConfig) {
     this.api = createOpenAiApi(config.endpoint, config.key);
@@ -43,6 +45,10 @@ export class OpenAiTranslator implements Translator {
     );
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
+    this.extractReasoning = config.profile?.id
+      ? openAiProfiles.find((p) => p.id === config.profile!.id)
+          ?.extractReasoning
+      : undefined;
   }
 
   async translate(
@@ -120,7 +126,15 @@ export class OpenAiTranslator implements Translator {
       { signal },
     );
 
-    const content = completion.choices[0]?.message?.content ?? '';
+    const rawMessage = completion.choices[0]?.message;
+    const content = rawMessage?.content ?? '';
+    const reasoning = this.extractReasoning?.(
+      rawMessage as Record<string, any>,
+    );
+    if (reasoning) {
+      this.log(`思考：${reasoning}`);
+    }
+
     return this.promptBuilder.parseAnswer(content, lines);
   }
 

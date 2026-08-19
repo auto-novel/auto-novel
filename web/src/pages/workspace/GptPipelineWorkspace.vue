@@ -248,6 +248,7 @@ const startWorker = (workerId: string) => {
     endpoint: w.endpoint,
     key: w.key,
     model: w.model,
+    profile: w.profile,
   });
 
   const workerTracker: TranslatorTracker = {
