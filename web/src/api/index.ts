@@ -9,6 +9,9 @@ export const formatError = async (error: unknown) => {
     if (error.response.status === 429) {
       messageOverride = '操作额度耗尽，等明天再试吧';
     }
+    if (error.response.status === 401) {
+      messageOverride = '未登录或登录状态过期，请登录后重试';
+    }
     const body = error.response.text().catch(() => '未知错误');
     const msg = await body.then(
       (message) => `[${error.response.status}]${messageOverride ?? message}`,

@@ -1,8 +1,10 @@
 import ky from 'ky';
+import { defaultKyClientConfig } from '@/api/ky';
 
 let tokenGetter: () => string = () => '';
 
 export const client = ky.create({
+  ...defaultKyClientConfig,
   prefixUrl: '/api',
   timeout: 60000,
   hooks: {

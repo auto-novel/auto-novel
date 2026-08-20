@@ -1,3 +1,4 @@
+import { defaultKyClientConfig } from '@/api/ky';
 import ky from 'ky';
 
 const { origin } = window.location;
@@ -8,6 +9,7 @@ export const AuthUrl =
     : 'https://auth.novelia.cc';
 
 const client = ky.create({
+  ...defaultKyClientConfig,
   prefixUrl: AuthUrl + '/api/v1',
   credentials: 'include',
 });
