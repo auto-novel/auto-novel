@@ -23,8 +23,29 @@ const displayedIntroduction = computed(() => {
   return props.introductionZh;
 });
 
-const toggleTranslation = () => {
+let downX = 0;
+let downY = 0;
+
+const onMouseDown = (e: MouseEvent) => {
+  downX = e.clientX;
+  downY = e.clientY;
+};
+
+const toggleTranslation = (e: MouseEvent) => {
   if (!hasTranslation.value) return;
+
+  const selection = window.getSelection();
+  if (selection && selection.toString().length > 0) {
+    return;
+  }
+
+  // 如果按下和抬起的位置相差较大，也视为拖拽选字
+  const dx = Math.abs(e.clientX - downX);
+  const dy = Math.abs(e.clientY - downY);
+  if (dx > 4 || dy > 4) {
+    return;
+  }
+
   expanded.value = !expanded.value;
 };
 </script>
@@ -38,6 +59,7 @@ const toggleTranslation = () => {
       WebkitLineClamp: !expanded && hasTranslation ? 5 : undefined,
       overflow: !expanded && hasTranslation ? 'hidden' : undefined,
     }"
+    @mousedown="onMouseDown"
     @click="toggleTranslation"
   >
     <template v-if="displayedIntroduction">
