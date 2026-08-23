@@ -95,13 +95,7 @@ const handleUpdateShow = (show: boolean) => {
   showGlossaryModal.value = show;
 };
 
-const handleConfirmSave = () => {
-  submitGlossary();
-  showConfirmModal.value = false;
-  showGlossaryModal.value = false;
-};
-
-const handleConfirmDiscard = () => {
+const handleConfirmClose = () => {
   showConfirmModal.value = false;
   showGlossaryModal.value = false;
 };
@@ -336,20 +330,14 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
       width: min(420px, calc(100% - 32px));
     "
   >
-    <n-text>检测到编辑差异，是否保存修改？</n-text>
+    <n-text>检测到未保存的修改，确认关闭吗？</n-text>
     <template #action>
       <n-flex justify="end">
         <c-button
-          label="保存"
-          type="primary"
-          size="small"
-          @action="handleConfirmSave"
-        />
-        <c-button
-          label="不保存"
+          label="确认"
           type="warning"
           size="small"
-          @action="handleConfirmDiscard"
+          @action="handleConfirmClose"
         />
         <c-button
           label="取消"
