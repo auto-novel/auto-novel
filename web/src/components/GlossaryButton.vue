@@ -49,12 +49,11 @@ const gnidHint = computed(() => {
   }
 });
 
-const updateGlossary = async () => {
+const updateGlossary = async (glossaryValue: Glossary) => {
   const gnid = props.gnid;
   if (gnid === undefined) {
     return;
   }
-  const glossaryValue = toRaw(glossary.value);
   if (gnid.type === 'web') {
     await WebNovelApi.updateGlossary(
       gnid.providerId,
@@ -69,21 +68,23 @@ const updateGlossary = async () => {
   }
 };
 
-const submitGlossary = () =>
-  doAction(
-    updateGlossary().then(() => {
+const submitGlossary = () => {
+  const submittedGlossary = { ...toRaw(glossary.value) };
+  return doAction(
+    updateGlossary(submittedGlossary).then(() => {
       // 触发组件外的术语表本体更新。有点傻，但够用。
       for (const key in props.value) {
         delete props.value[key];
       }
-      for (const key in glossary.value) {
-        props.value[key] = glossary.value[key];
+      for (const key in submittedGlossary) {
+        props.value[key] = submittedGlossary[key];
       }
-      originalGlossary.value = { ...glossary.value };
+      originalGlossary.value = { ...submittedGlossary };
     }),
     '术语表提交',
     message,
   );
+};
 
 const handleUpdateShow = (show: boolean) => {
   if (!show) {
