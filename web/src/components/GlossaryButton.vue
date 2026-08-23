@@ -19,14 +19,25 @@ const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 const glossary = ref<Glossary>({});
+const originalGlossary = ref<Glossary>({});
 
 const showGlossaryModal = ref(false);
+const showConfirmModal = ref(false);
 
 const toggleGlossaryModal = () => {
   if (showGlossaryModal.value === false) {
     glossary.value = { ...props.value };
+    originalGlossary.value = { ...props.value };
   }
   showGlossaryModal.value = !showGlossaryModal.value;
+};
+
+const isGlossaryChanged = () => {
+  const cur = glossary.value;
+  const orig = originalGlossary.value;
+  const curKeys = Object.keys(cur);
+  if (curKeys.length !== Object.keys(orig).length) return true;
+  return curKeys.some((key) => cur[key] !== orig[key]);
 };
 
 const gnidHint = computed(() => {
@@ -68,10 +79,36 @@ const submitGlossary = () =>
       for (const key in glossary.value) {
         props.value[key] = glossary.value[key];
       }
+      originalGlossary.value = { ...glossary.value };
     }),
     '术语表提交',
     message,
   );
+
+const handleUpdateShow = (show: boolean) => {
+  if (!show) {
+    if (isGlossaryChanged()) {
+      showConfirmModal.value = true;
+      return;
+    }
+  }
+  showGlossaryModal.value = show;
+};
+
+const handleConfirmSave = () => {
+  submitGlossary();
+  showConfirmModal.value = false;
+  showGlossaryModal.value = false;
+};
+
+const handleConfirmDiscard = () => {
+  showConfirmModal.value = false;
+  showGlossaryModal.value = false;
+};
+
+const handleConfirmCancel = () => {
+  showConfirmModal.value = false;
+};
 
 const importGlossaryRaw = ref('');
 const termsToAdd = ref<[string, string]>(['', '']);
@@ -153,7 +190,8 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
 
   <c-modal
     title="编辑术语表"
-    v-model:show="showGlossaryModal"
+    :show="showGlossaryModal"
+    @update:show="handleUpdateShow"
     :extra-height="120"
   >
     <template #header-extra>
@@ -282,4 +320,44 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
       <c-button label="提交" type="primary" @action="submitGlossary()" />
     </template>
   </c-modal>
+
+  <n-modal
+    v-model:show="showConfirmModal"
+    preset="card"
+    title="提示"
+    :bordered="false"
+    size="small"
+    transform-origin="center"
+    style="
+      position: fixed;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(420px, calc(100% - 32px));
+    "
+  >
+    <n-text>检测到编辑差异，是否保存修改？</n-text>
+    <template #action>
+      <n-flex justify="end">
+        <c-button
+          label="保存"
+          type="primary"
+          size="small"
+          @action="handleConfirmSave"
+        />
+        <c-button
+          label="不保存"
+          type="warning"
+          size="small"
+          @action="handleConfirmDiscard"
+        />
+        <c-button
+          label="取消"
+          secondary
+          size="small"
+          @action="handleConfirmCancel"
+        />
+      </n-flex>
+    </template>
+  </n-modal>
 </template>
