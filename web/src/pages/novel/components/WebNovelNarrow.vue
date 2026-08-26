@@ -7,7 +7,9 @@ import {
 import { subjectKeys } from '@novelia/forum-api';
 import { NScrollbar } from 'naive-ui';
 
+import { GenericNovelId } from '@/model/Common';
 import type { WebNovelDto, WebNovelTocItemDto } from '@/model/WebNovel';
+import NovelBottomTabs from '@/pages/novel/components/NovelBottomTabs.vue';
 import { useSettingStore } from '@/stores';
 import { useTocExpansion } from './UseTocExpansion';
 import { useLastReadChapter, useToc } from './UseWebNovel';
@@ -196,9 +198,11 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     </div>
   </c-drawer-right>
 
-  <comment-list
-    v-if="!setting.hideCommmentWebNovel"
+  <NovelBottomTabs
+    :gnid="GenericNovelId.web(providerId, novelId)"
+    :glossary="novel.glossary"
     :site="subjectKeys.novel.web(providerId, novelId)"
+    :hide-comment="setting.hideCommmentWebNovel"
     :locked="false"
   />
 </template>
