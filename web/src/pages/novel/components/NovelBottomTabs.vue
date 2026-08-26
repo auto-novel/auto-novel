@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { useEventListener } from '@vueuse/core';
+
 import NovelGlossaryEditor from '@/components/NovelGlossaryEditor.vue';
 import type { GenericNovelId } from '@/model/Common';
 import type { Glossary } from '@/model/Glossary';
@@ -27,11 +29,26 @@ watch(
 );
 
 const glossaryCount = computed(() => Object.keys(props.glossary).length);
+
+const editorRef =
+  useTemplateRef<InstanceType<typeof NovelGlossaryEditor>>('editorRef');
+
+const handleBeforeLeave = (name: string, oldName: string) => {
+  if (oldName === 'glossary' && editorRef.value) {
+    return editorRef.value.confirmLeave();
+  }
+  return true;
+};
 </script>
 
 <template>
   <div class="novel-bottom-tabs" style="margin-top: 24px">
-    <n-tabs v-model:value="activeTab" type="line" animated>
+    <n-tabs
+      v-model:value="activeTab"
+      type="line"
+      animated
+      :on-before-leave="handleBeforeLeave"
+    >
       <n-tab-pane
         v-if="$slots.wenkuToc"
         name="wenkuToc"
@@ -55,7 +72,7 @@ const glossaryCount = computed(() => Object.keys(props.glossary).length);
         :tab="`术语表${glossaryCount > 0 ? ` [${glossaryCount}]` : ''}`"
         style="min-height: 400px"
       >
-        <NovelGlossaryEditor :gnid="gnid" :value="glossary" />
+        <NovelGlossaryEditor ref="editorRef" :gnid="gnid" :value="glossary" />
       </n-tab-pane>
     </n-tabs>
   </div>
