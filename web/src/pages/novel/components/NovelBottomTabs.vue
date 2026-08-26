@@ -39,6 +39,46 @@ const handleBeforeLeave = (name: string, oldName: string) => {
   }
   return true;
 };
+
+const availableTabs = computed(() => {
+  const tabs: string[] = [];
+  if (slots.wenkuToc) tabs.push('wenkuToc');
+  if (!props.hideComment) tabs.push('comment');
+  tabs.push('glossary');
+  return tabs;
+});
+
+const switchTab = async (targetTab: string) => {
+  if (targetTab === activeTab.value) return;
+  const allow = await handleBeforeLeave(targetTab, activeTab.value);
+  if (allow) {
+    activeTab.value = targetTab;
+  }
+};
+
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
+
+  const target = e.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
+  if (/^[0-9]$/.test(e.key)) {
+    const index = e.key === '0' ? 9 : Number(e.key) - 1;
+    const targetTab = availableTabs.value[index];
+    if (targetTab) {
+      e.preventDefault();
+      switchTab(targetTab);
+    }
+  }
+});
 </script>
 
 <template>
