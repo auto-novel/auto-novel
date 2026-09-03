@@ -5,6 +5,7 @@ import { FavoredApi, ReadHistoryApi, WebNovelApi } from '@/api';
 import type { WebNovelMetadata } from '@/external';
 import { WebNovelCrawlerApi } from '@/external';
 import { withOnSuccess } from './cache';
+import { ServerErrorMsg } from '@/api/serverError';
 
 const ItemKey = 'web-novel';
 const ListKey = 'web-novel-list';
@@ -35,7 +36,19 @@ const getOrCreateWebNovel = async (providerId: string, novelId: string) => {
   try {
     return await WebNovelApi.getNovel(providerId, novelId);
   } catch (error) {
-    if (!(error instanceof HTTPError) || error.response.status !== 500) {
+    if (!(error instanceof HTTPError)) {
+      throw error;
+    }
+    const errorStatus = error.response.status;
+    if (errorStatus !== 500) {
+      throw error;
+    }
+    const message = await error.response
+      .clone()
+      .text()
+      .catch(() => '');
+    // 理论上只有 Server Cralwer 失败的时候才需要用户侧爬虫更新
+    if (!message.includes(ServerErrorMsg.CrawlerFailed)) {
       throw error;
     }
   }
