@@ -15,7 +15,6 @@ type Callback<T> = (fetch: typeof ky) => Promise<T>;
 export class ProxyPool {
   pool: Map<string, string> = new Map();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: Persist<string, any>;
 
   constructor(dbPath: string) {

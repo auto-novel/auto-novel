@@ -1,3 +1,4 @@
+import * as cheerio from 'cheerio';
 import type { KyInstance } from 'ky';
 
 import {
@@ -14,6 +15,7 @@ import {
 } from './types';
 import {
   CrawlerAuthError,
+  CrawlerHttpError,
   CrawlerInputError,
   CrawlerParseError,
 } from '@/errors';
@@ -29,11 +31,16 @@ function normalizePixivDescription(
   return description?.replace(/<br ?\/>/g, '\n') || fallback;
 }
 
+export type PixivOptions = {
+  precheckViewingSettings?: boolean;
+};
+
 export class Pixiv implements WebNovelProvider {
   readonly id = 'pixiv';
   readonly version = '1.0.0';
 
   client: KyInstance;
+  private readonly precheckViewingSettings: boolean;
 
   private static readonly VIEWING_SETTINGS_TTL = 60 * 60 * 1000;
   private viewingSettingsCache: {
@@ -41,19 +48,29 @@ export class Pixiv implements WebNovelProvider {
     promise: Promise<void>;
   } | null = null;
 
-  constructor(client: KyInstance) {
+  constructor(client: KyInstance, options: PixivOptions = {}) {
     this.client = client;
+    this.precheckViewingSettings = options.precheckViewingSettings ?? true;
   }
 
   private async assertViewingSettingsEnabled(): Promise<void> {
-    const html = await this.client
-      .get('https://www.pixiv.net/settings/viewing')
-      .text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const url = 'https://www.pixiv.net/settings/viewing';
+    const response = await this.client.get(url, { throwHttpErrors: false });
+    const html = await response.text();
 
-    const getChecked = (name: string) =>
-      (doc.querySelector(`input[name="${name}"]`) as HTMLInputElement | null)
-        ?.checked;
+    if (!response.ok) {
+      throw new CrawlerHttpError(
+        `Pixiv 设置页请求失败：${response.status} ${response.statusText} (${url})`,
+        response.status,
+        url,
+      );
+    }
+
+    const $ = cheerio.load(html);
+    const getChecked = (name: string): boolean | undefined => {
+      const input = $(`input[name="${name}"]`).first();
+      return input.length === 0 ? undefined : input.is(':checked');
+    };
 
     const isSensitiveViewEnabled = getChecked('sensitive_view_setting');
     const isR18Enabled = getChecked('r18');
@@ -99,6 +116,42 @@ export class Pixiv implements WebNovelProvider {
     await promise;
   }
 
+  private async fetchPixivBody<T>(url: string): Promise<T> {
+    const response = await this.client.get(url, { throwHttpErrors: false });
+    let data: { error?: boolean; message?: string; body?: T };
+    try {
+      data = await response.json();
+    } catch {
+      throw new CrawlerHttpError(
+        `Pixiv API 返回了无效响应：${response.status} ${response.statusText} (${url})`,
+        response.status,
+        url,
+      );
+    }
+
+    if (!response.ok) {
+      throw new CrawlerHttpError(
+        `Pixiv API 请求失败：${response.status} ${response.statusText} (${url})`,
+        response.status,
+        url,
+      );
+    }
+
+    if (data.error || data.body == null) {
+      throw new CrawlerAuthError(
+        data.message || '当前账号无法获取该 Pixiv 小说资源',
+      );
+    }
+
+    return data.body;
+  }
+
+  private async precheckViewingSettingsIfNeeded(): Promise<void> {
+    if (this.precheckViewingSettings) {
+      await this.ensureViewingSettings();
+    }
+  }
+
   async getRank(
     _options: Record<string, string>,
   ): Promise<Page<WebNovelListItem>> {
@@ -106,14 +159,13 @@ export class Pixiv implements WebNovelProvider {
   }
 
   async getMetadata(novelId: string): Promise<WebNovelMetadata> {
-    await this.ensureViewingSettings();
+    await this.precheckViewingSettingsIfNeeded();
 
     if (novelId.startsWith('s')) {
       const chapterId = novelId.substring(1);
-      const data: any = await this.client
-        .get(`https://www.pixiv.net/ajax/novel/${chapterId}`)
-        .json();
-      const obj = data.body;
+      const obj: any = await this.fetchPixivBody(
+        `https://www.pixiv.net/ajax/novel/${chapterId}`,
+      );
 
       const seriesData = obj.seriesNavData;
       if (seriesData != null) {
@@ -155,10 +207,9 @@ export class Pixiv implements WebNovelProvider {
       };
     }
 
-    const data: any = await this.client
-      .get(`https://www.pixiv.net/ajax/novel/series/${novelId}`)
-      .json();
-    const obj = data.body;
+    const obj: any = await this.fetchPixivBody(
+      `https://www.pixiv.net/ajax/novel/series/${novelId}`,
+    );
 
     const author: WebNovelAuthor = {
       name: obj.userName,
@@ -175,12 +226,10 @@ export class Pixiv implements WebNovelProvider {
     const keywords = Array.isArray(obj.tags) ? [...obj.tags] : [];
 
     if (keywords.length === 0) {
-      const contentData: any = await this.client
-        .get(
-          `https://www.pixiv.net/ajax/novel/series_content/${novelId}?limit=30&last_order=0&order_by=asc`,
-        )
-        .json();
-      const contents = contentData.body?.page?.seriesContents ?? [];
+      const contentBody: any = await this.fetchPixivBody(
+        `https://www.pixiv.net/ajax/novel/series_content/${novelId}?limit=30&last_order=0&order_by=asc`,
+      );
+      const contents = contentBody?.page?.seriesContents ?? [];
 
       contents.forEach((seriesContent: any) => {
         if (seriesContent.title == undefined) {
@@ -212,10 +261,9 @@ export class Pixiv implements WebNovelProvider {
 
     toc.length = 0;
 
-    const titleData: any = await this.client
-      .get(`https://www.pixiv.net/ajax/novel/series/${novelId}/content_titles`)
-      .json();
-    const items = titleData.body ?? [];
+    const items: any[] = await this.fetchPixivBody(
+      `https://www.pixiv.net/ajax/novel/series/${novelId}/content_titles`,
+    );
 
     items.forEach((item: any) => {
       if (!item.available) {
@@ -273,12 +321,10 @@ export class Pixiv implements WebNovelProvider {
       return null;
     }
 
-    const data: any = await this.client
-      .get(
-        `https://www.pixiv.net/ajax/novel/${chapterId}/insert_illusts?id%5B%5D=${id}`,
-      )
-      .json();
-    return data?.body?.[id]?.illust?.images?.original ?? null;
+    const body: any = await this.fetchPixivBody(
+      `https://www.pixiv.net/ajax/novel/${chapterId}/insert_illusts?id%5B%5D=${id}`,
+    );
+    return body?.[id]?.illust?.images?.original ?? null;
   }
 
   private readonly rubyPattern = /\[\[rb:([^>]+) > ([^\]]+)\]\]/g;
@@ -295,12 +341,11 @@ export class Pixiv implements WebNovelProvider {
     _novelId: string,
     chapterId: string,
   ): Promise<WebNovelChapter> {
-    await this.ensureViewingSettings();
+    await this.precheckViewingSettingsIfNeeded();
 
-    const data: any = await this.client
-      .get(`https://www.pixiv.net/ajax/novel/${chapterId}`)
-      .json();
-    const body = data.body;
+    const body: any = await this.fetchPixivBody(
+      `https://www.pixiv.net/ajax/novel/${chapterId}`,
+    );
 
     const embeddedImages = body.textEmbeddedImages ?? null;
     const content: string = body.content;
@@ -315,7 +360,7 @@ export class Pixiv implements WebNovelProvider {
       }),
     );
     if (paragraphs.length <= 1) {
-      console.error('Pixiv chapter data:', data);
+      console.error('Pixiv chapter data:', body);
       throw new CrawlerParseError('Pixiv 章节解析结果行数异常');
     }
 

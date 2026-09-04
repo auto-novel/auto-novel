@@ -4,7 +4,10 @@
   "type": "module",
   "packageManager": "pnpm@10.33.4",
   "scripts": {
-    "build": "pnpm --stream -r run build",
-    "dev:web": "pnpm --stream --filter \"@auto-novel/web^...\" run build && pnpm --stream --parallel --filter \"@auto-novel/web...\" run dev"
+    "build": "pnpm -r build",
+    "build:daemon": "pnpm --filter \"@auto-novel/daemon...\" build",
+    "build:web": "pnpm --filter \"@auto-novel/web...\" build",
+    "predev:web": "pnpm --filter \"@auto-novel/web^...\" build",
+    "dev:web": "pnpm --parallel --filter \"@auto-novel/web...\" dev"
   }
 }

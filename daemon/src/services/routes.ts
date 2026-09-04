@@ -1,8 +1,12 @@
-import { PROVIDER_IDS } from '@auto-novel/crawler';
+import {
+  CrawlerAuthError,
+  CrawlerHttpError,
+  CrawlerInputError,
+} from '@auto-novel/crawler';
 import * as z from 'zod';
 import Express, { Router } from 'express';
-import manifest from '@/package.json';
 import type { CrawlerService } from '@/services/crawler';
+import { ProviderIdSchema } from '@/services/providers';
 
 export function createCrawlerRouter(crawlerService: CrawlerService): Router {
   const router: Router = Express.Router({ mergeParams: true });
@@ -105,8 +109,22 @@ function errorHandler(
     return;
   }
 
-  if (isUnknownProviderError(error)) {
+  if (error instanceof CrawlerInputError) {
     res.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof CrawlerAuthError) {
+    res.status(403).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof CrawlerHttpError) {
+    res.status(502).json({
+      error: error.message,
+      upstreamStatus: error.status,
+      upstreamUrl: error.url,
+    });
     return;
   }
 
@@ -116,12 +134,6 @@ function errorHandler(
     method: req.method,
   });
   res.status(500).json({ error: 'Internal server error' });
-}
-
-function isUnknownProviderError(error: unknown): error is Error {
-  return (
-    error instanceof Error && error.message.startsWith('Unknown providerId')
-  );
 }
 
 function normalizeQuery(query: Record<string, string | string[] | undefined>) {
@@ -140,10 +152,8 @@ function normalizeQuery(query: Record<string, string | string[] | undefined>) {
   );
 }
 
-const providerIdSchema = z.enum(PROVIDER_IDS);
-
 const metadataParamsSchema = z.object({
-  providerId: providerIdSchema,
+  providerId: ProviderIdSchema,
   novelId: z.string().min(1),
 });
 
@@ -152,7 +162,7 @@ const chapterParamsSchema = metadataParamsSchema.extend({
 });
 
 const rankParamsSchema = z.object({
-  providerId: providerIdSchema,
+  providerId: ProviderIdSchema,
 });
 
 const rankQuerySchema = z

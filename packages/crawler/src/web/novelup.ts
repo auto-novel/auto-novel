@@ -68,6 +68,9 @@ export class Novelup implements WebNovelProvider {
         .next();
 
     const title = $('h1.storyTitle').text().trim();
+    if (!title) {
+      throw new CrawlerParseError('Novelup 标题解析失败');
+    }
 
     const authors = $('a.storyAuthor')
       .first()
@@ -79,6 +82,9 @@ export class Novelup implements WebNovelProvider {
           }) satisfies WebNovelAuthor,
       )
       .get();
+    if (authors.length === 0 || !authors[0]?.name) {
+      throw new CrawlerParseError('Novelup 作者解析失败');
+    }
 
     const typeText = $('p.state_lamp span').last().text().trim();
     const type = parseWebNovelType(typeText);
@@ -182,9 +188,15 @@ export class Novelup implements WebNovelProvider {
     );
 
     const $content = $('p#episode_content').first();
+    if ($content.length === 0) {
+      throw new CrawlerParseError('Novelup 章节正文解析失败');
+    }
     $content.find('rp, rt').remove();
 
     const paragraphs = $content.text().split(/\r?\n/);
+    if (paragraphs.every((paragraph) => paragraph.trim().length === 0)) {
+      throw new CrawlerParseError('Novelup 章节正文为空');
+    }
 
     return { paragraphs };
   }

@@ -6,10 +6,23 @@ export type CrawlerTocItem = Readonly<{
 
 export type TocUpdateKind = 'unchanged' | 'append-only' | 'existing-updated';
 
+const isSameCreateAt = (left: string | null, right: string | null) => {
+  if (left === right) return true;
+  if (left == null || right == null) return false;
+
+  const leftTimestamp = Date.parse(left);
+  const rightTimestamp = Date.parse(right);
+  return (
+    !Number.isNaN(leftTimestamp) &&
+    !Number.isNaN(rightTimestamp) &&
+    leftTimestamp === rightTimestamp
+  );
+};
+
 const isSameTocItem = (left: CrawlerTocItem, right: CrawlerTocItem) =>
   left.title === right.title &&
   left.chapterId === right.chapterId &&
-  left.createAt === right.createAt;
+  isSameCreateAt(left.createAt, right.createAt);
 
 // 检测目录更新是否为仅追加（append-only）更新。
 export const classifyTocUpdate = (

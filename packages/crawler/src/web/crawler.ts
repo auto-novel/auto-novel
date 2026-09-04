@@ -18,29 +18,32 @@ import { Syosetu } from './syosetu';
 
 type ProviderInitFn = () => WebNovelProvider;
 
-type ProviderId =
-  | 'alphapolis'
-  | 'hameln'
-  | 'kakuyomu'
-  | 'novelup'
-  | 'pixiv'
-  | 'syosetu';
+export const WEB_NOVEL_PROVIDER_IDS = [
+  'alphapolis',
+  'hameln',
+  'kakuyomu',
+  'novelup',
+  'pixiv',
+  'syosetu',
+] as const;
 
-type ProviderRegistry = Partial<Record<ProviderId, ProviderInitFn>>;
+export type WebNovelProviderId = (typeof WEB_NOVEL_PROVIDER_IDS)[number];
+
+type ProviderRegistry = Partial<Record<WebNovelProviderId, ProviderInitFn>>;
 
 export class WebNovelCrawler {
   private readonly providers = new Map<string, ProviderInitFn>();
   private readonly providerInstances = new Map<string, WebNovelProvider>();
 
   constructor(initialProviders: ProviderRegistry = {}) {
-    const defaultProviders: Record<ProviderId, ProviderInitFn> = {
+    const defaultProviders = {
       alphapolis: () => new Alphapolis(ky),
       hameln: () => new Hameln(ky),
       pixiv: () => new Pixiv(ky),
       novelup: () => new Novelup(ky),
       kakuyomu: () => new Kakuyomu(ky),
       syosetu: () => new Syosetu(ky, { concurrency: 2 }),
-    };
+    } satisfies Record<WebNovelProviderId, ProviderInitFn>;
 
     for (const [providerId, provider] of Object.entries(defaultProviders)) {
       this.providers.set(providerId, provider);

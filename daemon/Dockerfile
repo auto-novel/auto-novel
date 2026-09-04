@@ -1,34 +1,29 @@
-# Stage 1: build the app
 FROM node:25-bookworm AS builder
 
 RUN npm install -g corepack@latest --force && corepack enable
 
-WORKDIR /app
+WORKDIR /workspace
 
-ENV NODE_ENV=production
-
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY daemon/package.json ./daemon/package.json
+COPY packages/crawler/package.json ./packages/crawler/package.json
 
 RUN pnpm install --frozen-lockfile
 
-COPY . .
+COPY daemon ./daemon
+COPY packages/crawler ./packages/crawler
 
-RUN pnpm build
+RUN pnpm --filter @auto-novel/crawler build
+RUN pnpm --filter @auto-novel/daemon build
+RUN pnpm --filter @auto-novel/daemon --legacy deploy --prod /app
 
-RUN CI=true pnpm prune --prod
-
-# Stage 2: Runner
 FROM node:25 AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# USER node
-
-COPY --from=builder --chown=node:node /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/dist ./dist
-COPY --from=builder --chown=node:node /app/package.json ./
+COPY --from=builder --chown=node:node /app ./
 
 ENV CONFIG_PATH=/app/config.json
 CMD ["node", "dist/app.js"]

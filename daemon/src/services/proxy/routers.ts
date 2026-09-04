@@ -1,7 +1,7 @@
 import Express, { Router } from 'express';
 import * as z from 'zod';
 
-import { ProxyConfigSchema, ProxyManager } from './manager';
+import { ProxyConfigSchema, ProxyManager, type ProxyState } from './manager';
 
 const proxyBodySchema = ProxyConfigSchema.strict();
 
@@ -11,7 +11,7 @@ export function createProxyRouter(proxyManager: ProxyManager): Router {
 
   router.get('/', (_req, res) => {
     try {
-      res.json(proxyManager.list());
+      res.json(proxyManager.list().map(toPublicProxyState));
     } catch (error) {
       handleUnexpectedError(error, res, 'Failed to list proxies');
     }
@@ -32,7 +32,7 @@ export function createProxyRouter(proxyManager: ProxyManager): Router {
 
     try {
       const state = proxyManager.add(result.data);
-      res.status(201).json(state);
+      res.status(201).json(toPublicProxyState(state));
     } catch (error) {
       handleUnexpectedError(error, res, 'Failed to add proxy');
     }
@@ -54,6 +54,14 @@ export function createProxyRouter(proxyManager: ProxyManager): Router {
   });
 
   return router;
+}
+
+export function toPublicProxyState(state: ProxyState) {
+  const { protocol, host, port } = state.config;
+  return {
+    ...state,
+    config: { protocol, host, port },
+  };
 }
 
 function handleUnexpectedError(
