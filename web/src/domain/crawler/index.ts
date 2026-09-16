@@ -5,6 +5,7 @@ import type { WebNovelChapter, WebNovelMetadata } from '@/external';
 import { WebNovelCrawlerApi } from '@/external';
 import type { WebNovelDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
+import { useWhoamiStore } from '@/stores';
 
 import { classifyTocUpdate } from './TocUpdate';
 
@@ -61,6 +62,7 @@ const updateWebNovel = async (
   current ??= await WebNovelApi.getNovel(providerId, novelId);
   const currentBody = toCurrentMutationBody(current);
 
+  const { whoami } = useWhoamiStore();
   const newChapterIds = body.toc.flatMap((item) =>
     item.chapterId == null ? [] : [item.chapterId],
   );
@@ -68,8 +70,11 @@ const updateWebNovel = async (
   if (newChapterIds.length === 0) {
     throw new Error('未获取到目录，请手动打开源站确保你有办法访问');
   }
-  if (body.toc.length < current.toc.length) {
-    throw new Error('目录变短，放弃更新，请手动打开源站确保你有办法访问');
+
+  if (!whoami.isAdmin) {
+    if (body.toc.length < current.toc.length) {
+      throw new Error('目录变短，放弃更新，请手动打开源站确保你有办法访问');
+    }
   }
 
   if (isEqual(body, currentBody)) {
