@@ -27,3 +27,5 @@ export interface TranslationTask {
     translated: string[],
   ): Promise<void>;
 }
+
+export type TranslatorId = 'gpt' | 'sakura';

@@ -14,6 +14,7 @@ export class TaskExecutor {
     private task: TranslationTask,
     private pipeline: TranslationPipeline,
     private fetchSemaphore: Semaphore,
+    private canUpload?: () => boolean,
   ) {}
 
   /**
@@ -35,7 +36,10 @@ export class TaskExecutor {
     tracker.onLog(`[${chapter.title}] 开始获取原文`);
 
     try {
-      const fetchAndEnqueue = async () => {
+      if (this.task.type !== 'local' && this.canUpload?.() === false) {
+        throw new Error('存在未通过上传检查的翻译器，无法启动网络／文库任务');
+      }
+      const fetchAndPrepare = async () => {
         await this.pipeline.waitUntilBelowHighWaterMark(signal);
         const detail = await this.task.fetchChapter(chapterId);
 
@@ -55,15 +59,14 @@ export class TaskExecutor {
           signal,
           tracker.segmentTracker,
         );
-        await this.pipeline.queue.enqueueAll(segments, signal);
         tracker.onChapterStatus(chapterId, 'translating');
         tracker.onLog(`[${chapter.title}] 开始翻译`);
 
         return { detail, segments, segmentPromises };
       };
       const { detail, segments, segmentPromises } = this.fetchSemaphore
-        ? await this.fetchSemaphore.use(fetchAndEnqueue)
-        : await fetchAndEnqueue();
+        ? await this.fetchSemaphore.use(fetchAndPrepare)
+        : await fetchAndPrepare();
 
       const translated = await this.pipeline.resolveTranslation(
         segments,

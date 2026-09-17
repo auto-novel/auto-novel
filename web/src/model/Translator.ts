@@ -8,6 +8,7 @@ export interface GptWorker {
   endpoint: string;
   model: string;
   key: string;
+  concurrency?: number;
 }
 
 export interface GptPipelineWorker extends GptWorker {
@@ -18,6 +19,7 @@ export interface GptPipelineWorker extends GptWorker {
 export interface SakuraWorker {
   id: string;
   endpoint: string;
+  concurrency?: number;
   segLength?: number;
   prevSegLength?: number;
 }

@@ -9,26 +9,43 @@ import { VueDraggable } from 'vue-draggable-plus';
 import {
   Semaphore,
   OpenAiTranslator,
+  SakuraTranslator,
   TranslationPipeline,
 } from '@auto-novel/translator';
 import type { TranslatorTracker } from '@auto-novel/translator';
 
 import { doAction } from '@/pages/util';
-import { useGptPipelineWorkspaceStore, useWorkspaceStore } from '@/stores';
+import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type { TranslationTask } from '@/domain/translator/TranslationTask/types';
+import type {
+  TranslationTask,
+  TranslatorId,
+} from '@/domain/translator/TranslationTask/types';
 import { TaskState } from '@/domain/translator/TaskState';
 import type { ChapterStatus } from '@/domain/translator/TaskState';
-import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
+import type {
+  GptPipelineWorker,
+  SakuraWorker,
+  TranslateJob,
+  TranslateJobRecord,
+} from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import PipelineTaskCard from './components/PipelineTaskCard.vue';
 
+const props = defineProps<{ translatorId: TranslatorId }>();
 const message = useMessage();
-const pipelineWorkspace = useGptPipelineWorkspaceStore();
-const gptWorkspace = useWorkspaceStore('gpt'); // 暂时与旧版 GPT 共享任务队列
-const jobs = computed(() => gptWorkspace.ref.value.jobs);
+
+const isSakura = computed(() => props.translatorId === 'sakura');
+const segCacheName = isSakura.value ? 'sakura-seg-cache' : 'gpt-seg-cache';
+
+const workerStore = useWorkspaceStore(
+  isSakura.value ? 'sakura' : 'gpt-pipeline',
+);
+const jobStore = useWorkspaceStore(props.translatorId);
+
+const jobs = computed(() => jobStore.ref.value.jobs);
 
 const showWorkerModal = ref(false);
 const showLocalVolumeDrawer = ref(false);
@@ -43,7 +60,8 @@ const HIGH_WATER_MARK = 100;
 const pipeline = new TranslationPipeline(
   HIGH_WATER_MARK,
   undefined,
-  new IndexedDbSegmentCache('gpt-seg-cache'),
+  new IndexedDbSegmentCache(segCacheName),
+  isSakura.value ? 'chapter' : 'segment',
 );
 
 // ========== 任务状态管理 ==========
@@ -55,6 +73,7 @@ const taskVersions = ref(new Map<string, number>());
 interface WorkerState {
   running: boolean;
   concurrency: { current: number; max: number };
+  allowUpload?: boolean;
 }
 const workerStates = ref(new Map<string, WorkerState>());
 const workerErrors = computed(() => {
@@ -77,10 +96,12 @@ let processLoopPromise: Promise<void> | null = null;
 
 onUnmounted(() => {
   pipeline.clearLoops();
+  pipeline.queue.clear();
   processLoopAbortController?.abort();
   processLoopAbortController = null;
   processLoopPromise = null;
   executingTasks.clear();
+  workerStates.value.clear();
 });
 // ========== 任务过滤 ==========
 
@@ -107,7 +128,7 @@ async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
   let task = taskCache.get(taskDesc);
   if (!task) {
     const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-    task = createTranslationTask(desc, 'gpt', params);
+    task = createTranslationTask(desc, props.translatorId, params);
     taskCache.set(taskDesc, task);
   }
   return task;
@@ -176,7 +197,11 @@ function runProcessLoop(): Promise<void> | null {
       executingTasks.add(job.task);
 
       const task = await getOrCreateTask(job.task);
-      const executor = new TaskExecutor(task, pipeline, fetchSemaphore);
+      const executor = new TaskExecutor(task, pipeline, fetchSemaphore, () =>
+        [...workerStates.value.values()].every(
+          (s) => !s.running || s.allowUpload !== false,
+        ),
+      );
 
       const segmentTracker = state.getChapterState(chapterId);
       if (!segmentTracker) continue;
@@ -230,36 +255,43 @@ function runProcessLoop(): Promise<void> | null {
 
 // ========== Worker 生命周期管理 ==========
 
-const startWorker = (workerId: string) => {
+const startWorker = async (workerId: string) => {
   if (workerStates.value.get(workerId)?.running) return;
 
-  const w = pipelineWorkspace.ref.value.workers.find((w) => w.id === workerId);
+  const w = workerStore.ref.value.workers.find((w) => w.id === workerId);
   if (!w) {
     message.error(`翻译器 ${workerId} 不存在`);
     return;
   }
 
-  workerStates.value.set(workerId, {
+  const state = reactive<WorkerState>({
     running: true,
-    concurrency: { current: 0, max: w.concurrency },
+    concurrency: { current: 0, max: w.concurrency ?? 1 },
   });
+  workerStates.value.set(workerId, state);
 
-  const t = new OpenAiTranslator({
-    endpoint: w.endpoint,
-    key: w.key,
-    model: w.model,
-    profile: w.profile,
-  });
+  try {
+    const t = isSakura.value
+      ? await SakuraTranslator.create(w as SakuraWorker)
+      : new OpenAiTranslator(w as GptPipelineWorker);
 
-  const workerTracker: TranslatorTracker = {
-    onConcurrencyChange: (current: number, max: number) => {
-      const state = workerStates.value.get(w.id);
-      if (state) state.concurrency = { current, max };
-    },
-  };
-  pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+    if (workerStates.value.get(workerId) !== state) return;
 
-  runProcessLoop();
+    state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
+
+    const workerTracker: TranslatorTracker = {
+      onConcurrencyChange: (current: number, max: number) => {
+        state.concurrency = { current, max };
+      },
+    };
+    pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+
+    runProcessLoop();
+  } catch (e) {
+    if (workerStates.value.get(workerId) !== state) return;
+    stopWorker(workerId);
+    message.error(`翻译器启动失败：${e}`);
+  }
 };
 
 const stopWorker = (workerId: string) => {
@@ -273,16 +305,16 @@ const stopWorker = (workerId: string) => {
   if ([...workerStates.value.values()].every((s) => !s.running)) {
     processLoopAbortController?.abort();
     processLoopAbortController = null;
-    processLoopPromise = null;
+    pipeline.queue.clear();
   }
 };
 
 const startAllWorkers = () => {
-  for (const w of pipelineWorkspace.ref.value.workers) startWorker(w.id);
+  for (const w of workerStore.ref.value.workers) startWorker(w.id);
 };
 
 const stopAllWorkers = () => {
-  for (const w of pipelineWorkspace.ref.value.workers) stopWorker(w.id);
+  for (const w of workerStore.ref.value.workers) stopWorker(w.id);
 };
 
 const deleteJob = (task: string) => {
@@ -290,7 +322,7 @@ const deleteJob = (task: string) => {
     message.error('任务正在翻译中');
     return;
   }
-  gptWorkspace.deleteJob(task);
+  jobStore.deleteJob(task);
   clearTaskRuntimeState(task);
 };
 
@@ -313,7 +345,7 @@ function retryTaskCards() {
 
 const clearCache = () =>
   doAction(
-    new IndexedDbSegmentCache('gpt-seg-cache').clear(),
+    new IndexedDbSegmentCache(segCacheName).clear(),
     '缓存清除',
     message,
   );
@@ -387,10 +419,10 @@ watch(
 
 <template>
   <div class="layout-content">
-    <n-h1>GPT工作区BETA</n-h1>
+    <n-h1>{{ isSakura ? 'Sakura' : 'GPT' }}工作区BETA</n-h1>
     <bulletin>
       <n-p>
-        支持并发和查看章节分块状态的新GPT工作区。目前处于测试阶段，有问题请在群内反馈。
+        支持并发和查看章节分块状态的新工作区。目前处于测试阶段，有问题请在群内反馈。
       </n-p>
     </bulletin>
 
@@ -419,34 +451,35 @@ watch(
     </n-flex>
 
     <n-empty
-      v-if="pipelineWorkspace.ref.value.workers.length === 0"
+      v-if="workerStore.ref.value.workers.length === 0"
       description="没有翻译器"
     />
     <n-list v-else class="worker-list">
       <vue-draggable
-        v-model="pipelineWorkspace.ref.value.workers"
+        v-model="workerStore.ref.value.workers"
         :animation="150"
         handle=".drag-trigger"
         filter=".is-running"
       >
         <n-list-item
-          v-for="w of pipelineWorkspace.ref.value.workers"
+          v-for="w of workerStore.ref.value.workers"
           :key="w.id"
           :class="{ 'is-running': workerStates.get(w.id)?.running }"
         >
           <pipeline-worker-card
+            :translator-id="translatorId"
             :worker="w"
             :running="!!workerStates.get(w.id)?.running"
             :concurrency="
               workerStates.get(w.id)?.concurrency ?? {
                 current: 0,
-                max: w.concurrency,
+                max: w.concurrency ?? 1,
               }
             "
             :error-count="workerErrors.get(w.id) ?? 0"
             @start="startWorker"
             @stop="stopWorker"
-            @delete="pipelineWorkspace.deleteWorker"
+            @delete="workerStore.deleteWorker"
           />
         </n-list-item>
       </vue-draggable>
@@ -494,19 +527,20 @@ watch(
         ref="taskCardRefs"
         :key="job.task"
         :job="job"
+        :translator-id="translatorId"
         :task-state="taskStates.get(job.task)"
         :task-cache-entry="taskCache.get(job.task)"
         @delete="deleteJob"
         @retry="(task: string) => runProcessLoop()"
         @top="
           (task: string) =>
-            gptWorkspace.topJob(
+            jobStore.topJob(
               jobs.find((j: { task: string }) => j.task === task)!,
             )
         "
         @bottom="
           (task: string) =>
-            gptWorkspace.bottomJob(
+            jobStore.bottomJob(
               jobs.find((j: { task: string }) => j.task === task)!,
             )
         "
@@ -516,9 +550,10 @@ watch(
 
   <local-volume-list-specific-translation
     v-model:show="showLocalVolumeDrawer"
-    type="gpt"
+    :type="translatorId"
   />
-  <gpt-pipeline-worker-modal v-model:show="showWorkerModal" />
+  <sakura-worker-modal v-if="isSakura" v-model:show="showWorkerModal" />
+  <gpt-pipeline-worker-modal v-else v-model:show="showWorkerModal" />
 </template>
 
 <style scoped>

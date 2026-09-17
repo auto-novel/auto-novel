@@ -150,12 +150,16 @@ const menuOptions = computed<MenuOption[]>(() => {
           key: '/workspace/gpt',
         },
         {
+          label: renderLabel('Sakura工作区', '/workspace/sakura'),
+          key: '/workspace/sakura',
+        },
+        {
           label: renderLabel('GPT工作区BETA', '/workspace/gpt-pipeline'),
           key: '/workspace/gpt-pipeline',
         },
         {
-          label: renderLabel('Sakura工作区', '/workspace/sakura'),
-          key: '/workspace/sakura',
+          label: renderLabel('Sakura工作区BETA', '/workspace/sakura-pipeline'),
+          key: '/workspace/sakura-pipeline',
         },
         {
           label: renderLabel('交互翻译', '/workspace/interactive'),
