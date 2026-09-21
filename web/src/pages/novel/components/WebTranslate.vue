@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useKeyModifier } from '@vueuse/core';
 import ky from 'ky';
 
 import { WebNovelApi } from '@/api';
@@ -11,6 +10,7 @@ import {
   useWhoamiStore,
   useWorkspaceStore,
 } from '@/stores';
+import { useShouldTopJob } from '@/util';
 
 const props = defineProps<{
   providerId: string;
@@ -91,7 +91,7 @@ const files = computed(() => {
   };
 });
 
-const pressControl = useKeyModifier('Control');
+const shouldTopJob = useShouldTopJob();
 const submitJob = (id: 'gpt' | 'sakura') => {
   const { startIndex, endIndex, level, forceMetadata, useBrowserCrawler } =
     translateOptions.value!.getTranslateTaskParams();
@@ -140,7 +140,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     };
     const success = workspace.addJob(job);
     if (success) {
-      if (setting.value.autoTopJobWhenAddTask || pressControl.value) {
+      if (setting.value.autoTopJobWhenAddTask || shouldTopJob.value) {
         workspace.topJob(job);
       }
     }

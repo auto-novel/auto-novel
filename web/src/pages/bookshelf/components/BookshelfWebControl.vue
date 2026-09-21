@@ -1,9 +1,8 @@
 <script lang="ts" setup>
-import { useKeyModifier } from '@vueuse/core';
-
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { FavoredRepo, useSettingStore, useWorkspaceStore } from '@/stores';
+import { useShouldTopJob } from '@/util';
 
 const props = defineProps<{
   selectedNovels: WebNovelOutlineDto[];
@@ -92,7 +91,7 @@ const translateLevel = ref<'normal' | 'expire' | 'all'>('normal');
 const forceMetadata = ref(false);
 const first5 = ref(false);
 const reverseOrder = ref(false);
-const shouldTopJob = useKeyModifier('Control');
+const shouldTopJob = useShouldTopJob();
 
 const queueJobs = (type: 'gpt' | 'sakura') => {
   let novels = props.selectedNovels;
