@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { FileDownloadOutlined } from '@vicons/material';
-import { useKeyModifier } from '@vueuse/core';
 
 import { WenkuNovelApi } from '@/api';
 import type { TranslateTaskParams } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import type { VolumeJpDto } from '@/model/WenkuNovel';
 import { useSettingStore, useWhoamiStore, useWorkspaceStore } from '@/stores';
+import { useShouldTopJob } from '@/util';
 
 const { novelId, volume, getParams } = defineProps<{
   novelId: string;
@@ -53,7 +53,7 @@ const file = computed(() => {
   return { url, filename };
 });
 
-const shouldTopJob = useKeyModifier('Control');
+const shouldTopJob = useShouldTopJob();
 const submitJob = (id: 'gpt' | 'sakura') => {
   const task = TranslateTaskDescriptor.wenku(
     novelId,

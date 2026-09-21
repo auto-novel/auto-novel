@@ -8,6 +8,7 @@ import {
 import { TranslateJob, TranslateTaskDescriptor } from '@/model/Translator';
 import { useBookshelfLocalStore } from '@/pages/bookshelf/BookshelfLocalStore';
 import { useWorkspaceStore } from '@/stores';
+import { useShouldTopJob } from '@/util';
 
 const props = defineProps<{
   id: 'gpt' | 'sakura';
@@ -17,6 +18,7 @@ const message = useMessage();
 
 const workspace = useWorkspaceStore(props.id);
 const workspaceRef = workspace.ref;
+const shouldTopJob = useShouldTopJob();
 
 const store = useBookshelfLocalStore();
 
@@ -71,7 +73,7 @@ const downloadVolumes = async () => {
           label="重试未完成任务"
           :icon="RefreshOutlined"
           :round="false"
-          @action="workspace.retryAllJobRecords()"
+          @action="workspace.retryAllJobRecords(shouldTopJob)"
         />
         <c-button
           label="下载本地小说"
@@ -99,7 +101,7 @@ const downloadVolumes = async () => {
     <n-list-item v-for="job of records" :key="job.task">
       <job-record
         :job="job"
-        @retry-job="workspace.retryJobRecord(job)"
+        @retry-job="workspace.retryJobRecord(job, shouldTopJob)"
         @delete-job="workspace.deleteJobRecord(job)"
       />
     </n-list-item>

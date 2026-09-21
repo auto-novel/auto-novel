@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { useKeyModifier } from '@vueuse/core';
-
 import { FavoredRepo, useLocalVolumeStore, useSettingStore } from '@/stores';
+import { useShouldTopJob } from '@/util';
 import { useBookshelfLocalStore } from '../BookshelfLocalStore';
 
 const props = defineProps<{
@@ -98,7 +97,7 @@ const moveToFavored = async () => {
 // 生成翻译任务
 const translateLevel = ref<'expire' | 'all'>('expire');
 const reverseOrder = ref(false);
-const shouldTopJob = useKeyModifier('Control');
+const shouldTopJob = useShouldTopJob();
 
 const queueJobs = (type: 'gpt' | 'sakura') => {
   let ids = props.selectedIds;
