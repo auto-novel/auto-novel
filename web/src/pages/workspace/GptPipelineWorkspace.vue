@@ -38,6 +38,8 @@ const GLOBAL_WINDOW = 66;
 /** 同时 fetch 的章节数上限 */
 const FETCH_CONCURRENCY = 1;
 const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
+/** 进入页面时同时初始化（拉 TOC）的任务数上限，其余后台串行补齐 */
+const INIT_CONCURRENCY = 2;
 /** pipeline 内同时翻译的分块的高水位标记 */
 const HIGH_WATER_MARK = 100;
 const pipeline = new TranslationPipeline(
@@ -61,10 +63,11 @@ const workerErrors = computed(() => {
   const errors = new Map<string, number>();
   for (const [, state] of taskStates.value) {
     for (const [, chapterState] of state.chapterStates) {
-      for (const seg of chapterState.segments) {
-        if (seg.status === 'error' && seg.translatorId) {
-          errors.set(seg.translatorId, (errors.get(seg.translatorId) ?? 0) + 1);
-        }
+      // errorByTranslator 是增量维护的，这里不再逐个分段扫描（也不再依赖每个分段）
+      for (const [translatorId, count] of Object.entries(
+        chapterState.errorByTranslator,
+      )) {
+        errors.set(translatorId, (errors.get(translatorId) ?? 0) + count);
       }
     }
   }
@@ -353,32 +356,47 @@ watch(
       }
       uninitialized.push(job);
     }
-    await Promise.all(
-      uninitialized.map(async (job) => {
-        try {
-          const task = await getOrCreateTask(job.task);
-          if (!task.initialized) await task.initMeta();
-          const currentJob = jobs.value.find((it) => it.task === job.task);
-          if (!currentJob || currentJob.createAt !== job.createAt) return;
-          const chapters = task.chapters;
-          const state = reactive(new TaskState(job.task)) as TaskState;
-          state.initChapters(chapters);
-          taskStates.value.set(job.task, state);
-          taskVersions.value.set(job.task, job.createAt);
-          const doneCount = chapters.filter((c) => c.status === 'done').length;
-          (job as TranslateJobRecord).progress = {
-            finished: doneCount,
-            error: 0,
-            total: chapters.length,
-          };
-          if (chapters.length === 0 || doneCount === chapters.length) {
-            job.finishAt = Date.now();
-          }
-        } catch (e) {
-          console.warn('任务初始化失败', job.task, e);
+    const initJob = async (job: TranslateJob) => {
+      try {
+        const task = await getOrCreateTask(job.task);
+        if (!task.initialized) await task.initMeta();
+        const currentJob = jobs.value.find((it) => it.task === job.task);
+        if (!currentJob || currentJob.createAt !== job.createAt) return;
+        const chapters = task.chapters;
+        const state = reactive(new TaskState(job.task)) as TaskState;
+        state.initChapters(chapters);
+        taskStates.value.set(job.task, state);
+        taskVersions.value.set(job.task, job.createAt);
+        const doneCount = chapters.filter((c) => c.status === 'done').length;
+        (job as TranslateJobRecord).progress = {
+          finished: doneCount,
+          error: 0,
+          total: chapters.length,
+        };
+        if (chapters.length === 0 || doneCount === chapters.length) {
+          job.finishAt = Date.now();
         }
-      }),
-    );
+      } catch (e) {
+        console.warn('任务初始化失败', job.task, e);
+      }
+    };
+
+    // 先只并发初始化队首几个：一次性把所有任务的 TOC 都拉回来，会把上游并发拖到
+    // 每个请求 17-21s（40 个任务时整页 22-26s 才可用）
+    const eager = uninitialized.slice(0, INIT_CONCURRENCY);
+    await Promise.all(eager.map(initJob));
+    if (uninitialized.length > eager.length) {
+      // 其余任务后台串行补齐，初始化完再唤醒处理循环（runProcessLoop 自身幂等）
+      void (async () => {
+        for (const job of uninitialized.slice(INIT_CONCURRENCY)) {
+          const currentJob = jobs.value.find((it) => it.task === job.task);
+          if (!currentJob || currentJob.createAt !== job.createAt) continue;
+          if (taskStates.value.get(job.task)?.initialized) continue;
+          await initJob(job);
+        }
+        runProcessLoop();
+      })();
+    }
     if (uninitialized.length > 0) runProcessLoop();
   },
   { immediate: true },
