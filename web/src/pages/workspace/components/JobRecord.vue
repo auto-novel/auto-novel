@@ -23,13 +23,13 @@ const isFinished = computed(() => TranslateJob.isFinished(props.job));
       <n-flex :size="6" :wrap="false">
         <c-icon-button
           v-if="!isFinished"
-          tooltip="重试"
+          title="重试"
           :icon="RefreshOutlined"
           @action="emit('retryJob')"
         />
 
         <c-icon-button
-          tooltip="删除"
+          title="删除"
           :icon="DeleteOutlineOutlined"
           type="error"
           @action="emit('deleteJob')"

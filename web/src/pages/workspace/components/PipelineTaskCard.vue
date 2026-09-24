@@ -192,68 +192,52 @@ const closePreview = () => {
           </n-flex>
 
           <n-flex :size="4" :wrap="false" style="flex-shrink: 0">
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('top', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowUpOutlined" />
-                  </template>
-                </n-button>
+            <n-button
+              size="tiny"
+              circle
+              quaternary
+              title="置顶"
+              @click.stop="emit('top', job.task)"
+            >
+              <template #icon>
+                <n-icon :component="KeyboardDoubleArrowUpOutlined" />
               </template>
-              置顶
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('bottom', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowDownOutlined" />
-                  </template>
-                </n-button>
+            </n-button>
+            <n-button
+              size="tiny"
+              circle
+              quaternary
+              title="置底"
+              @click.stop="emit('bottom', job.task)"
+            >
+              <template #icon>
+                <n-icon :component="KeyboardDoubleArrowDownOutlined" />
               </template>
-              置底
-            </n-tooltip>
-            <n-tooltip v-if="hasFailedChapters()" trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="warning"
-                  @click.stop="retryAllFailed()"
-                >
-                  <template #icon>
-                    <n-icon :component="RefreshOutlined" />
-                  </template>
-                </n-button>
+            </n-button>
+            <n-button
+              size="tiny"
+              circle
+              quaternary
+              type="warning"
+              title="重试失败"
+              @click.stop="retryAllFailed()"
+            >
+              <template #icon>
+                <n-icon :component="RefreshOutlined" />
               </template>
-              重试失败
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="error"
-                  @click.stop="emit('delete', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="DeleteOutlineOutlined" />
-                  </template>
-                </n-button>
+            </n-button>
+            <n-button
+              size="tiny"
+              circle
+              quaternary
+              type="error"
+              title="删除"
+              @click.stop="emit('delete', job.task)"
+            >
+              <template #icon>
+                <n-icon :component="DeleteOutlineOutlined" />
               </template>
-              删除
-            </n-tooltip>
+            </n-button>
           </n-flex>
 
           <n-icon
