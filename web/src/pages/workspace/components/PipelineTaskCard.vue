@@ -101,6 +101,20 @@ const previewData = ref<{
   title: string;
   chapterState: ChapterSegmentState | null;
 } | null>(null);
+/** 为了预览临时留在内存里的章节文本（LRU）：翻完就释放的章节，预览时按需装回，
+ *  看新章节时把最旧的一章再释放掉，内存只随「最近看过的几章」增长 */
+const PREVIEW_TEXT_KEEP = 2;
+const previewTextLru: string[] = [];
+const touchPreviewText = (chapterId: string) => {
+  const i = previewTextLru.indexOf(chapterId);
+  if (i >= 0) previewTextLru.splice(i, 1);
+  previewTextLru.push(chapterId);
+  while (previewTextLru.length > PREVIEW_TEXT_KEEP) {
+    const evicted = previewTextLru.shift()!;
+    props.taskState?.chapterStates.get(evicted)?.releaseText();
+  }
+};
+
 const openPreview = async (chapterId: string) => {
   try {
     const chapters = await getChapterMetas();
@@ -110,7 +124,7 @@ const openPreview = async (chapterId: string) => {
     const chapterState = props.taskState?.chapterStates.get(chapterId);
 
     let chapterStateForPreview: ChapterSegmentState | null = null;
-    if (chapterState?.ready) {
+    if (chapterState?.ready && !chapterState.textReleased) {
       chapterStateForPreview = chapterState;
     } else {
       let previewTask = props.taskCacheEntry;
@@ -123,6 +137,11 @@ const openPreview = async (chapterId: string) => {
       const detail = await previewTask.fetchChapter(chapterId);
 
       if (chapterState?.ready) {
+        // 章节翻完但文本已释放：把取回的原文/译文装回原 state（预览用）
+        chapterState.injectDoneTranslation(
+          detail.paragraphs,
+          detail.oldParagraphZh ?? [],
+        );
         chapterStateForPreview = chapterState;
       } else if (props.taskState?.getStatus(chapterId) === 'done') {
         const tlParagraphs = detail.oldParagraphZh;
@@ -134,6 +153,10 @@ const openPreview = async (chapterId: string) => {
       } else {
         chapterStateForPreview = chapterState ?? null;
       }
+    }
+
+    if (chapterStateForPreview && !chapterStateForPreview.textReleased) {
+      touchPreviewText(chapterId);
     }
 
     previewData.value = { title, chapterState: chapterStateForPreview };

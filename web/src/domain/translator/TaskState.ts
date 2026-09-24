@@ -25,6 +25,10 @@ export class ChapterSegmentState implements SegmentTracker {
   segments: SegmentInfo[] = [];
   /** 是否完成 Segment 切分 */
   ready = false;
+  /** 原文/译文是否已释放（章节 done 后释放，预览时再按需装回） */
+  textReleased = false;
+  /** 每个翻译器当前失败的分段数（增量维护，避免状态每次变化都全量扫描 segments） */
+  errorByTranslator: Record<string, number> = {};
 
   get allDone(): boolean {
     return (
@@ -42,6 +46,15 @@ export class ChapterSegmentState implements SegmentTracker {
     return this.segments.filter((s) => s.status === 'error').length;
   }
 
+  /** 释放整章原文/译文，只留状态元数据；预览会按需装回（injectDoneTranslation） */
+  releaseText(): void {
+    for (const seg of this.segments) {
+      if (seg.lines.length > 0) seg.lines = [];
+      if (seg.translatedLines.length > 0) seg.translatedLines = [];
+    }
+    this.textReleased = true;
+  }
+
   constructor(chapterId: string) {
     this.chapterId = chapterId;
     return reactive(this) as ChapterSegmentState;
@@ -55,12 +68,15 @@ export class ChapterSegmentState implements SegmentTracker {
       translatedLines: [],
       error: null,
     }));
+    this.errorByTranslator = {};
+    this.textReleased = false;
     this.ready = true;
   }
 
   onSegStart(segmentOrder: number, translatorId: string): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
+      if (seg.status === 'error') bumpError(this, seg.translatorId, -1);
       seg.status = 'translating';
       seg.translatorId = translatorId;
     }
@@ -69,6 +85,7 @@ export class ChapterSegmentState implements SegmentTracker {
   onSegComplete(segmentOrder: number, translatedLines: string[]): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
+      if (seg.status === 'error') bumpError(this, seg.translatorId, -1);
       seg.status = 'done';
       seg.translatedLines = translatedLines;
     }
@@ -77,6 +94,7 @@ export class ChapterSegmentState implements SegmentTracker {
   onSegError(segmentOrder: number, error: any): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
+      if (seg.status !== 'error') bumpError(this, seg.translatorId, 1);
       seg.status = 'error';
       seg.error = error;
     }
@@ -106,8 +124,22 @@ export class ChapterSegmentState implements SegmentTracker {
       translatedLines: translatedLines.slice(range.start, range.end),
       error: null,
     }));
+    this.errorByTranslator = {};
+    this.textReleased = false;
     this.ready = true;
   }
+}
+
+/** 维护 errorByTranslator 的计数（写成模块级函数，避免 reactive 包装后私有方法丢失） */
+function bumpError(
+  state: ChapterSegmentState,
+  translatorId: string | undefined,
+  delta: number,
+): void {
+  if (!translatorId) return;
+  const next = (state.errorByTranslator[translatorId] ?? 0) + delta;
+  if (next > 0) state.errorByTranslator[translatorId] = next;
+  else delete state.errorByTranslator[translatorId];
 }
 
 export class TaskState {
