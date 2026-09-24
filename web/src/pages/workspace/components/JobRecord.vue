@@ -20,7 +20,9 @@ const isFinished = computed(() => TranslateJob.isFinished(props.job));
       <job-task-link :task="job.task" />
     </template>
     <template #header-extra>
-      <n-flex :size="6" :wrap="false">
+      <div
+        style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap"
+      >
         <c-icon-button
           v-if="!isFinished"
           title="重试"
@@ -34,7 +36,7 @@ const isFinished = computed(() => TranslateJob.isFinished(props.job));
           type="error"
           @action="emit('deleteJob')"
         />
-      </n-flex>
+      </div>
     </template>
 
     <template #description>

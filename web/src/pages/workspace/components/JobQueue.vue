@@ -34,7 +34,14 @@ const percentage = computed(() => {
 <template>
   <n-thing>
     <template #avatar>
-      <n-flex vertical justify="center" style="height: 100%">
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          height: 100%;
+        "
+      >
         <n-icon
           class="drag-trigger"
           :size="18"
@@ -42,14 +49,16 @@ const percentage = computed(() => {
           :component="DragIndicatorOutlined"
           style="cursor: move"
         />
-      </n-flex>
+      </div>
     </template>
 
     <template #header>
       <job-task-link :task="job.task" />
     </template>
     <template #header-extra>
-      <n-flex :size="6" :wrap="false">
+      <div
+        style="display: flex; align-items: center; gap: 6px; flex-wrap: nowrap"
+      >
         <c-icon-button
           title="置顶"
           :icon="KeyboardDoubleArrowUpOutlined"
@@ -68,7 +77,7 @@ const percentage = computed(() => {
           type="error"
           @action="emit('deleteJob')"
         />
-      </n-flex>
+      </div>
     </template>
 
     <template #description>
