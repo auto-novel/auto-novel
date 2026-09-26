@@ -42,15 +42,31 @@ const link = computed(() => {
 
   return { text, url };
 });
+
+const themeVars = useThemeVars();
 </script>
 
 <template>
-  <router-link v-if="link.url" :to="link.url" target="_blank">
-    <n-text depth="3" underline style="font-size: 12px">
-      {{ link.text }}
-    </n-text>
-  </router-link>
-  <n-text v-else depth="3" style="font-size: 12px">
+  <router-link
+    v-if="link.url"
+    class="job-task-link job-task-link--underlined"
+    :to="link.url"
+    target="_blank"
+  >
     {{ link.text }}
-  </n-text>
+  </router-link>
+  <span v-else class="job-task-link">
+    {{ link.text }}
+  </span>
 </template>
+
+<style scoped>
+.job-task-link {
+  font-size: 12px;
+  color: v-bind('themeVars.textColor3');
+}
+
+.job-task-link--underlined {
+  text-decoration: underline;
+}
+</style>

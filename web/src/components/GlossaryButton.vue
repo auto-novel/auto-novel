@@ -11,6 +11,8 @@ import { downloadFile } from '@/util';
 const props = defineProps<{
   gnid?: GenericNovelId;
   value: Glossary;
+  /** 用于长列表行内，改用裸元素的轻量按钮 */
+  lite?: boolean;
 }>();
 
 const message = useMessage();
@@ -177,7 +179,14 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
 </script>
 
 <template>
+  <c-button-lite
+    v-if="lite"
+    :label="`术语表[${Object.keys(value).length}]`"
+    v-bind="$attrs"
+    @action="toggleGlossaryModal()"
+  />
   <c-button
+    v-else
     :label="`术语表[${Object.keys(value).length}]`"
     v-bind="$attrs"
     @action="toggleGlossaryModal()"

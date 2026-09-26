@@ -197,6 +197,21 @@ export namespace Humanize {
 
   export const bytes = (rawNum: number) =>
     unit(rawNum, ['B', 'KB', 'MB', 'GB', 'TB', 'PB'], 1024);
+
+  export const relativeTime = (timestamp: number) => {
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    const month = 30 * day;
+    const year = 365 * day;
+    const diff = Math.max(0, Date.now() - timestamp);
+    if (diff < minute) return `${Math.round(diff / 1000)} 秒前`;
+    if (diff < hour) return `${Math.round(diff / minute)} 分钟前`;
+    if (diff < day) return `${Math.round(diff / hour)} 小时前`;
+    if (diff < month) return `${Math.round(diff / day)} 天前`;
+    if (diff < year) return `${Math.round(diff / month)} 个月前`;
+    return `${Math.round(diff / year)} 年前`;
+  };
 }
 
 export const lazy = <T>(factory: () => T) => {

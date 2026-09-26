@@ -91,6 +91,12 @@ defineExpose({ retryAllFailed, hasFailedChapters });
 
 const message = useMessage();
 
+const statusLabel = computed(() => {
+  if (taskStatus.value === 'executing') return '翻译中';
+  if (taskStatus.value === 'done') return '已完成';
+  return '等待中';
+});
+
 function createTask(taskDesc: string): TranslationTask {
   const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
   return createTranslationTask(desc, 'gpt', params);
@@ -156,121 +162,62 @@ const closePreview = () => {
 </script>
 
 <template>
-  <n-card
-    size="small"
-    :hoverable="true"
-    :class="{ 'task-card--expanded': expanded }"
-    :header-style="{
-      cursor: 'pointer',
-      padding: '10px 14px',
-      'user-select': 'none',
-    }"
-    :content-style="
-      expanded ? { padding: '0 14px 10px 14px' } : { padding: '0' }
-    "
-  >
-    <template #header>
-      <div @click="toggleExpand">
-        <n-flex align="center" :wrap="false" style="flex: 1; min-width: 0">
-          <div style="flex: 1; min-width: 0">
-            <div class="task-name">{{ job.description }}</div>
-            <job-task-link :task="job.task" class="task-link" />
-          </div>
-          <n-flex :size="8" align="center" :wrap="false" style="flex-shrink: 0">
-            <n-tag v-if="taskStatus === 'executing'" size="tiny" type="info">
-              翻译中
-            </n-tag>
-            <n-tag v-else-if="taskStatus === 'done'" size="tiny" type="success">
-              已完成
-            </n-tag>
-            <n-tag v-else size="tiny" type="default">等待中</n-tag>
-            <span class="task-progress">
-              {{ jobRecord.progress?.finished ?? 0 }}/{{
-                jobRecord.progress?.total ?? chapterMetas.length ?? 0
-              }}
-            </span>
-          </n-flex>
-
-          <n-flex :size="4" :wrap="false" style="flex-shrink: 0">
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('top', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowUpOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              置顶
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('bottom', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowDownOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              置底
-            </n-tooltip>
-            <n-tooltip v-if="hasFailedChapters()" trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="warning"
-                  @click.stop="retryAllFailed()"
-                >
-                  <template #icon>
-                    <n-icon :component="RefreshOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              重试失败
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="error"
-                  @click.stop="emit('delete', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="DeleteOutlineOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              删除
-            </n-tooltip>
-          </n-flex>
-
-          <n-icon
-            :component="ChevronRightOutlined"
-            :class="['expand-arrow', { 'expand-arrow--rotated': expanded }]"
-          />
-        </n-flex>
+  <div class="task-card" :class="{ 'task-card--expanded': expanded }">
+    <div class="task-card__header" @click="toggleExpand">
+      <div class="task-card__title">
+        <div class="task-name">{{ job.description }}</div>
+        <job-task-link :task="job.task" class="task-link" />
       </div>
-    </template>
 
-    <div v-if="expanded && chapterMetas.length">
+      <div class="task-card__status">
+        <span class="chip" :class="`chip--${taskStatus}`">
+          {{ statusLabel }}
+        </span>
+        <span class="task-progress">
+          {{ jobRecord.progress?.finished ?? 0 }}/{{
+            jobRecord.progress?.total ?? chapterMetas.length ?? 0
+          }}
+        </span>
+      </div>
+
+      <div class="task-card__actions">
+        <c-icon-button-lite
+          tooltip="置顶"
+          :icon="KeyboardDoubleArrowUpOutlined"
+          @action="emit('top', job.task)"
+        />
+        <c-icon-button-lite
+          tooltip="置底"
+          :icon="KeyboardDoubleArrowDownOutlined"
+          @action="emit('bottom', job.task)"
+        />
+        <c-icon-button-lite
+          v-if="hasFailedChapters()"
+          tooltip="重试失败"
+          :icon="RefreshOutlined"
+          type="warning"
+          @action="retryAllFailed()"
+        />
+        <c-icon-button-lite
+          tooltip="删除"
+          :icon="DeleteOutlineOutlined"
+          type="error"
+          @action="emit('delete', job.task)"
+        />
+      </div>
+
+      <span class="expand-arrow" :class="{ 'expand-arrow--rotated': expanded }">
+        <component :is="ChevronRightOutlined" />
+      </span>
+    </div>
+
+    <div v-if="expanded && chapterMetas.length" class="task-card__body">
       <chapter-grid
         :task-state="taskState"
         @preview="(cid: string) => openPreview(cid)"
       />
     </div>
-  </n-card>
+  </div>
 
   <chapter-preview-modal
     :show="showPreview"
@@ -285,9 +232,72 @@ const closePreview = () => {
 </template>
 
 <style scoped>
-.task-card--expanded {
-  --n-border-color: v-bind('themeVars.primaryColorHover');
+.task-card {
+  --ci-danger: v-bind('themeVars.errorColor');
+  --ci-warning: v-bind('themeVars.warningColor');
+  --chip-default: v-bind('themeVars.textColor3');
+  --chip-info: v-bind('themeVars.infoColor');
+  --chip-success: v-bind('themeVars.successColor');
+  border: 1px solid v-bind('themeVars.borderColor');
+  border-radius: 3px;
+  background: v-bind('themeVars.cardColor');
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+.task-card:hover {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+}
+.task-card--expanded {
+  border-color: v-bind('themeVars.primaryColorHover');
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+}
+.task-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.task-card__title {
+  flex: 1;
+  min-width: 0;
+}
+.task-card__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.task-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.task-card__body {
+  padding: 0 14px 10px 14px;
+}
+.chip {
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--c) 32%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+  color: var(--c);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.chip--executing {
+  --c: var(--chip-info);
+}
+.chip--done {
+  --c: var(--chip-success);
+}
+.chip--pending {
+  --c: var(--chip-default);
 }
 .task-name {
   font-size: 14px;
@@ -306,10 +316,15 @@ const closePreview = () => {
   font-variant-numeric: tabular-nums;
 }
 .expand-arrow {
+  display: inline-flex;
   font-size: 14px;
   color: v-bind('themeVars.textColor3');
   margin-left: 2px;
   transition: transform 0.2s ease;
+}
+.expand-arrow > * {
+  width: 1em;
+  height: 1em;
 }
 .expand-arrow--rotated {
   transform: rotate(90deg);
