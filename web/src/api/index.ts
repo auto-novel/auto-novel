@@ -4,7 +4,6 @@ import {
   TimeoutError as LegacyTimeoutError,
 } from 'ky';
 
-export * from './auth';
 export * from './novel';
 
 export const formatError = async (error: unknown) => {

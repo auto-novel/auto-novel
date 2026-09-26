@@ -23,7 +23,6 @@ const handleUpdateValue = (path: string) => router.push({ path });
         @update:value="handleUpdateValue"
         style="margin-bottom: 24px"
       >
-        <n-tab name="/admin/user">用户</n-tab>
         <n-tab name="/admin/operation">操作历史</n-tab>
         <n-tab name="/admin/web-toc-merge-history">合并历史</n-tab>
       </n-tabs>

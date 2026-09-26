@@ -258,18 +258,9 @@ const router = createRouter({
 
         {
           path: '/admin',
-          redirect: '/admin/user',
+          redirect: '/admin/operation',
           component: () => import('./pages/admin/AdminLayout.vue'),
           children: [
-            {
-              path: 'user',
-              component: () => import('./pages/admin/AdminUser.vue'),
-              props: (route) => ({
-                page: Number(route.query.page) || 1,
-                query: route.query.query || '',
-                selected: parseSelected(route.query),
-              }),
-            },
             {
               path: 'operation',
               component: () =>
