@@ -1,4 +1,4 @@
-import { HTTPError } from 'ky-auth';
+import { HTTPError } from 'ky';
 import { useQuery, useQueryCache } from '@pinia/colada';
 
 import { FavoredApi, ReadHistoryApi, WebNovelApi } from '@/api';

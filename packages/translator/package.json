@@ -39,6 +39,6 @@
   "dependencies": {
     "crypto-es": "^2.1.0",
     "lodash-es": "^4.17.21",
-    "ky": "^1.14.0"
+    "ky": "^2.1.0"
   }
 }

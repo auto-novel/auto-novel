@@ -17,7 +17,7 @@ export const createOpenAiApi = (endpoint: string, key: string) => {
   }
 
   const client = ky.create({
-    prefixUrl: endpointUrl.href,
+    prefix: endpointUrl.href,
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${key}`,

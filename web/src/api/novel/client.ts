@@ -1,4 +1,4 @@
-import ky from 'ky-auth';
+import ky from 'ky';
 
 import { authApi, localAuthToken } from '../auth/session';
 

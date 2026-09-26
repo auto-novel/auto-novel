@@ -21,7 +21,7 @@ export class AmazonCrawler {
 
   private async getHtml(url: string, options?: Options): Promise<CheerioAPI> {
     const response = await this.client.get(url, {
-      prefixUrl: AMAZON_JP_URL,
+      prefix: AMAZON_JP_URL,
       redirect: 'manual',
       credentials: 'include',
       retry: 0,
