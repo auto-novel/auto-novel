@@ -67,6 +67,12 @@ fun Application.authentication(secret: String) = install(Authentication) {
             }
         }
         challenge { _, _ ->
+            val challenge = if (call.request.headers[HttpHeaders.Authorization].isNullOrBlank()) {
+                "Bearer"
+            } else {
+                "Bearer error=\"invalid_token\""
+            }
+            call.response.header(HttpHeaders.WWWAuthenticate, challenge)
             call.respond(HttpStatusCode.Unauthorized, "Token不合法或者过期")
         }
     }

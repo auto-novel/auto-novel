@@ -2,7 +2,7 @@ import ky from 'ky-auth';
 
 import { authApi, localAuthToken } from '../auth/session';
 
-const baseClient = authApi
+export const client = authApi
   ? authApi.createClient('/api/', { timeout: 60_000 })
   : ky.create({
       prefix: '/api/',
@@ -10,29 +10,6 @@ const baseClient = authApi
       retry: 0,
       headers: { Authorization: `Bearer ${localAuthToken}` },
     });
-
-// 旧小说后端未返回标准的 Bearer challenge，按其明确的令牌错误补齐。
-export const client = baseClient.extend({
-  hooks: {
-    afterResponse: [
-      async ({ response }) => {
-        if (
-          response.status !== 401 ||
-          response.headers.has('WWW-Authenticate') ||
-          (await response.clone().text()) !== 'Token不合法或者过期'
-        )
-          return;
-        const headers = new Headers(response.headers);
-        headers.set('WWW-Authenticate', 'Bearer error="invalid_token"');
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
-      },
-    ],
-  },
-});
 
 export type UploadTask<T> = {
   promise: Promise<T>;
