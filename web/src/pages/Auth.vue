@@ -1,39 +1,48 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core';
+import { useEventListener, usePreferredDark } from '@vueuse/core';
 
-import { useSettingStore, useWhoamiStore } from '@/stores';
-import { AuthUrl } from '@/util';
+import { useSettingStore } from '@/stores';
+import { authApi } from '@/api/auth/session';
+import { formatError } from '@/api';
 
 const props = defineProps<{ from?: string }>();
 const router = useRouter();
 
-const whoamiStore = useWhoamiStore();
+const iframe = ref<HTMLIFrameElement>();
+const message = useMessage();
 
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-useEventListener('message', async (event: MessageEvent) => {
-  if (
-    event.origin === new URL(AuthUrl).origin &&
-    event.data.type === 'login_success'
-  ) {
-    await whoamiStore.refresh().then(() => {
-      const from = props.from ?? '/';
-      router.replace(from);
-    });
+useEventListener('message', async (event: MessageEvent<unknown>) => {
+  const completion = authApi?.handleLoginMessage(
+    event,
+    iframe.value?.contentWindow,
+  );
+  if (!completion) return;
+  try {
+    await completion;
+    await router.replace(props.from ?? '/');
+  } catch (error) {
+    message.error(await formatError(error));
   }
 });
 
+const prefersDark = usePreferredDark();
 const iframeSrc = computed(() => {
-  const url = new URL(AuthUrl);
-  url.searchParams.set('app', 'n');
-  url.searchParams.set('theme', setting.value.theme);
-  return url.toString();
+  const theme =
+    setting.value.theme === 'system'
+      ? prefersDark.value
+        ? 'dark'
+        : 'light'
+      : setting.value.theme;
+  return authApi?.createLoginUrl(theme);
 });
 </script>
 
 <template>
   <iframe
+    ref="iframe"
     :src="iframeSrc"
     frameborder="0"
     allowfullscreen

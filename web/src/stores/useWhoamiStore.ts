@@ -1,60 +1,57 @@
-import { setTokenGetter } from '@/api/novel/client';
-import { useUserData } from '@/util';
-import { LSKey } from './key';
+import { AuthUser } from '@novelia/auth-api';
+
+import { authApi } from '@/api/auth/session';
 import { UserRole } from '@/model/User';
-import { at } from 'lodash-es';
+import { LSKey } from './key';
 
 export const useWhoamiStore = defineStore(LSKey.Auth, () => {
-  const { userData, refresh, logout } = useUserData('n');
-  setTokenGetter(() => userData.value?.profile?.token ?? '');
+  const user = shallowRef<AuthUser>();
+  if (authApi) {
+    const unsubscribe = authApi.watchUser((value) => {
+      user.value = value;
+    });
+    onScopeDispose(unsubscribe);
+  } else {
+    user.value = {
+      id: 1,
+      username: '本地用户',
+      role: 'admin',
+      createdAt: 0,
+      adminMode: false,
+    };
+  }
 
   const whoami = computed(() => {
-    const { profile, adminMode } = userData.value;
-
-    const isSignedIn = profile !== undefined;
-    const isAdmin = profile?.role === 'admin';
-    const asAdmin = isAdmin && adminMode;
-
-    const createAtLeast = (days: number) => {
-      if (!profile) return false;
-      return Date.now() / 1000 - profile.createdAt > days * 24 * 3600;
-    };
-
-    const buildRoleLabel = () => {
-      if (!profile) return '';
-      return UserRole.toString(profile.role) + (adminMode ? '+' : '');
-    };
-
-    const atLeastMember =
-      profile !== undefined && ['admin', 'member'].includes(profile.role);
-    const hasNsfwAccess = atLeastMember && createAtLeast(30);
-    const hasForumAccess = atLeastMember;
-    const hasNovelAccess = atLeastMember && createAtLeast(30);
-
+    const profile = user.value;
+    const atLeastMember = AuthUser.hasRoleAtLeast(profile, 'member');
+    const oldEnough = AuthUser.isAtLeastDaysOld(profile, 30);
     return {
       user: {
         username: profile?.username ?? '未登录',
-        role: buildRoleLabel(),
+        role: profile
+          ? UserRole.toString(profile.role) + (profile.adminMode ? '+' : '')
+          : '',
         createAt: profile?.createdAt ?? Date.now() / 1000,
       },
-      isSignedIn,
-      isAdmin,
-      asAdmin,
-      hasNsfwAccess,
-      hasForumAccess,
-      hasNovelAccess,
+      isSignedIn: profile !== undefined,
+      isAdmin: AuthUser.isAdmin(profile),
+      asAdmin: AuthUser.asAdmin(profile),
+      hasNsfwAccess: atLeastMember && oldEnough,
+      hasForumAccess: atLeastMember,
+      hasNovelAccess: atLeastMember && oldEnough,
       isMe: (username: string) => profile?.username === username,
     };
   });
 
   const toggleManageMode = () => {
-    userData.value.adminMode = !userData.value.adminMode;
+    if (authApi) authApi.toggleAdminMode();
+    else if (user.value)
+      user.value = { ...user.value, adminMode: !user.value.adminMode };
   };
 
   return {
     whoami,
     toggleManageMode,
-    refresh,
-    logout,
+    logout: () => authApi?.logout() ?? Promise.resolve(''),
   };
 });

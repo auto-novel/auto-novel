@@ -1,20 +1,19 @@
 import type { PageX } from '@/model/Page';
 import type { UserRole } from '@/model/User';
+import { authApi, authUrl } from './session';
 import { client } from '../novel/client';
 
-import { AuthUrl } from '@/util/useUserData/api';
-
-const clientAuth = client.extend({
-  prefixUrl: AuthUrl + '/api/v1/admin',
-  credentials: 'include',
-});
+const baseUrl = new URL('api/v1/admin/', authUrl).toString();
+const clientAuth =
+  authApi?.createClient(baseUrl) ?? client.extend({ prefix: baseUrl });
 
 export interface UserResponse {
-  name: string;
+  id: number;
+  username: string;
   email: string;
   role: UserRole;
-  createdAt: number;
-  lastLogin: number;
+  createdAt: string;
+  lastLogin: string;
   attr: object;
 }
 
@@ -23,38 +22,20 @@ const listUser = (params: {
   pageSize: number;
   q?: string;
   role?: UserRole;
-  create_after?: number;
-  create_before?: number;
+  createdAfter?: number;
+  createdBefore?: number;
 }) =>
-  clientAuth.get('user', { searchParams: params }).json<PageX<UserResponse>>();
+  clientAuth
+    .get('user', {
+      searchParams: {
+        page: params.page,
+        page_size: params.pageSize,
+        q: params.q,
+        role: params.role,
+        created_after: params.createdAfter,
+        created_before: params.createdBefore,
+      },
+    })
+    .json<PageX<UserResponse>>();
 
-interface RestrictUserRequest {
-  username: string;
-  role: UserRole;
-}
-
-const restrictUser = (json: RestrictUserRequest) =>
-  clientAuth.post(`user/restrict`, { json });
-
-interface BanUserRequest {
-  username: string;
-  role: UserRole;
-}
-
-const banUser = (json: BanUserRequest) => clientAuth.post(`user/ban`, { json });
-
-interface StrikeUserRequest {
-  username: string;
-  reason: string;
-  evidence: string;
-}
-
-const strikeUser = (json: StrikeUserRequest) =>
-  clientAuth.post(`user/strike`, { json });
-
-export const AuthAdminApi = {
-  listUser,
-  restrictUser,
-  banUser,
-  strikeUser,
-};
+export const AuthAdminApi = { listUser };

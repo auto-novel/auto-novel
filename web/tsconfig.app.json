@@ -4,6 +4,8 @@
     "useDefineForClassFields": true,
     "module": "ES2020",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "strict": true,
     "jsx": "preserve",
     "sourceMap": true,

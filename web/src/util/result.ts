@@ -1,4 +1,4 @@
-import { HTTPError, TimeoutError } from 'ky';
+import { formatError } from '@/api';
 
 export type Result<T> =
   | { ok: true; value: T }
@@ -15,21 +15,5 @@ export const Err = (error: string): Result<never> => {
 export const runCatching = <T>(callback: Promise<T>): Promise<Result<T>> => {
   return callback
     .then((it) => Ok(it))
-    .catch((error) => {
-      if (error instanceof HTTPError) {
-        let messageOverride: string | null = null;
-        if (error.response.status === 429) {
-          messageOverride = '操作额度耗尽，等明天再试吧';
-        }
-        return error.response
-          .text()
-          .then((message) =>
-            Err(`[${error.response.status}]${messageOverride ?? message}`),
-          );
-      } else if (error instanceof TimeoutError) {
-        return Err('请求超时');
-      } else {
-        return Err(`${error}`);
-      }
-    });
+    .catch(async (error: unknown) => Err(await formatError(error)));
 };

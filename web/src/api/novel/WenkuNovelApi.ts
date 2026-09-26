@@ -58,7 +58,7 @@ const createVolume = (
   onProgress: (p: number) => void,
 ) =>
   uploadFile(
-    `/api/wenku/${novelId}/volume/${encodeURIComponent(volumeId)}`,
+    `wenku/${novelId}/volume/${encodeURIComponent(volumeId)}`,
     type,
     file,
     onProgress,

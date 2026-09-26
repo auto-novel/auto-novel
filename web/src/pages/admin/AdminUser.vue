@@ -60,11 +60,11 @@ const { data: userPage, error } = AdminRepo.useUserList(
     <template v-if="userPage">
       <n-divider />
       <n-list>
-        <n-list-item v-for="user in userPage.items" :key="user.name">
+        <n-list-item v-for="user in userPage.items" :key="user.id">
           <n-flex vertical>
             <n-flex>
               <n-text>
-                <b>{{ user.name }}</b>
+                <b>{{ user.username }}</b>
               </n-text>
 
               <n-text>{{ UserRole.toString(user.role) }}</n-text>
@@ -73,9 +73,9 @@ const { data: userPage, error } = AdminRepo.useUserList(
 
             <n-text depth="3" style="font-size: 12px">
               创建于
-              <n-time :time="user.createdAt" type="relative" />
+              <n-time :time="new Date(user.createdAt)" type="relative" />
               ，上次登录
-              <n-time :time="user.lastLogin" type="relative" />
+              <n-time :time="new Date(user.lastLogin)" type="relative" />
             </n-text>
           </n-flex>
         </n-list-item>

@@ -186,6 +186,9 @@ importers:
       '@mdit/plugin-spoiler':
         specifier: ^0.16.0
         version: 0.16.0(markdown-it@14.1.1)
+      '@novelia/auth-api':
+        specifier: github:auto-novel/auth#d9a39cee954527c3acd8354d2f5c044c15f21709&path:packages/auth-api
+        version: https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709#path:packages/auth-api
       '@pinia/colada':
         specifier: ^1.2.0
         version: 1.2.0(pinia@3.0.4(typescript@5.9.3)(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))
@@ -228,12 +231,12 @@ importers:
       idb:
         specifier: ^8.0.3
         version: 8.0.3
-      jwt-decode:
-        specifier: ^4.0.0
-        version: 4.0.0
       ky:
         specifier: ^1.14.0
         version: 1.14.3
+      ky-auth:
+        specifier: npm:ky@^2.1.0
+        version: ky@2.1.0
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
@@ -1052,6 +1055,15 @@ packages:
         integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==,
       }
     engines: { node: '>= 8' }
+
+  '@novelia/auth-api@https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709#path:packages/auth-api':
+    resolution:
+      {
+        gitHosted: true,
+        integrity: sha512-xYXJeEzF3ueuwhxDO2Bbddv2w7U5xy8J0tnLgno+64azUV5DuvSqSoIwhUfMPbsvwr8jtVm6XOuLPu+kcUmQRw==,
+        tarball: https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709,
+      }
+    version: 0.1.0
 
   '@nuxt/kit@3.21.1':
     resolution:
@@ -4054,13 +4066,6 @@ packages:
         integrity: sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==,
       }
 
-  jwt-decode@4.0.0:
-    resolution:
-      {
-        integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==,
-      }
-    engines: { node: '>=18' }
-
   keyv@4.5.4:
     resolution:
       {
@@ -4086,6 +4091,13 @@ packages:
         integrity: sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==,
       }
     engines: { node: '>=18' }
+
+  ky@2.1.0:
+    resolution:
+      {
+        integrity: sha512-nIKwelw+7qVqKOlX4Eht6GXfEXlDHcdIjyLWV3s119kYt5s+70ayTnYS+0fRNmtgGRRAfqdeWQbh8YizqkS0ng==,
+      }
+    engines: { node: '>=22' }
 
   levn@0.4.1:
     resolution:
@@ -5433,6 +5445,14 @@ packages:
     engines: { node: '>=14.17' }
     hasBin: true
 
+  typescript@6.0.3:
+    resolution:
+      {
+        integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==,
+      }
+    engines: { node: '>=14.17' }
+    hasBin: true
+
   uc.micro@2.1.0:
     resolution:
       {
@@ -6365,6 +6385,11 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@novelia/auth-api@https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709#path:packages/auth-api':
+    dependencies:
+      ky: 2.1.0
+      typescript: 6.0.3
 
   '@nuxt/kit@3.21.1':
     dependencies:
@@ -8211,8 +8236,6 @@ snapshots:
       graceful-fs: 4.2.11
     optional: true
 
-  jwt-decode@4.0.0: {}
-
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
@@ -8224,6 +8247,8 @@ snapshots:
     optional: true
 
   ky@1.14.3: {}
+
+  ky@2.1.0: {}
 
   levn@0.4.1:
     dependencies:
@@ -9024,6 +9049,8 @@ snapshots:
       - supports-color
 
   typescript@5.9.3: {}
+
+  typescript@6.0.3: {}
 
   uc.micro@2.1.0: {}
 

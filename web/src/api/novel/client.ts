@@ -1,37 +1,44 @@
-import ky from 'ky';
+import ky from 'ky-auth';
 
-let tokenGetter: () => string = () => '';
+import { authApi, localAuthToken } from '../auth/session';
 
-export const client = ky.create({
-  prefixUrl: '/api',
-  timeout: 60000,
+const baseClient = authApi
+  ? authApi.createClient('/api/', { timeout: 60_000 })
+  : ky.create({
+      prefix: '/api/',
+      timeout: 60_000,
+      retry: 0,
+      headers: { Authorization: `Bearer ${localAuthToken}` },
+    });
+
+// 旧小说后端未返回标准的 Bearer challenge，按其明确的令牌错误补齐。
+export const client = baseClient.extend({
   hooks: {
-    beforeRequest: [
-      (request) => {
-        const token = tokenGetter();
-        if (token) {
-          request.headers.set('Authorization', 'Bearer ' + token);
-        }
-      },
-    ],
     afterResponse: [
-      (_request, _options, response, { retryCount }) => {
-        if (response.status === 401 && retryCount === 0) {
-          return ky.retry();
-        }
+      async ({ response }) => {
+        if (
+          response.status !== 401 ||
+          response.headers.has('WWW-Authenticate') ||
+          (await response.clone().text()) !== 'Token不合法或者过期'
+        )
+          return;
+        const headers = new Headers(response.headers);
+        headers.set('WWW-Authenticate', 'Bearer error="invalid_token"');
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
       },
     ],
   },
 });
 
-export const setTokenGetter = (getter: () => string) => {
-  tokenGetter = getter;
-};
-
 export type UploadTask<T> = {
   promise: Promise<T>;
   abort: () => void;
 };
+
 export function uploadFile(
   url: string,
   name: string,
@@ -40,50 +47,73 @@ export function uploadFile(
 ): UploadTask<string> {
   const formData = new FormData();
   formData.append(name, file);
+  const controller = new AbortController();
 
-  const xhr = new XMLHttpRequest();
-  let settle = false;
+  const promise = client
+    .post(url, {
+      body: formData,
+      signal: controller.signal,
+      timeout: false,
+      // 使用 XHR 保留各浏览器的上传进度，认证和重试交由共享客户端处理。
+      fetch: (input, init) => {
+        const request = new Request(input, init);
+        return new Promise<Response>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const abort = () => {
+            xhr.abort();
+            reject(new Error('上传已取消'));
+          };
+          if (request.signal.aborted) {
+            abort();
+            return;
+          }
+          xhr.open(request.method, request.url);
+          request.headers.forEach((value, key) => {
+            // 浏览器为实际发送的 FormData 生成 boundary。
+            if (key.toLowerCase() !== 'content-type')
+              xhr.setRequestHeader(key, value);
+          });
+          xhr.onload = () => {
+            const headers = new Headers();
+            for (const line of xhr
+              .getAllResponseHeaders()
+              .trim()
+              .split(/[\r\n]+/)) {
+              const separator = line.indexOf(':');
+              if (separator > 0)
+                headers.append(
+                  line.slice(0, separator),
+                  line.slice(separator + 1).trim(),
+                );
+            }
+            resolve(
+              new Response(
+                [204, 205, 304].includes(xhr.status) ? null : xhr.responseText,
+                {
+                  status: xhr.status,
+                  statusText: xhr.statusText,
+                  headers,
+                },
+              ),
+            );
+          };
+          xhr.onerror = () => reject(new Error('网络错误'));
+          xhr.onabort = () => reject(new Error('上传已取消'));
+          xhr.onloadend = () =>
+            request.signal.removeEventListener('abort', abort);
+          xhr.upload.onprogress = (event) => {
+            onProgress(
+              event.lengthComputable
+                ? Math.ceil((event.loaded / event.total) * 100)
+                : 0,
+            );
+          };
+          request.signal.addEventListener('abort', abort, { once: true });
+          xhr.send(formData);
+        });
+      },
+    })
+    .text();
 
-  const promise = new Promise<string>(function (resolve, reject) {
-    xhr.open('POST', url);
-    const token = tokenGetter();
-    if (token) {
-      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-    }
-
-    xhr.onload = () => {
-      if (settle) return;
-      settle = true;
-      if (xhr.status === 200) {
-        resolve(xhr.responseText);
-      } else {
-        reject(new Error(xhr.responseText));
-      }
-    };
-
-    xhr.onerror = () => {
-      if (settle) return;
-      settle = true;
-      reject(new Error('网络错误'));
-    };
-
-    xhr.onabort = () => {
-      if (settle) return;
-      settle = true;
-      reject(new Error('上传已取消'));
-    };
-
-    xhr.upload.addEventListener('progress', (e) => {
-      const percent = e.lengthComputable ? (e.loaded / e.total) * 100 : 0;
-      onProgress(Math.ceil(percent));
-    });
-    xhr.send(formData);
-  });
-
-  const abort = () => {
-    if (settle) return;
-    xhr.abort();
-  };
-
-  return { promise, abort };
+  return { promise, abort: () => controller.abort() };
 }
