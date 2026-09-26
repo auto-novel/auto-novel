@@ -192,9 +192,6 @@ importers:
       '@pinia/colada':
         specifier: ^1.2.0
         version: 1.2.0(pinia@3.0.4(typescript@5.9.3)(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))
-      '@types/diff':
-        specifier: ^5.2.3
-        version: 5.2.3
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -225,9 +222,6 @@ importers:
       crypto-es:
         specifier: ^2.1.0
         version: 2.1.0
-      diff:
-        specifier: ^5.2.0
-        version: 5.2.2
       idb:
         specifier: ^8.0.3
         version: 8.0.3
@@ -1699,12 +1693,6 @@ packages:
         integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==,
       }
 
-  '@types/diff@5.2.3':
-    resolution:
-      {
-        integrity: sha512-K0Oqlrq3kQMaO2RhfrNQX5trmt+XLyom88zS0u84nnIcLvFnRUMRRHmrGny5GSM+kNO9IZLARsdQHDzkhAgmrQ==,
-      }
-
   '@types/esrecurse@4.3.1':
     resolution:
       {
@@ -2996,13 +2984,6 @@ packages:
         integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==,
       }
     engines: { node: '>=8' }
-
-  diff@5.2.2:
-    resolution:
-      {
-        integrity: sha512-vtcDfH3TOjP8UekytvnHH1o1P4FcUdt4eQ1Y+Abap1tk/OB2MWQvcwS2ClCd1zuIhc3JKOx6p3kod8Vfys3E+A==,
-      }
-    engines: { node: '>=0.3.1' }
 
   diff@8.0.4:
     resolution:
@@ -6705,8 +6686,6 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
-  '@types/diff@5.2.3': {}
-
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.8': {}
@@ -7586,8 +7565,6 @@ snapshots:
     optional: true
 
   detect-libc@2.1.2: {}
-
-  diff@5.2.2: {}
 
   diff@8.0.4:
     optional: true

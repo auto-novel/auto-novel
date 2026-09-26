@@ -3,7 +3,6 @@ import { roleLabels } from '@novelia/auth-api';
 import {
   AccessTimeOutlined,
   BookOutlined,
-  CandlestickChartOutlined,
   CommitOutlined,
   DarkModeOutlined,
   ForumOutlined,
@@ -197,12 +196,6 @@ const menuOptions = computed<MenuOption[]>(() => {
         ),
       icon: renderIcon(theme === 'light' ? WbSunnyOutlined : DarkModeOutlined),
       key: 'theme',
-    },
-    {
-      label: renderLabel('控制台', '/admin'),
-      icon: renderIcon(CandlestickChartOutlined),
-      key: '/admin',
-      show: whoami.value.asAdmin,
     },
   ];
 });
