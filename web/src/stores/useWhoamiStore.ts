@@ -1,7 +1,6 @@
 import { AuthUser } from '@novelia/auth-api';
 
 import { authApi } from '@/api/auth/session';
-import { UserRole } from '@/model/User';
 import { LSKey } from './key';
 
 export const useWhoamiStore = defineStore(LSKey.Auth, () => {
@@ -26,13 +25,7 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
     const atLeastMember = AuthUser.hasRoleAtLeast(profile, 'member');
     const oldEnough = AuthUser.isAtLeastDaysOld(profile, 30);
     return {
-      user: {
-        username: profile?.username ?? '未登录',
-        role: profile
-          ? UserRole.toString(profile.role) + (profile.adminMode ? '+' : '')
-          : '',
-        createAt: profile?.createdAt ?? Date.now() / 1000,
-      },
+      user: profile,
       isSignedIn: profile !== undefined,
       isAdmin: AuthUser.isAdmin(profile),
       asAdmin: AuthUser.asAdmin(profile),
