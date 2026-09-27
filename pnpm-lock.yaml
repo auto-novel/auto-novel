@@ -1052,6 +1052,7 @@ packages:
       {
         gitHosted: true,
         integrity: sha512-xYXJeEzF3ueuwhxDO2Bbddv2w7U5xy8J0tnLgno+64azUV5DuvSqSoIwhUfMPbsvwr8jtVm6XOuLPu+kcUmQRw==,
+        path: packages/auth-api,
         tarball: https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709,
       }
     version: 0.1.0
