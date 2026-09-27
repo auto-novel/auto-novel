@@ -11,6 +11,8 @@ on:
         pnpm-lock.yaml,
         pnpm-workspace.yaml,
         web/**,
+        deploy/web/**,
+        .dockerignore,
         packages/crawler/**,
         packages/translator/**,
       ]
@@ -45,7 +47,7 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
-          file: web/Dockerfile
+          file: deploy/web/Dockerfile
           push: true
           provenance: false
           build-args: |

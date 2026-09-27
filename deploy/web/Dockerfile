@@ -13,12 +13,12 @@ FROM deps AS builder
 WORKDIR /app
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME
-ENV VITE_GIT_COMMIT=$GIT_COMMIT
-ENV VITE_BUILD_TIME=$BUILD_TIME
-COPY packages/crawler ./packages/crawler
-COPY packages/translator ./packages/translator
-COPY web ./web
-RUN pnpm run build
+COPY packages/crawler/ ./packages/crawler/
+COPY packages/translator/ ./packages/translator/
+COPY web/ ./web/
+RUN VITE_GIT_COMMIT="${GIT_COMMIT}" \
+    VITE_BUILD_TIME="${BUILD_TIME}" \
+    pnpm --filter @auto-novel/web... build
 
 FROM caddy:2.7.4
 COPY web/Caddyfile /etc/caddy/Caddyfile
