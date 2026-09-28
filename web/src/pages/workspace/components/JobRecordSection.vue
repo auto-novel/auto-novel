@@ -95,13 +95,11 @@ const downloadVolumes = async () => {
     description="没有任务"
     style="padding: 32px"
   />
-  <n-list>
-    <n-list-item v-for="job of records" :key="job.task">
-      <job-record
-        :job="job"
-        @retry-job="workspace.retryJobRecord(job)"
-        @delete-job="workspace.deleteJobRecord(job)"
-      />
-    </n-list-item>
-  </n-list>
+  <job-record
+    v-for="job of records"
+    :key="job.task"
+    :job="job"
+    @retry-job="workspace.retryJobRecord(job)"
+    @delete-job="workspace.deleteJobRecord(job)"
+  />
 </template>

@@ -7,7 +7,7 @@ import type { LocalVolumeMetadata } from '@/model/LocalVolume';
 import { useBookshelfLocalStore } from '@/pages/bookshelf/BookshelfLocalStore';
 import { doAction } from '@/pages/util';
 import { Setting, useLocalVolumeStore, useSettingStore } from '@/stores';
-import { downloadFile } from '@/util';
+import { downloadFile, Humanize } from '@/util';
 
 const translateOptions = useTemplateRef('translateOptions');
 
@@ -22,8 +22,17 @@ const { setting } = storeToRefs(settingStore);
 
 const store = useBookshelfLocalStore();
 
+const themeVars = useThemeVars();
+
+const confirmingVolumeId = ref<string>();
+
 const deleteVolume = (volumeId: string) =>
   doAction(store.deleteVolume(volumeId), '删除', message);
+
+const confirmDelete = (volumeId: string) => {
+  confirmingVolumeId.value = undefined;
+  deleteVolume(volumeId);
+};
 
 const calculateFinished = (volume: LocalVolumeMetadata) =>
   volume.toc.filter((it) => {
@@ -149,21 +158,19 @@ const progressFilterFunc = computed(() => {
     </template>
 
     <template #volume="volume">
-      <n-flex :size="4" vertical>
-        <n-text>{{ volume.id }}</n-text>
+      <div class="volume-row" :style="{ '--ci-danger': themeVars.errorColor }">
+        <div class="volume-row__title">{{ volume.id }}</div>
 
-        <n-text depth="3">
-          <n-time :time="volume.createAt" type="relative" />
+        <div class="volume-row__meta" :style="{ color: themeVars.textColor3 }">
+          {{ Humanize.relativeTime(volume.createAt) }}
           / 总计 {{ volume.toc.length }} / 完成
           {{ calculateFinished(volume) }} / 过期
           {{ calculateExpired(volume) }}
-        </n-text>
+        </div>
 
-        <n-flex :size="8">
-          <c-button
+        <div class="volume-row__actions">
+          <c-button-lite
             label="排队"
-            size="tiny"
-            secondary
             @action="queueVolume(volume.id, volume.toc.length)"
           />
 
@@ -172,36 +179,94 @@ const progressFilterFunc = computed(() => {
             :to="`/workspace/reader/${encodeURIComponent(volume.id)}/0`"
             target="_blank"
           >
-            <c-button label="阅读" size="tiny" secondary />
+            <c-button-lite label="阅读" />
           </router-link>
 
-          <c-button
-            label="下载"
-            size="tiny"
-            secondary
-            @action="downloadVolume(volume.id)"
-          />
+          <c-button-lite label="下载" @action="downloadVolume(volume.id)" />
 
           <glossary-button
+            lite
             :gnid="GenericNovelId.local(volume.id)"
             :value="volume.glossary"
-            size="tiny"
-            secondary
           />
 
           <div style="flex: 1" />
 
-          <c-button-confirm
-            :hint="`真的要删除《${volume.id}》吗？`"
-            :icon="DeleteOutlineOutlined"
-            size="tiny"
-            secondary
-            circle
+          <c-icon-button-lite
+            tooltip="删除"
             type="error"
-            @action="deleteVolume(volume.id)"
+            :icon="DeleteOutlineOutlined"
+            @action="confirmingVolumeId = volume.id"
           />
-        </n-flex>
-      </n-flex>
+
+          <div
+            v-if="confirmingVolumeId === volume.id"
+            class="volume-row__confirm"
+            :style="{
+              borderColor: themeVars.borderColor,
+              background: themeVars.cardColor,
+            }"
+          >
+            <span class="volume-row__confirm-hint">
+              真的要删除《{{ volume.id }}》吗？
+            </span>
+            <c-button-lite
+              label="确认"
+              type="error"
+              @action="confirmDelete(volume.id)"
+            />
+            <c-button-lite
+              label="取消"
+              @action="confirmingVolumeId = undefined"
+            />
+          </div>
+        </div>
+      </div>
     </template>
   </local-volume-list>
 </template>
+
+<style scoped>
+.volume-row {
+  position: relative;
+}
+.volume-row__title {
+  font-size: 14px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.volume-row__meta {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.volume-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.volume-row__actions a {
+  color: inherit;
+  text-decoration: none;
+}
+.volume-row__confirm {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+.volume-row__confirm-hint {
+  max-width: 260px;
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+</style>
