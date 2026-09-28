@@ -36,10 +36,7 @@ function onReplied() {
 const showInput = ref(false);
 
 const canReply = computed(() => {
-  const hasAccess = props.site.startsWith('article-')
-    ? whoami.value.hasForumAccess
-    : whoami.value.hasNovelAccess;
-  return hasAccess && !props.locked;
+  return whoami.value.hasNovelAccess && !props.locked;
 });
 </script>
 

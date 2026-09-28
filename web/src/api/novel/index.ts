@@ -1,4 +1,3 @@
-export * from './ArticleApi';
 export * from './CommentApi';
 export * from './FavoredApi';
 export * from './ReadHistoryApi';

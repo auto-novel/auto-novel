@@ -93,7 +93,6 @@ onMounted(() => {
 });
 
 (() => {
-  // 测试页面：https://n.novelia.cc/forum/693160100d2585161e3c68d4
   // 添加中文分隔符
   const NEW_SEPARATORS = '）（！？。，【】［］「」、《》★、';
   const LINKIFY_ORIG_SEPARATORS = '[><\uff5c]'; // 这玩意已经从2023年就没变过了

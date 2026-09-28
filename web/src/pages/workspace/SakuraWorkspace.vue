@@ -4,6 +4,8 @@ import {
   DeleteOutlineOutlined,
   PlusOutlined,
 } from '@vicons/material';
+
+import { forumPostUrls } from '@/config';
 import { VueDraggable } from 'vue-draggable-plus';
 
 import { SakuraTranslator } from '@/domain/translate';
@@ -93,14 +95,22 @@ const clearCache = async () =>
 
     <bulletin>
       <n-flex>
-        <c-a to="/forum/656d60530286f15e3384fcf8" target="_blank">
+        <n-a
+          :href="forumPostUrls.sakuraDeployGuide"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           本地部署教程
-        </c-a>
+        </n-a>
         /
         <span>
-          <c-a to="/forum/65719bf16843e12bd3a4dc98" target="_blank">
+          <n-a
+            :href="forumPostUrls.sakuraAutoDlGuide"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             AutoDL教程
-          </c-a>
+          </n-a>
           :
           <n-a
             href="https://www.autodl.com/console/instance/list"
