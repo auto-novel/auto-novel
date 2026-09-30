@@ -5,7 +5,7 @@ import { doAction } from '@/pages/util';
 const props = defineProps<{
   site: string;
   draftId: string;
-  parent?: string;
+  parent?: number;
   placeholder?: string;
 }>();
 
@@ -25,10 +25,9 @@ const reply = async () => {
   }
 
   await doAction(
-    CommentRepo.createComment({
-      site: props.site,
-      parent: props.parent,
+    CommentRepo.createComment(props.site, {
       content: content.value,
+      ...(props.parent === undefined ? {} : { rootId: props.parent }),
     }).then(() => {
       content.value = '';
       emit('replied');

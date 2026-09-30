@@ -1,5 +1,6 @@
 // Replace this placeholder with the URL of the external forum.
 export const forumUrl = 'https://example.com';
+export const forumApiUrl = forumUrl;
 
 export const forumPostUrls = {
   usageGuide: `${forumUrl}/posts/64f3d63f794cbb1321145c07`,

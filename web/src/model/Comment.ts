@@ -1,11 +1,1 @@
-import type { UserReference } from './User';
-
-export interface Comment1 {
-  id: string;
-  user: UserReference;
-  content: string;
-  hidden: boolean;
-  createAt: number;
-  numReplies: number;
-  replies: Comment1[];
-}
+export type { Comment as Comment1 } from '@novelia/forum-api';

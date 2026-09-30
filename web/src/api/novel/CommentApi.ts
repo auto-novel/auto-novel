@@ -1,28 +1,19 @@
-import type { Comment1 } from '@/model/Comment';
-import type { Page } from '@/model/Page';
-import { client } from './client';
+import { createForumApi } from '@novelia/forum-api';
+import ky from 'ky';
 
-const listComment = (params: {
-  site: string;
-  page: number;
-  parentId?: string;
-  pageSize: number;
-}) => client.get('comment', { searchParams: params }).json<Page<Comment1>>();
+import { forumApiUrl } from '@/config';
+import { authApi, localAuthToken } from '../auth/session';
 
-const createComment = (json: {
-  site: string;
-  parent: string | undefined;
-  content: string;
-}) => client.post('comment', { json });
+const client = authApi
+  ? authApi.createClient(forumApiUrl, { timeout: 60_000 })
+  : ky.create({
+      timeout: 60_000,
+      retry: 0,
+      headers: { Authorization: `Bearer ${localAuthToken}` },
+    });
 
-const deleteComment = (id: string) => client.delete(`comment/${id}`);
-const hideComment = (id: string) => client.put(`comment/${id}/hidden`);
-const unhideComment = (id: string) => client.delete(`comment/${id}/hidden`);
-
-export const CommentApi = {
-  listComment,
-  createComment,
-  deleteComment,
-  hideComment,
-  unhideComment,
-};
+export const CommentApi = createForumApi({
+  client,
+  url: forumApiUrl,
+  type: 'novel',
+});

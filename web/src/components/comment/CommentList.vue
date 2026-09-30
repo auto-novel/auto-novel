@@ -2,6 +2,7 @@
 import { CommentOutlined } from '@vicons/material';
 
 import { CommentRepo } from '@/repos';
+import type { Comment1 } from '@/model/Comment';
 import { useDraftStore, useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
@@ -27,13 +28,15 @@ watch(page, () => {
   window.scrollBy({ top: -50, behavior: 'auto' });
 });
 
+const showInput = ref(false);
+const replyTo = ref<Comment1>();
+
 function onReplied() {
   showInput.value = false;
+  replyTo.value = undefined;
   draftStore.cancelAddDraft();
   draftStore.removeDraft(draftId);
 }
-
-const showInput = ref(false);
 
 const canReply = computed(() => {
   return whoami.value.hasNovelAccess && !props.locked;
@@ -58,21 +61,37 @@ const canReply = computed(() => {
 
   <n-p v-if="locked">评论区已锁定，不能再回复。</n-p>
 
-  <template v-if="showInput">
+  <template v-if="showInput || replyTo">
     <CommentEditor
       :site="site"
       :draft-id="draftId"
-      :placeholder="`发表回复`"
+      :parent="replyTo?.id"
+      :placeholder="replyTo ? `回复${replyTo.authorUsername}` : '发表评论'"
       @replied="onReplied()"
-      @cancel="showInput = false"
+      @cancel="
+        showInput = false;
+        replyTo = undefined;
+      "
     />
     <n-divider />
   </template>
 
-  <CPage v-model:page="page" :page-number="commentPage?.pageNumber" disable-top>
+  <CPage
+    v-model:page="page"
+    :page-size="10"
+    :total="commentPage?.total"
+    disable-top
+  >
     <template v-if="commentPage">
       <template v-for="comment in commentPage.items" :key="comment.id">
-        <CommentThread :site="site" :comment="comment" :can-reply="canReply" />
+        <div :style="{ marginLeft: comment.rootId === null ? '0' : '32px' }">
+          <CommentItem
+            :site="site"
+            :comment="comment"
+            :can-reply="canReply"
+            @reply="replyTo = comment"
+          />
+        </div>
         <n-divider />
       </template>
       <n-empty

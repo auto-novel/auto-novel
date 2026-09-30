@@ -1,42 +1,56 @@
 import { useQuery } from '@pinia/colada';
+import type { CommentPage, CreateCommentRequest } from '@novelia/forum-api';
 
 import { CommentApi } from '@/api';
-import type { Comment1 } from '@/model/Comment';
-import type { Page } from '@/model/Page';
-import { cache, withOnSuccess } from './cache';
+import { cache } from './cache';
 
 const ListKey = 'comment-list';
 
 const useCommentList = (
   page: MaybeRefOrGetter<number>,
   site: MaybeRefOrGetter<string>,
-  parentId: MaybeRefOrGetter<string | undefined> = undefined,
-  initialData: Page<Comment1> | undefined = undefined,
 ) =>
   useQuery({
-    key: () => [ListKey, toValue(site), toValue(parentId) ?? '', toValue(page)],
+    key: () => [ListKey, toValue(site), toValue(page)],
     query: () =>
-      CommentApi.listComment({
-        page: toValue(page) - 1,
+      CommentApi.getComments(toValue(site), {
+        page: toValue(page),
         pageSize: 10,
-        site: toValue(site),
-        ...(toValue(parentId) ? { parentId: toValue(parentId) } : {}),
       }),
-    initialData: () => initialData,
   });
+
+const invalidateComments = (site: string) =>
+  cache.invalidateQueries({ key: [ListKey, site] });
+
+const updateCommentStatus = (id: number, status: number) => {
+  for (const entry of cache.getEntries({ key: [ListKey] })) {
+    const page = entry.state.value.data as CommentPage | undefined;
+    if (!page) continue;
+    cache.setQueryData<CommentPage>(entry.key, {
+      ...page,
+      items: page.items.map((comment) =>
+        comment.id === id ? { ...comment, status } : comment,
+      ),
+    });
+  }
+};
 
 export const CommentRepo = {
   useCommentList,
 
-  createComment: withOnSuccess(CommentApi.createComment, (_, comment) =>
-    cache.invalidateQueries({
-      key: [ListKey, comment.site, comment.parent ?? ''],
+  createComment: (site: string, request: CreateCommentRequest) =>
+    CommentApi.createComment(site, request).then((comment) => {
+      invalidateComments(site);
+      return comment;
     }),
-  ),
-  deleteComment: (id: string, site: string, parentId?: string) =>
-    CommentApi.deleteComment(id).then(() => {
-      cache.invalidateQueries({ key: [ListKey, site, parentId ?? ''] });
-    }),
-  hideComment: CommentApi.hideComment,
-  unhideComment: CommentApi.unhideComment,
+  deleteComment: (id: number, site: string) =>
+    CommentApi.deleteComment(id).then(() => invalidateComments(site)),
+  hideComment: (id: number) =>
+    CommentApi.setCommentStatus(id, 'hidden').then(() =>
+      updateCommentStatus(id, 1),
+    ),
+  unhideComment: (id: number) =>
+    CommentApi.setCommentStatus(id, 'published').then(() =>
+      updateCommentStatus(id, 0),
+    ),
 };
