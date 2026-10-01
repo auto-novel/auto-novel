@@ -84,14 +84,12 @@ const canReply = computed(() => {
   >
     <template v-if="commentPage">
       <template v-for="comment in commentPage.items" :key="comment.id">
-        <div :style="{ marginLeft: comment.rootId === null ? '0' : '32px' }">
-          <CommentItem
-            :site="site"
-            :comment="comment"
-            :can-reply="canReply"
-            @reply="replyTo = comment"
-          />
-        </div>
+        <CommentThread
+          :site="site"
+          :comment="comment"
+          :can-reply="canReply"
+          @reply="replyTo = comment"
+        />
         <n-divider />
       </template>
       <n-empty

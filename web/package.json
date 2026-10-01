@@ -47,7 +47,7 @@
     "@mdit/plugin-container": "^0.16.0",
     "@mdit/plugin-spoiler": "^0.16.0",
     "@novelia/auth-api": "github:auto-novel/auth#d9a39cee954527c3acd8354d2f5c044c15f21709&path:packages/auth-api",
-    "@novelia/forum-api": "github:auto-novel/forum#e4b0d1a93d131b63ce3e055bedc79e36d1333be5&path:packages/forum-api",
+    "@novelia/forum-api": "github:auto-novel/forum#96bb0db61dfef78df36394ba6e000c8f78eaea00&path:packages/forum-api",
     "@pinia/colada": "^1.2.0",
     "@types/lodash-es": "^4.17.12",
     "@types/markdown-it": "^14.1.2",
