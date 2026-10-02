@@ -16,11 +16,8 @@ const getRules = (mode: 'article' | 'comment') => {
     return [];
   } else if (mode === 'comment') {
     return [
-      'backticks',
       'blockquote',
       'code',
-      'entity',
-      'escape',
       'fence',
       'heading',
       'hr',
