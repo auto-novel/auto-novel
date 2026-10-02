@@ -21,6 +21,7 @@ import io.ktor.resources.*
 import io.ktor.server.plugins.*
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
@@ -116,6 +117,22 @@ private class WebNovelRes {
 fun Route.routeWebNovel() {
     val service by inject<WebNovelApi>()
     val translateV2Service by inject<WebNovelTranslateV2Api>()
+
+    val metadataRepo by inject<WebNovelMetadataRepository>()
+
+    get("/novel/{providerId}/{novelId}/exist") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
+        val providerId = call.parameters["providerId"].orEmpty()
+        val novelId = call.parameters["novelId"].orEmpty()
+        if (listOf(providerId, novelId).any { id ->
+                id.length !in 1..255 || id.any { it.isWhitespace() || it.isISOControl() }
+            }) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@get
+        }
+        val exists = metadataRepo.exist(providerId, novelId)
+        call.respond(if (exists) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+    }
 
     authenticateDb(optional = true) {
         get<WebNovelRes.List> { loc ->

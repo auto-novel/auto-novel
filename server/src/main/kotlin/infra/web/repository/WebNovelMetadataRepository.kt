@@ -1,5 +1,6 @@
 package infra.web.repository
 
+import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.ReturnDocument
@@ -131,6 +132,11 @@ class WebNovelMetadataRepository(
             total = total,
             pageSize = pageSize,
         )
+    }
+
+    suspend fun exist(providerId: String, novelId: String): Boolean {
+        return webNovelMetadataCollection
+            .countDocuments(byId(providerId, novelId), CountOptions().limit(1)) > 0L
     }
 
     suspend fun get(
