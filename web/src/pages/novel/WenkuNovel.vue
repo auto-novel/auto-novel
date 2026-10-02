@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
+import { subjectKeys } from '@novelia/forum-api';
 import { createReusableTemplate } from '@vueuse/core';
 
 import { WenkuNovelRepo } from '@/repos';
@@ -288,7 +289,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
 
       <comment-list
         v-if="!setting.hideCommmentWenkuNovel"
-        :site="`wenku-${novelId}`"
+        :site="subjectKeys.novel.wenku(novelId)"
         :locked="false"
       />
     </template>

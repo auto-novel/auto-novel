@@ -4,6 +4,7 @@ import {
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
+import { subjectKeys } from '@novelia/forum-api';
 import { NScrollbar } from 'naive-ui';
 
 import type { WebNovelDto, WebNovelTocItemDto } from '@/model/WebNovel';
@@ -197,7 +198,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
 
   <comment-list
     v-if="!setting.hideCommmentWebNovel"
-    :site="`web-${providerId}-${novelId}`"
+    :site="subjectKeys.novel.web(providerId, novelId)"
     :locked="false"
   />
 </template>
