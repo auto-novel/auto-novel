@@ -2,6 +2,7 @@ package api.plugins
 
 import io.ktor.server.application.*
 import io.ktor.server.plugins.ratelimit.*
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 object RateLimitNames {

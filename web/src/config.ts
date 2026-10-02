@@ -1,5 +1,5 @@
 // Replace this placeholder with the URL of the external forum.
-export const forumUrl = 'https://example.com';
+export const forumUrl = 'https://forum.novelia.cc';
 export const forumApiUrl = forumUrl;
 
 export const forumPostUrls = {
