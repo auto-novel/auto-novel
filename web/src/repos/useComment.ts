@@ -22,7 +22,7 @@ const useCommentList = (
         site: toValue(site),
         ...(toValue(parentId) ? { parentId: toValue(parentId) } : {}),
       }),
-    initialData: () => initialData,
+    initialData: () => (toValue(page) === 1 ? initialData : undefined),
   });
 
 export const CommentRepo = {

@@ -13,14 +13,24 @@ const draftStore = useDraftStore();
 const draftId = `comment-${props.site}`;
 
 const page = ref(1);
+const pageNumber = ref(Math.floor((props.comment.numReplies + 9) / 10));
 const { data: commentPage, error } = CommentRepo.useCommentList(
   page,
   () => props.site,
   () => props.comment.id,
   {
     items: props.comment.replies,
-    pageNumber: Math.floor((props.comment.numReplies + 9) / 10),
+    pageNumber: pageNumber.value,
   },
+);
+
+// 加载未缓存的回复页时保留页数，避免分页按钮消失。
+watch(
+  commentPage,
+  (value) => {
+    if (value) pageNumber.value = value.pageNumber;
+  },
+  { immediate: true },
 );
 
 const anchorEl = useTemplateRef('anchor');
@@ -58,11 +68,7 @@ const showInput = ref(false);
   />
 
   <div style="margin-left: 32px; margin-top: 20px">
-    <CPage
-      v-model:page="page"
-      :page-number="commentPage?.pageNumber"
-      disable-top
-    >
+    <CPage v-model:page="page" :page-number="pageNumber" disable-top>
       <template v-if="commentPage">
         <div
           v-for="replyComment in commentPage?.items"
