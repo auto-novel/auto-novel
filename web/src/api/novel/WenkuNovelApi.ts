@@ -67,6 +67,9 @@ const createVolume = (
 const deleteVolume = (novelId: string, volumeId: string) =>
   client.delete(`wenku/${novelId}/volume/${encodeURIComponent(volumeId)}`);
 
+const linkWeb = (novelId: string, json: { webIds: string[] }) =>
+  client.put(`wenku/${novelId}/link-web`, { json });
+
 //Translate
 const createTranslationApi = (
   novelId: string,
@@ -147,6 +150,7 @@ export const WenkuNovelApi = {
   updateGlossary,
   createVolume,
   deleteVolume,
+  linkWeb,
   //
   createTranslationApi,
   //

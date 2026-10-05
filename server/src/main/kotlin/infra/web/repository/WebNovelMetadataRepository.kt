@@ -472,6 +472,7 @@ private fun RemoteNovelListItem.toOutline(
         gpt = novel?.gpt ?: 0,
         sakura = novel?.sakura ?: 0,
         extra = extra,
+        wenkuId = novel?.wenkuId,
         updateAt = novel?.updateAt,
     )
 
@@ -498,6 +499,7 @@ fun WebNovel.toOutline(
         gpt = gpt,
         sakura = sakura,
         extra = null,
+        wenkuId = wenkuId,
         updateAt = updateAt,
     )
 
