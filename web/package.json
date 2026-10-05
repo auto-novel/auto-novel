@@ -45,7 +45,7 @@
     "@auto-novel/translator": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
     "@novelia/auth-api": "github:auto-novel/auth#d9a39cee954527c3acd8354d2f5c044c15f21709&path:packages/auth-api",
-    "@novelia/forum-api": "github:auto-novel/forum#e923e49dcfe711150acf229452c22a5559ab9a5d&path:packages/forum-api",
+    "@novelia/forum-api": "github:auto-novel/forum#afeac411d0243d1167e19193ad84f98192b777b9&path:packages/forum-api",
     "@pinia/colada": "^1.2.0",
     "@types/lodash-es": "^4.17.12",
     "@types/opencc-js": "^1.0.3",

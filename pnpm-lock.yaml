@@ -184,8 +184,8 @@ importers:
         specifier: github:auto-novel/auth#d9a39cee954527c3acd8354d2f5c044c15f21709&path:packages/auth-api
         version: https://codeload.github.com/auto-novel/auth/tar.gz/d9a39cee954527c3acd8354d2f5c044c15f21709#path:packages/auth-api
       '@novelia/forum-api':
-        specifier: github:auto-novel/forum#e923e49dcfe711150acf229452c22a5559ab9a5d&path:packages/forum-api
-        version: https://codeload.github.com/auto-novel/forum/tar.gz/e923e49dcfe711150acf229452c22a5559ab9a5d#path:packages/forum-api(ky@2.1.0)
+        specifier: github:auto-novel/forum#afeac411d0243d1167e19193ad84f98192b777b9&path:packages/forum-api
+        version: https://codeload.github.com/auto-novel/forum/tar.gz/afeac411d0243d1167e19193ad84f98192b777b9#path:packages/forum-api(ky@2.1.0)
       '@pinia/colada':
         specifier: ^1.2.0
         version: 1.2.0(pinia@3.0.4(typescript@5.9.3)(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))
@@ -1068,12 +1068,13 @@ packages:
       }
     version: 0.1.0
 
-  '@novelia/forum-api@https://codeload.github.com/auto-novel/forum/tar.gz/e923e49dcfe711150acf229452c22a5559ab9a5d#path:packages/forum-api':
+  '@novelia/forum-api@https://codeload.github.com/auto-novel/forum/tar.gz/afeac411d0243d1167e19193ad84f98192b777b9#path:packages/forum-api':
     resolution:
       {
         gitHosted: true,
-        integrity: sha512-4lD5LCA1BEGYV5ss2qDn6SeaXj965NTBvDPwnhrqEis3tbshfnNngEkA7kzI53lxytC+5ybZZaOdGE0cQQAbmQ==,
-        tarball: https://codeload.github.com/auto-novel/forum/tar.gz/e923e49dcfe711150acf229452c22a5559ab9a5d,
+        integrity: sha512-muuraUG3I/lKc6KHroas2Q2QlGMBmIorZsvDi/e+SsXh4dJuogmZco0fbTw24y/+AYZOUOV8SnPz+YDZBhzDfg==,
+        path: packages/forum-api,
+        tarball: https://codeload.github.com/auto-novel/forum/tar.gz/afeac411d0243d1167e19193ad84f98192b777b9,
       }
     version: 0.1.0
     peerDependencies:
@@ -6394,7 +6395,7 @@ snapshots:
       ky: 2.1.0
       typescript: 6.0.3
 
-  '@novelia/forum-api@https://codeload.github.com/auto-novel/forum/tar.gz/e923e49dcfe711150acf229452c22a5559ab9a5d#path:packages/forum-api(ky@2.1.0)':
+  '@novelia/forum-api@https://codeload.github.com/auto-novel/forum/tar.gz/afeac411d0243d1167e19193ad84f98192b777b9#path:packages/forum-api(ky@2.1.0)':
     dependencies:
       '@mdit/plugin-container': 2.0.2(markdown-it@15.0.2)
       '@mdit/plugin-spoiler': 2.1.2(markdown-it@15.0.2)
