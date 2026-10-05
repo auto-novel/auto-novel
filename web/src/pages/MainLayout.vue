@@ -24,6 +24,7 @@ import { RouterLink } from 'vue-router';
 
 import { useBreakPoints } from '@/pages/util';
 import { useSettingStore, useWhoamiStore } from '@/stores';
+import { forumUrl } from '@/config';
 
 const bp = useBreakPoints();
 const hasSider = bp.greater('tablet');
@@ -68,6 +69,8 @@ const menuCollapsed = computed(() => {
 
 const renderLabel = (text: string, href: string) => () =>
   h(RouterLink, { to: href }, { default: () => text });
+const renderExternalLabel = (text: string, href: string) => () =>
+  h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
 const renderIcon = (icon: Component) => () =>
   h(NIcon, null, { default: () => h(icon) });
 
@@ -170,9 +173,9 @@ const menuOptions = computed<MenuOption[]>(() => {
       ],
     },
     {
-      label: renderLabel('论坛', '/forum'),
+      label: renderExternalLabel('论坛', forumUrl),
       icon: renderIcon(ForumOutlined),
-      key: '/forum',
+      key: forumUrl,
     },
     {
       label: renderLabel('设置', '/setting'),
@@ -202,7 +205,7 @@ const menuOptions = computed<MenuOption[]>(() => {
 
 const menuKey = computed(() => {
   const path = route.path;
-  for (const key of ['/novel', '/wenku', '/favorite', '/forum']) {
+  for (const key of ['/novel', '/wenku', '/favorite']) {
     if (path.startsWith(key)) {
       return key;
     }

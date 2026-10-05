@@ -1,15 +1,6 @@
-import ky from 'ky';
+import { authApi } from '../auth/session';
 
-import { authApi, localAuthToken } from '../auth/session';
-
-export const client = authApi
-  ? authApi.createClient('/api/', { timeout: 60_000 })
-  : ky.create({
-      prefix: '/api/',
-      timeout: 60_000,
-      retry: 0,
-      headers: { Authorization: `Bearer ${localAuthToken}` },
-    });
+export const client = authApi.createClient('/api/', { timeout: 60_000 });
 
 export type UploadTask<T> = {
   promise: Promise<T>;

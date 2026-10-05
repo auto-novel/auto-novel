@@ -5,20 +5,10 @@ import { LSKey } from './key';
 
 export const useWhoamiStore = defineStore(LSKey.Auth, () => {
   const user = shallowRef<AuthUser>();
-  if (authApi) {
-    const unsubscribe = authApi.watchUser((value) => {
-      user.value = value;
-    });
-    onScopeDispose(unsubscribe);
-  } else {
-    user.value = {
-      id: 1,
-      username: '本地用户',
-      role: 'admin',
-      createdAt: 0,
-      adminMode: false,
-    };
-  }
+  const unsubscribe = authApi.watchUser((value) => {
+    user.value = value;
+  });
+  onScopeDispose(unsubscribe);
 
   const whoami = computed(() => {
     const profile = user.value;
@@ -36,15 +26,11 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
     };
   });
 
-  const toggleManageMode = () => {
-    if (authApi) authApi.toggleAdminMode();
-    else if (user.value)
-      user.value = { ...user.value, adminMode: !user.value.adminMode };
-  };
+  const toggleManageMode = () => authApi.toggleAdminMode();
 
   return {
     whoami,
     toggleManageMode,
-    logout: () => authApi?.logout() ?? Promise.resolve(''),
+    logout: () => authApi.logout(),
   };
 });

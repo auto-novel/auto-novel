@@ -107,12 +107,6 @@ fun User?.requireNsfwAccess() {
     }
 }
 
-fun User.requireForumAccess() {
-    if (!atLeast(UserRole.Member)) {
-        throwUnauthorized("当前账户没有权限执行此操作")
-    }
-}
-
 fun User.requireNovelAccess() {
     if (!atLeast(UserRole.Member)) {
         throwUnauthorized("当前账户没有权限执行此操作")

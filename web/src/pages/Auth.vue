@@ -15,7 +15,7 @@ const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
 useEventListener('message', async (event: MessageEvent<unknown>) => {
-  const completion = authApi?.handleLoginMessage(
+  const completion = authApi.handleLoginMessage(
     event,
     iframe.value?.contentWindow,
   );
@@ -36,7 +36,7 @@ const iframeSrc = computed(() => {
         ? 'dark'
         : 'light'
       : setting.value.theme;
-  return authApi?.createLoginUrl(theme);
+  return authApi.createLoginUrl(theme);
 });
 </script>
 

@@ -216,41 +216,6 @@ const router = createRouter({
         },
 
         {
-          path: '/forum',
-          meta: { title: '论坛' },
-          component: () => import('./pages/forum/Forum.vue'),
-          props: (route) => ({
-            page: Number(route.query.page) || 1,
-            category: route.query.category || 'General',
-          }),
-        },
-        {
-          path: '/forum/:articleId',
-          component: () => import('./pages/forum/ForumArticle.vue'),
-          props: (route) => ({
-            articleId: route.params.articleId,
-            key: route.path,
-          }),
-        },
-        {
-          path: '/forum-edit',
-          meta: { title: '发布文章' },
-          component: () => import('./pages/forum/ForumArticleEdit.vue'),
-          props: (route) => ({
-            key: route.path,
-          }),
-        },
-        {
-          path: '/forum-edit/:articleId',
-          meta: { title: '编辑文章' },
-          component: () => import('./pages/forum/ForumArticleEdit.vue'),
-          props: (route) => ({
-            articleId: route.params.articleId,
-            key: route.path,
-          }),
-        },
-
-        {
           path: '/setting',
           meta: { title: '设置' },
           component: () => import('./pages/other/Setting.vue'),

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { handleMarkdownLinkPaste } from '@novelia/forum-api';
 import { useEventListener } from '@vueuse/core';
 import { ArrowDownwardOutlined, ArrowUpwardOutlined } from '@vicons/material';
 
@@ -312,6 +313,7 @@ watch([isWideScreen, () => props.sticky], () => nextTick(updateStickyToolbar));
               type="textarea"
               show-count
               :input-props="{ spellcheck: false }"
+              @paste="handleMarkdownLinkPaste($event, elEditor?.textareaElRef)"
               @input="saveDraft"
               :autosize="autosize || { minRows: 8 }"
             />
