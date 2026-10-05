@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __AUTH_URL__: string;
+
 declare const __BUILD_INFO__: Readonly<{
   gitCommit: string;
   buildTime: string;

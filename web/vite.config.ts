@@ -87,8 +87,9 @@ function setupRemoteAuthProxy(config: UserConfig) {
   };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd());
+  const isServe = command === 'serve';
   const apiMode = env.VITE_API_MODE;
   const apiUrl = (() => {
     if (apiMode === 'remote') {
@@ -112,6 +113,9 @@ export default defineConfig(({ mode }) => {
   const config: UserConfig = {
     define: {
       __BUILD_INFO__: JSON.stringify(buildInfo),
+      __AUTH_URL__: JSON.stringify(
+        isServe ? '/auth-proxy/' : 'https://auth.novelia.cc/',
+      ),
     },
     resolve: {
       tsconfigPaths: true,
@@ -213,7 +217,7 @@ export default defineConfig(({ mode }) => {
     );
   }
 
-  if (apiMode === 'remote') {
+  if (isServe) {
     setupRemoteAuthProxy(config);
   }
 
