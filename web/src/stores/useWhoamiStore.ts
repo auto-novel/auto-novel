@@ -19,7 +19,8 @@ export const useWhoamiStore = defineStore(LSKey.Auth, () => {
       isSignedIn: profile !== undefined,
       isAdmin: AuthUser.isAdmin(profile),
       asAdmin: AuthUser.asAdmin(profile),
-      hasNsfwAccess: atLeastMember && oldEnough,
+      hasNsfwAccess:
+        AuthUser.hasRoleAtLeast(profile, 'restricted') && oldEnough,
       hasForumAccess: atLeastMember,
       hasNovelAccess: atLeastMember && oldEnough,
       isMe: (username: string) => profile?.username === username,
