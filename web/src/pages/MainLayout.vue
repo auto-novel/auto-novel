@@ -70,7 +70,7 @@ const menuCollapsed = computed(() => {
 const renderLabel = (text: string, href: string) => () =>
   h(RouterLink, { to: href }, { default: () => text });
 const renderExternalLabel = (text: string, href: string) => () =>
-  h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
+  h('a', { href }, text);
 const renderIcon = (icon: Component) => () =>
   h(NIcon, null, { default: () => h(icon) });
 
