@@ -24,7 +24,7 @@ import { RouterLink } from 'vue-router';
 
 import { useBreakPoints } from '@/pages/util';
 import { useSettingStore, useWhoamiStore } from '@/stores';
-import { forumUrl } from '@/config';
+import { forumCommunityUrl } from '@/config';
 
 const bp = useBreakPoints();
 const hasSider = bp.greater('tablet');
@@ -173,9 +173,9 @@ const menuOptions = computed<MenuOption[]>(() => {
       ],
     },
     {
-      label: renderExternalLabel('论坛', forumUrl),
+      label: renderExternalLabel('论坛', forumCommunityUrl),
       icon: renderIcon(ForumOutlined),
-      key: forumUrl,
+      key: forumCommunityUrl,
     },
     {
       label: renderLabel('设置', '/setting'),
