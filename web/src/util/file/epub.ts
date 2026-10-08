@@ -63,7 +63,18 @@ export class Epub extends BaseFile {
   private resolve(root: string, rpath: string) {
     const rootUrl = new URL(root, 'file://book');
     const newURL = new URL(rpath, rootUrl);
-    return newURL.pathname.substring(1);
+    return decodeURIComponent(newURL.pathname.substring(1));
+  }
+
+  // 目录中的链接相对于目录文件，转换为与 manifest href 一致的相对于 package 的路径
+  private toPackageHref(docPath: string, href: string) {
+    if (!href) return href;
+    const path = this.resolve(docPath, href);
+    const packageDir = this.packagePath.slice(
+      0,
+      this.packagePath.lastIndexOf('/') + 1,
+    );
+    return path.startsWith(packageDir) ? path.slice(packageDir.length) : path;
   }
 
   private updateHref(oldHref: string, newHref: string) {
@@ -163,7 +174,10 @@ export class Epub extends BaseFile {
 
         const item: EpubNavItem = {
           text: linkEl.textContent?.trim() || '',
-          href: linkEl.getAttribute('href')?.split('#')[0] || '',
+          href: this.toPackageHref(
+            this.navigationPath!,
+            linkEl.getAttribute('href')?.split('#')[0] || '',
+          ),
           children: [],
         };
         const childOlEl = liEl.querySelector(':scope > ol');
@@ -189,7 +203,10 @@ export class Epub extends BaseFile {
       if (!content) throw new Error('Nav point does not have content');
 
       const text = navLabel.textContent?.trim() || '';
-      const href = content.getAttribute('src')?.split('#')[0] || '';
+      const href = this.toPackageHref(
+        this.ncxPath!,
+        content.getAttribute('src')?.split('#')[0] || '',
+      );
 
       const item: EpubNavItem = {
         text,
