@@ -258,11 +258,19 @@ watch(title, () => {
   similarNovels.value = null;
   submitCurrentStep.value = 1;
 });
+// \u53d6\u7b2c\u4e00\u6bb5\u8fde\u7eed\u7684\u65e5\u6587/\u6c49\u5b57\u4f5c\u4e3a\u5173\u952e\u8bcd\uff0c\u6ca1\u6709\u5219\u4f7f\u7528\u6574\u4e2a\u6807\u9898
+const similarQuery = computed(
+  () =>
+    title.value
+      .split(/[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]+/)
+      .find((it) => it) ?? title.value.trim(),
+);
 const findSimilarNovels = async () => {
-  const query = title.value.split(
-    /[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/,
-    2,
-  )[0];
+  const query = similarQuery.value;
+  if (!query) {
+    message.warning('\u8bf7\u5148\u586b\u5199\u6807\u9898');
+    return;
+  }
   const result = await runCatching(
     WenkuNovelApi.listNovel({
       page: 0,
@@ -645,14 +653,7 @@ const levelOptions = [
         </p>
         <p>
           自动搜索关键词：
-          <b>
-            {{
-              title.split(
-                /[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/,
-                2,
-              )[0]
-            }}
-          </b>
+          <b>{{ similarQuery }}</b>
         </p>
         <p v-if="similarNovels !== null">
           <template v-if="similarNovels.length === 0">没有相似的小说</template>
@@ -671,6 +672,7 @@ const levelOptions = [
           <c-button
             label="我确定小说不存在"
             type="warning"
+            :disabled="similarNovels === null"
             @click="moveToNextStep"
           />
           <c-button label="自动搜索相似小说" @click="findSimilarNovels" />
