@@ -123,14 +123,10 @@ const chapterHref = computed(() => {
   min-height: 65vh;
 }
 .chapter-content .fold-image {
-  list-style: none;
   cursor: pointer;
   color: v-bind('fontColor');
   opacity: v-bind('readerSetting.mixJpOpacity');
   margin: v-bind('`${readerSetting.fontSize * readerSetting.lineSpace}px 0`');
-}
-.chapter-content .fold-image::-webkit-details-marker {
-  display: none;
 }
 .chapter-content p {
   color: v-bind('fontColor');
