@@ -64,7 +64,7 @@ const moveToFavored = async () => {
   let failed = 0;
   for (const { id } of novels) {
     try {
-      await FavoredRepo.favoriteNovel(props.favoredId, {
+      await FavoredRepo.favoriteNovel(targetFavoredId.value, {
         type: 'wenku',
         novelId: id,
       });
@@ -123,8 +123,7 @@ const moveToFavored = async () => {
     </n-list-item>
 
     <n-list-item v-if="favoreds.wenku.length > 1">
-      <n-p>移动小说功能暂时关闭</n-p>
-      <n-flex v-if="false" vertical>
+      <n-flex vertical>
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
