@@ -111,7 +111,7 @@ async function beforeUpload({ file }: { file: UploadFileInfo }) {
   }
 }
 
-const uploadTasks: Record<string, UploadTask<string>> = {};
+const uploadTasks: Record<string, UploadTask<number>> = {};
 
 async function cancelUpload(options: {
   file: UploadFileInfo;
@@ -135,7 +135,7 @@ const customRequest = async ({
   }
 
   const type = file.url === 'jp' ? 'jp' : 'zh';
-  const task: UploadTask<string> = WenkuNovelRepo.createVolume(
+  const task: UploadTask<number> = WenkuNovelRepo.createVolume(
     props.novelId,
     file.name,
     type,

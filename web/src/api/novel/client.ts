@@ -12,7 +12,7 @@ export function uploadFile(
   name: string,
   file: File,
   onProgress: (p: number) => void,
-): UploadTask<string> {
+): UploadTask<number> {
   const formData = new FormData();
   formData.append(name, file);
   const controller = new AbortController();
@@ -81,7 +81,7 @@ export function uploadFile(
         });
       },
     })
-    .text();
+    .json<number>();
 
   return { promise, abort: () => controller.abort() };
 }
