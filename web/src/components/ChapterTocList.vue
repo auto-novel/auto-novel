@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { KeyboardArrowDownRound } from '@vicons/material';
+import { useResizeObserver } from '@vueuse/core';
 import { NIcon, NVirtualList, useThemeVars } from 'naive-ui';
 import type { ReadableTocItem } from '@/pages/novel/components/common';
 
@@ -73,6 +74,14 @@ const flatItems = computed(() => {
 // 若有行比它矮（如分卷行），渲染行数不足，列表底部会出现空白
 const ITEM_MIN_HEIGHT = 56;
 
+// NVirtualList 只在滚动/容器尺寸变化时同步滚动条，行被测量后内容变高
+// 不会触发同步，导致初次加载时滑块比例偏大。这里监听内容高度并手动同步。
+const listRef = ref<InstanceType<typeof NVirtualList>>();
+useResizeObserver(
+  computed(() => listRef.value?.getScrollContent()),
+  () => listRef.value?.scrollbarInstRef?.sync(),
+);
+
 const virtualListClass = computed(() => {
   if (props.mode.modal) {
     return 'modal-virtual-list';
@@ -89,6 +98,7 @@ const virtualListClass = computed(() => {
 
 <template>
   <n-virtual-list
+    ref="listRef"
     :items="flatItems"
     :item-size="ITEM_MIN_HEIGHT"
     :default-scroll-key="defaultScrollKey"
