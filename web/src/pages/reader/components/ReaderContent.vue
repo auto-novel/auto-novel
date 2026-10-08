@@ -86,6 +86,15 @@ const chapterHref = computed(() => {
           </span>
         </n-p>
         <br v-else-if="!p" />
+        <details v-else-if="readerSetting.foldImages">
+          <summary class="fold-image">插图（点击展开）</summary>
+          <img
+            :src="p.imageUrl"
+            :alt="p.imageUrl"
+            style="max-width: 100%; object-fit: scale-down"
+            loading="lazy"
+          />
+        </details>
         <img
           v-else
           :src="p.imageUrl"
@@ -112,6 +121,11 @@ const chapterHref = computed(() => {
 }
 .chapter-content {
   min-height: 65vh;
+}
+.fold-image {
+  color: v-bind('fontColor');
+  opacity: 0.6;
+  cursor: pointer;
 }
 .chapter-content p {
   color: v-bind('fontColor');
