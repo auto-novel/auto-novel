@@ -122,10 +122,15 @@ const chapterHref = computed(() => {
 .chapter-content {
   min-height: 65vh;
 }
-.fold-image {
-  color: v-bind('fontColor');
-  opacity: 0.6;
+.chapter-content .fold-image {
+  list-style: none;
   cursor: pointer;
+  color: v-bind('fontColor');
+  opacity: v-bind('readerSetting.mixJpOpacity');
+  margin: v-bind('`${readerSetting.fontSize * readerSetting.lineSpace}px 0`');
+}
+.chapter-content .fold-image::-webkit-details-marker {
+  display: none;
 }
 .chapter-content p {
   color: v-bind('fontColor');
