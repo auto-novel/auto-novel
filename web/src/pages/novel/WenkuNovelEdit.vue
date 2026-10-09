@@ -258,21 +258,30 @@ watch(title, () => {
   similarNovels.value = null;
   submitCurrentStep.value = 1;
 });
+// 取第一段连续的日文/汉字作为关键词，没有则使用整个标题
+const similarQuery = computed(
+  () =>
+    title.value
+      .split(/[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]+/)
+      .find((it) => it) ?? title.value.trim(),
+);
 const findSimilarNovels = async () => {
-  const query = title.value.split(
-    /[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/,
-    2,
-  )[0];
+  const query = similarQuery.value;
+  if (!query) {
+    message.warning('请先填写标题');
+    return;
+  }
+  // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
+  const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
   const result = await runCatching(
-    WenkuNovelApi.listNovel({
-      page: 0,
-      pageSize: 6,
-      query,
-      level: 0,
-    }),
+    Promise.all(
+      levels.map((level) =>
+        WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
+      ),
+    ),
   );
   if (result.ok) {
-    similarNovels.value = result.value.items;
+    similarNovels.value = result.value.flatMap((it) => it.items);
   } else {
     message.error('搜索相似小说失败:' + result.error.message);
   }
@@ -645,14 +654,7 @@ const levelOptions = [
         </p>
         <p>
           自动搜索关键词：
-          <b>
-            {{
-              title.split(
-                /[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]/,
-                2,
-              )[0]
-            }}
-          </b>
+          <b>{{ similarQuery }}</b>
         </p>
         <p v-if="similarNovels !== null">
           <template v-if="similarNovels.length === 0">没有相似的小说</template>
@@ -671,6 +673,7 @@ const levelOptions = [
           <c-button
             label="我确定小说不存在"
             type="warning"
+            :disabled="similarNovels === null"
             @click="moveToNextStep"
           />
           <c-button label="自动搜索相似小说" @click="findSimilarNovels" />
