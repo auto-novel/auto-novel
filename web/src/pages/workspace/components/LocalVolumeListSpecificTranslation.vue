@@ -1,13 +1,12 @@
 <script lang="ts" setup>
 import { DeleteOutlineOutlined } from '@vicons/material';
-import { useKeyModifier } from '@vueuse/core';
 
 import { GenericNovelId } from '@/model/Common';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
 import { useBookshelfLocalStore } from '@/pages/bookshelf/BookshelfLocalStore';
 import { doAction } from '@/pages/util';
 import { Setting, useLocalVolumeStore, useSettingStore } from '@/stores';
-import { downloadFile } from '@/util';
+import { downloadFile, useShouldTopJob } from '@/util';
 
 const translateOptions = useTemplateRef('translateOptions');
 
@@ -59,7 +58,7 @@ const queueAllVolumes = (volumes: LocalVolumeMetadata[]) => {
   message.info(`${success}本小说已排队，${failed}本失败`);
 };
 
-const shouldTopJob = useKeyModifier('Control');
+const shouldTopJob = useShouldTopJob();
 const queueVolume = (volumeId: string, total: number = 65536) => {
   const { startIndex, endIndex, level, forceMetadata } =
     translateOptions.value!.getTranslateTaskParams();

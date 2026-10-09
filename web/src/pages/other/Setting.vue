@@ -49,7 +49,10 @@ const playSound = (source: string) => {
           <b>快捷键说明</b>
           <n-ul>
             <n-li>列表页面，可以使用左右方向键翻页。</n-li>
-            <n-li>GPT/Sakura排队按钮，按住Ctrl键点击，会将任务自动置顶。</n-li>
+            <n-li>
+              GPT/Sakura排队按钮，按住 Ctrl（macOS 为
+              Cmd）键点击，会将任务自动置顶。
+            </n-li>
             <n-li>阅读页面，可以使用左右方向键跳转上/下一章。</n-li>
             <n-li>阅读页面，可以使用数字键1～3快速切换翻译。</n-li>
           </n-ul>
