@@ -3,6 +3,7 @@ import { DeleteOutlineOutlined, RefreshOutlined } from '@vicons/material';
 
 import type { TranslateJobRecord } from '@/model/Translator';
 import { TranslateJob } from '@/model/Translator';
+import { Humanize } from '@/util';
 
 const props = defineProps<{
   job: TranslateJobRecord;
@@ -12,35 +13,34 @@ const emit = defineEmits<{
   deleteJob: [];
 }>();
 const isFinished = computed(() => TranslateJob.isFinished(props.job));
+
+const themeVars = useThemeVars();
 </script>
 
 <template>
-  <n-thing>
-    <template #header>
+  <div class="job-record">
+    <div class="job-record__header">
       <job-task-link :task="job.task" />
-    </template>
-    <template #header-extra>
-      <n-flex :size="6" :wrap="false">
-        <c-icon-button
+      <div class="job-record__actions">
+        <c-icon-button-lite
           v-if="!isFinished"
           tooltip="重试"
           :icon="RefreshOutlined"
           @action="emit('retryJob')"
         />
-
-        <c-icon-button
+        <c-icon-button-lite
           tooltip="删除"
           :icon="DeleteOutlineOutlined"
           type="error"
           @action="emit('deleteJob')"
         />
-      </n-flex>
-    </template>
+      </div>
+    </div>
 
-    <template #description>
+    <div class="job-record__description">
       {{ job.description }}
       <br />
-      <n-text depth="3">
+      <span class="job-record__meta">
         <template v-if="!isFinished">
           未完成
           <template v-if="job.progress !== undefined">
@@ -50,9 +50,45 @@ const isFinished = computed(() => TranslateJob.isFinished(props.job));
         </template>
         <template v-else>
           已完成
-          <n-time v-if="job?.finishAt" :time="job?.finishAt" type="datetime" />
+          <template v-if="job.finishAt">
+            {{ Humanize.relativeTime(job.finishAt) }}
+          </template>
         </template>
-      </n-text>
-    </template>
-  </n-thing>
+      </span>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.job-record {
+  --ci-danger: v-bind('themeVars.errorColor');
+  padding: 10px 0;
+  border-top: 1px solid v-bind('themeVars.dividerColor');
+}
+
+.job-record__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.job-record__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: none;
+}
+
+.job-record__description {
+  font-size: 14px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.job-record__meta {
+  font-size: 12px;
+  color: v-bind('themeVars.textColor3');
+}
+</style>

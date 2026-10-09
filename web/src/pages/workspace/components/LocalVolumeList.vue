@@ -22,6 +22,8 @@ const message = useMessage();
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
+const themeVars = useThemeVars();
+
 const store = useBookshelfLocalStore();
 const { volumes } = storeToRefs(store);
 
@@ -162,11 +164,16 @@ const sortedVolumes = computed(() => {
       />
 
       <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
-        <n-list style="padding-bottom: 48px; padding-right: 12px">
-          <n-list-item v-for="volume of sortedVolumes ?? []" :key="volume.id">
+        <div class="volume-list">
+          <div
+            v-for="volume of sortedVolumes ?? []"
+            :key="volume.id"
+            class="volume-list__item"
+            :style="{ borderTopColor: themeVars.dividerColor }"
+          >
             <slot name="volume" v-bind="volume" />
-          </n-list-item>
-        </n-list>
+          </div>
+        </div>
       </n-scrollbar>
 
       <c-modal title="清空所有文件" v-model:show="showDeleteModal">
@@ -182,3 +189,14 @@ const sortedVolumes = computed(() => {
     </div>
   </c-drawer-right>
 </template>
+
+<style scoped>
+.volume-list {
+  padding-bottom: 48px;
+  padding-right: 12px;
+}
+.volume-list__item {
+  padding: 10px 0;
+  border-top: 1px solid;
+}
+</style>

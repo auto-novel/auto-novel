@@ -98,6 +98,9 @@ export class TaskExecutor {
       );
 
       tracker.onChapterStatus(chapterId, 'done');
+      // 译文已上传，释放内存里的整章原文/译文（长会话下不让内存随翻译量增长；
+      // 预览会按需从服务端/本地卷装回）
+      tracker.segmentTracker?.releaseText();
       const finished = chapters.filter((ch) => ch.status === 'done').length;
       const errors = chapters.filter((ch) => ch.status === 'error').length;
       tracker.onProgress(finished, errors, chapters.length);
