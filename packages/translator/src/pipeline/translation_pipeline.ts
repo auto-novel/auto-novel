@@ -29,6 +29,7 @@ export class TranslationPipeline {
     highWaterMark?: number,
     segmenter?: LineSegmenter,
     cache?: SegmentCache,
+    private readonly concurrencyLevel: 'segment' | 'chapter' = 'segment', // 为 chapter 时，传入的章节按分段顺序依次翻译，同时填充前个分段的译文
   ) {
     this.translatorLoops = new Map();
     this.queue = new DefaultSegmentQueue(highWaterMark ?? 50);
@@ -51,7 +52,6 @@ export class TranslationPipeline {
       signal,
       tracker,
     );
-    await this.queue.enqueueAll(segments, signal);
     return this.resolveTranslation(segments, segmentPromises, signal, tracker);
   }
 
@@ -79,10 +79,15 @@ export class TranslationPipeline {
     const deferredMap = new Map<number, Deferred>();
 
     const onSegStart = (segment: Segment, translatorId: string) => {
-      tracker?.onSegStart?.(segment.order, translatorId);
+      if (!signal?.aborted) {
+        tracker?.onSegStart?.(segment.order, translatorId);
+      }
     };
 
+    const prevSegs: string[][] | undefined =
+      this.concurrencyLevel === 'chapter' ? [] : undefined;
     const onSegComplete = (segment: Segment, translatedLines: string[]) => {
+      prevSegs?.push(translatedLines);
       deferredMap.get(segment.order)?.resolve({
         order: segment.order,
         text: translatedLines.join('\n'),
@@ -93,8 +98,21 @@ export class TranslationPipeline {
     };
 
     const onSegError = (segment: Segment, reason: any) => {
-      tracker?.onSegError?.(segment.order, reason);
+      if (!signal?.aborted) {
+        tracker?.onSegError?.(segment.order, reason);
+      }
       deferredMap.get(segment.order)?.reject(reason);
+      if (this.concurrencyLevel === 'chapter') {
+        // 章节并发模式，单个分片失败，后续自动失败
+        for (const seg of segments) {
+          if (seg.order > segment.order) {
+            deferredMap.get(seg.order)?.reject(reason);
+            if (!signal?.aborted) {
+              tracker?.onSegError?.(seg.order, reason);
+            }
+          }
+        }
+      }
     };
 
     const segments = this.assembler.assemble(
@@ -107,6 +125,14 @@ export class TranslationPipeline {
       onSegError,
       history,
     );
+
+    if (this.concurrencyLevel === 'chapter') {
+      for (const [index, segment] of segments.entries()) {
+        segment.context = { ...segment.context, prevSegs };
+        segment.next = () =>
+          signal?.aborted ? undefined : segments[index + 1];
+      }
+    }
 
     const segmentPromises: Promise<{ order: number; text: string }>[] = [];
     for (const seg of segments) {
@@ -138,7 +164,13 @@ export class TranslationPipeline {
     signal?: AbortSignal,
     tracker?: SegmentTracker,
   ): Promise<string> {
-    const results = await Promise.allSettled(segmentPromises);
+    const resultsPromise = Promise.allSettled(segmentPromises);
+    if (this.concurrencyLevel === 'segment') {
+      await this.queue.enqueueAll(segments, signal);
+    } else if (this.concurrencyLevel === 'chapter' && segments.length > 0) {
+      await this.queue.enqueueAll([segments[0]], signal);
+    }
+    const results = await resultsPromise;
 
     if (signal?.aborted) {
       tracker?.onAbort?.();
@@ -205,7 +237,7 @@ export class TranslationPipeline {
         segment.onComplete(segment, segment.context.history.translatedLines);
         return;
       }
-      if (loop.abortController.signal.aborted) return;
+      loop.abortController.signal.throwIfAborted();
       segment.onStart(segment, loop.id);
       const translatedLines = await loop.translator.translate(
         segment.lines,
@@ -226,13 +258,19 @@ export class TranslationPipeline {
           .then((segment) => {
             updateConcurrency(1);
             processSegment(segment)
+              .then(() => {
+                this.queue.ack(segment.next?.());
+              })
               .catch((err: any) => {
-                if (err.name !== 'AbortError') {
+                if (
+                  err.name !== 'AbortError' ||
+                  this.concurrencyLevel === 'chapter'
+                ) {
                   segment.onError(segment, err);
                 }
+                this.queue.ack();
               })
               .finally(() => {
-                this.queue.ack();
                 semaphore.release();
                 updateConcurrency(-1);
               });

@@ -97,8 +97,20 @@ export class DefaultSegmentQueue implements SegmentQueue {
     });
   }
 
-  /** 消费者完成一个分片后调用，释放一个槽位 */
-  ack(): void {
+  /**
+   * 消费者完成一个分片后调用，释放一个槽位
+   * 如果提供了next，将next中的分片排入队首（顺序执行的分片链表）
+   * */
+  ack(next?: Segment): void {
+    if (next) {
+      const resolve = this._dequeueResolvers.shift();
+      if (resolve) {
+        resolve(next);
+      } else {
+        this._items.unshift(next);
+      }
+      return;
+    }
     this._enqueuedCount--;
     this._tryResolveHw();
   }
@@ -112,5 +124,13 @@ export class DefaultSegmentQueue implements SegmentQueue {
       const resolve = this._hwResolvers.shift()!;
       resolve();
     }
+  }
+
+  clear(): void {
+    this._enqueuedCount -= this._items.length;
+    this._items.length = 0;
+    const hw = this._hwResolvers.splice(0);
+    for (const resolve of hw) resolve();
+    this._dequeueResolvers.splice(0);
   }
 }

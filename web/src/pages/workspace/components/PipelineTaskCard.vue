@@ -11,10 +11,14 @@ import { TaskState, ChapterSegmentState } from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type { TranslationTask } from '@/domain/translator/TranslationTask/types';
+import type {
+  TranslationTask,
+  TranslatorId,
+} from '@/domain/translator/TranslationTask/types';
 
 const props = defineProps<{
   job: TranslateJob;
+  translatorId: TranslatorId;
   taskState?: TaskState;
   taskCacheEntry?: TranslationTask;
 }>();
@@ -93,7 +97,7 @@ const message = useMessage();
 
 function createTask(taskDesc: string): TranslationTask {
   const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-  return createTranslationTask(desc, 'gpt', params);
+  return createTranslationTask(desc, props.translatorId, params);
 }
 
 const showPreview = ref(false);

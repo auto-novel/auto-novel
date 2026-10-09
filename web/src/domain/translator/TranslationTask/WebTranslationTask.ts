@@ -1,7 +1,7 @@
 import type { Glossary } from '@auto-novel/translator';
 import type { ChapterMeta } from '../TaskState';
 import type { TranslateTaskParams, WebTranslateTask } from '@/model/Translator';
-import type { ChapterDetail, TranslationTask } from './types';
+import type { ChapterDetail, TranslationTask, TranslatorId } from './types';
 import { WebNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 
@@ -20,7 +20,7 @@ export class WebTranslationTask implements TranslationTask {
   constructor(
     private providerId: string,
     private novelId: string,
-    private translatorId: 'gpt',
+    private translatorId: TranslatorId,
     params: TranslateTaskParams,
   ) {
     this.description = `web/${providerId}/${novelId}`;

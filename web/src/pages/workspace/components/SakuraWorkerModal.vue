@@ -17,19 +17,14 @@ const workspace = useSakuraWorkspaceStore();
 const workspaceRef = workspace.ref;
 const message = useMessage();
 
-const initFormValue = () => {
-  const worker = props.worker;
-  if (worker === undefined) {
-    return {
-      id: '',
-      endpoint: '',
-      segLength: 500,
-      prevSegLength: 500,
-    };
-  } else {
-    return { ...worker };
-  }
-};
+const initFormValue = () => ({
+  id: '',
+  endpoint: '',
+  segLength: 500,
+  prevSegLength: 500,
+  ...props.worker,
+  concurrency: props.worker?.concurrency ?? 1,
+});
 
 const formRef = useTemplateRef<FormInst>('form');
 const formValue = ref(initFormValue());
@@ -143,6 +138,16 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         />
       </n-form-item-row>
 
+      <n-form-item-row path="concurrency" label="并发数">
+        <n-input-number
+          :value="formValue.concurrency"
+          :min="1"
+          :max="100"
+          :precision="0"
+          @update:value="(value) => (formValue.concurrency = value ?? 1)"
+        />
+      </n-form-item-row>
+
       <n-form-item-row path="segLength" label="分段长度">
         <n-input-number
           v-model:value="formValue.segLength"
@@ -167,6 +172,10 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         # 分段长度还在测试中，非默认500无法上传
         <br />
         # 链接例子：http://127.0.0.1:8080
+      </n-text>
+      <br />
+      <n-text depth="3" style="font-size: 12px">
+        # 并发数仅beta工作区生效，是章节级别的并发。
       </n-text>
     </n-form>
 
