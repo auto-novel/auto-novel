@@ -1,11 +1,10 @@
 import type { Glossary } from '@auto-novel/translator';
 import type { ChapterMeta } from '../TaskState';
 import type {
-  TranslatorId,
   TranslateTaskParams,
   WenkuTranslateTask,
 } from '@/model/Translator';
-import type { ChapterDetail, TranslationTask } from './types';
+import type { ChapterDetail, TranslationTask, TranslatorId } from './types';
 import { WenkuNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 
@@ -24,7 +23,7 @@ export class WenkuTranslationTask implements TranslationTask {
   constructor(
     private novelId: string,
     private volumeId: string,
-    private translatorId: 'gpt',
+    private translatorId: TranslatorId,
     params: TranslateTaskParams,
   ) {
     this.description = `wenku/${novelId}/${volumeId}`;

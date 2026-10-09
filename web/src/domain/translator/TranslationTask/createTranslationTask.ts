@@ -2,14 +2,14 @@ import type {
   TranslateTaskDesc,
   TranslateTaskParams,
 } from '@/model/Translator';
-import type { TranslationTask } from './types';
+import type { TranslationTask, TranslatorId } from './types';
 import { LocalTranslationTask } from './LocalTranslationTask';
 import { WebTranslationTask } from './WebTranslationTask';
 import { WenkuTranslationTask } from './WenkuTranslationTask';
 
 export function createTranslationTask(
   desc: TranslateTaskDesc,
-  translatorId: 'gpt',
+  translatorId: TranslatorId,
   params: TranslateTaskParams,
 ): TranslationTask {
   switch (desc.type) {

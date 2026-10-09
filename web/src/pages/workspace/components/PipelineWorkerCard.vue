@@ -7,11 +7,13 @@ import {
   SettingsOutlined,
   StopOutlined,
 } from '@vicons/material';
-import { OpenAiTranslator } from '@auto-novel/translator';
-import type { GptPipelineWorker } from '@/model/Translator';
+import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
+import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
+import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
 
 const props = defineProps<{
-  worker: GptPipelineWorker;
+  translatorId: TranslatorId;
+  worker: GptPipelineWorker | SakuraWorker;
   running: boolean;
   concurrency: { current: number; max: number };
   errorCount: number;
@@ -38,15 +40,16 @@ const testWorker = async () => {
   ];
   const reasoningLogs: string[] = [];
   try {
-    const translator = new OpenAiTranslator({
-      endpoint: props.worker.endpoint,
-      key: props.worker.key,
-      model: props.worker.model,
-      profile: props.worker.profile,
-      log: (msg) => {
-        if (msg.startsWith('思考：')) reasoningLogs.push(msg);
-      },
-    });
+    const translator =
+      props.translatorId === 'sakura'
+        ? await SakuraTranslator.create(props.worker)
+        : new OpenAiTranslator({
+            ...(props.worker as GptPipelineWorker),
+            log: (msg) => {
+              if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+            },
+          });
+
     const textZh = await translator.translate(
       textJp,
       undefined,
@@ -76,7 +79,12 @@ const testWorker = async () => {
     <template #header>
       {{ worker.id }}
       <n-text depth="3" style="font-size: 12px; padding-left: 2px">
-        {{ worker.model }}[{{ worker.key.slice(-4) }}]@{{ worker.endpoint }}
+        <template v-if="translatorId === 'gpt'">
+          {{ (worker as GptPipelineWorker).model }}[{{
+            (worker as GptPipelineWorker).key.slice(-4)
+          }}]@
+        </template>
+        {{ worker.endpoint }}
       </n-text>
       <span class="viz-translator" style="margin-left: 6px">
         <n-text depth="3" class="viz-concurrency-num">
@@ -135,8 +143,14 @@ const testWorker = async () => {
   </n-thing>
 
   <gpt-pipeline-worker-modal
+    v-if="translatorId === 'gpt'"
     v-model:show="showEditModal"
-    :worker="showEditModal ? worker : undefined"
+    :worker="showEditModal ? (worker as GptPipelineWorker) : undefined"
+  />
+  <sakura-worker-modal
+    v-else-if="showEditModal"
+    v-model:show="showEditModal"
+    :worker="worker"
   />
 </template>
 

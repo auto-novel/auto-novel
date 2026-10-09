@@ -19,6 +19,7 @@ export interface Segment {
   onStart: (segment: Segment, translatorId: string) => void;
   onComplete: (segment: Segment, translatedLines: string[]) => void;
   onError: (segment: Segment, reason: any) => void;
+  next?: () => Segment | undefined;
 }
 
 /**
@@ -61,7 +62,8 @@ export abstract class SegmentQueue {
   abstract enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void>;
   abstract dequeue(signal?: AbortSignal): Promise<Segment>;
   abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
-  abstract ack(): void;
+  abstract ack(next?: Segment): void;
+  abstract clear(): void;
 }
 
 export interface PromptBuilder {

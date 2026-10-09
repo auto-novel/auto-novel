@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { NCollapse, NCollapseItem, NVirtualList } from 'naive-ui';
+import { KeyboardArrowDownRound } from '@vicons/material';
+import { useResizeObserver } from '@vueuse/core';
+import { NIcon, NVirtualList, useThemeVars } from 'naive-ui';
 import type { ReadableTocItem } from '@/pages/novel/components/common';
 
 interface TocSection {
@@ -33,50 +35,54 @@ const handleItemClick = (item: ReadableTocItem) => {
   }
 };
 
-const sortedChapters = (chapters: ReadableTocItem[]) => {
-  return props.sortReverse ? chapters.slice().reverse() : chapters;
-};
+const vars = useThemeVars();
 
-const sortedSections = computed(() => {
-  const sections = props.tocSections;
-  return props.sortReverse ? sections.slice().reverse() : sections;
-});
+const expandedSet = computed(() => new Set(props.expandedNames));
 
-const noNeedScroll = computed(() => {
-  return props.mode.narrow && !props.mode.modal && !props.mode.collapse;
-});
-
-const noSeparator = computed(() => {
-  return (
-    props.tocSections.length === 1 && props.tocSections[0].separator === null
+const toggleSection = (name: string) => {
+  const names = props.expandedNames;
+  emit(
+    'update:expandedNames',
+    expandedSet.value.has(name)
+      ? names.filter((it) => it !== name)
+      : [...names, name],
   );
-});
-
-const scrollToLastRead = async () => {
-  if (noNeedScroll.value || noSeparator.value || !props.lastReadChapterId) {
-    return;
-  }
-
-  await nextTick();
-
-  const elementId = `chapterTocItem-${props.lastReadChapterId}`;
-  let element: HTMLElement | null = null;
-
-  for (let i = 0; i < 5; i++) {
-    element = document.getElementById(elementId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'instant', block: 'center' });
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100 + i * 50));
-  }
 };
 
-onMounted(() => {
-  scrollToLastRead();
+// 展平为单个虚拟列表，折叠的分卷不放入章节，只渲染可见部分
+const flatItems = computed(() => {
+  const reverse = props.sortReverse;
+  const sections = reverse
+    ? props.tocSections.slice().reverse()
+    : props.tocSections;
+  const items: ReadableTocItem[] = [];
+  for (const { separator, chapters } of sections) {
+    if (separator) {
+      items.push(separator);
+      if (!expandedSet.value.has(separator.titleJp)) continue;
+    }
+    if (reverse) {
+      for (let i = chapters.length - 1; i >= 0; i--) items.push(chapters[i]);
+    } else {
+      items.push(...chapters);
+    }
+  }
+  return items;
 });
 
-const noSeparatorClass = computed(() => {
+// vueuc 的 itemSize 是行高下限：可见行数按 视口高度/itemSize 计算，
+// 若有行比它矮（如分卷行），渲染行数不足，列表底部会出现空白
+const ITEM_MIN_HEIGHT = 56;
+
+// NVirtualList 只在滚动/容器尺寸变化时同步滚动条，行被测量后内容变高
+// 不会触发同步，导致初次加载时滑块比例偏大。这里监听内容高度并手动同步。
+const listRef = ref<InstanceType<typeof NVirtualList>>();
+useResizeObserver(
+  computed(() => listRef.value?.getScrollContent()),
+  () => listRef.value?.scrollbarInstRef?.sync(),
+);
+
+const virtualListClass = computed(() => {
   if (props.mode.modal) {
     return 'modal-virtual-list';
   }
@@ -92,94 +98,65 @@ const noSeparatorClass = computed(() => {
 
 <template>
   <n-virtual-list
-    v-if="noSeparator"
-    :items="sortedChapters(props.tocSections[0].chapters)"
-    :item-size="75.2"
+    ref="listRef"
+    :items="flatItems"
+    :item-size="ITEM_MIN_HEIGHT"
     :default-scroll-key="defaultScrollKey"
     style="overflow: auto"
-    :class="noSeparatorClass"
+    :class="virtualListClass"
     :scrollbar-props="{ trigger: 'none' }"
     item-resizable
   >
-    <template #default="{ item: chapter }">
-      <div :key="chapter.chapterId">
+    <template #default="{ item, index }">
+      <div
+        v-if="item.order === undefined"
+        class="toc-separator-row"
+        :class="{ 'toc-separator-divider': index > 0 }"
+        @click="toggleSection(item.titleJp)"
+      >
         <ChapterTocItem
           :provider-id="providerId"
           :novel-id="novelId"
-          :toc-item="chapter"
-          :last-read="lastReadChapterId"
-          :is-separator="false"
-          @click="handleItemClick(chapter)"
+          :toc-item="item"
+          :is-separator="true"
+          style="flex: 1"
         />
+        <n-icon
+          size="18"
+          :style="{
+            transform: expandedSet.has(item.titleJp)
+              ? 'rotate(180deg)'
+              : undefined,
+          }"
+        >
+          <KeyboardArrowDownRound />
+        </n-icon>
       </div>
+      <ChapterTocItem
+        v-else
+        :provider-id="providerId"
+        :novel-id="novelId"
+        :toc-item="item"
+        :last-read="lastReadChapterId"
+        :is-separator="false"
+        @click="handleItemClick(item)"
+      />
     </template>
   </n-virtual-list>
-  <n-collapse
-    v-else
-    :expanded-names="expandedNames"
-    @update:expanded-names="$emit('update:expandedNames', $event)"
-    arrow-placement="right"
-  >
-    <template v-for="(section, index) in sortedSections" :key="index">
-      <n-collapse-item
-        v-if="section.separator"
-        :name="section.separator.titleJp"
-        display-directive="show"
-      >
-        <template #header>
-          <ChapterTocItem
-            :provider-id="providerId"
-            :novel-id="novelId"
-            :toc-item="section.separator"
-            :is-separator="true"
-            style="width: 100%"
-          />
-        </template>
-        <n-virtual-list
-          v-if="section.chapters.length > 0"
-          :items="sortedChapters(section.chapters)"
-          :item-size="75.2"
-          :scrollbar-props="{ trigger: 'none' }"
-          item-resizable
-        >
-          <template #default="{ item: chapter }">
-            <div :key="`ch-${chapter.chapterId}`">
-              <ChapterTocItem
-                :provider-id="providerId"
-                :novel-id="novelId"
-                :toc-item="chapter"
-                :last-read="lastReadChapterId"
-                :is-separator="false"
-                @click="handleItemClick(chapter)"
-              />
-            </div>
-          </template>
-        </n-virtual-list>
-      </n-collapse-item>
-      <n-virtual-list
-        v-else-if="section.chapters.length > 0"
-        :items="sortedChapters(section.chapters)"
-        :item-size="75.2"
-        :scrollbar-props="{ trigger: 'none' }"
-        item-resizable
-      >
-        <template #default="{ item: chapter }">
-          <div :key="`ch-${chapter.chapterId}`">
-            <ChapterTocItem
-              :provider-id="providerId"
-              :novel-id="novelId"
-              :toc-item="chapter"
-              :last-read="lastReadChapterId"
-              :is-separator="false"
-              @click="handleItemClick(chapter)"
-            />
-          </div>
-        </template>
-      </n-virtual-list>
-    </template>
-  </n-collapse>
 </template>
 <style scoped>
+.toc-separator-row {
+  box-sizing: border-box;
+  min-height: v-bind('ITEM_MIN_HEIGHT + "px"');
+  display: flex;
+  align-items: center;
+  /* 与章节行 calc(100% - 24px) 一致，避免被滚动条遮挡 */
+  padding: 8px 12px 8px 0;
+  cursor: pointer;
+}
+.toc-separator-divider {
+  border-top: 1px solid v-bind('vars.dividerColor');
+}
 @supports (height: 100dvh) {
   .modal-virtual-list {
     max-height: calc(80dvh - 200px);

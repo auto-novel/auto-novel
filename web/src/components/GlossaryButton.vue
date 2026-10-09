@@ -2,6 +2,7 @@
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import { WebNovelApi, WenkuNovelApi } from '@/api';
+import { forumPostUrls } from '@/config';
 import { GenericNovelId } from '@/model/Common';
 import { Glossary } from '@/model/Glossary';
 import { copyToClipBoard, doAction } from '@/pages/util';
@@ -209,7 +210,13 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
 
           <n-text>
             使用前务必先阅读
-            <c-a to="/forum/660ab4da55001f583649a621">术语表使用指南</c-a>
+            <n-a
+              :href="forumPostUrls.glossaryGuide"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              术语表使用指南
+            </n-a>
             ，不要滥用术语表。
           </n-text>
         </template>

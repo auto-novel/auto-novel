@@ -10,6 +10,7 @@ export type ReaderParagraph =
       source?: string;
       secondary: boolean;
       needSpeak: boolean;
+      missing?: boolean;
     }
   | { imageUrl: string }
   | undefined;
@@ -80,6 +81,7 @@ export const buildParagraphs = (
             text: label + '翻译不存在',
             secondary: true,
             needSpeak: true,
+            missing: true,
           });
         }
       }
@@ -103,6 +105,7 @@ export const buildParagraphs = (
             text: label + '翻译不存在',
             secondary: true,
             needSpeak: true,
+            missing: true,
           });
         }
         i++;

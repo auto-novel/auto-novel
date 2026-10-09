@@ -1,13 +1,6 @@
 import { createAuthApi } from '@novelia/auth-api';
 
-const isLocalAuth = ['local', 'native'].includes(import.meta.env.VITE_API_MODE);
-export const localAuthToken =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiLmnKzlnLDnlKjmiLciLCJyb2xlIjoiYWRtaW4iLCJjcmF0IjowLCJpYXQiOjB9.U6CwIExYZE7ls8jNeMPCkV8r2h6lOj6F7b3wJ_Ja5iY';
-
-export const authUrl =
-  import.meta.env.VITE_API_MODE === 'remote'
-    ? `${window.location.origin}/auth-proxy/`
-    : 'https://auth.novelia.cc/';
+export const authUrl = new URL(__AUTH_URL__, window.location.origin).href;
 
 function getStorage() {
   try {
@@ -20,14 +13,12 @@ function getStorage() {
   }
 }
 
-export const authApi = isLocalAuth
-  ? undefined
-  : createAuthApi({
-      app: 'n',
-      url: authUrl,
-      storage: getStorage(),
-    });
+export const authApi = createAuthApi({
+  app: 'n',
+  url: authUrl,
+  storage: getStorage(),
+});
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => authApi?.dispose());
+  import.meta.hot.dispose(() => authApi.dispose());
 }

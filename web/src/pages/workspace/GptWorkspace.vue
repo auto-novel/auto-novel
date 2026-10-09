@@ -4,6 +4,8 @@ import {
   DeleteOutlineOutlined,
   PlusOutlined,
 } from '@vicons/material';
+
+import { forumPostUrls } from '@/config';
 import { VueDraggable } from 'vue-draggable-plus';
 
 import { TranslationCacheRepo } from '@/repos';
@@ -84,7 +86,13 @@ const clearCache = async () =>
 
     <bulletin>
       <n-flex>
-        <c-a to="/forum/64f3d63f794cbb1321145c07" target="_blank">使用教程</c-a>
+        <n-a
+          :href="forumPostUrls.usageGuide"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          使用教程
+        </n-a>
         /
         <n-a href="https://chat.deepseek.com" target="_blank">
           DeepSeek Chat

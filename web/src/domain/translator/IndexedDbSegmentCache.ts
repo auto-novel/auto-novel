@@ -3,7 +3,7 @@ import type { Segment, SegmentCache } from '@auto-novel/translator';
 import { TranslationCacheRepo } from '@/repos';
 
 export class IndexedDbSegmentCache implements SegmentCache {
-  constructor(private storeName: 'gpt-seg-cache' = 'gpt-seg-cache') {}
+  constructor(private storeName: 'gpt-seg-cache' | 'sakura-seg-cache') {}
 
   async get(segment: Segment): Promise<string[] | undefined> {
     const key = this.computeKey(segment);

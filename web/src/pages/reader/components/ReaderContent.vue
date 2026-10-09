@@ -6,6 +6,7 @@ import type { ReaderChapter } from '../ReaderStore';
 import { useReaderSettingStore } from '@/stores';
 import { buildParagraphs } from './BuildParagraphs';
 import { WebUtil } from '@/util/web';
+import { forumPostUrls } from '@/config';
 
 const props = defineProps<{
   gnid: GenericNovelId;
@@ -19,6 +20,18 @@ const paragraphs = computed(() => buildParagraphs(props.gnid, props.chapter));
 
 const readerSettingStore = useReaderSettingStore();
 const { readerSetting } = storeToRefs(readerSettingStore);
+
+const emptyHint = computed(() => {
+  if (props.gnid.type !== 'web') return undefined;
+  if (props.chapter.paragraphs.length === 0)
+    return '本章没有原文，可能是源站章节无法访问，或需要更新目录/使用浏览器爬虫抓取。';
+  const missing = paragraphs.value.filter(
+    (p) => p && 'missing' in p && p.missing,
+  ).length;
+  if (missing > 0 && missing === readerSetting.value.translations.length)
+    return '本站不会自动翻译，需要用户在小说页面生成翻译后才能阅读。你也可以在阅读设置中切换显示的翻译。';
+  return undefined;
+});
 
 const fontColor = computed(() => {
   const theme = readerSetting.value.theme;
@@ -66,6 +79,18 @@ const chapterHref = computed(() => {
     </n-h4>
     <n-divider />
 
+    <n-alert v-if="emptyHint" type="info" :show-icon="false">
+      {{ emptyHint }}详见
+      <n-a
+        :href="forumPostUrls.usageGuide"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        使用教程
+      </n-a>
+      。
+    </n-alert>
+
     <div class="chapter-content">
       <template
         v-for="(p, index) of paragraphs"
@@ -86,6 +111,15 @@ const chapterHref = computed(() => {
           </span>
         </n-p>
         <br v-else-if="!p" />
+        <details v-else-if="readerSetting.foldImages">
+          <summary class="fold-image">插图（点击展开）</summary>
+          <img
+            :src="p.imageUrl"
+            :alt="p.imageUrl"
+            style="max-width: 100%; object-fit: scale-down"
+            loading="lazy"
+          />
+        </details>
         <img
           v-else
           :src="p.imageUrl"
@@ -112,6 +146,12 @@ const chapterHref = computed(() => {
 }
 .chapter-content {
   min-height: 65vh;
+}
+.chapter-content .fold-image {
+  cursor: pointer;
+  color: v-bind('fontColor');
+  opacity: v-bind('readerSetting.mixJpOpacity');
+  margin: v-bind('`${readerSetting.fontSize * readerSetting.lineSpace}px 0`');
 }
 .chapter-content p {
   color: v-bind('fontColor');

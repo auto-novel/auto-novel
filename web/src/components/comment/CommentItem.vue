@@ -12,7 +12,6 @@ import { copyToClipBoard, doAction } from '@/pages/util';
 
 const props = defineProps<{
   site: string;
-  parentId?: string;
   comment: Comment1;
   canReply: boolean;
 }>();
@@ -32,13 +31,13 @@ const { blacklist } = storeToRefs(blacklistStore);
 const options = computed(() => {
   const options = [{ label: '复制', key: 'copy' }];
   if (whoami.value.asAdmin) {
-    if (props.comment.hidden) {
+    if (props.comment.status === 1) {
       options.push({ label: '解除隐藏', key: 'unhide' });
-    } else {
+    } else if (props.comment.status === 0) {
       options.push({ label: '隐藏', key: 'hide' });
     }
   }
-  if (blacklist.value.usernames.includes(props.comment.user.username)) {
+  if (blacklist.value.usernames.includes(props.comment.authorUsername)) {
     options.push({ label: '解除屏蔽', key: 'unblock' });
   } else {
     options.push({ label: '屏蔽用户', key: 'block' });
@@ -62,7 +61,7 @@ const handleSelect = (key: string) => {
 
 function deleteComment() {
   doAction(
-    CommentRepo.deleteComment(props.comment.id, props.site, props.parentId),
+    CommentRepo.deleteComment(props.comment.id, props.site),
     '删除',
     message,
   );
@@ -73,25 +72,17 @@ function copyComment(comment: Comment1) {
 }
 
 function hideComment(comment: Comment1) {
-  doAction(
-    CommentRepo.hideComment(comment.id).then(() => (comment.hidden = true)),
-    '隐藏',
-    message,
-  );
+  doAction(CommentRepo.hideComment(comment.id), '隐藏', message);
 }
 
 function unhideComment(comment: Comment1) {
-  doAction(
-    CommentRepo.unhideComment(comment.id).then(() => (comment.hidden = false)),
-    '解除隐藏',
-    message,
-  );
+  doAction(CommentRepo.unhideComment(comment.id), '解除隐藏', message);
 }
 
 function blockUser(comment: Comment1) {
   doAction(
     (async () => {
-      blacklistStore.add(comment.user.username);
+      blacklistStore.add(comment.authorUsername);
     })(),
     '屏蔽用户',
     message,
@@ -101,7 +92,7 @@ function blockUser(comment: Comment1) {
 function unblockUser(comment: Comment1) {
   doAction(
     (async () => {
-      blacklistStore.remove(comment.user.username);
+      blacklistStore.remove(comment.authorUsername);
     })(),
     '解除屏蔽用户',
     message,
@@ -111,29 +102,29 @@ function unblockUser(comment: Comment1) {
 const isDeletable = computed(() => {
   return (
     whoami.value.asAdmin ||
-    (whoami.value.isMe(props.comment.user.username) &&
-      Date.now() / 1000 - props.comment.createAt < 3600 * 24)
+    (whoami.value.user?.id === props.comment.authorId &&
+      Date.now() - new Date(props.comment.createdAt).getTime() < 20 * 60_000)
   );
 });
 
 const isBlocked = computed(() => {
-  return blacklist.value.usernames.includes(props.comment.user.username);
+  return blacklist.value.usernames.includes(props.comment.authorUsername);
 });
 </script>
 
 <template>
   <n-flex align="center" :size="0">
     <n-text>
-      <b>{{ comment.user.username }}</b>
+      <b>{{ comment.authorUsername }}</b>
     </n-text>
     <n-text depth="3" style="font-size: 12px; margin-left: 12px">
-      <n-time :time="comment.createAt * 1000" type="relative" />
+      <n-time :time="new Date(comment.createdAt).getTime()" type="relative" />
     </n-text>
 
     <div style="flex: 1" />
 
     <c-button
-      v-if="parentId === undefined && canReply"
+      v-if="comment.rootId === null && canReply"
       label="回复"
       :icon="CommentOutlined"
       require-login
@@ -165,7 +156,9 @@ const isBlocked = computed(() => {
   </n-flex>
 
   <n-card embedded :bordered="false" size="small" style="margin-top: 2px">
-    <n-text v-if="comment.hidden" depth="3">[隐藏]</n-text>
+    <n-text v-if="comment.status !== 0" depth="3">
+      {{ comment.status === 1 ? '[隐藏]' : '[删除]' }}
+    </n-text>
     <n-text v-else-if="isBlocked" depth="3">[屏蔽]</n-text>
     <MarkdownView
       v-else

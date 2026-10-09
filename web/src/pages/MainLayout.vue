@@ -3,7 +3,6 @@ import { roleLabels } from '@novelia/auth-api';
 import {
   AccessTimeOutlined,
   BookOutlined,
-  CandlestickChartOutlined,
   CommitOutlined,
   DarkModeOutlined,
   ForumOutlined,
@@ -25,6 +24,7 @@ import { RouterLink } from 'vue-router';
 
 import { useBreakPoints } from '@/pages/util';
 import { useSettingStore, useWhoamiStore } from '@/stores';
+import { forumCommunityUrl } from '@/config';
 
 const bp = useBreakPoints();
 const hasSider = bp.greater('tablet');
@@ -69,6 +69,8 @@ const menuCollapsed = computed(() => {
 
 const renderLabel = (text: string, href: string) => () =>
   h(RouterLink, { to: href }, { default: () => text });
+const renderExternalLabel = (text: string, href: string) => () =>
+  h('a', { href }, text);
 const renderIcon = (icon: Component) => () =>
   h(NIcon, null, { default: () => h(icon) });
 
@@ -157,12 +159,16 @@ const menuOptions = computed<MenuOption[]>(() => {
           key: '/workspace/gpt',
         },
         {
+          label: renderLabel('Sakura工作区', '/workspace/sakura'),
+          key: '/workspace/sakura',
+        },
+        {
           label: renderLabel('GPT工作区BETA', '/workspace/gpt-pipeline'),
           key: '/workspace/gpt-pipeline',
         },
         {
-          label: renderLabel('Sakura工作区', '/workspace/sakura'),
-          key: '/workspace/sakura',
+          label: renderLabel('Sakura工作区BETA', '/workspace/sakura-pipeline'),
+          key: '/workspace/sakura-pipeline',
         },
         {
           label: renderLabel('交互翻译', '/workspace/interactive'),
@@ -171,9 +177,9 @@ const menuOptions = computed<MenuOption[]>(() => {
       ],
     },
     {
-      label: renderLabel('论坛', '/forum'),
+      label: renderExternalLabel('论坛', forumCommunityUrl),
       icon: renderIcon(ForumOutlined),
-      key: '/forum',
+      key: forumCommunityUrl,
     },
     {
       label: renderLabel('设置', '/setting'),
@@ -198,18 +204,12 @@ const menuOptions = computed<MenuOption[]>(() => {
       icon: renderIcon(theme === 'light' ? WbSunnyOutlined : DarkModeOutlined),
       key: 'theme',
     },
-    {
-      label: renderLabel('控制台', '/admin'),
-      icon: renderIcon(CandlestickChartOutlined),
-      key: '/admin',
-      show: whoami.value.asAdmin,
-    },
   ];
 });
 
 const menuKey = computed(() => {
   const path = route.path;
-  for (const key of ['/novel', '/wenku', '/favorite', '/forum']) {
+  for (const key of ['/novel', '/wenku', '/favorite']) {
     if (path.startsWith(key)) {
       return key;
     }

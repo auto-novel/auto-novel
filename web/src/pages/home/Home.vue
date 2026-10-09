@@ -8,6 +8,7 @@ import {
 } from '@vicons/material';
 
 import { FavoredApi } from '@/api';
+import { forumPostUrls, forumUrl } from '@/config';
 import { WebNovelRepo, WenkuNovelRepo } from '@/repos';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { useBreakPoints } from '@/pages/util';
@@ -174,14 +175,19 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
         </n-button>
       </router-link>
 
-      <router-link to="/forum" style="flex: 1">
+      <n-a
+        :href="forumUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="flex: 1"
+      >
         <n-button quaternary style="width: 100%; height: 64px">
           <n-flex align="center" vertical style="font-size: 12px">
             <n-icon size="24" :component="ForumOutlined" />
             论坛
           </n-flex>
         </n-button>
-      </router-link>
+      </n-a>
     </n-flex>
     <div v-else style="height: 16px" />
 
@@ -246,9 +252,15 @@ const githubLink = 'https://github.com/auto-novel/auto-novel';
   <c-modal title="使用说明" v-model:show="showHowToUseModal">
     <n-p>
       将小说链接复制到网站首页的输入框里，点击搜索，如果链接正确，将会跳转到小说页面。更高级的用法，例如生成机翻、高级搜索等，参见
-      <c-a to="/forum/64f3d63f794cbb1321145c07">使用教程</c-a>
+      <n-a
+        :href="forumPostUrls.usageGuide"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        使用教程
+      </n-a>
       。有什么问题和建议请在
-      <c-a to="/forum">论坛</c-a>
+      <n-a :href="forumUrl" target="_blank" rel="noopener noreferrer">论坛</n-a>
       中发帖讨论。
     </n-p>
     <n-p>支持的小说站如下:</n-p>

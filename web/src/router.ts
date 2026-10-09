@@ -192,15 +192,23 @@ const router = createRouter({
               component: () => import('./pages/workspace/GptWorkspace.vue'),
             },
             {
+              path: 'sakura',
+              meta: { title: 'Sakura工作区' },
+              component: () => import('./pages/workspace/SakuraWorkspace.vue'),
+            },
+            {
               path: 'gpt-pipeline',
               meta: { title: 'GPT工作区BETA' },
               component: () =>
                 import('./pages/workspace/GptPipelineWorkspace.vue'),
+              props: { translatorId: 'gpt', key: 'gpt-pipeline' },
             },
             {
-              path: 'sakura',
-              meta: { title: 'Sakura工作区' },
-              component: () => import('./pages/workspace/SakuraWorkspace.vue'),
+              path: 'sakura-pipeline',
+              meta: { title: 'Sakura工作区BETA' },
+              component: () =>
+                import('./pages/workspace/GptPipelineWorkspace.vue'),
+              props: { translatorId: 'sakura', key: 'sakura-pipeline' },
             },
             {
               path: 'interactive',
@@ -216,62 +224,9 @@ const router = createRouter({
         },
 
         {
-          path: '/forum',
-          meta: { title: '论坛' },
-          component: () => import('./pages/forum/Forum.vue'),
-          props: (route) => ({
-            page: Number(route.query.page) || 1,
-            category: route.query.category || 'General',
-          }),
-        },
-        {
-          path: '/forum/:articleId',
-          component: () => import('./pages/forum/ForumArticle.vue'),
-          props: (route) => ({
-            articleId: route.params.articleId,
-            key: route.path,
-          }),
-        },
-        {
-          path: '/forum-edit',
-          meta: { title: '发布文章' },
-          component: () => import('./pages/forum/ForumArticleEdit.vue'),
-          props: (route) => ({
-            key: route.path,
-          }),
-        },
-        {
-          path: '/forum-edit/:articleId',
-          meta: { title: '编辑文章' },
-          component: () => import('./pages/forum/ForumArticleEdit.vue'),
-          props: (route) => ({
-            articleId: route.params.articleId,
-            key: route.path,
-          }),
-        },
-
-        {
           path: '/setting',
           meta: { title: '设置' },
           component: () => import('./pages/other/Setting.vue'),
-        },
-
-        {
-          path: '/admin',
-          redirect: '/admin/operation',
-          component: () => import('./pages/admin/AdminLayout.vue'),
-          children: [
-            {
-              path: 'operation',
-              component: () =>
-                import('./pages/admin/AdminOperationHistory.vue'),
-            },
-            {
-              path: 'web-toc-merge-history',
-              component: () =>
-                import('./pages/admin/AdminWebTocMergeHistory.vue'),
-            },
-          ],
         },
 
         // 兼容旧路由

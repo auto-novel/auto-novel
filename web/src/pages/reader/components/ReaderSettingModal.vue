@@ -88,6 +88,9 @@ const setIndentSize = (diff: number) => {
               size="small"
             />
           </c-action-wrapper>
+          <c-action-wrapper title="折叠插图" align="center">
+            <n-switch v-model:value="readerSetting.foldImages" size="small" />
+          </c-action-wrapper>
           <c-action-wrapper title="缩进修正" align="center">
             <n-flex size="large" align="center">
               <n-switch

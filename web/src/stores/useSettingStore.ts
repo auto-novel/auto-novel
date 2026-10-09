@@ -179,6 +179,7 @@ export interface ReaderSetting {
   enableClickAnimition: boolean;
   indentSize?: number;
   enableSourceLabel: boolean;
+  foldImages?: boolean;
   //
   fontWeight: number;
   fontSize: number;

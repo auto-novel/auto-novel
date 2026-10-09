@@ -17,6 +17,7 @@ import io.ktor.http.content.*
 import io.ktor.resources.*
 import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.resources.*
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
@@ -69,6 +70,19 @@ private class WenkuNovelRes {
 fun Route.routeWenkuNovel() {
     val service by inject<WenkuNovelApi>()
     val translateV2Service by inject<WenkuNovelTranslateV2Api>()
+
+    val metadataRepo by inject<WenkuNovelMetadataRepository>()
+
+    get("/wenku/{novelId}/exist") {
+        call.response.header(HttpHeaders.CacheControl, "no-store")
+        val novelId = call.parameters["novelId"].orEmpty()
+        if (!ObjectId.isValid(novelId)) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@get
+        }
+        val exists = metadataRepo.exist(novelId)
+        call.respond(if (exists) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+    }
 
     authenticateDb(optional = true) {
         get<WenkuNovelRes.NovelList> { loc ->
