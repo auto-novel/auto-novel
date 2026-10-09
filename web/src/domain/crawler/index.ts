@@ -9,6 +9,8 @@ import { useWhoamiStore } from '@/stores';
 
 import { classifyTocUpdate } from './TocUpdate';
 
+export * from './providerConfig';
+
 const toMutationBody = (metadata: WebNovelMetadata) => ({
   title: metadata.title,
   authors: metadata.authors.map((author) => ({

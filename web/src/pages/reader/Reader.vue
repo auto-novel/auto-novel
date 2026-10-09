@@ -2,6 +2,7 @@
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 
 import { ReadHistoryApi } from '@/api';
+import { requiresAddonChapterUpdate } from '@/domain/crawler';
 import { GenericNovelId } from '@/model/Common';
 import type { TranslatorId } from '@/model/Translator';
 import { ReadPositionRepo } from '@/repos';
@@ -122,8 +123,20 @@ const navToChapter = async (chapterId: string) => {
     loadingBar.error();
   }
 
+  // 特殊错误提示
+  if (!result.ok) {
+    const message = result.error.message;
+    if (message.includes('从源站获取失败')) {
+      if (gnid.type === 'web' && requiresAddonChapterUpdate(gnid.providerId)) {
+        result.error.message =
+          '当前无原文信息，请使用最新版爬虫插件更新翻译后重试（https://github.com/auto-novel/Addon）';
+      }
+    }
+  }
+
   chapterResult.value = result;
   chapterList.value = [{ chapterId, result }];
+
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
   if (currentChapterId.value !== chapterId) {
