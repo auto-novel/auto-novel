@@ -258,7 +258,7 @@ watch(title, () => {
   similarNovels.value = null;
   submitCurrentStep.value = 1;
 });
-// \u53d6\u7b2c\u4e00\u6bb5\u8fde\u7eed\u7684\u65e5\u6587/\u6c49\u5b57\u4f5c\u4e3a\u5173\u952e\u8bcd\uff0c\u6ca1\u6709\u5219\u4f7f\u7528\u6574\u4e2a\u6807\u9898
+// 取第一段连续的日文/汉字作为关键词，没有则使用整个标题
 const similarQuery = computed(
   () =>
     title.value
@@ -268,19 +268,20 @@ const similarQuery = computed(
 const findSimilarNovels = async () => {
   const query = similarQuery.value;
   if (!query) {
-    message.warning('\u8bf7\u5148\u586b\u5199\u6807\u9898');
+    message.warning('请先填写标题');
     return;
   }
+  // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
+  const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
   const result = await runCatching(
-    WenkuNovelApi.listNovel({
-      page: 0,
-      pageSize: 6,
-      query,
-      level: 0,
-    }),
+    Promise.all(
+      levels.map((level) =>
+        WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
+      ),
+    ),
   );
   if (result.ok) {
-    similarNovels.value = result.value.items;
+    similarNovels.value = result.value.flatMap((it) => it.items);
   } else {
     message.error('搜索相似小说失败:' + result.error.message);
   }
