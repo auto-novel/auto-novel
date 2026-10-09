@@ -5,12 +5,15 @@ import { extractAsin } from './util';
 
 export const search = ($: CheerioAPI): AmazonSearchItem[] => {
   const items = $('.s-search-results').first().children().toArray();
+  // 搜索结果中同一 ASIN 可能出现多次
+  const seenAsins = new Set<string>();
   return items
     .filter((item) => {
       const asin = $(item).attr('data-asin');
-      if (!asin) {
+      if (!asin || seenAsins.has(asin)) {
         return false;
       }
+      seenAsins.add(asin);
 
       // 排除漫画
       const isComic = $(item)
