@@ -12,4 +12,5 @@ export const LSKey = {
   WorkspaceGpt: 'workspace-gpt',
   WorkspaceSakura: 'workspace-sakura',
   WorkspaceGptPipeline: 'workspace-gpt-pipeline',
+  NovelBottomTab: 'novel-bottom-tab',
 } as const;
