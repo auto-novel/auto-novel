@@ -4,6 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import NovelGlossaryEditor from '@/components/NovelGlossaryEditor.vue';
 import type { GenericNovelId } from '@/model/Common';
 import type { Glossary } from '@/model/Glossary';
+import { useTabStore } from '@/stores';
 
 const props = defineProps<{
   gnid?: GenericNovelId;
@@ -14,10 +15,34 @@ const props = defineProps<{
 }>();
 
 const slots = useSlots();
+const tabStore = useTabStore();
 
-const activeTab = ref(
-  slots.wenkuToc ? 'wenkuToc' : props.hideComment ? 'glossary' : 'comment',
-);
+const availableTabs = computed(() => {
+  const tabs: string[] = [];
+  if (slots.wenkuToc) tabs.push('wenkuToc');
+  if (!props.hideComment) tabs.push('comment');
+  tabs.push('glossary');
+  return tabs;
+});
+
+const getDefaultTab = () => {
+  if (availableTabs.value.includes(tabStore.lastTab)) {
+    return tabStore.lastTab;
+  }
+  return slots.wenkuToc
+    ? 'wenkuToc'
+    : props.hideComment
+      ? 'glossary'
+      : 'comment';
+};
+
+const activeTab = ref(getDefaultTab());
+
+watch(activeTab, (newTab) => {
+  if (newTab !== 'glossary') {
+    tabStore.setLastTab(newTab);
+  }
+});
 
 watch(
   () => props.hideComment,
@@ -39,14 +64,6 @@ const handleBeforeLeave = (name: string, oldName: string) => {
   }
   return true;
 };
-
-const availableTabs = computed(() => {
-  const tabs: string[] = [];
-  if (slots.wenkuToc) tabs.push('wenkuToc');
-  if (!props.hideComment) tabs.push('comment');
-  tabs.push('glossary');
-  return tabs;
-});
 
 const switchTab = async (targetTab: string) => {
   if (targetTab === activeTab.value) return;
