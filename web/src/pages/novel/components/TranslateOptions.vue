@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { InfoOutlined } from '@vicons/material';
 
+import { hasAddonInstalled } from '@/external/addon';
 import type { GenericNovelId } from '@/model/Common';
 import type { TranslateTaskParams } from '@/model/Translator';
 import { useWhoamiStore } from '@/stores';
@@ -16,7 +17,23 @@ const translateLevel = ref<'normal' | 'expire' | 'all' | 'sync'>(
   probs.gnid.type === 'local' ? 'expire' : 'normal',
 );
 const forceMetadata = ref(false);
-const useBrowserCrawler = ref(false);
+const useBrowserCrawler = ref(hasAddonInstalled());
+
+const checkAddon = () => {
+  if (hasAddonInstalled()) {
+    useBrowserCrawler.value = true;
+  }
+};
+
+onMounted(() => {
+  checkAddon();
+  window.addEventListener('auto-novel-addon-ready', checkAddon);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('auto-novel-addon-ready', checkAddon);
+});
+
 const startIndex = ref<number | null>(0);
 const endIndex = ref<number | null>(65536);
 const taskNumber = ref<number | null>(1);

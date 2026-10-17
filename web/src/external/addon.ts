@@ -90,6 +90,13 @@ declare global {
   }
 }
 
+export function hasAddonInstalled(): boolean {
+  return (
+    Boolean(window.Addon) ||
+    document.documentElement.hasAttribute('data-auto-novel-addon')
+  );
+}
+
 export async function getAddon(): Promise<AddonApi> {
   const _getAddon = (): AddonApi => {
     const addon = window.Addon;
