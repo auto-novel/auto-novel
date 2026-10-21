@@ -19,7 +19,9 @@ import infra.web.WebNovelListItem
 import infra.web.WebNovelFilter
 import infra.web.WebNovelTocItem
 import infra.web.WebNovelType
+import infra.web.datasource.WebNovelEsDataSource
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
@@ -29,12 +31,12 @@ import org.bson.types.ObjectId
 import org.bson.conversions.Bson
 import org.bson.BsonArray
 import org.bson.BsonDocument
-import org.bson.BsonInt32
 import org.bson.BsonString
 import org.bson.Document
 
 class WebNovelFavoredRepository(
     mongo: MongoClient,
+    private val es: WebNovelEsDataSource,
 ) {
     private val userFavoredWebCollection =
         mongo.database.getCollection<WebNovelFavoriteDbModel>(
@@ -52,6 +54,29 @@ class WebNovelFavoredRepository(
                     eq(WebNovelFavoriteDbModel::novelId.field(), ObjectId(novelId)),
                 )
             ).firstOrNull()?.favoredId
+    }
+
+    private suspend fun listFavoredNovelIds(
+        userId: String,
+        favoredId: String?,
+    ): List<String> {
+        val filter = if (favoredId == null) {
+            eq(WebNovelFavoriteDbModel::userId.field(), ObjectId(userId))
+        } else {
+            and(
+                eq(WebNovelFavoriteDbModel::userId.field(), ObjectId(userId)),
+                eq(WebNovelFavoriteDbModel::favoredId.field(), favoredId),
+            )
+        }
+        return userFavoredWebCollection
+            .aggregate<FavoredNovelIdLookup>(
+                match(filter),
+                favoredNovelLookup(pipeline = favoredNovelIdLookupProjectionPipeline()),
+                unwind("\$novel"),
+                Document("\$replaceRoot", Document("newRoot", "\$novel")),
+            )
+            .toList()
+            .map { "${it.providerId}.${it.novelId}" }
     }
 
     suspend fun listFavoredNovel(
@@ -93,86 +118,81 @@ class WebNovelFavoredRepository(
         
         // 搜索字符的筛选条件
         val novelFilters = mutableListOf<Bson>()
-        val queryKeywords = mutableListOf<String>()
         if (!queryString.isNullOrBlank()) {
-            val allAttentions = WebNovelAttention.entries.map { it.name }
-            
-            queryString.split(" ").filter { it.isNotBlank() }.forEach{ token ->
-                if (token.startsWith('>') || token.startsWith('<')) {
-                    val number = token.substring(1).toIntOrNull()
-                    if (number != null) {
-                        // 使用 $expr 和聚合操作符 $size 来动态比较数组长度
-                        val operator = if (token.startsWith('>')) "\$gt" else "\$lt"
-                        val exprFilter = BsonDocument(
-                            "\$expr",
+            val favoredIds = listFavoredNovelIds(userId, favoredId)
+            val matchedIds = mutableSetOf<String>()
+            favoredIds.chunked(5000).forEach { chunk ->
+                val (items, _) = es.searchNovel(
+                    userQuery = queryString,
+                    filterProvider = filterProvider,
+                    filterType = filterType,
+                    filterLevel = filterLevel,
+                    filterTranslate = filterTranslate,
+                    filterSort = WebNovelFilter.Sort.相关,
+                    page = 0,
+                    pageSize = chunk.size,
+                    filterIds = chunk,
+                )
+                items.mapTo(matchedIds) { "${it.providerId}.${it.novelId}" }
+            }
+            val exprFilter = BsonDocument(
+                "\$expr",
+                BsonDocument(
+                    "\$in",
+                    BsonArray(
+                        listOf(
                             BsonDocument(
-                                operator,
+                                "\$concat",
                                 BsonArray(
                                     listOf(
-                                        BsonDocument("\$size", BsonString("\$novel.toc")),
-                                        BsonInt32(number)
+                                        BsonString("\$novel.${WebNovel::providerId.field()}"),
+                                        BsonString("."),
+                                        BsonString("\$novel.${WebNovel::novelId.field()}"),
                                     )
                                 )
-                            )
+                            ),
+                            BsonArray(matchedIds.map { BsonString(it) }),
                         )
-                        novelFilters.add(exprFilter)
-                        return@forEach
-                    }
-                }
-                if (token.endsWith('$')) {
-                    val isExclusion = token.startsWith('-')
-                    val rawToken = token.removePrefix("-").removeSuffix("$")
-                    val field = if (allAttentions.contains(rawToken)) {
-                        "novel.${WebNovel::attentions.field()}"
-                    } else {
-                        "novel.${WebNovel::keywords.field()}"
-                    }
-
-                    val tagFilter = if (isExclusion) {
-                        Filters.nin(field, rawToken)
-                    } else {
-                        Filters.eq(field, rawToken)
-                    }
-                    novelFilters.add(tagFilter)
-                } else {
-                    queryKeywords.add(token)
-                }
-            }
-        }
-
-        if (queryKeywords.isNotEmpty()) {
-            val keywordFilters = queryKeywords.map { keyword ->
-                Filters.or(
-                    Filters.regex("novel.${WebNovel::titleJp.field()}", keyword, "i"),
-                    Filters.regex("novel.${WebNovel::titleZh.field()}", keyword, "i"),
-                    Filters.regex("novel.${WebNovel::keywords.field()}", keyword, "i")
+                    )
                 )
+            )
+            novelFilters.add(exprFilter)
+        } else {
+            // 平台来源的筛选条件
+            if (filterProvider.isNotEmpty()) {
+                novelFilters.add(Filters.`in`("novel.${WebNovel::providerId.field()}", filterProvider))
             }
-            novelFilters.add(Filters.and(keywordFilters))
-        }
 
-        // 平台来源的筛选条件
-        if (filterProvider.isNotEmpty()) {
-            novelFilters.add(Filters.`in`("novel.${WebNovel::providerId.field()}", filterProvider))
-        }
+            // 连载状态类型的筛选条件
+            if (filterType != WebNovelFilter.Type.全部) {
+                novelFilters.add(eq("novel.${WebNovel::type.field()}", WebNovelType.valueOf(filterType.name)))
+            }
 
-        // 连载状态类型的筛选条件
-        if (filterType != WebNovelFilter.Type.全部) {
-            novelFilters.add(eq("novel.${WebNovel::type.field()}", WebNovelType.valueOf(filterType.name)))
-        }
+            // 限制等级的筛选条件
+            when (filterLevel) {
+                WebNovelFilter.Level.一般向 -> novelFilters.add(
+                    Filters.nin(
+                        "novel.${WebNovel::attentions.field()}",
+                        WebNovelAttention.R18,
+                        WebNovelAttention.性描写,
+                    )
+                )
+                WebNovelFilter.Level.R18 -> novelFilters.add(
+                    Filters.`in`(
+                        "novel.${WebNovel::attentions.field()}",
+                        WebNovelAttention.R18,
+                        WebNovelAttention.性描写,
+                    )
+                )
+                else -> {}
+            }
 
-        // 限制等级的筛选条件
-        when (filterLevel) {
-            WebNovelFilter.Level.一般向 -> novelFilters.add(Filters.ne("novel.${WebNovel::attentions.field()}", WebNovelAttention.R18))
-            WebNovelFilter.Level.R18 -> novelFilters.add(Filters.eq("novel.${WebNovel::attentions.field()}", WebNovelAttention.R18))
-            else -> {}
-        }
-
-        // 翻译状态的筛选条件
-        when (filterTranslate) {
-            WebNovelFilter.Translate.GPT3 -> novelFilters.add(Filters.gt("novel.${WebNovel::gpt.field()}", 0L))
-            WebNovelFilter.Translate.Sakura -> novelFilters.add(Filters.gt("novel.${WebNovel::sakura.field()}", 0L))
-            else -> {}
+            // 翻译状态的筛选条件
+            when (filterTranslate) {
+                WebNovelFilter.Translate.GPT3 -> novelFilters.add(Filters.gt("novel.${WebNovel::gpt.field()}", 0L))
+                WebNovelFilter.Translate.Sakura -> novelFilters.add(Filters.gt("novel.${WebNovel::sakura.field()}", 0L))
+                else -> {}
+            }
         }
 
         val novelMatchBson = if (novelFilters.isNotEmpty()) match(and(novelFilters)) else null
@@ -281,6 +301,12 @@ internal data class FavoredNovelTocLookup(
 )
 
 @Serializable
+internal data class FavoredNovelIdLookup(
+    val providerId: String,
+    @SerialName("bookId") val novelId: String,
+)
+
+@Serializable
 internal data class FavoredNovelLookup(
     val providerId: String,
     @SerialName("bookId") val novelId: String,
@@ -317,7 +343,9 @@ internal data class FavoredNovelLookup(
         )
 }
 
-private fun favoredNovelLookup(): Bson =
+private fun favoredNovelLookup(
+    pipeline: List<Bson> = favoredNovelLookupProjectionPipeline(),
+): Bson =
     // Aggregates.lookup 没有 (from, localField, foreignField, pipeline, as) 重载，
     // 用 Document 构造 MongoDB 5.0+ 支持的 localField + pipeline 形态。
     Document(
@@ -326,8 +354,20 @@ private fun favoredNovelLookup(): Bson =
             .append("from", MongoCollectionNames.WEB_NOVEL)
             .append("localField", WebNovelFavoriteDbModel::novelId.field())
             .append("foreignField", WebNovel::id.field())
-            .append("pipeline", favoredNovelLookupProjectionPipeline())
+            .append("pipeline", pipeline)
             .append("as", "novel"),
+    )
+
+private fun favoredNovelIdLookupProjectionPipeline(): List<Bson> =
+    listOf(
+        project(
+            fields(
+                include(
+                    WebNovel::providerId.field(),
+                    WebNovel::novelId.field(),
+                )
+            )
+        )
     )
 
 private fun favoredNovelLookupProjectionPipeline(): List<Bson> =
