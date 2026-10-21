@@ -149,7 +149,9 @@ export class Pixiv implements WebNovelProvider {
           {
             title: '无名',
             chapterId,
-            createAt: obj.createDate,
+            createAt: obj.createDate
+              ? new Date(obj.createDate).toISOString()
+              : null,
           },
         ],
       };
@@ -196,7 +198,9 @@ export class Pixiv implements WebNovelProvider {
           title: seriesContent.title,
           chapterId: seriesContent.id,
           createAt:
-            seriesContent.createDate ??
+            (seriesContent.createDate
+              ? new Date(seriesContent.createDate).toISOString()
+              : null) ??
             (seriesContent.uploadTimestamp
               ? new Date(seriesContent.uploadTimestamp * 1000).toISOString()
               : null),
