@@ -207,7 +207,7 @@ export class Pixiv implements WebNovelProvider {
     return {
       title: obj.title,
       authors: [author],
-      type: WebNovelType.Ongoing,
+      type: obj.isConcluded ? WebNovelType.Completed : WebNovelType.Ongoing,
       keywords: keywords.length > 0 ? keywords : [...keywordsAlt],
       attentions,
       points: null,
