@@ -44,6 +44,7 @@ class WebNovelEsDataSource(
         filterSort: WebNovelFilter.Sort,
         page: Int,
         pageSize: Int,
+        filterIds: List<String>? = null,
     ): Pair<List<WebNovelMetadataEsModel>, Long> {
         val response = es.search(
             target = target,
@@ -61,6 +62,11 @@ class WebNovelEsDataSource(
                         *filterProvider.toTypedArray()
                     )
                 )
+
+                // Filter ids
+                if (filterIds != null) {
+                    mustQueries.add(ids(*filterIds.toTypedArray()))
+                }
 
                 // Filter type
                 when (filterType) {
