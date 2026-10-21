@@ -11,6 +11,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -157,7 +158,11 @@ class Pixiv(
             return RemoteNovelMetadata(
                 title = title,
                 authors = listOf(author),
-                type = WebNovelType.连载中,
+                type = if (obj1["isConcluded"]?.jsonPrimitive?.booleanOrNull == true) {
+                    WebNovelType.已完结
+                } else {
+                    WebNovelType.连载中
+                },
                 keywords = keywords.ifEmpty { keywordsAlt.toList() },
                 attentions = attentions,
                 points = null,
