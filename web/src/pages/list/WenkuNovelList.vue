@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { XAsyncContent, XPagination } from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
@@ -9,6 +10,7 @@ import type { WenkuListValue } from './option';
 import { getWenkuListOptions, onUpdateListValue, onUpdatePage } from './option';
 
 const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;

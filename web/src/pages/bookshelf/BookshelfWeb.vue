@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
 import { XAsyncContent, XPagination } from '@novelia/web-kit';
@@ -15,6 +16,7 @@ import type { WebFavoredListValue } from './option';
 import { getWebFavoredListOptions, parseFavoredListValueSort } from './option';
 
 const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;

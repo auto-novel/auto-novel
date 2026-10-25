@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { Toast, XAsyncContent, XPagination } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
@@ -16,6 +17,7 @@ const onUpdatePage = (page: number) => {
 };
 
 const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;
