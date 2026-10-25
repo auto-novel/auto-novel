@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast, XButton, XDialog } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   KeyboardDoubleArrowDownOutlined,
@@ -143,50 +143,62 @@ if (novelId !== undefined) {
     });
 }
 
+const submitting = ref(false);
 const submit = async () => {
+  if (!whoami.value.isSignedIn) {
+    Toast.info('请先登录');
+    return;
+  }
+  if (submitting.value) return;
+
   if (!allowSubmit.value) {
     Toast.warning('文章未载入，无法提交');
     return;
   }
 
+  submitting.value = true;
   try {
-    await formRef.value?.validate();
-  } catch (e) {
-    return;
-  }
+    try {
+      await formRef.value?.validate();
+    } catch {
+      return;
+    }
 
-  const allPresetKeywords = presetKeywords.value.groups.flatMap(
-    (it) => it.presetKeywords,
-  );
-
-  const body = {
-    title: formValue.value.title,
-    titleZh: formValue.value.titleZh,
-    cover: formValue.value.cover,
-    authors: formValue.value.authors,
-    artists: formValue.value.artists,
-    level: formValue.value.level,
-    introduction: formValue.value.introduction,
-    keywords: formValue.value.keywords.filter((it) =>
-      allPresetKeywords.includes(it),
-    ),
-    volumes: formValue.value.volumes,
-  };
-
-  if (novelId === undefined) {
-    await Toast.promise(
-      WenkuNovelRepo.createNovel(body).then((id) => {
-        router.push({ path: `/wenku/${id}` });
-      }),
-      { success: '新建文库成功', error: '新建文库失败' },
+    const allPresetKeywords = presetKeywords.value.groups.flatMap(
+      (it) => it.presetKeywords,
     );
-  } else {
-    await Toast.promise(
-      WenkuNovelRepo.updateNovel(novelId, body).then(() => {
-        router.push({ path: `/wenku/${novelId}` });
-      }),
-      { success: '编辑文库成功', error: '编辑文库失败' },
-    );
+
+    const body = {
+      title: formValue.value.title,
+      titleZh: formValue.value.titleZh,
+      cover: formValue.value.cover,
+      authors: formValue.value.authors,
+      artists: formValue.value.artists,
+      level: formValue.value.level,
+      introduction: formValue.value.introduction,
+      keywords: formValue.value.keywords.filter((it) =>
+        allPresetKeywords.includes(it),
+      ),
+      volumes: formValue.value.volumes,
+    };
+
+    if (novelId === undefined) {
+      await Toast.promise(
+        WenkuNovelRepo.createNovel(body).then((id) => {
+          router.push({ path: `/wenku/${id}` });
+        }),
+        { success: '新建文库成功', error: '新建文库失败' },
+      );
+    } else {
+      await Toast.promise(
+        WenkuNovelRepo.updateNovel(novelId, body).then(() => {
+          router.push({ path: `/wenku/${novelId}` });
+        }),
+        { success: '编辑文库成功', error: '编辑文库失败' },
+      );
+    }
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -270,24 +282,32 @@ const similarQuery = computed(
       .split(/[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf\u3400-\u4dbf]+/)
       .find((it) => it) ?? title.value.trim(),
 );
+const searching = ref(false);
 const findSimilarNovels = async () => {
+  if (searching.value) return;
+
   const query = similarQuery.value;
   if (!query) {
     Toast.warning('请先填写标题');
     return;
   }
-  // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
-  const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
-  await Toast.promise(
-    Promise.all(
-      levels.map((level) =>
-        WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
-      ),
-    ).then((results) => {
-      similarNovels.value = results.flatMap((it) => it.items);
-    }),
-    { error: '搜索相似小说失败' },
-  );
+  searching.value = true;
+  try {
+    // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
+    const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
+    await Toast.promise(
+      Promise.all(
+        levels.map((level) =>
+          WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
+        ),
+      ).then((results) => {
+        similarNovels.value = results.flatMap((it) => it.items);
+      }),
+      { error: '搜索相似小说失败' },
+    );
+  } finally {
+    searching.value = false;
+  }
 };
 const moveToPrevStep = () => {
   if (submitCurrentStep.value > 1) {
@@ -638,16 +658,16 @@ const levelOptions = [
 
     <n-divider />
 
-    <c-button
-      v-if="novelId"
-      label="提交"
-      :icon="UploadOutlined"
-      require-login
-      size="large"
-      type="primary"
-      class="float"
-      @action="submit"
-    />
+    <div v-if="novelId" class="submit-action">
+      <XButton
+        class="min-h-11 rounded-full"
+        :loading="submitting"
+        @click="submit"
+      >
+        <UploadOutlined v-if="!submitting" class="size-5" aria-hidden="true" />
+        提交
+      </XButton>
+    </div>
 
     <n-steps
       v-else
@@ -676,15 +696,23 @@ const levelOptions = [
             </n-grid-item>
           </n-grid>
         </p>
-        <n-button-group v-if="submitCurrentStep === 1">
-          <c-button
-            label="我确定小说不存在"
-            type="warning"
+        <div v-if="submitCurrentStep === 1" class="flex flex-wrap gap-3">
+          <XButton
+            color="warning"
             :disabled="similarNovels === null"
             @click="moveToNextStep"
-          />
-          <c-button label="自动搜索相似小说" @click="findSimilarNovels" />
-        </n-button-group>
+          >
+            我确定小说不存在
+          </XButton>
+          <XButton
+            color="neutral"
+            variant="outline"
+            :loading="searching"
+            @click="findSimilarNovels"
+          >
+            自动搜索相似小说
+          </XButton>
+        </div>
       </n-step>
 
       <n-step title="检查小说文件是否可以上传">
@@ -693,27 +721,35 @@ const levelOptions = [
         </p>
         <p>PDF、或者内容只有图片的EPUB是无法上传的。</p>
 
-        <n-button-group v-if="submitCurrentStep === 2">
-          <c-button
-            label="我确定我有可以上传的文件"
-            type="warning"
-            @click="moveToNextStep"
-          />
-          <c-button label="上一步" @click="moveToPrevStep" />
-        </n-button-group>
+        <div v-if="submitCurrentStep === 2" class="flex flex-wrap gap-3">
+          <XButton color="warning" @click="moveToNextStep">
+            我确定我有可以上传的文件
+          </XButton>
+          <XButton color="neutral" variant="outline" @click="moveToPrevStep">
+            上一步
+          </XButton>
+        </div>
       </n-step>
 
       <n-step title="创建文库小说">
-        <n-button-group v-if="submitCurrentStep === 3" style="margin-top: 16px">
-          <c-button
-            label="提交"
-            :icon="UploadOutlined"
-            require-login
-            type="primary"
-            @action="submit"
-          />
-          <c-button label="上一步" @click="moveToPrevStep" />
-        </n-button-group>
+        <div v-if="submitCurrentStep === 3" class="mt-4 flex flex-wrap gap-3">
+          <XButton :loading="submitting" @click="submit">
+            <UploadOutlined
+              v-if="!submitting"
+              class="size-5"
+              aria-hidden="true"
+            />
+            提交
+          </XButton>
+          <XButton
+            color="neutral"
+            variant="outline"
+            :disabled="submitting"
+            @click="moveToPrevStep"
+          >
+            上一步
+          </XButton>
+        </div>
       </n-step>
     </n-steps>
   </div>
@@ -733,3 +769,21 @@ const levelOptions = [
     </n-p>
   </XDialog>
 </template>
+
+<style scoped>
+/* 定位外层容器，避免与按钮组件自身的 position 样式竞争。 */
+.submit-action {
+  position: fixed;
+  right: max(40px, env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  border-radius: 9999px;
+  box-shadow: rgb(0 0 0 / 40%) 2px 2px 8px 0px;
+}
+
+@media (max-width: 600px) {
+  .submit-action {
+    right: calc(12px + env(safe-area-inset-right, 0px));
+  }
+}
+</style>
