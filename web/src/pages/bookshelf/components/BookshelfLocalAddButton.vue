@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { Toast, XTooltip } from '@novelia/web-kit';
+import { Toast, XButton, XFilePicker, XTooltip } from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
-import type { UploadCustomRequestOptions, UploadFileInfo } from 'naive-ui';
 
 import { useBookshelfLocalStore } from '../BookshelfLocalStore';
 
@@ -13,10 +12,6 @@ const emit = defineEmits<{
 }>();
 
 const store = useBookshelfLocalStore();
-
-const onFinish = ({ file }: { file: UploadFileInfo }) => {
-  emit('done', file.file!);
-};
 
 const validateFile = (file: File) => {
   if (
@@ -36,9 +31,6 @@ const validateFile = (file: File) => {
   return true;
 };
 
-const beforeUpload = ({ file }: { file: UploadFileInfo }) =>
-  file.file != null && validateFile(file.file);
-
 const uploadFile = (file: File) =>
   store
     .addVolume(file, props.favoredId ?? 'default')
@@ -47,15 +39,8 @@ const uploadFile = (file: File) =>
       throw error;
     });
 
-const customRequest = ({
-  file,
-  onFinish,
-  onError,
-}: UploadCustomRequestOptions) => {
-  void uploadFile(file.file!).then(onFinish).catch(onError);
-};
-
-const handleDrop = (files: File[]) => {
+// 文件选择与目录拖放共用业务校验和导入逻辑。
+const importFiles = (files: File[]) => {
   for (const file of files) {
     if (!validateFile(file)) continue;
     void uploadFile(file)
@@ -72,25 +57,22 @@ const handleDropError = (error: unknown) => {
 </script>
 
 <template>
-  <n-upload
-    :show-file-list="false"
-    accept=".txt,.epub,.srt"
-    multiple
-    directory-dnd
-    :custom-request="customRequest"
-    @before-upload="beforeUpload"
-    @finish="onFinish"
-  >
-    <XTooltip>
-      <template #trigger>
-        <c-button label="添加" :icon="PlusOutlined" />
-      </template>
-      支持拖拽上传Epub/Txt/Srt文件
-      <br />
-      有道/GPT支持韩语/英语小说
-    </XTooltip>
-  </n-upload>
-  <DropZone @drop="handleDrop" @error="handleDropError">
+  <XFilePicker accept=".txt,.epub,.srt" multiple @select="importFiles">
+    <template #trigger="{ open, disabled }">
+      <XTooltip>
+        <template #trigger>
+          <XButton :disabled="disabled" @click="open">
+            <PlusOutlined class="size-5" aria-hidden="true" />
+            添加
+          </XButton>
+        </template>
+        支持拖拽上传Epub/Txt/Srt文件
+        <br />
+        有道/GPT支持韩语/英语小说
+      </XTooltip>
+    </template>
+  </XFilePicker>
+  <DropZone @drop="importFiles" @error="handleDropError">
     拖拽文件到这里上传
   </DropZone>
 </template>

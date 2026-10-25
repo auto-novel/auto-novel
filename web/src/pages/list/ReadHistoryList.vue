@@ -15,6 +15,8 @@ const onUpdatePage = (page: number) => {
   router.push({ path: route.path, query });
 };
 
+const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+
 const props = defineProps<{
   page: number;
 }>();
@@ -50,7 +52,13 @@ const deleteHistory = (providerId: string, novelId: string) =>
 </script>
 
 <template>
-  <div class="layout-content">
+  <div
+    ref="paginationScope"
+    tabindex="0"
+    role="region"
+    aria-label="阅读历史列表"
+    class="layout-content"
+  >
     <n-h1>阅读历史</n-h1>
 
     <n-flex style="margin-bottom: 24px">
@@ -108,6 +116,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
       :page="page"
       :total-pages="pageCount"
       keyboard
+      :keyboard-scope="paginationScope"
       @update:page="onUpdatePage"
     />
   </div>

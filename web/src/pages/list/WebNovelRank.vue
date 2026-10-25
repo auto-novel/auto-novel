@@ -11,6 +11,8 @@ import {
   parseRankListValue,
 } from './option';
 
+const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+
 const props = defineProps<{
   providerId: string;
   typeId: string;
@@ -50,7 +52,13 @@ const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
 </script>
 
 <template>
-  <div class="layout-content">
+  <div
+    ref="paginationScope"
+    tabindex="0"
+    role="region"
+    aria-label="小说排行榜"
+    class="layout-content"
+  >
     <n-h1>{{ title }}</n-h1>
 
     <ListFilter
@@ -82,6 +90,7 @@ const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
       :page="page"
       :total-pages="pageCount"
       keyboard
+      :keyboard-scope="paginationScope"
       @update:page="onUpdatePage"
     />
   </div>

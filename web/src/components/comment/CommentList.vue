@@ -11,6 +11,7 @@ const props = defineProps<{
   locked: boolean;
 }>();
 
+const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
 const page = ref(1);
 const { data: commentPage, error } = CommentRepo.useCommentList(
   page,
@@ -68,7 +69,12 @@ const canReply = computed(() => {
 
 <template>
   <div ref="anchor" />
-  <section class="comment-list mt-5 border-t border-divider">
+  <section
+    ref="paginationScope"
+    tabindex="0"
+    aria-label="评论列表"
+    class="comment-list mt-5 border-t border-divider"
+  >
     <header
       class="flex items-center justify-between gap-4 py-4"
       :class="{ 'border-b border-divider': !showInput }"
@@ -172,6 +178,7 @@ const canReply = computed(() => {
       v-model:page="page"
       :total-pages="pageCount"
       keyboard
+      :keyboard-scope="paginationScope"
     />
   </section>
 </template>

@@ -8,6 +8,8 @@ import { FavoredRepo, useWhoamiStore } from '@/stores';
 import type { WenkuListValue } from './option';
 import { getWenkuListOptions, onUpdateListValue, onUpdatePage } from './option';
 
+const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
+
 const props = defineProps<{
   page: number;
   query: string;
@@ -53,7 +55,13 @@ watch(novelPage, (novelPage) => {
 </script>
 
 <template>
-  <div class="layout-content">
+  <div
+    ref="paginationScope"
+    tabindex="0"
+    role="region"
+    aria-label="文库小说列表"
+    class="layout-content"
+  >
     <n-h1>文库小说</n-h1>
 
     <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
@@ -93,6 +101,7 @@ watch(novelPage, (novelPage) => {
       :page="page"
       :total-pages="pageCount"
       keyboard
+      :keyboard-scope="paginationScope"
       @update:page="onUpdatePage"
     />
   </div>
