@@ -140,6 +140,9 @@ const showQQModal = ref(false);
         <n-a :href="siteUrls.repository" target="_blank">GitHub</n-a>
       </div>
       <p class="my-4 first:mt-0 last:mb-0">
+        交互翻译已恢复，点击工作区翻译器上的「试译」按钮即可使用。
+      </p>
+      <p class="my-4 first:mt-0 last:mb-0">
         禁止使用脚本绕过翻译器提交翻译文本，哪怕你觉得自己提交的是正经翻译。
       </p>
       <p class="my-4 first:mt-0 last:mb-0">

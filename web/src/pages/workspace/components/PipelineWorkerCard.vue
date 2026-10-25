@@ -7,6 +7,7 @@ import {
   PlayArrowOutlined,
   SettingsOutlined,
   StopOutlined,
+  TranslateOutlined,
 } from '@vicons/material';
 import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 
 const themeVars = useThemeVars();
 const showEditModal = ref(false);
+const showInteractiveModal = ref(false);
 
 function isWorkerActive(): boolean {
   return props.concurrency.current > 0;
@@ -133,6 +135,11 @@ const testWorker = async () => {
           @action="testWorker"
         />
         <c-icon-button
+          tooltip="试译"
+          :icon="TranslateOutlined"
+          @action="showInteractiveModal = true"
+        />
+        <c-icon-button
           :tooltip="running ? '请先停止翻译器后再修改' : '设置'"
           :icon="SettingsOutlined"
           :disabled="running"
@@ -158,6 +165,13 @@ const testWorker = async () => {
     v-else-if="showEditModal"
     v-model:show="showEditModal"
     :worker="worker"
+  />
+  <interactive-translate-modal
+    v-if="showInteractiveModal"
+    v-model:show="showInteractiveModal"
+    :translator-id="translatorId"
+    :worker="worker"
+    :running="running"
   />
 </template>
 
