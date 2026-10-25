@@ -108,6 +108,13 @@ const canReply = computed(() => {
       @cancel="cancelInput()"
     />
 
+    <XPagination
+      v-if="pageCount > 1"
+      v-model:page="page"
+      :total-pages="pageCount"
+      :ui="{ root: 'border-t-0 border-b' }"
+    />
+
     <template v-if="commentPage">
       <div class="divide-y divide-divider">
         <CommentThread
@@ -177,8 +184,7 @@ const canReply = computed(() => {
       v-if="pageCount > 1"
       v-model:page="page"
       :total-pages="pageCount"
-      keyboard
-      :keyboard-scope="paginationScope"
+      :keyboard="paginationScope"
     />
   </section>
 </template>

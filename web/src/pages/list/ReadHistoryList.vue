@@ -53,7 +53,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
   <div role="region" aria-label="阅读历史列表" class="layout-content">
     <n-h1>阅读历史</n-h1>
 
-    <n-flex style="margin-bottom: 24px">
+    <n-flex>
       <c-button-confirm
         hint="真的要清空记录吗？"
         label="清空记录"
@@ -72,12 +72,21 @@ const deleteHistory = (providerId: string, novelId: string) =>
       />
     </n-flex>
 
-    <n-text v-if="readHistoryPaused" type="warning">
+    <n-text v-if="readHistoryPaused" type="warning" class="mt-4 block">
       注意：历史功能已暂停
     </n-text>
 
+    <XPagination
+      v-if="pageCount > 1"
+      class="my-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
+
     <template v-if="novelPage">
-      <n-divider />
+      <n-divider v-if="pageCount <= 1" />
       <NovelListWeb :items="novelPage.items" :option="[]" simple>
         <template #action="item">
           <c-button
@@ -98,7 +107,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
       error-title="加载错误"
     >
       <template #loading>
-        <n-divider />
+        <n-divider v-if="pageCount <= 1" />
         <NovelListSkeleton simple />
       </template>
     </XAsyncContent>

@@ -70,8 +70,17 @@ watch(novelPage, (novelPage) => {
       @update:value="onUpdateListValue(listOptions, $event)"
     />
 
+    <XPagination
+      v-if="pageCount > 1"
+      class="my-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
+
     <template v-if="novelPage">
-      <n-divider />
+      <n-divider v-if="pageCount <= 1" />
       <NovelListWenku :items="novelPage.items" />
       <n-empty v-if="novelPage.items.length === 0" description="空列表" />
     </template>
@@ -83,7 +92,7 @@ watch(novelPage, (novelPage) => {
       error-title="加载错误"
     >
       <template #loading>
-        <n-divider />
+        <n-divider v-if="pageCount <= 1" />
         <NovelGridSkeleton />
       </template>
     </XAsyncContent>

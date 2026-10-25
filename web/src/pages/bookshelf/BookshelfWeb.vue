@@ -99,8 +99,17 @@ const novelListRef = useTemplateRef('novelList');
         @update:value="onUpdateListValue(listOptions, $event)"
       />
 
+      <XPagination
+        v-if="pageCount > 1"
+        class="my-6"
+        :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+        :page="page"
+        :total-pages="pageCount"
+        @update:page="onUpdatePage"
+      />
+
       <template v-if="novelPage">
-        <n-divider />
+        <n-divider v-if="pageCount <= 1" />
         <NovelListWeb
           ref="novelList"
           :items="novelPage.items"
@@ -117,7 +126,7 @@ const novelListRef = useTemplateRef('novelList');
         error-title="加载错误"
       >
         <template #loading>
-          <n-divider />
+          <n-divider v-if="pageCount <= 1" />
           <NovelListSkeleton :simple="!setting.showTagInWebFavored" />
         </template>
       </XAsyncContent>
