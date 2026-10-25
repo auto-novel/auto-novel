@@ -19,9 +19,11 @@ const { data: commentPage, error } = CommentRepo.useCommentList(
 );
 
 const pageSize = 10;
-const pageCount = computed(() =>
-  Math.ceil((commentPage.value?.total ?? 0) / pageSize),
-);
+// 翻页加载期间保留总页数，避免上下分页被卸载。
+const pageCount = computed<number>((previous) => {
+  if (!commentPage.value) return previous ?? 0;
+  return Math.ceil(commentPage.value.total / pageSize);
+});
 
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);

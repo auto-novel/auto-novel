@@ -30,7 +30,10 @@ const { data: novelPage, error } = WebNovelRepo.useWebNovelHistoryList(
   () => props.page,
 );
 
-const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
+// 翻页加载期间保留总页数，避免上下分页被卸载。
+const pageCount = computed<number>(
+  (previous) => novelPage.value?.pageNumber ?? previous ?? 1,
+);
 
 const clearHistory = () =>
   Toast.promise(

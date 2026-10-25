@@ -38,7 +38,10 @@ const { data: novelPage, error } = WenkuNovelRepo.useWenkuNovelList(
   }),
 );
 
-const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
+// 翻页加载期间保留总页数，避免上下分页被卸载。
+const pageCount = computed<number>(
+  (previous) => novelPage.value?.pageNumber ?? previous ?? 1,
+);
 
 watch(novelPage, (novelPage) => {
   if (novelPage) {
