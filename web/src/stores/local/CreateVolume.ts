@@ -5,10 +5,13 @@ import { parseFile, Srt } from '@/util/file';
 import { EpubParserV1 } from './EpubParser';
 import type { LocalVolumeDao } from './LocalVolumeDao';
 
+export type LocalVolumeImportPhase = 'parsing' | 'saving';
+
 export const createVolume = async (
   dao: LocalVolumeDao,
   file: File,
   favoredId: string,
+  onPhase?: (phase: LocalVolumeImportPhase) => void,
 ) => {
   const id = file.name;
   if ((await dao.getMetadata(id)) !== undefined) {
@@ -17,6 +20,7 @@ export const createVolume = async (
 
   const chapters: { chapterId: string; paragraphs: string[] }[] = [];
 
+  onPhase?.('parsing');
   const myFile = await parseFile(file);
 
   if (myFile.type === 'txt') {
@@ -38,6 +42,7 @@ export const createVolume = async (
     chapters.push({ chapterId: '0'.toString(), paragraphs: lines });
   }
 
+  onPhase?.('saving');
   for (const { chapterId, paragraphs } of chapters) {
     await dao.createChapter({
       id: `${id}/${chapterId}`,
