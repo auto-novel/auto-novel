@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { XAsyncContent, XPagination } from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
@@ -8,9 +7,6 @@ import { WenkuNovelRepo } from '@/repos';
 import { FavoredRepo, useWhoamiStore } from '@/stores';
 import type { WenkuListValue } from './option';
 import { getWenkuListOptions, onUpdateListValue, onUpdatePage } from './option';
-
-const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
-useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;
@@ -57,13 +53,7 @@ watch(novelPage, (novelPage) => {
 </script>
 
 <template>
-  <div
-    ref="paginationScope"
-    tabindex="0"
-    role="region"
-    aria-label="文库小说列表"
-    class="layout-content"
-  >
+  <div role="region" aria-label="文库小说列表" class="layout-content">
     <n-h1>文库小说</n-h1>
 
     <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
@@ -102,8 +92,7 @@ watch(novelPage, (novelPage) => {
       v-if="pageCount > 1"
       :page="page"
       :total-pages="pageCount"
-      keyboard
-      :keyboard-scope="paginationScope"
+      keyboard="window"
       @update:page="onUpdatePage"
     />
   </div>

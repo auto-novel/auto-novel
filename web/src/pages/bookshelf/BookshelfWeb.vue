@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
 import { XAsyncContent, XPagination } from '@novelia/web-kit';
@@ -14,9 +13,6 @@ import {
 } from '../list/option';
 import type { WebFavoredListValue } from './option';
 import { getWebFavoredListOptions, parseFavoredListValueSort } from './option';
-
-const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
-useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;
@@ -72,12 +68,7 @@ const novelListRef = useTemplateRef('novelList');
 
 <template>
   <bookshelf-layout :menu-key="`web/${favoredId}`">
-    <div
-      ref="paginationScope"
-      tabindex="0"
-      role="region"
-      aria-label="网络小说收藏列表"
-    >
+    <div role="region" aria-label="网络小说收藏列表">
       <n-flex style="margin-bottom: 24px">
         <c-button
           label="选择"
@@ -135,8 +126,7 @@ const novelListRef = useTemplateRef('novelList');
         v-if="pageCount > 1"
         :page="page"
         :total-pages="pageCount"
-        keyboard
-        :keyboard-scope="paginationScope"
+        keyboard="window"
         @update:page="onUpdatePage"
       />
     </div>

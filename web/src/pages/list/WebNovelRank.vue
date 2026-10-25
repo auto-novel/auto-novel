@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { XAsyncContent, XPagination } from '@novelia/web-kit';
 
@@ -11,9 +10,6 @@ import {
   onUpdatePage,
   parseRankListValue,
 } from './option';
-
-const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
-useListAutofocus(paginationScope);
 
 const props = defineProps<{
   providerId: string;
@@ -54,13 +50,7 @@ const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
 </script>
 
 <template>
-  <div
-    ref="paginationScope"
-    tabindex="0"
-    role="region"
-    aria-label="小说排行榜"
-    class="layout-content"
-  >
+  <div role="region" aria-label="小说排行榜" class="layout-content">
     <n-h1>{{ title }}</n-h1>
 
     <ListFilter
@@ -91,8 +81,7 @@ const pageCount = computed(() => novelPage.value?.pageNumber ?? 1);
       v-if="pageCount > 1"
       :page="page"
       :total-pages="pageCount"
-      keyboard
-      :keyboard-scope="paginationScope"
+      keyboard="window"
       @update:page="onUpdatePage"
     />
   </div>

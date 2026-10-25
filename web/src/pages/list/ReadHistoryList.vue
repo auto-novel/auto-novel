@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useListAutofocus } from '@/pages/list/useListAutofocus';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { Toast, XAsyncContent, XPagination } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
@@ -15,9 +14,6 @@ const onUpdatePage = (page: number) => {
   const query = { ...route.query, page };
   router.push({ path: route.path, query });
 };
-
-const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
-useListAutofocus(paginationScope);
 
 const props = defineProps<{
   page: number;
@@ -54,13 +50,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
 </script>
 
 <template>
-  <div
-    ref="paginationScope"
-    tabindex="0"
-    role="region"
-    aria-label="阅读历史列表"
-    class="layout-content"
-  >
+  <div role="region" aria-label="阅读历史列表" class="layout-content">
     <n-h1>阅读历史</n-h1>
 
     <n-flex style="margin-bottom: 24px">
@@ -117,8 +107,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
       v-if="pageCount > 1"
       :page="page"
       :total-pages="pageCount"
-      keyboard
-      :keyboard-scope="paginationScope"
+      keyboard="window"
       @update:page="onUpdatePage"
     />
   </div>
