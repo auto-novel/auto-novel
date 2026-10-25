@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XAsyncContent, XPagination } from '@novelia/web-kit';
+import { XAsyncContent, XPagination, XSeparator } from '@novelia/web-kit';
 
 import { WebNovelRepo } from '@/repos';
 import { FavoredRepo, useWhoamiStore } from '@/stores';
@@ -79,17 +79,22 @@ watch(novelPage, (novelPage) => {
 
     <XPagination
       v-if="pageCount > 1"
-      class="my-6"
+      class="mt-6"
       :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
       :page="page"
       :total-pages="pageCount"
       @update:page="onUpdatePage"
     />
 
+    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+
     <template v-if="novelPage">
-      <n-divider v-if="pageCount <= 1" />
       <NovelListWeb :items="novelPage.items" />
-      <n-empty v-if="novelPage.items.length === 0" description="空列表" />
+      <n-empty
+        v-if="novelPage.items.length === 0"
+        class="mt-3"
+        description="空列表"
+      />
     </template>
 
     <XAsyncContent
@@ -99,7 +104,6 @@ watch(novelPage, (novelPage) => {
       error-title="加载错误"
     >
       <template #loading>
-        <n-divider v-if="pageCount <= 1" />
         <NovelListSkeleton />
       </template>
     </XAsyncContent>

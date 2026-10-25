@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
-import { XAsyncContent, XPagination } from '@novelia/web-kit';
+import { XAsyncContent, XPagination, XSeparator } from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
 
 import { WenkuNovelRepo } from '@/repos';
@@ -75,15 +75,18 @@ watch(novelPage, (novelPage) => {
 
     <XPagination
       v-if="pageCount > 1"
-      class="my-6"
+      class="mt-6"
       :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
       :page="page"
       :total-pages="pageCount"
       @update:page="onUpdatePage"
     />
 
+    <XSeparator
+      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
+    />
+
     <template v-if="novelPage">
-      <n-divider v-if="pageCount <= 1" />
       <NovelListWenku :items="novelPage.items" />
       <n-empty v-if="novelPage.items.length === 0" description="空列表" />
     </template>
@@ -95,13 +98,13 @@ watch(novelPage, (novelPage) => {
       error-title="加载错误"
     >
       <template #loading>
-        <n-divider v-if="pageCount <= 1" />
         <NovelGridSkeleton />
       </template>
     </XAsyncContent>
 
     <XPagination
       v-if="pageCount > 1"
+      class="mt-3"
       :page="page"
       :total-pages="pageCount"
       keyboard="window"

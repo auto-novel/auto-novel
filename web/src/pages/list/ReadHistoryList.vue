@@ -1,6 +1,11 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { Toast, XAsyncContent, XPagination } from '@novelia/web-kit';
+import {
+  Toast,
+  XAsyncContent,
+  XPagination,
+  XSeparator,
+} from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import { ReadHistoryApi } from '@/api';
@@ -81,15 +86,16 @@ const deleteHistory = (providerId: string, novelId: string) =>
 
     <XPagination
       v-if="pageCount > 1"
-      class="my-6"
+      class="mt-6"
       :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
       :page="page"
       :total-pages="pageCount"
       @update:page="onUpdatePage"
     />
 
+    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+
     <template v-if="novelPage">
-      <n-divider v-if="pageCount <= 1" />
       <NovelListWeb :items="novelPage.items" :option="[]" simple>
         <template #action="item">
           <c-button
@@ -100,7 +106,11 @@ const deleteHistory = (providerId: string, novelId: string) =>
           />
         </template>
       </NovelListWeb>
-      <n-empty v-if="novelPage.items.length === 0" description="空列表" />
+      <n-empty
+        v-if="novelPage.items.length === 0"
+        class="mt-3"
+        description="空列表"
+      />
     </template>
 
     <XAsyncContent
@@ -110,7 +120,6 @@ const deleteHistory = (providerId: string, novelId: string) =>
       error-title="加载错误"
     >
       <template #loading>
-        <n-divider v-if="pageCount <= 1" />
         <NovelListSkeleton simple />
       </template>
     </XAsyncContent>

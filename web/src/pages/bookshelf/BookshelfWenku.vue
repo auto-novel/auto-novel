@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
-import { XAsyncContent, XPagination } from '@novelia/web-kit';
+import { XAsyncContent, XPagination, XSeparator } from '@novelia/web-kit';
 
 import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
@@ -88,15 +88,18 @@ const novelListRef = useTemplateRef('novelList');
 
       <XPagination
         v-if="pageCount > 1"
-        class="my-6"
+        class="mt-6"
         :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
         :page="page"
         :total-pages="pageCount"
         @update:page="onUpdatePage"
       />
 
+      <XSeparator
+        :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
+      />
+
       <template v-if="novelPage">
-        <n-divider v-if="pageCount <= 1" />
         <NovelListWenku
           ref="novelList"
           :items="novelPage.items"
@@ -113,13 +116,13 @@ const novelListRef = useTemplateRef('novelList');
         error-title="加载错误"
       >
         <template #loading>
-          <n-divider v-if="pageCount <= 1" />
           <NovelGridSkeleton />
         </template>
       </XAsyncContent>
 
       <XPagination
         v-if="pageCount > 1"
+        class="mt-3"
         :page="page"
         :total-pages="pageCount"
         keyboard="window"
