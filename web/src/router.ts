@@ -187,7 +187,8 @@ const router = createRouter({
             {
               path: 'sakura',
               meta: { title: 'Sakura工作区（待废弃）' },
-              component: () => import('./pages/workspace/SakuraWorkspace.vue'),
+              component: () =>
+                import('./pages/workspace/legacy/SakuraWorkspace.vue'),
             },
             {
               path: 'gpt-pipeline',
