@@ -205,8 +205,8 @@ const router = createRouter({
             },
             {
               path: 'toolbox',
-              meta: { title: '小说工具箱' },
-              component: () => import('./pages/workspace/Toolbox.vue'),
+              meta: { title: '处理' },
+              component: () => import('./pages/toolbox/process/Process.vue'),
             },
           ],
         },

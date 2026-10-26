@@ -7,6 +7,12 @@ import { useLocalVolumeStore } from '@/stores';
 import type { ParsedFile } from '@/util/file';
 import { parseFile } from '@/util/file';
 
+import FileCard from './FileCard.vue';
+import FileCompress from './FileCompress.vue';
+import FileConvert from './FileConvert.vue';
+import FileOcr from './FileOcr.vue';
+import FileGlossary from './FileGlossary.vue';
+
 const files = shallowRef<ParsedFile[]>([]);
 
 const loadFile = async (file: File) => {
@@ -15,8 +21,8 @@ const loadFile = async (file: File) => {
     return;
   }
   try {
-    const toolboxFile = await parseFile(file, ['txt', 'epub']);
-    files.value.push(toolboxFile);
+    const parsedFile = await parseFile(file, ['txt', 'epub']);
+    files.value.push(parsedFile);
     files.value = [...files.value];
     triggerRef(files);
   } catch (e) {
@@ -64,7 +70,7 @@ const showListModal = ref(false);
 
 <template>
   <div class="layout-content">
-    <n-h1>小说工具箱</n-h1>
+    <n-h1>处理</n-h1>
 
     <n-flex>
       <div>
@@ -93,22 +99,22 @@ const showListModal = ref(false);
 
     <n-flex vertical style="margin-top: 16px">
       <n-text v-for="file of files" :key="file.name">
-        <toolbox-file-card :file="file" @delete="removeFile(file.name)" />
+        <file-card :file="file" @delete="removeFile(file.name)" />
       </n-text>
     </n-flex>
 
     <n-tabs type="segment" animated style="margin-top: 48px">
       <n-tab-pane name="0" tab="术语表">
-        <toolbox-item-glossary :files="files" />
+        <file-glossary :files="files" />
       </n-tab-pane>
       <n-tab-pane name="1" tab="EPUB：压缩图片">
-        <toolbox-item-compress-image :files="files" />
+        <file-compress :files="files" />
       </n-tab-pane>
       <n-tab-pane name="2" tab="TXT：修复OCR换行">
-        <toolbox-item-fix-ocr :files="files" />
+        <file-ocr :files="files" />
       </n-tab-pane>
       <n-tab-pane name="3" tab="EPUB：转换成TXT">
-        <toolbox-item-convert v-model:files="files" />
+        <file-convert v-model:files="files" />
       </n-tab-pane>
     </n-tabs>
 

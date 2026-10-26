@@ -77,12 +77,12 @@ const navigationOptions = computed<WebKitMenuOption[]>(() => [
   {
     type: 'group',
     key: '/workspace',
-    label: '工作区',
+    label: '工具箱',
     icon: WorkspacesOutlined,
     children: [
       {
         key: '/workspace/toolbox',
-        label: '小说工具箱',
+        label: '处理',
         to: '/workspace/toolbox',
       },
       {

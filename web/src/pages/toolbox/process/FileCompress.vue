@@ -5,7 +5,7 @@ import { ImgComparisonSlider } from '@img-comparison-slider/vue';
 import { Humanize } from '@/util';
 import type { Epub, ParsedFile } from '@/util/file';
 
-import { Toolbox } from './Toolbox';
+import { FileProcessor } from './file';
 
 const props = defineProps<{
   files: ParsedFile[];
@@ -57,7 +57,7 @@ const compressImagesForEpub = async (epub: Epub) => {
 };
 
 const compressImages = () =>
-  Toolbox.modifyFiles(
+  FileProcessor.modifyFiles(
     props.files.filter((file) => file.type === 'epub'),
     compressImagesForEpub,
     (e) => Toast.error(`发生错误：${e}`),

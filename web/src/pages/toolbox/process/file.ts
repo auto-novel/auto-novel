@@ -1,7 +1,7 @@
 import { downloadFile } from '@/util';
 import type { ParsedFile } from '@/util/file';
 
-export namespace Toolbox {
+export namespace FileProcessor {
   const downloadFiles = async (files: ParsedFile[]) => {
     if (files.length === 1) {
       const file = files[0];
@@ -20,7 +20,7 @@ export namespace Toolbox {
       );
       await writer.close();
       const zipBlob = await zipBlobWriter.getData();
-      downloadFile(`工具箱打包下载[${files.length}].zip`, zipBlob);
+      downloadFile(`处理打包下载[${files.length}].zip`, zipBlob);
     }
   };
 

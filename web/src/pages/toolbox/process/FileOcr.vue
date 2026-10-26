@@ -4,7 +4,7 @@ import { Toast } from '@novelia/web-kit';
 import type { ParsedFile, Txt } from '@/util/file';
 import { RegexUtil } from '@/util';
 
-import { Toolbox } from './Toolbox';
+import { FileProcessor } from './file';
 
 const props = defineProps<{
   files: ParsedFile[];
@@ -52,7 +52,7 @@ const fixOcrForTxt = async (txt: Txt) => {
 };
 
 const fixOcr = () =>
-  Toolbox.modifyFiles(
+  FileProcessor.modifyFiles(
     props.files.filter((file) => file.type === 'txt'),
     fixOcrForTxt,
     (e) => Toast.error(`发生错误：${e}`),
