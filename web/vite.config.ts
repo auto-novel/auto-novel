@@ -208,7 +208,7 @@ export default defineConfig(({ command, mode }) => {
       }),
       Components({
         dts: 'src/components.d.ts',
-        dirs: ['src/**/components/**'],
+        dirs: ['src/**/components/**', 'src/pages/workspace/worker'],
         resolvers: [NaiveUiResolver()],
       }),
     ],
