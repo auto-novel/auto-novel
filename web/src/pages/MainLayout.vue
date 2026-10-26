@@ -82,7 +82,7 @@ const navigationOptions = computed<WebKitMenuOption[]>(() => [
     children: [
       {
         key: '/workspace/toolbox',
-        label: '处理',
+        label: '小说处理',
         to: '/workspace/toolbox',
       },
       {
