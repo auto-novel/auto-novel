@@ -9,6 +9,7 @@ import {
   StopOutlined,
   TranslateOutlined,
 } from '@vicons/material';
+import WorkerActionButton from './WorkerActionButton.vue';
 import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
@@ -27,9 +28,22 @@ const emit = defineEmits<{
   delete: [workerId: string];
 }>();
 
-const themeVars = useThemeVars();
-const showEditModal = ref(false);
-const showInteractiveModal = ref(false);
+const showEditDialog = ref(false);
+const showInteractiveDialog = ref(false);
+const editDialogMounted = ref(false);
+const interactiveDialogMounted = ref(false);
+const statusBadgeClass =
+  'ml-1 inline-flex h-4 cursor-default items-center rounded-xs px-[7px] leading-none whitespace-nowrap tabular-nums';
+
+function openEditDialog() {
+  editDialogMounted.value = true;
+  showEditDialog.value = true;
+}
+
+function openInteractiveDialog() {
+  interactiveDialogMounted.value = true;
+  showInteractiveDialog.value = true;
+}
 
 function isWorkerActive(): boolean {
   return props.concurrency.current > 0;
@@ -66,142 +80,115 @@ const testWorker = async () => {
 </script>
 
 <template>
-  <n-thing content-indented>
-    <template #avatar>
-      <n-icon
-        class="drag-trigger"
-        :size="18"
-        :depth="2"
-        :component="DragIndicatorOutlined"
-        style="cursor: move"
+  <div class="flex text-sm/[1.6]">
+    <span
+      class="mt-0.5 mr-3 shrink-0 text-[#333639] in-data-[theme=dark]:text-white/82"
+    >
+      <DragIndicatorOutlined
+        class="drag-trigger inline-block size-4.5 cursor-move align-[-0.125em]"
+        aria-hidden="true"
       />
-    </template>
-
-    <template #header>
-      {{ worker.id }}
-      <n-text depth="3" style="font-size: 12px; padding-left: 2px">
-        <template v-if="translatorId === 'gpt'">
-          {{ (worker as GptPipelineWorker).model }}[{{
-            (worker as GptPipelineWorker).key.slice(-4)
-          }}]@
-        </template>
-        {{ worker.endpoint }}
-      </n-text>
-      <span class="viz-translator" style="margin-left: 6px">
-        <n-text depth="3" class="viz-concurrency-num">
-          {{ concurrency.current }} / {{ concurrency.max }}
-        </n-text>
-        <span class="viz-status-dot" :class="{ active: isWorkerActive() }" />
-        <n-tag
-          v-if="running && !isWorkerActive()"
-          size="tiny"
-          :bordered="false"
-          class="viz-error-tag"
+    </span>
+    <div class="mb-1 flex grow items-center justify-between">
+      <div class="text-base/[1.6] text-ink in-data-[theme=dark]:text-white/90">
+        {{ worker.id }}
+        <span
+          class="text-xs/[1.6] text-muted in-data-[theme=dark]:text-white/52"
         >
-          待机
-        </n-tag>
-        <n-tag
-          v-if="errorCount"
-          size="tiny"
-          type="error"
-          :bordered="false"
-          class="viz-error-tag"
-        >
-          ✕ {{ errorCount }}
-        </n-tag>
-      </span>
-    </template>
-    <template #header-extra>
-      <n-flex :size="6" :wrap="false">
-        <c-button
-          v-if="running"
-          label="停止"
-          :icon="StopOutlined"
-          size="tiny"
-          secondary
-          @action="emit('stop', worker.id)"
+          <span class="pl-0.5">
+            <template v-if="translatorId === 'gpt'">
+              {{ (worker as GptPipelineWorker).model }}[{{
+                (worker as GptPipelineWorker).key.slice(-4)
+              }}]@
+            </template>
+            {{ worker.endpoint }}
+          </span>
+          <span class="ml-1.5 inline-flex items-center gap-1.5">
+            <span class="font-semibold tabular-nums">
+              {{ concurrency.current }} / {{ concurrency.max }}
+            </span>
+            <span
+              class="size-2 shrink-0 rounded-full transition-[background,box-shadow] duration-300 ease-in-out"
+              :class="
+                isWorkerActive()
+                  ? 'bg-success shadow-[0_0_6px_var(--color-success)]'
+                  : 'bg-current'
+              "
+              aria-hidden="true"
+            />
+            <span
+              v-if="running && !isWorkerActive()"
+              :class="statusBadgeClass"
+              class="bg-[#eee] text-[#333639] in-data-[theme=dark]:bg-[#333] in-data-[theme=dark]:text-white/82"
+            >
+              待机
+            </span>
+            <span
+              v-if="errorCount"
+              :class="statusBadgeClass"
+              class="bg-error/12 text-error in-data-[theme=dark]:bg-error/16"
+            >
+              ✕ {{ errorCount }}
+            </span>
+          </span>
+        </span>
+      </div>
+      <div class="flex shrink-0 items-center gap-1.5">
+        <WorkerActionButton
+          :label="running ? '停止' : '启动'"
+          :icon="running ? StopOutlined : PlayArrowOutlined"
+          @action="running ? emit('stop', worker.id) : emit('start', worker.id)"
         />
-        <c-button
-          v-else
-          label="启动"
-          :icon="PlayArrowOutlined"
-          size="tiny"
-          secondary
-          @action="emit('start', worker.id)"
-        />
-        <c-icon-button
+        <WorkerActionButton
+          label="测试"
           tooltip="测试"
           :icon="FlashOnOutlined"
+          icon-only
           @action="testWorker"
         />
-        <c-icon-button
+        <WorkerActionButton
+          label="试译"
           tooltip="试译"
           :icon="TranslateOutlined"
-          @action="showInteractiveModal = true"
+          icon-only
+          @action="openInteractiveDialog"
         />
-        <c-icon-button
+        <WorkerActionButton
+          label="设置"
           :tooltip="running ? '请先停止翻译器后再修改' : '设置'"
           :icon="SettingsOutlined"
           :disabled="running"
-          @action="showEditModal = true"
+          icon-only
+          @action="openEditDialog"
         />
-        <c-icon-button
+        <WorkerActionButton
+          label="删除"
           :tooltip="running ? '请先停止翻译器后再删除' : '删除'"
           :icon="DeleteOutlineOutlined"
-          type="error"
           :disabled="running"
+          color="danger"
+          icon-only
           @action="emit('delete', worker.id)"
         />
-      </n-flex>
-    </template>
-  </n-thing>
+      </div>
+    </div>
+  </div>
 
-  <gpt-pipeline-worker-modal
-    v-if="translatorId === 'gpt'"
-    v-model:show="showEditModal"
-    :worker="showEditModal ? (worker as GptPipelineWorker) : undefined"
+  <GptPipelineWorkerDialog
+    v-if="editDialogMounted && translatorId === 'gpt'"
+    v-model:show="showEditDialog"
+    :worker="worker as GptPipelineWorker"
   />
-  <sakura-worker-modal
-    v-else-if="showEditModal"
-    v-model:show="showEditModal"
+  <SakuraWorkerDialog
+    v-else-if="editDialogMounted"
+    v-model:show="showEditDialog"
     :worker="worker"
   />
-  <interactive-translate-modal
-    v-if="showInteractiveModal"
-    v-model:show="showInteractiveModal"
+  <InteractiveTranslateDialog
+    v-if="interactiveDialogMounted"
+    v-model:show="showInteractiveDialog"
     :translator-id="translatorId"
     :worker="worker"
     :running="running"
   />
 </template>
-
-<style scoped>
-.viz-translator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.viz-concurrency-num {
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.viz-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: v-bind('themeVars.textColor3');
-  transition:
-    background 0.3s ease,
-    box-shadow 0.3s ease;
-}
-.viz-status-dot.active {
-  background: v-bind('themeVars.successColor');
-  box-shadow: 0 0 6px
-    color-mix(in srgb, v-bind('themeVars.successColor'), transparent);
-}
-.viz-error-tag {
-  margin-left: 4px;
-  font-variant-numeric: tabular-nums;
-}
-</style>

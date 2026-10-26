@@ -176,6 +176,13 @@ let controller: AbortController | undefined;
 let generation = 0;
 let copiedTimer: number | undefined;
 
+watch(
+  () => props.worker,
+  () => {
+    translatorPromise = undefined;
+  },
+);
+
 const getTranslator = () => {
   // Sakura 初始化暂不支持 AbortSignal；保留同一个 Promise，避免停止后重试
   // 叠加模型探测请求。任务结果仍由 generation 隔离。

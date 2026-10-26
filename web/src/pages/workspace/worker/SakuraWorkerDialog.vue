@@ -26,6 +26,12 @@ const initFormValue = () => ({
 
 const formRef = useTemplateRef<FormInst>('form');
 const formValue = ref(initFormValue());
+watch(
+  () => props.show,
+  (show) => {
+    if (show) formValue.value = initFormValue();
+  },
+);
 const formRules: FormRules = {
   id: [
     {

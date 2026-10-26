@@ -117,15 +117,6 @@ const onProfileChange = (value: string) => {
   }
 };
 
-watch(
-  () => props.worker,
-  (newWorker) => {
-    formValue.value = initFormValue(newWorker);
-    preserveEndpoint.value = Boolean(newWorker?.endpoint.trim());
-  },
-  { immediate: false },
-);
-
 const emptyCheck = (name: string) => ({
   validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
   message: name + '不能为空',
@@ -269,7 +260,10 @@ const workerConcurrencies = reactive<Record<string, number>>({});
 watch(
   () => props.show,
   (show) => {
-    if (show && props.worker === undefined) {
+    if (!show) return;
+    formValue.value = initFormValue(props.worker);
+    preserveEndpoint.value = Boolean(props.worker?.endpoint.trim());
+    if (props.worker === undefined) {
       keyIds.clear();
       modelText.value = '';
       keyText.value = '';
@@ -277,8 +271,6 @@ watch(
       for (const uid of Object.keys(workerConcurrencies))
         delete workerConcurrencies[uid];
       defaultConcurrency.value = 1;
-      formValue.value = initFormValue(undefined);
-      preserveEndpoint.value = false;
     }
   },
 );

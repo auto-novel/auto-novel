@@ -1,10 +1,19 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import {
+  Toast,
+  XButton,
+  XConfirmDialog,
+  XDropdownMenu,
+  XDropdownMenuItem,
+} from '@novelia/web-kit';
 import {
   BookOutlined,
   DeleteOutlineOutlined,
+  MoreVertOutlined,
+  PlayArrowOutlined,
   PlusOutlined,
   RefreshOutlined,
+  StopOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
@@ -47,8 +56,9 @@ const jobStore = useWorkspaceStore(props.translatorId);
 
 const jobs = computed(() => jobStore.ref.value.jobs);
 
-const showWorkerModal = ref(false);
+const showWorkerDialog = ref(false);
 const showLocalVolumeDrawer = ref(false);
+const showDeleteJobsDialog = ref(false);
 
 /** 同时处理的章节数上限 */
 const GLOBAL_WINDOW = 66;
@@ -78,6 +88,18 @@ interface WorkerState {
   allowUpload?: boolean;
 }
 const workerStates = ref(new Map<string, WorkerState>());
+const hasStartedWorkers = computed(() =>
+  workerStore.ref.value.workers.some(
+    (w) => workerStates.value.get(w.id)?.running,
+  ),
+);
+const hasStoppedWorkers = computed(() =>
+  workerStore.ref.value.workers.some(
+    (w) => !workerStates.value.get(w.id)?.running,
+  ),
+);
+const showClearCacheDialog = ref(false);
+const clearingCache = ref(false);
 const workerErrors = computed(() => {
   const errors = new Map<string, number>();
   for (const [, state] of taskStates.value) {
@@ -556,10 +578,15 @@ const deleteJob = (task: string) => {
   clearTaskRuntimeState(task);
 };
 
-const deleteAllJobs = () =>
+const deleteAllJobs = () => {
   filteredJobs.value.forEach((j) => deleteJob(j.task));
+  showDeleteJobsDialog.value = false;
+};
 
 const taskCardRefs = ref<InstanceType<typeof PipelineTaskCard>[]>([]);
+const hasFailedTasks = computed(() =>
+  taskCardRefs.value.some((card) => card?.hasFailedChapters()),
+);
 function retryTaskCards() {
   let hasFailed = false;
   for (const card of taskCardRefs.value) {
@@ -573,11 +600,19 @@ function retryTaskCards() {
   }
 }
 
-const clearCache = () =>
-  Toast.promise(new IndexedDbSegmentCache(segCacheName).clear(), {
-    success: '缓存清除成功',
-    error: '缓存清除失败',
-  });
+const clearCache = async () => {
+  if (clearingCache.value) return;
+  clearingCache.value = true;
+  const success = await Toast.promise(
+    new IndexedDbSegmentCache(segCacheName).clear().then(() => true),
+    {
+      success: '缓存清除成功',
+      error: '缓存清除失败',
+    },
+  );
+  clearingCache.value = false;
+  if (success) showClearCacheDialog.value = false;
+};
 
 watch(
   () => [...jobs.value],
@@ -761,29 +796,72 @@ watch(
       </template>
     </bulletin>
 
-    <section-header title="翻译器">
-      <c-button
-        label="添加翻译器"
-        :icon="PlusOutlined"
-        @action="showWorkerModal = true"
-      />
-    </section-header>
-
-    <n-flex vertical>
-      <c-action-wrapper title="操作" align="center">
-        <n-button-group size="small">
-          <c-button label="启动全部" :round="false" @action="startAllWorkers" />
-          <c-button label="停止全部" :round="false" @action="stopAllWorkers" />
-          <c-button-confirm
-            hint="真的要清空缓存吗？"
-            label="清空缓存"
-            :icon="DeleteOutlineOutlined"
-            :round="false"
-            @action="clearCache"
-          />
-        </n-button-group>
-      </c-action-wrapper>
-    </n-flex>
+    <div class="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="m-0 flex items-center gap-2 text-base font-medium">
+        <span
+          class="w-1 self-stretch rounded-full bg-primary"
+          aria-hidden="true"
+        />
+        翻译器
+      </h2>
+      <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
+        <XButton
+          v-if="workerStore.ref.value.workers.length"
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          :disabled="!hasStoppedWorkers"
+          @click="startAllWorkers"
+        >
+          <PlayArrowOutlined class="size-3.5" aria-hidden="true" />
+          全部启动
+        </XButton>
+        <XButton
+          v-if="workerStore.ref.value.workers.length"
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          :disabled="!hasStartedWorkers"
+          @click="stopAllWorkers"
+        >
+          <StopOutlined class="size-3.5" aria-hidden="true" />
+          全部停止
+        </XButton>
+        <XButton
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          @click="showWorkerDialog = true"
+        >
+          <PlusOutlined class="size-3.5" aria-hidden="true" />
+          添加
+        </XButton>
+        <XDropdownMenu v-if="workerStore.ref.value.workers.length" align="end">
+          <template #trigger>
+            <XButton
+              color="neutral"
+              variant="ghost"
+              size="icon-xs"
+              class="text-ink"
+              aria-label="更多翻译器操作"
+              title="更多翻译器操作"
+            >
+              <MoreVertOutlined class="size-4" aria-hidden="true" />
+            </XButton>
+          </template>
+          <XDropdownMenuItem
+            :disabled="clearingCache"
+            @select="showClearCacheDialog = true"
+          >
+            <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
+            清空翻译缓存
+          </XDropdownMenuItem>
+        </XDropdownMenu>
+      </div>
+    </div>
 
     <n-empty
       v-if="workerStore.ref.value.workers.length === 0"
@@ -801,7 +879,7 @@ watch(
           :key="w.id"
           :class="{ 'is-running': workerStates.get(w.id)?.running }"
         >
-          <pipeline-worker-card
+          <PipelineWorkerCard
             :translator-id="translatorId"
             :worker="w"
             :running="!!workerStates.get(w.id)?.running"
@@ -820,13 +898,49 @@ watch(
       </vue-draggable>
     </n-list>
 
-    <section-header title="任务队列">
-      <c-button
-        label="本地书架"
-        :icon="BookOutlined"
-        @action="showLocalVolumeDrawer = true"
-      />
-    </section-header>
+    <div class="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="m-0 flex items-center gap-2 text-base font-medium">
+        <span
+          class="w-1 self-stretch rounded-full bg-primary"
+          aria-hidden="true"
+        />
+        任务队列
+      </h2>
+      <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
+        <XButton
+          v-if="filteredJobs.length"
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          @click="showDeleteJobsDialog = true"
+        >
+          <DeleteOutlineOutlined class="size-3.5" aria-hidden="true" />
+          删除筛选
+        </XButton>
+        <XButton
+          v-if="hasFailedTasks"
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          @click="retryTaskCards"
+        >
+          <RefreshOutlined class="size-3.5" aria-hidden="true" />
+          重试失败
+        </XButton>
+        <XButton
+          color="neutral"
+          variant="ghost"
+          size="tiny"
+          class="text-ink"
+          @click="showLocalVolumeDrawer = true"
+        >
+          <BookOutlined class="size-3.5" aria-hidden="true" />
+          本地书架
+        </XButton>
+      </div>
+    </div>
 
     <n-flex vertical>
       <c-action-wrapper title="状态">
@@ -835,23 +949,6 @@ watch(
           :options="filterOptions"
           size="small"
         />
-      </c-action-wrapper>
-      <c-action-wrapper title="操作" align="center">
-        <n-button-group size="small">
-          <c-button-confirm
-            hint="真的要删除筛选出的任务吗？"
-            label="删除筛选任务"
-            :icon="DeleteOutlineOutlined"
-            :round="false"
-            @action="deleteAllJobs"
-          />
-          <c-button
-            label="重试失败任务"
-            :icon="RefreshOutlined"
-            :round="false"
-            @action="retryTaskCards"
-          />
-        </n-button-group>
       </c-action-wrapper>
     </n-flex>
     <n-divider style="margin: 16px 0 8px" />
@@ -883,12 +980,29 @@ watch(
     </div>
   </div>
 
+  <XConfirmDialog
+    v-model:open="showDeleteJobsDialog"
+    title="删除筛选任务"
+    description="真的要删除筛选出的任务吗？"
+    confirm-label="删除"
+    danger
+    @confirm="deleteAllJobs"
+  />
+  <XConfirmDialog
+    v-model:open="showClearCacheDialog"
+    title="清空缓存"
+    description="真的要清空缓存吗？"
+    confirm-label="清空缓存"
+    :loading="clearingCache"
+    danger
+    @confirm="clearCache"
+  />
   <local-volume-list-specific-translation
     v-model:show="showLocalVolumeDrawer"
     :type="translatorId"
   />
-  <sakura-worker-modal v-if="isSakura" v-model:show="showWorkerModal" />
-  <gpt-pipeline-worker-modal v-else v-model:show="showWorkerModal" />
+  <SakuraWorkerDialog v-if="isSakura" v-model:show="showWorkerDialog" />
+  <GptPipelineWorkerDialog v-else v-model:show="showWorkerDialog" />
 </template>
 
 <style scoped>
