@@ -94,6 +94,14 @@ const onUpdateShow = (val: boolean) => {
     :title="title"
     style="width: min(900px, 95vw)"
   >
+    <n-alert
+      v-if="chapterState?.errorMessage"
+      type="error"
+      title="章节处理失败"
+      :bordered="false"
+    >
+      <pre class="preview-error-message">{{ chapterState.errorMessage }}</pre>
+    </n-alert>
     <div class="preview-header-extra">
       <div v-if="previewState.previewProgressStatus" class="preview-stats">
         <n-tag size="small" :bordered="false">

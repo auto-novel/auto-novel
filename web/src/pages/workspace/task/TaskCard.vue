@@ -108,6 +108,8 @@ function retryAllFailed() {
   for (const ch of chapterMetas.value) {
     if (ch.status === 'error') {
       ch.status = 'pending';
+      const state = props.taskState?.chapterStates.get(ch.chapterId);
+      if (state) state.errorMessage = undefined;
       props.taskState?.chapterStates.delete(ch.chapterId);
     }
   }
@@ -140,7 +142,8 @@ const openPreview = async (chapterId: string) => {
     const chapterState = props.taskState?.chapterStates.get(chapterId);
 
     let chapterStateForPreview: ChapterSegmentState | null = null;
-    if (chapterState?.ready) {
+    if (chapterState?.ready || chapterState?.errorMessage) {
+      // 获取失败时也可直接展示已记录的原因，不再重新请求原文。
       chapterStateForPreview = chapterState;
     } else {
       let previewTask = props.taskCacheEntry;

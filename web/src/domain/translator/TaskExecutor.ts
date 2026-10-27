@@ -33,6 +33,7 @@ export class TaskExecutor {
     const chapter = chapters.find((ch) => ch.chapterId === chapterId);
     if (!chapter) throw new Error(`章节 ${chapterId} 不存在`);
 
+    if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = undefined;
     tracker.onLog(`[${chapter.title}] 开始获取原文`);
 
     try {
@@ -115,11 +116,13 @@ export class TaskExecutor {
         tracker.onChapterStatus(chapterId, 'pending');
         return 'abort';
       }
+      const message = err?.message || String(err);
+      if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = message;
       tracker.onChapterStatus(chapterId, 'error');
       const finished = chapters.filter((ch) => ch.status === 'done').length;
       const errors = chapters.filter((ch) => ch.status === 'error').length;
       tracker.onProgress(finished, errors, chapters.length);
-      tracker.onLog(`[${chapter.title}] ❌ 失败: ${err.message ?? err}`);
+      tracker.onLog(`[${chapter.title}] ❌ 失败: ${message}`);
       return 'error';
     }
   }

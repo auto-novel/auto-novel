@@ -21,6 +21,8 @@ export interface SegmentInfo {
 
 export class ChapterSegmentState implements SegmentTracker {
   readonly chapterId: string;
+  /** 获取原文、保存译文等章节级错误，与分段翻译错误独立。 */
+  errorMessage: string | undefined = undefined;
   ranges: LineRange[] = [];
   segments: SegmentInfo[] = [];
   /** 是否完成 Segment 切分 */
