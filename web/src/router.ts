@@ -205,7 +205,8 @@ const router = createRouter({
             {
               path: 'toolbox',
               meta: { title: '处理' },
-              component: () => import('./pages/toolbox/process/Process.vue'),
+              component: () =>
+                import('./pages/toolbox/process/ProcessView.vue'),
             },
           ],
         },

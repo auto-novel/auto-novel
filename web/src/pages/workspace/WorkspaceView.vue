@@ -1,22 +1,11 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  XConfirmDialog,
-  XDropdownMenu,
-  XDropdownMenuItem,
-} from '@novelia/web-kit';
+import { Toast, XConfirmDialog } from '@novelia/web-kit';
 import {
   BookOutlined,
   DeleteOutlineOutlined,
-  MoreVertOutlined,
-  PlayArrowOutlined,
-  PlusOutlined,
   RefreshOutlined,
-  StopOutlined,
 } from '@vicons/material';
-import { VueDraggable } from 'vue-draggable-plus';
 import {
-  allowModels,
   Semaphore,
   OpenAiTranslator,
   SakuraTranslator,
@@ -24,7 +13,6 @@ import {
 } from '@auto-novel/translator';
 import type { TranslatorTracker } from '@auto-novel/translator';
 
-import { forumPostUrls, siteUrls } from '@/config';
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
@@ -42,8 +30,11 @@ import type {
   TranslateJobRecord,
 } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
-import PipelineTaskCard from './components/PipelineTaskCard.vue';
+import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
+import TranslationTaskCard from './TranslationTaskCard.vue';
 import WorkspaceActionButton from './WorkspaceActionButton.vue';
+import WorkspaceBulletin from './WorkspaceBulletin.vue';
+import WorkerSection from './worker/WorkerSection.vue';
 
 const props = defineProps<{ translatorId: TranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
@@ -56,7 +47,6 @@ const jobStore = useWorkspaceStore(props.translatorId);
 
 const jobs = computed(() => jobStore.ref.value.jobs);
 
-const showWorkerDialog = ref(false);
 const showLocalVolumeDrawer = ref(false);
 const showDeleteJobsDialog = ref(false);
 
@@ -84,22 +74,10 @@ const initializingTasks = new Map<string, { createAt: number }>();
 
 interface WorkerState {
   running: boolean;
-  concurrency: { current: number; max: number };
+  currentConcurrency: number;
   allowUpload?: boolean;
 }
 const workerStates = ref(new Map<string, WorkerState>());
-const hasStartedWorkers = computed(() =>
-  workerStore.ref.value.workers.some(
-    (w) => workerStates.value.get(w.id)?.running,
-  ),
-);
-const hasStoppedWorkers = computed(() =>
-  workerStore.ref.value.workers.some(
-    (w) => !workerStates.value.get(w.id)?.running,
-  ),
-);
-const showClearCacheDialog = ref(false);
-const clearingCache = ref(false);
 const workerErrors = computed(() => {
   const errors = new Map<string, number>();
   for (const [, state] of taskStates.value) {
@@ -515,7 +493,7 @@ const startWorker = async (workerId: string) => {
 
   const state = reactive<WorkerState>({
     running: true,
-    concurrency: { current: 0, max: w.concurrency ?? 1 },
+    currentConcurrency: 0,
   });
   workerStates.value.set(workerId, state);
 
@@ -530,8 +508,8 @@ const startWorker = async (workerId: string) => {
     state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
 
     const workerTracker: TranslatorTracker = {
-      onConcurrencyChange: (current: number, max: number) => {
-        state.concurrency = { current, max };
+      onConcurrencyChange: (current: number) => {
+        state.currentConcurrency = current;
       },
     };
     pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
@@ -583,7 +561,7 @@ const deleteAllJobs = () => {
   showDeleteJobsDialog.value = false;
 };
 
-const taskCardRefs = ref<InstanceType<typeof PipelineTaskCard>[]>([]);
+const taskCardRefs = ref<InstanceType<typeof TranslationTaskCard>[]>([]);
 const hasFailedTasks = computed(() =>
   taskCardRefs.value.some((card) => card?.hasFailedChapters()),
 );
@@ -599,20 +577,6 @@ function retryTaskCards() {
     Toast.info('没有需要重试的失败任务');
   }
 }
-
-const clearCache = async () => {
-  if (clearingCache.value) return;
-  clearingCache.value = true;
-  const success = await Toast.promise(
-    new IndexedDbSegmentCache(segCacheName).clear().then(() => true),
-    {
-      success: '缓存清除成功',
-      error: '缓存清除失败',
-    },
-  );
-  clearingCache.value = false;
-  if (success) showClearCacheDialog.value = false;
-};
 
 watch(
   () => [...jobs.value],
@@ -701,179 +665,18 @@ watch(
 <template>
   <div class="layout-content">
     <n-h1>{{ isSakura ? 'Sakura' : 'GPT' }}工作区</n-h1>
-    <bulletin>
-      <template v-if="isSakura">
-        <n-flex>
-          <n-a
-            :href="forumPostUrls.sakuraDeployGuide"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            本地部署教程
-          </n-a>
-          /
-          <span>
-            <n-a
-              :href="forumPostUrls.sakuraAutoDlGuide"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              AutoDL教程
-            </n-a>
-            :
-            <n-a
-              href="https://www.autodl.com/console/instance/list"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              控制台
-            </n-a>
-          </span>
-          /
-          <n-a
-            :href="siteUrls.sakuraMonitor"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            共享 Sakura 当前负载
-          </n-a>
-        </n-flex>
-        <n-p>允许上传的模型如下，禁止一切试图突破上传检查的操作。</n-p>
-        <n-ul>
-          <n-li v-for="({ repo }, model) in allowModels" :key="model">
-            [
-            <n-a
-              :href="`https://huggingface.co/${repo}/blob/main/${model}.gguf`"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              HF
-            </n-a>
-            /
-            <n-a
-              :href="`https://hf-mirror.com/${repo}/blob/main/${model}.gguf`"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              国内镜像
-            </n-a>
-            ]
-            {{ model }}
-          </n-li>
-        </n-ul>
-      </template>
-      <template v-else>
-        <n-flex>
-          <n-a
-            :href="forumPostUrls.usageGuide"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            使用教程
-          </n-a>
-          /
-          <n-a
-            href="https://chat.deepseek.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            DeepSeek Chat
-          </n-a>
-          /
-          <n-a
-            href="https://platform.deepseek.com/usage"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            DeepSeek API
-          </n-a>
-        </n-flex>
-        <n-p>本地小说支持韩语等其他语种，网络小说/文库小说暂时只允许日语。</n-p>
-      </template>
-    </bulletin>
+    <WorkspaceBulletin :translator-id="translatorId" />
 
-    <div class="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
-      <h2 class="m-0 flex items-center gap-2 text-base font-medium">
-        <span
-          class="w-1 self-stretch rounded-full bg-primary"
-          aria-hidden="true"
-        />
-        翻译器
-      </h2>
-      <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
-        <WorkspaceActionButton
-          v-if="workerStore.ref.value.workers.length"
-          label="全部启动"
-          :icon="PlayArrowOutlined"
-          :disabled="!hasStoppedWorkers"
-          @action="startAllWorkers"
-        />
-        <WorkspaceActionButton
-          v-if="workerStore.ref.value.workers.length"
-          label="全部停止"
-          :icon="StopOutlined"
-          :disabled="!hasStartedWorkers"
-          @action="stopAllWorkers"
-        />
-        <WorkspaceActionButton
-          label="添加"
-          :icon="PlusOutlined"
-          @action="showWorkerDialog = true"
-        />
-        <XDropdownMenu v-if="workerStore.ref.value.workers.length" align="end">
-          <template #trigger>
-            <WorkspaceActionButton
-              label="更多翻译器操作"
-              :icon="MoreVertOutlined"
-              icon-only
-              title="更多翻译器操作"
-            />
-          </template>
-          <XDropdownMenuItem
-            :disabled="clearingCache"
-            @select="showClearCacheDialog = true"
-          >
-            <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
-            清空翻译缓存
-          </XDropdownMenuItem>
-        </XDropdownMenu>
-      </div>
-    </div>
-
-    <n-empty
-      v-if="workerStore.ref.value.workers.length === 0"
-      description="没有翻译器"
+    <WorkerSection
+      :translator-id="translatorId"
+      :worker-states="workerStates"
+      :worker-errors="workerErrors"
+      :cache-name="segCacheName"
+      @start="startWorker"
+      @stop="stopWorker"
+      @start-all="startAllWorkers"
+      @stop-all="stopAllWorkers"
     />
-    <n-list v-else class="worker-list">
-      <vue-draggable
-        v-model="workerStore.ref.value.workers"
-        :animation="150"
-        handle=".drag-trigger"
-        filter=".is-running"
-      >
-        <n-list-item
-          v-for="w of workerStore.ref.value.workers"
-          :key="w.id"
-          :class="{ 'is-running': workerStates.get(w.id)?.running }"
-        >
-          <PipelineWorkerCard
-            :translator-id="translatorId"
-            :worker="w"
-            :running="!!workerStates.get(w.id)?.running"
-            :concurrency="
-              workerStates.get(w.id)?.concurrency ?? {
-                current: 0,
-                max: w.concurrency ?? 1,
-              }
-            "
-            :error-count="workerErrors.get(w.id) ?? 0"
-            @start="startWorker"
-            @stop="stopWorker"
-            @delete="workerStore.deleteWorker"
-          />
-        </n-list-item>
-      </vue-draggable>
-    </n-list>
 
     <div class="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
       <h2 class="m-0 flex items-center gap-2 text-base font-medium">
@@ -916,7 +719,7 @@ watch(
     <n-divider style="margin: 16px 0 8px" />
     <n-empty v-if="filteredJobs.length === 0" description="没有任务" />
     <div v-else class="task-list">
-      <pipeline-task-card
+      <translation-task-card
         v-for="job of filteredJobs"
         ref="taskCardRefs"
         :key="job.task"
@@ -950,21 +753,11 @@ watch(
     danger
     @confirm="deleteAllJobs"
   />
-  <XConfirmDialog
-    v-model:open="showClearCacheDialog"
-    title="清空缓存"
-    description="真的要清空缓存吗？"
-    confirm-label="清空缓存"
-    :loading="clearingCache"
-    danger
-    @confirm="clearCache"
-  />
-  <local-volume-list-specific-translation
+
+  <local-volume-translation-drawer
     v-model:show="showLocalVolumeDrawer"
     :type="translatorId"
   />
-  <SakuraWorkerDialog v-if="isSakura" v-model:show="showWorkerDialog" />
-  <GptPipelineWorkerDialog v-else v-model:show="showWorkerDialog" />
 </template>
 
 <style scoped>

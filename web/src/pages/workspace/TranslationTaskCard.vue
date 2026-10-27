@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
+import ChapterGrid from './ChapterGrid.vue';
+import ChapterPreviewDialog from './ChapterPreviewDialog.vue';
+import JobTaskLink from './JobTaskLink.vue';
 import {
   ChevronRightOutlined,
   KeyboardDoubleArrowUpOutlined,
@@ -279,7 +282,7 @@ const closePreview = () => {
     </div>
   </n-card>
 
-  <chapter-preview-modal
+  <chapter-preview-dialog
     :show="showPreview"
     :title="previewData?.title ?? ''"
     :chapter-state="previewData?.chapterState ?? null"

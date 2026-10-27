@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
+import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
 import { GenericNovelId } from '@/model/Common';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
@@ -123,7 +124,7 @@ const progressFilterFunc = computed(() => {
 </script>
 
 <template>
-  <local-volume-list
+  <local-volume-drawer
     :filter="progressFilterFunc"
     :options="{ 全部排队: queueAllVolumes }"
     @volume-add="queueVolume($event.name)"
@@ -207,5 +208,5 @@ const progressFilterFunc = computed(() => {
         </n-flex>
       </n-flex>
     </template>
-  </local-volume-list>
+  </local-volume-drawer>
 </template>

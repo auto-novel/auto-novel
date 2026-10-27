@@ -10,6 +10,9 @@ import {
   TranslateOutlined,
 } from '@vicons/material';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
+import GptWorkerDialog from './GptWorkerDialog.vue';
+import TrialTranslationDialog from './TrialTranslationDialog.vue';
+import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
 import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
@@ -18,7 +21,7 @@ const props = defineProps<{
   translatorId: TranslatorId;
   worker: GptPipelineWorker | SakuraWorker;
   running: boolean;
-  concurrency: { current: number; max: number };
+  currentConcurrency: number;
   errorCount: number;
 }>();
 
@@ -46,7 +49,7 @@ function openInteractiveDialog() {
 }
 
 function isWorkerActive(): boolean {
-  return props.concurrency.current > 0;
+  return props.currentConcurrency > 0;
 }
 
 const testWorker = async () => {
@@ -105,7 +108,7 @@ const testWorker = async () => {
           </span>
           <span class="ml-1.5 inline-flex items-center gap-1.5">
             <span class="font-semibold tabular-nums">
-              {{ concurrency.current }} / {{ concurrency.max }}
+              {{ currentConcurrency }} / {{ worker.concurrency ?? 1 }}
             </span>
             <span
               class="size-2 shrink-0 rounded-full transition-[background,box-shadow] duration-300 ease-in-out"
@@ -174,7 +177,7 @@ const testWorker = async () => {
     </div>
   </div>
 
-  <GptPipelineWorkerDialog
+  <GptWorkerDialog
     v-if="editDialogMounted && translatorId === 'gpt'"
     v-model:show="showEditDialog"
     :worker="worker as GptPipelineWorker"
@@ -184,7 +187,7 @@ const testWorker = async () => {
     v-model:show="showEditDialog"
     :worker="worker"
   />
-  <InteractiveTranslateDialog
+  <TrialTranslationDialog
     v-if="interactiveDialogMounted"
     v-model:show="showInteractiveDialog"
     :translator-id="translatorId"

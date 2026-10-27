@@ -7,6 +7,7 @@ import { useLocalVolumeStore } from '@/stores';
 import type { ParsedFile } from '@/util/file';
 import { parseFile } from '@/util/file';
 
+import LocalVolumePickerDrawer from '../local-volume/LocalVolumePickerDrawer.vue';
 import FileCard from './FileCard.vue';
 import FileCompress from './FileCompress.vue';
 import FileConvert from './FileConvert.vue';
@@ -118,7 +119,7 @@ const showListModal = ref(false);
       </n-tab-pane>
     </n-tabs>
 
-    <local-volume-list-katakana
+    <local-volume-picker-drawer
       v-model:show="showListModal"
       @volume-loaded="loadLocalFile"
     />

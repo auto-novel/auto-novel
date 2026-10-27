@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
+import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
 import { GenericNovelId } from '@/model/Common';
 
@@ -20,7 +21,7 @@ const deleteVolume = (volumeId: string) =>
 </script>
 
 <template>
-  <local-volume-list>
+  <local-volume-drawer>
     <template #volume="volume">
       <n-flex :size="4" vertical>
         <n-text>{{ volume.id }}</n-text>
@@ -60,5 +61,5 @@ const deleteVolume = (volumeId: string) =>
         </n-flex>
       </n-flex>
     </template>
-  </local-volume-list>
+  </local-volume-drawer>
 </template>

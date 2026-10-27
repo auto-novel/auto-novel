@@ -12,7 +12,7 @@ import {
 } from '@auto-novel/translator';
 import type { SegmentTracker } from '@auto-novel/translator';
 
-import InteractiveGlossaryPanel from './InteractiveGlossaryPanel.vue';
+import TrialGlossaryPanel from './TrialGlossaryPanel.vue';
 
 import { downloadFile } from '@/util';
 
@@ -458,7 +458,7 @@ const handleOpenChange = (open: boolean) => {
     <div v-if="isMobile && rightView === 'glossary'" class="mobile-glossary">
       <span class="pane-title">术语表</span>
       <div class="mobile-glossary-body">
-        <interactive-glossary-panel v-model:value="glossary" />
+        <trial-glossary-panel v-model:value="glossary" />
       </div>
     </div>
     <div v-else class="interactive-grid">
@@ -555,7 +555,7 @@ const handleOpenChange = (open: boolean) => {
               v-if="!isMobile && rightView === 'glossary'"
               class="glossary-overlay"
             >
-              <interactive-glossary-panel v-model:value="glossary" />
+              <trial-glossary-panel v-model:value="glossary" />
             </div>
           </div>
         </div>

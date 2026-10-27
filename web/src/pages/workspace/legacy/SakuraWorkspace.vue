@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
+import LocalVolumeTranslationDrawer from '../../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
 import {
   BookOutlined,
   DeleteOutlineOutlined,
@@ -221,7 +222,7 @@ const clearCache = async () =>
     <job-record-section id="sakura" />
   </div>
 
-  <local-volume-list-specific-translation
+  <local-volume-translation-drawer
     v-model:show="showLocalVolumeDrawer"
     type="sakura"
   />
