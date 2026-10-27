@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
-import { XAsyncContent } from '@novelia/web-kit';
+import { XEmpty, XError } from '@novelia/web-kit';
 
 import type { WenkuNovelOutlineDto } from '@/model/WenkuNovel';
 
@@ -11,7 +11,18 @@ defineProps<{
 </script>
 
 <template>
-  <template v-if="novels !== undefined">
+  <NovelGridSkeleton v-if="novels === undefined && !error" panel />
+  <XError
+    v-else-if="novels === undefined && error"
+    title="加载错误"
+    :description="error.message"
+  />
+  <XEmpty
+    v-else-if="novels !== undefined && novels.length === 0"
+    title="空列表"
+    size="compact"
+  />
+  <template v-else-if="novels !== undefined">
     <div class="@container">
       <div class="grid grid-cols-3 gap-3 @min-[600px]:grid-cols-6">
         <router-link
@@ -24,17 +35,5 @@ defineProps<{
         </router-link>
       </div>
     </div>
-    <n-empty v-if="novels.length === 0" description="空列表" />
   </template>
-
-  <XAsyncContent
-    v-else
-    :loading="!error"
-    :error="error?.message ?? ''"
-    error-title="加载错误"
-  >
-    <template #loading>
-      <NovelGridSkeleton panel />
-    </template>
-  </XAsyncContent>
 </template>

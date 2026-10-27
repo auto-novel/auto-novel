@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
-import { XAsyncContent, XPagination, XSeparator } from '@novelia/web-kit';
+import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
 
 import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
@@ -99,26 +99,25 @@ const novelListRef = useTemplateRef('novelList');
         :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
       />
 
-      <template v-if="novelPage">
+      <NovelGridSkeleton v-if="!novelPage && !error" />
+      <XError
+        v-else-if="!novelPage && error"
+        title="加载错误"
+        :description="error.message"
+      />
+      <XEmpty
+        v-else-if="novelPage && novelPage.items.length === 0"
+        title="空列表"
+        size="compact"
+      />
+      <template v-else-if="novelPage">
         <NovelListWenku
           ref="novelList"
           :items="novelPage.items"
           :selectable="showControlPanel"
           simple
         />
-        <n-empty v-if="novelPage.items.length === 0" description="空列表" />
       </template>
-
-      <XAsyncContent
-        v-else
-        :loading="!error"
-        :error="error?.message ?? ''"
-        error-title="加载错误"
-      >
-        <template #loading>
-          <NovelGridSkeleton />
-        </template>
-      </XAsyncContent>
 
       <XPagination
         v-if="pageCount > 1"

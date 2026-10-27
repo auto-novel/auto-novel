@@ -2,7 +2,8 @@
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import {
   Toast,
-  XAsyncContent,
+  XEmpty,
+  XError,
   XPagination,
   XSeparator,
 } from '@novelia/web-kit';
@@ -95,7 +96,19 @@ const deleteHistory = (providerId: string, novelId: string) =>
 
     <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
 
-    <template v-if="novelPage">
+    <NovelListSkeleton v-if="!novelPage && !error" simple />
+    <XError
+      v-else-if="!novelPage && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <XEmpty
+      v-else-if="novelPage && novelPage.items.length === 0"
+      class="mt-3"
+      title="空列表"
+      size="compact"
+    />
+    <template v-else-if="novelPage">
       <NovelListWeb :items="novelPage.items" :option="[]" simple>
         <template #action="item">
           <c-button
@@ -106,23 +119,7 @@ const deleteHistory = (providerId: string, novelId: string) =>
           />
         </template>
       </NovelListWeb>
-      <n-empty
-        v-if="novelPage.items.length === 0"
-        class="mt-3"
-        description="空列表"
-      />
     </template>
-
-    <XAsyncContent
-      v-else
-      :loading="!error"
-      :error="error?.message ?? ''"
-      error-title="加载错误"
-    >
-      <template #loading>
-        <NovelListSkeleton simple />
-      </template>
-    </XAsyncContent>
 
     <XPagination
       v-if="pageCount > 1"

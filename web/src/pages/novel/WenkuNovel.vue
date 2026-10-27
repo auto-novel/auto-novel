@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog, XAsyncContent } from '@novelia/web-kit';
+import { Toast, XDialog, XError } from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -145,7 +145,13 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
   </div>
 
   <div class="layout-content">
-    <template v-if="novel">
+    <NovelDetailSkeleton wenku v-if="!novel && !error" />
+    <XError
+      v-else-if="!novel && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <template v-else-if="novel">
       <n-flex>
         <router-link
           v-if="whoami.hasNovelAccess"
@@ -310,16 +316,5 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         </template>
       </NovelBottomTabs>
     </template>
-
-    <XAsyncContent
-      v-else
-      :loading="!error"
-      :error="error?.message ?? ''"
-      error-title="加载错误"
-    >
-      <template #loading>
-        <NovelDetailSkeleton wenku />
-      </template>
-    </XAsyncContent>
   </div>
 </template>

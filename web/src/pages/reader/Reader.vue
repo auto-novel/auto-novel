@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
-import { XAsyncContent } from '@novelia/web-kit';
+import { XError } from '@novelia/web-kit';
 
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
@@ -296,77 +296,69 @@ onKeyDown(['Enter'], (e) => {
   </DefineChapterLink>
 
   <div class="content">
-    <XAsyncContent
-      :loading="!chapterResult"
-      :error="
-        chapterResult && !chapterResult.ok ? chapterResult.error.message : ''
-      "
-      error-title="加载错误"
+    <template v-if="!chapterResult">
+      <ReaderSkeleton v-if="chapterList.length === 0" />
+      <div v-else role="status" class="py-6 text-center text-sm text-muted">
+        <span class="sr-only">正在加载章节…</span>
+        <span aria-hidden="true">正在加载章节…</span>
+      </div>
+    </template>
+    <XError
+      v-else-if="!chapterResult.ok"
+      title="加载错误"
+      :description="chapterResult.error.message"
+    />
+    <component
+      v-else-if="currentChapter"
+      :is="isMobile ? ReaderLayoutMobile : ReaderLayoutDesktop"
+      :novel-url="novelUrl"
+      :chapter="currentChapter"
+      @nav="navToChapter"
+      @require-catalog-modal="showCatalogModal = true"
+      @require-setting-modal="showSettingModal = true"
     >
-      <template #loading>
-        <ReaderSkeleton v-if="chapterList.length === 0" />
-        <div v-else role="status" class="py-6 text-center text-sm text-muted">
-          <span class="sr-only">正在加载章节…</span>
-          <span aria-hidden="true">正在加载章节…</span>
-        </div>
+      <template v-if="readerSetting.pageTurnMode === 'page'">
+        <reader-content
+          :gnid="gnid"
+          :chapter-id="currentChapter.chapterId"
+          :chapter="currentChapter"
+        />
+        <n-divider />
+        <n-flex align="center" justify="space-between" style="width: 100%">
+          <ReuseChapterLink :id="currentChapter.prevId" label="上一章" />
+          <ReuseChapterLink :id="currentChapter.nextId" label="下一章" />
+        </n-flex>
       </template>
-      <component
-        v-if="currentChapter"
-        :is="isMobile ? ReaderLayoutMobile : ReaderLayoutDesktop"
-        :novel-url="novelUrl"
-        :chapter="currentChapter"
-        @nav="navToChapter"
-        @require-catalog-modal="showCatalogModal = true"
-        @require-setting-modal="showSettingModal = true"
+      <template
+        v-else
+        v-for="(item, idx) in loadedChapters"
+        :key="item.chapterId"
       >
-        <template v-if="readerSetting.pageTurnMode === 'page'">
+        <template v-if="!item.result">
+          <div role="status" class="py-6 text-center text-sm text-muted">
+            <span class="sr-only">正在加载下一章…</span>
+            <span aria-hidden="true">正在加载下一章…</span>
+          </div>
+        </template>
+        <XError
+          v-else-if="!item.result.ok"
+          title="加载错误"
+          :description="item.result.error.message"
+        />
+        <template v-else-if="item.chapter">
+          <n-divider v-if="idx > 0 && loadedChapters.length > 0" />
           <reader-content
             :gnid="gnid"
-            :chapter-id="currentChapter.chapterId"
-            :chapter="currentChapter"
+            :chapter-id="item.chapter.chapterId"
+            :chapter="item.chapter"
           />
-          <n-divider />
-          <n-flex align="center" justify="space-between" style="width: 100%">
-            <ReuseChapterLink :id="currentChapter.prevId" label="上一章" />
-            <ReuseChapterLink :id="currentChapter.nextId" label="下一章" />
-          </n-flex>
-        </template>
-        <template
-          v-else
-          v-for="(item, idx) in loadedChapters"
-          :key="item.chapterId"
-        >
-          <XAsyncContent
-            :loading="!item.result"
-            :error="
-              item.result && !item.result.ok ? item.result.error.message : ''
-            "
-            error-title="加载错误"
-          >
-            <template #loading>
-              <div role="status" class="py-6 text-center text-sm text-muted">
-                <span class="sr-only">正在加载下一章…</span>
-                <span aria-hidden="true">正在加载下一章…</span>
-              </div>
-            </template>
-            <template v-if="item.chapter">
-              <n-divider v-if="idx > 0 && loadedChapters.length > 0" />
-              <reader-content
-                :gnid="gnid"
-                :chapter-id="item.chapter.chapterId"
-                :chapter="item.chapter"
-              />
 
-              <template v-if="!item.chapter.nextId">
-                <div style="text-align: center; margin: 48px 0">
-                  暂无更多章节
-                </div>
-              </template>
-            </template>
-          </XAsyncContent>
+          <template v-if="!item.chapter.nextId">
+            <div style="text-align: center; margin: 48px 0">暂无更多章节</div>
+          </template>
         </template>
-      </component>
-    </XAsyncContent>
+      </template>
+    </component>
 
     <reader-setting-modal v-model:open="showSettingModal" />
 

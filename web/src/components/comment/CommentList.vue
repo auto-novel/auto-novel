@@ -1,6 +1,12 @@
 <script lang="ts" setup>
 import { CommentOutlined } from '@vicons/material';
-import { XAsyncContent, XButton, XPagination } from '@novelia/web-kit';
+import {
+  XButton,
+  XEmpty,
+  XError,
+  XPagination,
+  XSkeleton,
+} from '@novelia/web-kit';
 
 import { CommentRepo } from '@/repos';
 import type { Comment } from '@novelia/web-kit';
@@ -13,10 +19,11 @@ const props = defineProps<{
 
 const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
 const page = ref(1);
-const { data: commentPage, error } = CommentRepo.useCommentList(
-  page,
-  () => props.site,
-);
+const {
+  data: commentPage,
+  error,
+  refetch,
+} = CommentRepo.useCommentList(page, () => props.site);
 
 const pageSize = 10;
 // 翻页加载期间保留总页数，避免上下分页被卸载。
@@ -117,7 +124,31 @@ const canReply = computed(() => {
       :ui="{ root: 'border-t-0 border-b' }"
     />
 
-    <template v-if="commentPage">
+    <div v-if="!commentPage && !error" role="status">
+      <span class="sr-only">正在加载评论…</span>
+      <div class="divide-y divide-divider" aria-hidden="true">
+        <div v-for="index in 3" :key="index" class="py-4">
+          <XSkeleton class="h-5 w-28 bg-border" />
+          <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
+            <XSkeleton class="h-4 w-full" />
+            <XSkeleton class="mt-2 h-4 w-2/3" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <XError
+      v-else-if="!commentPage && error"
+      title="加载错误"
+      :description="error.message"
+    >
+      <XButton @click="refetch()">再试一次</XButton>
+    </XError>
+    <XEmpty
+      v-else-if="commentPage?.items.length === 0 && !locked"
+      title="暂无评论"
+      size="compact"
+    />
+    <template v-else-if="commentPage">
       <div class="divide-y divide-divider">
         <CommentThread
           v-for="comment in commentPage.items"
@@ -144,43 +175,7 @@ const canReply = computed(() => {
           />
         </CommentThread>
       </div>
-      <div
-        v-if="commentPage.items.length === 0 && !locked"
-        class="grid min-h-52 place-items-center p-6 text-center"
-      >
-        <div>
-          <div
-            class="mx-auto grid size-11 place-items-center rounded-full bg-paper text-muted"
-            aria-hidden="true"
-          >
-            <CommentOutlined class="size-5" />
-          </div>
-          <p class="mt-3 text-sm font-medium text-ink">暂无评论</p>
-        </div>
-      </div>
     </template>
-
-    <XAsyncContent
-      v-else
-      :loading="!error"
-      :error="error?.message ?? ''"
-      error-title="加载错误"
-    >
-      <template #loading>
-        <div role="status">
-          <span class="sr-only">正在加载评论…</span>
-          <div class="divide-y divide-divider" aria-hidden="true">
-            <div v-for="index in 3" :key="index" class="py-4">
-              <div class="h-5 w-28 skeleton bg-border" />
-              <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
-                <div class="h-4 w-full skeleton" />
-                <div class="mt-2 h-4 w-2/3 skeleton" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-    </XAsyncContent>
 
     <XPagination
       v-if="pageCount > 1"

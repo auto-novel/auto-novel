@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XAsyncContent } from '@novelia/web-kit';
+import { XEmpty, XError } from '@novelia/web-kit';
 
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 
@@ -11,7 +11,18 @@ defineProps<{
 </script>
 
 <template>
-  <template v-if="novels !== undefined">
+  <NovelListSkeleton v-if="novels === undefined && !error" panel />
+  <XError
+    v-else-if="novels === undefined && error"
+    title="加载错误"
+    :description="error.message"
+  />
+  <XEmpty
+    v-else-if="novels !== undefined && novels.length === 0"
+    title="空列表"
+    size="compact"
+  />
+  <template v-else-if="novels !== undefined">
     <div class="@container">
       <div class="grid grid-cols-1 gap-3 @min-[850px]:grid-cols-4">
         <div
@@ -33,17 +44,5 @@ defineProps<{
         </div>
       </div>
     </div>
-    <n-empty v-if="novels.length === 0" description="空列表" />
   </template>
-
-  <XAsyncContent
-    v-else
-    :loading="!error"
-    :error="error?.message ?? ''"
-    error-title="加载错误"
-  >
-    <template #loading>
-      <NovelListSkeleton panel />
-    </template>
-  </XAsyncContent>
 </template>
