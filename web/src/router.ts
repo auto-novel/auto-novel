@@ -193,15 +193,13 @@ const router = createRouter({
             {
               path: 'gpt-pipeline',
               meta: { title: 'GPT工作区' },
-              component: () =>
-                import('./pages/workspace/GptPipelineWorkspace.vue'),
+              component: () => import('./pages/workspace/WorkspaceView.vue'),
               props: { translatorId: 'gpt', key: 'gpt-pipeline' },
             },
             {
               path: 'sakura-pipeline',
               meta: { title: 'Sakura工作区' },
-              component: () =>
-                import('./pages/workspace/GptPipelineWorkspace.vue'),
+              component: () => import('./pages/workspace/WorkspaceView.vue'),
               props: { translatorId: 'sakura', key: 'sakura-pipeline' },
             },
             {

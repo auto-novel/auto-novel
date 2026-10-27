@@ -9,7 +9,7 @@ import {
   StopOutlined,
   TranslateOutlined,
 } from '@vicons/material';
-import WorkerActionButton from './WorkerActionButton.vue';
+import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
@@ -134,26 +134,26 @@ const testWorker = async () => {
         </span>
       </div>
       <div class="flex shrink-0 items-center gap-1.5">
-        <WorkerActionButton
+        <WorkspaceActionButton
           :label="running ? '停止' : '启动'"
           :icon="running ? StopOutlined : PlayArrowOutlined"
           @action="running ? emit('stop', worker.id) : emit('start', worker.id)"
         />
-        <WorkerActionButton
+        <WorkspaceActionButton
           label="测试"
           tooltip="测试"
           :icon="FlashOnOutlined"
           icon-only
           @action="testWorker"
         />
-        <WorkerActionButton
+        <WorkspaceActionButton
           label="试译"
           tooltip="试译"
           :icon="TranslateOutlined"
           icon-only
           @action="openInteractiveDialog"
         />
-        <WorkerActionButton
+        <WorkspaceActionButton
           label="设置"
           :tooltip="running ? '请先停止翻译器后再修改' : '设置'"
           :icon="SettingsOutlined"
@@ -161,7 +161,7 @@ const testWorker = async () => {
           icon-only
           @action="openEditDialog"
         />
-        <WorkerActionButton
+        <WorkspaceActionButton
           label="删除"
           :tooltip="running ? '请先停止翻译器后再删除' : '删除'"
           :icon="DeleteOutlineOutlined"

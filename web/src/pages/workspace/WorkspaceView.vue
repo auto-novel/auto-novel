@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import {
   Toast,
-  XButton,
   XConfirmDialog,
   XDropdownMenu,
   XDropdownMenuItem,
@@ -44,6 +43,7 @@ import type {
 } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import PipelineTaskCard from './components/PipelineTaskCard.vue';
+import WorkspaceActionButton from './WorkspaceActionButton.vue';
 
 const props = defineProps<{ translatorId: TranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
@@ -702,9 +702,6 @@ watch(
   <div class="layout-content">
     <n-h1>{{ isSakura ? 'Sakura' : 'GPT' }}工作区</n-h1>
     <bulletin>
-      <n-p>
-        支持并发和查看章节分块状态的新工作区。目前处于测试阶段，有问题请在群内反馈。
-      </n-p>
       <template v-if="isSakura">
         <n-flex>
           <n-a
@@ -791,7 +788,6 @@ watch(
             DeepSeek API
           </n-a>
         </n-flex>
-        <n-p>不再支持GPT web，推荐使用deepseek API，价格很低。</n-p>
         <n-p>本地小说支持韩语等其他语种，网络小说/文库小说暂时只允许日语。</n-p>
       </template>
     </bulletin>
@@ -805,52 +801,33 @@ watch(
         翻译器
       </h2>
       <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
-        <XButton
+        <WorkspaceActionButton
           v-if="workerStore.ref.value.workers.length"
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
+          label="全部启动"
+          :icon="PlayArrowOutlined"
           :disabled="!hasStoppedWorkers"
-          @click="startAllWorkers"
-        >
-          <PlayArrowOutlined class="size-3.5" aria-hidden="true" />
-          全部启动
-        </XButton>
-        <XButton
+          @action="startAllWorkers"
+        />
+        <WorkspaceActionButton
           v-if="workerStore.ref.value.workers.length"
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
+          label="全部停止"
+          :icon="StopOutlined"
           :disabled="!hasStartedWorkers"
-          @click="stopAllWorkers"
-        >
-          <StopOutlined class="size-3.5" aria-hidden="true" />
-          全部停止
-        </XButton>
-        <XButton
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
-          @click="showWorkerDialog = true"
-        >
-          <PlusOutlined class="size-3.5" aria-hidden="true" />
-          添加
-        </XButton>
+          @action="stopAllWorkers"
+        />
+        <WorkspaceActionButton
+          label="添加"
+          :icon="PlusOutlined"
+          @action="showWorkerDialog = true"
+        />
         <XDropdownMenu v-if="workerStore.ref.value.workers.length" align="end">
           <template #trigger>
-            <XButton
-              color="neutral"
-              variant="ghost"
-              size="icon-xs"
-              class="text-ink"
-              aria-label="更多翻译器操作"
+            <WorkspaceActionButton
+              label="更多翻译器操作"
+              :icon="MoreVertOutlined"
+              icon-only
               title="更多翻译器操作"
-            >
-              <MoreVertOutlined class="size-4" aria-hidden="true" />
-            </XButton>
+            />
           </template>
           <XDropdownMenuItem
             :disabled="clearingCache"
@@ -907,38 +884,23 @@ watch(
         任务队列
       </h2>
       <div class="flex flex-wrap items-center gap-1.5 whitespace-nowrap">
-        <XButton
+        <WorkspaceActionButton
           v-if="filteredJobs.length"
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
-          @click="showDeleteJobsDialog = true"
-        >
-          <DeleteOutlineOutlined class="size-3.5" aria-hidden="true" />
-          删除筛选
-        </XButton>
-        <XButton
+          label="删除筛选"
+          :icon="DeleteOutlineOutlined"
+          @action="showDeleteJobsDialog = true"
+        />
+        <WorkspaceActionButton
           v-if="hasFailedTasks"
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
-          @click="retryTaskCards"
-        >
-          <RefreshOutlined class="size-3.5" aria-hidden="true" />
-          重试失败
-        </XButton>
-        <XButton
-          color="neutral"
-          variant="ghost"
-          size="tiny"
-          class="text-ink"
-          @click="showLocalVolumeDrawer = true"
-        >
-          <BookOutlined class="size-3.5" aria-hidden="true" />
-          本地书架
-        </XButton>
+          label="重试失败"
+          :icon="RefreshOutlined"
+          @action="retryTaskCards"
+        />
+        <WorkspaceActionButton
+          label="本地书架"
+          :icon="BookOutlined"
+          @action="showLocalVolumeDrawer = true"
+        />
       </div>
     </div>
 
