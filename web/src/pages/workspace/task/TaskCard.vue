@@ -287,7 +287,7 @@ const closePreview = () => {
     </div>
   </n-card>
 
-  <chapter-preview-dialog
+  <ChapterPreviewDialog
     :show="showPreview"
     :title="previewData?.title ?? ''"
     :chapter-state="previewData?.chapterState ?? null"

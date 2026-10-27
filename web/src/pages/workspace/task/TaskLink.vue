@@ -45,7 +45,7 @@ const link = computed(() => {
 </script>
 
 <template>
-  <router-link
+  <RouterLink
     v-if="link.url"
     :to="link.url"
     target="_blank"
@@ -53,7 +53,7 @@ const link = computed(() => {
     class="block text-xs/4 font-normal text-muted underline underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
   >
     {{ link.text }}
-  </router-link>
+  </RouterLink>
   <span v-else class="block text-xs/4 font-normal text-muted">
     {{ link.text }}
   </span>

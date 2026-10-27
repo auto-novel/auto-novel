@@ -14,7 +14,6 @@ const emit = defineEmits<{
   preview: [chapterId: string];
 }>();
 
-const theme = useThemeVars();
 const root = ref<HTMLElement>();
 const errorsExpanded = ref(false);
 const previewLimit = 6;
@@ -258,11 +257,11 @@ watch(
 
 <style scoped>
 .chapter-pipeline {
-  --flow-muted: v-bind('theme.textColor3');
-  --flow-text: v-bind('theme.textColor2');
-  --flow-border: v-bind('theme.dividerColor');
-  --flow-info: v-bind('theme.infoColor');
-  --flow-error: v-bind('theme.errorColor');
+  --flow-muted: var(--color-muted);
+  --flow-text: var(--color-ink);
+  --flow-border: var(--color-divider);
+  --flow-info: var(--color-info);
+  --flow-error: var(--color-error);
   position: relative;
   color: var(--flow-text);
   font-variant-numeric: tabular-nums;
@@ -325,7 +324,7 @@ watch(
 }
 .chapter-token:hover {
   border-color: var(--region-color);
-  background: v-bind('theme.hoverColor');
+  background: var(--color-hover);
 }
 .chapter-token:focus-visible,
 .region-expand:focus-visible {
