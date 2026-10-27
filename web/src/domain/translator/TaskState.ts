@@ -133,6 +133,16 @@ export class TaskState {
   updateStatus(chapterId: string, status: ChapterStatus): void {
     const ch = this.chapters.find((c) => c.chapterId === chapterId);
     if (ch) ch.status = status;
+    if (status === 'done') {
+      const state = this.chapterStates.get(chapterId);
+      if (state) {
+        // 预览可能仍持有状态引用，先释放文本，再移除工作区中的状态。
+        state.segments = [];
+        state.ranges = [];
+        state.ready = false;
+      }
+      this.chapterStates.delete(chapterId);
+    }
   }
 
   getChapterState(chapterId: string): ChapterSegmentState | undefined {
