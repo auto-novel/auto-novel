@@ -2,16 +2,16 @@
 import { Toast } from '@novelia/web-kit';
 import ChapterGrid from './ChapterGrid.vue';
 import ChapterPreviewDialog from './ChapterPreviewDialog.vue';
-import JobTaskLink from './JobTaskLink.vue';
+import TaskLink from './TaskLink.vue';
+import TaskProgress from './TaskProgress.vue';
 import {
-  ChevronRightOutlined,
   KeyboardDoubleArrowUpOutlined,
   KeyboardDoubleArrowDownOutlined,
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
-import type { ChapterMeta } from '@/domain/translator/TaskState';
-import { TaskState, ChapterSegmentState } from '@/domain/translator/TaskState';
+import type { ChapterMeta, TaskState } from '@/domain/translator/TaskState';
+import { ChapterSegmentState } from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
@@ -36,6 +36,50 @@ const emit = defineEmits<{
 
 const jobRecord = computed(() => props.job as TranslateJobRecord);
 const chapterMetas = computed(() => props.taskState?.chapters ?? []);
+const hasVisibleChapters = computed(() =>
+  chapterMetas.value.some(
+    (chapter) =>
+      chapter.status === 'error' ||
+      (chapter.status === 'translating' &&
+        props.taskState?.chapterStates.get(chapter.chapterId)?.ready),
+  ),
+);
+const taskProgress = computed(() => {
+  const chapters = chapterMetas.value;
+  // 历史任务的预览元数据不能用其初始 pending 覆盖已保存的结果。
+  if (!chapters.length || (props.job.finishAt && jobRecord.value.progress)) {
+    const progress = jobRecord.value.progress;
+    const total = Math.max(0, progress?.total ?? 0);
+    const done = Math.min(total, Math.max(0, progress?.finished ?? 0));
+    const error = Math.min(total - done, Math.max(0, progress?.error ?? 0));
+    return {
+      total,
+      done,
+      error,
+      translating: 0,
+      pending: total - done - error,
+    };
+  }
+
+  let done = 0;
+  let error = 0;
+  let translating = 0;
+  for (const chapter of chapters) {
+    if (chapter.status === 'done') done++;
+    else if (chapter.status === 'error') error++;
+    else if (chapter.status === 'translating') {
+      const state = props.taskState?.chapterStates.get(chapter.chapterId);
+      if (state?.ready) translating++;
+    }
+  }
+  return {
+    total: chapters.length,
+    done,
+    error,
+    translating,
+    pending: chapters.length - done - error - translating,
+  };
+});
 async function getChapterMetas(): Promise<ChapterMeta[]> {
   if (props.taskState?.initialized) return chapterMetas.value;
 
@@ -49,29 +93,6 @@ async function getChapterMetas(): Promise<ChapterMeta[]> {
   return task.chapters;
 }
 
-function getOrCreateTaskState(): TaskState {
-  if (props.taskState) return props.taskState;
-  return reactive(new TaskState(props.job.task)) as TaskState;
-}
-
-const expanded = ref(false);
-
-const toggleExpand = async () => {
-  if (expanded.value) {
-    expanded.value = false;
-    return;
-  }
-
-  const state = getOrCreateTaskState();
-  if (!state.initialized) {
-    const chapters = await getChapterMetas();
-    state.initChapters(chapters);
-  }
-  expanded.value = true;
-};
-
-const themeVars = useThemeVars();
-
 const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
   if (props.job.finishAt) return 'done';
   if (!chapterMetas.value.length)
@@ -79,8 +100,7 @@ const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
       props.taskCacheEntry?.needsMetadata
       ? 'pending'
       : 'done';
-  if (chapterMetas.value.some((c) => c.status === 'translating'))
-    return 'executing';
+  if (taskProgress.value.translating > 0) return 'executing';
   return 'pending';
 });
 
@@ -168,39 +188,25 @@ const closePreview = () => {
 <template>
   <n-card
     size="small"
-    :hoverable="true"
-    :class="{ 'task-card--expanded': expanded }"
-    :header-style="{
-      cursor: 'pointer',
-      padding: '10px 14px',
-      'user-select': 'none',
-    }"
+    :bordered="false"
+    class="task-card"
+    :header-style="{ padding: '10px 14px' }"
     :content-style="
-      expanded ? { padding: '0 14px 10px 14px' } : { padding: '0' }
+      hasVisibleChapters ? { padding: '0 14px 10px 14px' } : { padding: '0' }
     "
   >
     <template #header>
-      <div @click="toggleExpand">
-        <n-flex align="center" :wrap="false" style="flex: 1; min-width: 0">
-          <div style="flex: 1; min-width: 0">
+      <div class="task-header">
+        <n-flex
+          class="task-header-main"
+          align="center"
+          :wrap="false"
+          style="flex: 1; min-width: 0"
+        >
+          <div class="flex min-w-0 flex-1 flex-col gap-1">
             <div class="task-name">{{ job.description }}</div>
-            <job-task-link :task="job.task" class="task-link" />
+            <task-link :task="job.task" />
           </div>
-          <n-flex :size="8" align="center" :wrap="false" style="flex-shrink: 0">
-            <n-tag v-if="taskStatus === 'executing'" size="tiny" type="info">
-              翻译中
-            </n-tag>
-            <n-tag v-else-if="taskStatus === 'done'" size="tiny" type="success">
-              已完成
-            </n-tag>
-            <n-tag v-else size="tiny" type="default">等待中</n-tag>
-            <span class="task-progress">
-              {{ jobRecord.progress?.finished ?? 0 }}/{{
-                jobRecord.progress?.total ?? chapterMetas.length ?? 0
-              }}
-            </span>
-          </n-flex>
-
           <n-flex :size="4" :wrap="false" style="flex-shrink: 0">
             <n-tooltip trigger="hover">
               <template #trigger>
@@ -265,16 +271,12 @@ const closePreview = () => {
               删除
             </n-tooltip>
           </n-flex>
-
-          <n-icon
-            :component="ChevronRightOutlined"
-            :class="['expand-arrow', { 'expand-arrow--rotated': expanded }]"
-          />
         </n-flex>
+        <task-progress :status="taskStatus" :progress="taskProgress" />
       </div>
     </template>
 
-    <div v-if="expanded && chapterMetas.length">
+    <div v-if="hasVisibleChapters">
       <chapter-grid
         :task-state="taskState"
         @preview="(cid: string) => openPreview(cid)"
@@ -295,9 +297,19 @@ const closePreview = () => {
 </template>
 
 <style scoped>
-.task-card--expanded {
-  --n-border-color: v-bind('themeVars.primaryColorHover');
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+@reference '../../../style.css';
+
+.task-card {
+  container-type: inline-size;
+  border-radius: 0;
+  background: transparent;
+}
+.task-card + .task-card {
+  @apply border-t border-divider;
+}
+.task-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 .task-name {
   font-size: 14px;
@@ -305,23 +317,15 @@ const closePreview = () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.task-link {
-  font-size: 11px;
-  line-height: 1.2;
-}
-.task-progress {
-  font-size: 12px;
-  color: v-bind('themeVars.textColor3');
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.expand-arrow {
-  font-size: 14px;
-  color: v-bind('themeVars.textColor3');
-  margin-left: 2px;
-  transition: transform 0.2s ease;
-}
-.expand-arrow--rotated {
-  transform: rotate(90deg);
+@container (min-width: 640px) {
+  .task-header {
+    grid-template-columns: 56px minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: center;
+  }
+  .task-header-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
 }
 </style>

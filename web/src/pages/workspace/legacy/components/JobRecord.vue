@@ -3,7 +3,7 @@ import { DeleteOutlineOutlined, RefreshOutlined } from '@vicons/material';
 
 import type { TranslateJobRecord } from '@/model/Translator';
 import { TranslateJob } from '@/model/Translator';
-import JobTaskLink from '../../JobTaskLink.vue';
+import JobTaskLink from './JobTaskLink.vue';
 
 const props = defineProps<{
   job: TranslateJobRecord;

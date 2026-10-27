@@ -31,7 +31,7 @@ import type {
 } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
-import TranslationTaskCard from './TranslationTaskCard.vue';
+import TaskCard from './task/TaskCard.vue';
 import WorkspaceActionButton from './WorkspaceActionButton.vue';
 import WorkspaceBulletin from './WorkspaceBulletin.vue';
 import WorkerSection from './worker/WorkerSection.vue';
@@ -55,10 +55,9 @@ const GLOBAL_WINDOW = 66;
 /** 同时 fetch 的章节数上限 */
 const FETCH_CONCURRENCY = 1;
 const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
-/** pipeline 内同时翻译的分块的高水位标记 */
-const HIGH_WATER_MARK = 100;
+/** 在途队列水位随已启动翻译器的总并发自动调整，预留一倍缓冲。 */
 const pipeline = new TranslationPipeline(
-  HIGH_WATER_MARK,
+  'auto',
   undefined,
   new IndexedDbSegmentCache(segCacheName),
   isSakura.value ? 'chapter' : 'segment',
@@ -561,7 +560,7 @@ const deleteAllJobs = () => {
   showDeleteJobsDialog.value = false;
 };
 
-const taskCardRefs = ref<InstanceType<typeof TranslationTaskCard>[]>([]);
+const taskCardRefs = ref<InstanceType<typeof TaskCard>[]>([]);
 const hasFailedTasks = computed(() =>
   taskCardRefs.value.some((card) => card?.hasFailedChapters()),
 );
@@ -719,7 +718,7 @@ watch(
     <n-divider style="margin: 16px 0 8px" />
     <n-empty v-if="filteredJobs.length === 0" description="没有任务" />
     <div v-else class="task-list">
-      <translation-task-card
+      <task-card
         v-for="job of filteredJobs"
         ref="taskCardRefs"
         :key="job.task"
@@ -764,6 +763,5 @@ watch(
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 </style>

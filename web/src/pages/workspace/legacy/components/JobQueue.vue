@@ -7,7 +7,7 @@ import {
 } from '@vicons/material';
 
 import type { TranslateJob } from '@/model/Translator';
-import JobTaskLink from '../../JobTaskLink.vue';
+import JobTaskLink from './JobTaskLink.vue';
 
 const props = defineProps<{
   job: TranslateJob;
