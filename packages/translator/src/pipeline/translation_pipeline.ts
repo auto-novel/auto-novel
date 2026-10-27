@@ -24,15 +24,19 @@ export class TranslationPipeline {
   public segmenter: LineSegmenter;
   private assembler: SegmentAssembler;
   private cache?: SegmentCache;
+  private readonly autoHighWaterMark: boolean;
 
   constructor(
-    highWaterMark?: number,
+    highWaterMark?: number | 'auto',
     segmenter?: LineSegmenter,
     cache?: SegmentCache,
     private readonly concurrencyLevel: 'segment' | 'chapter' = 'segment', // 为 chapter 时，传入的章节按分段顺序依次翻译，同时填充前个分段的译文
   ) {
     this.translatorLoops = new Map();
-    this.queue = new DefaultSegmentQueue(highWaterMark ?? 50);
+    this.autoHighWaterMark = highWaterMark === 'auto';
+    this.queue = new DefaultSegmentQueue(
+      highWaterMark === 'auto' ? 1 : highWaterMark ?? 50,
+    );
     this.segmenter = segmenter ?? createLineSegmenter(1500, 30);
     this.assembler = createSegmentAssembler();
     this.cache = cache;
@@ -200,14 +204,20 @@ export class TranslationPipeline {
     tracker?: TranslatorTracker,
     translatorId?: string,
   ): string {
+    const configuredConcurrency = concurrency ?? 1;
+    if (!Number.isInteger(configuredConcurrency) || configuredConcurrency < 1) {
+      throw new RangeError('Translator concurrency must be a positive integer');
+    }
     const id = translatorId ?? randomUUID();
+    this.translatorLoops.get(id)?.abortController.abort();
     const loop: TranslationLoop = {
       id,
       translator,
       abortController: new AbortController(),
-      concurrency: concurrency ?? 1,
+      concurrency: configuredConcurrency,
     };
     this.translatorLoops.set(id, loop);
+    this._updateHighWaterMark();
     this._startLoop(loop, tracker);
     return id;
   }
@@ -287,6 +297,7 @@ export class TranslationPipeline {
     if (loop) {
       loop.abortController.abort();
       this.translatorLoops.delete(translatorId);
+      this._updateHighWaterMark();
     }
   }
 
@@ -295,6 +306,17 @@ export class TranslationPipeline {
       loop.abortController.abort();
     }
     this.translatorLoops.clear();
+    this._updateHighWaterMark();
+  }
+
+  private _updateHighWaterMark(): void {
+    if (!this.autoHighWaterMark) return;
+    let totalConcurrency = 0;
+    for (const loop of this.translatorLoops.values()) {
+      totalConcurrency += loop.concurrency ?? 1;
+    }
+    // 使用配置容量而非瞬时忙碌数；降低阈值不移除已在途的分段。
+    this.queue.setHighWaterMark(Math.max(1, totalConcurrency * 2));
   }
 
   waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {

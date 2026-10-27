@@ -3,20 +3,40 @@ import { Semaphore } from '@/utils';
 
 export class DefaultSegmentQueue implements SegmentQueue {
   private readonly _items: Segment[] = [];
-  private readonly _highWaterMark: number;
+  private _highWaterMark: number;
   /** 系统中所有在途（排队中+翻译中）的分片总数 */
   private _enqueuedCount = 0;
 
   /** 等待出队的消费者 resolve 回调队列（FIFO） */
   private readonly _dequeueResolvers: Array<(seg: Segment) => void> = [];
 
-  /** 等待水位下降的生产者 resolve 回调队列（FIFO），每次只释放一个 */
+  /** 等待水位下降的生产者 resolve 回调队列（FIFO），ack 每次只释放一个 */
   private _hwResolvers: Array<() => void> = [];
   /** 入队锁，防止多任务 enqueueAll 交错 */
   private readonly _enqueueLock = new Semaphore(1);
 
   constructor(highWaterMark: number) {
-    this._highWaterMark = Math.max(1, highWaterMark);
+    this._highWaterMark = this._normalizeHighWaterMark(highWaterMark);
+  }
+
+  private _normalizeHighWaterMark(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError('Queue high water mark must be positive and finite');
+    }
+    return Math.max(1, Math.floor(value));
+  }
+
+  setHighWaterMark(value: number): void {
+    const previous = this._highWaterMark;
+    this._highWaterMark = this._normalizeHighWaterMark(value);
+    if (
+      this._highWaterMark > previous &&
+      this._enqueuedCount < this._highWaterMark
+    ) {
+      // 水位上调可能释放多个等待者；ack 仍然只按 FIFO 释放一个。
+      const resolvers = this._hwResolvers.splice(0);
+      for (const resolve of resolvers) resolve();
+    }
   }
 
   get length(): number {
@@ -29,7 +49,9 @@ export class DefaultSegmentQueue implements SegmentQueue {
 
   async enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void> {
     await this._enqueueLock.use(async () => {
-      await this.waitUntilBelowHighWaterMark(signal);
+      do {
+        await this.waitUntilBelowHighWaterMark(signal);
+      } while (this._enqueuedCount >= this._highWaterMark);
       this._enqueue(segments);
     });
   }
@@ -81,20 +103,23 @@ export class DefaultSegmentQueue implements SegmentQueue {
   async waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
 
-    if (this._enqueuedCount < this._highWaterMark) return;
-
-    return new Promise<void>((resolve, reject) => {
-      this._hwResolvers.push(resolve);
-
-      if (signal) {
+    while (this._enqueuedCount >= this._highWaterMark) {
+      await new Promise<void>((resolve, reject) => {
         const onAbort = () => {
-          const idx = this._hwResolvers.indexOf(resolve);
+          const idx = this._hwResolvers.indexOf(onReady);
           if (idx !== -1) this._hwResolvers.splice(idx, 1);
-          reject(signal.reason);
+          signal?.removeEventListener('abort', onAbort);
+          reject(signal!.reason);
         };
-        signal.addEventListener('abort', onAbort, { once: true });
-      }
-    });
+        const onReady = () => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        };
+        this._hwResolvers.push(onReady);
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+      signal?.throwIfAborted();
+    }
   }
 
   /**

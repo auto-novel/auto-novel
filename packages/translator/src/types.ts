@@ -59,6 +59,7 @@ export interface SegmentAssembler {
 export abstract class SegmentQueue {
   abstract readonly length: number;
   abstract readonly highWaterMark: number;
+  abstract setHighWaterMark(value: number): void;
   abstract enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void>;
   abstract dequeue(signal?: AbortSignal): Promise<Segment>;
   abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
