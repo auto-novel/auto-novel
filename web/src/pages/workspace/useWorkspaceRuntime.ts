@@ -51,6 +51,9 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   /** 同时 fetch 的章节数上限 */
   const FETCH_CONCURRENCY = 1;
   const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
+  /** 同时准备（fetch 目录）的小说数上限，与 fetchSemaphore 互不阻塞 */
+  const PREPARE_CONCURRENCY = 1;
+  const prepareSemaphore = new Semaphore(PREPARE_CONCURRENCY);
   /** 在途队列水位随已启动翻译器的总并发自动调整，预留一倍缓冲。 */
   const pipeline = new TranslationPipeline(
     'auto',
@@ -259,12 +262,14 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       taskStates.value.get(job.task) === state &&
       !!findCurrentJob(job) &&
       canUpload();
-    task
-      .prepareExecution({
-        signal,
-        canUpload: canPrepare,
-        onLog: (message) => logTask(job.task, message),
-      })
+    prepareSemaphore
+      .use(() =>
+        task.prepareExecution!({
+          signal,
+          canUpload: canPrepare,
+          onLog: (message) => logTask(job.task, message),
+        }),
+      )
       .then(() => {
         if (!canPrepare()) return;
         state.initChapters(task.chapters);
