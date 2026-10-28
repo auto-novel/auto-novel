@@ -4,9 +4,10 @@ import ChapterGrid from './ChapterGrid.vue';
 import ChapterPreviewDialog from './ChapterPreviewDialog.vue';
 import TaskLink from './TaskLink.vue';
 import TaskProgress from './TaskProgress.vue';
+import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import {
-  KeyboardDoubleArrowUpOutlined,
-  KeyboardDoubleArrowDownOutlined,
+  VerticalAlignTopOutlined,
+  VerticalAlignBottomOutlined,
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
@@ -25,6 +26,8 @@ const props = defineProps<{
   translatorId: TranslatorId;
   taskState?: TaskState;
   taskCacheEntry?: TranslationTask;
+  canMoveTop: boolean;
+  canMoveBottom: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -105,23 +108,11 @@ const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
 });
 
 function retryAllFailed() {
-  for (const ch of chapterMetas.value) {
-    if (ch.status === 'error') {
-      ch.status = 'pending';
-      const state = props.taskState?.chapterStates.get(ch.chapterId);
-      if (state) state.errorMessage = undefined;
-      props.taskState?.chapterStates.delete(ch.chapterId);
-    }
+  if (props.taskState?.resetFailedChapters()) {
+    delete props.job.finishAt;
+    emit('retry', props.job.task);
   }
-  delete props.job.finishAt;
-  emit('retry', props.job.task);
 }
-
-function hasFailedChapters(): boolean {
-  return chapterMetas.value.some((c) => c.status === 'error');
-}
-
-defineExpose({ retryAllFailed, hasFailedChapters });
 
 function createTask(taskDesc: string): TranslationTask {
   const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
@@ -192,13 +183,10 @@ const closePreview = () => {
   <n-card
     size="small"
     :bordered="false"
-    :class="[
-      'task-card @container rounded-none! bg-transparent!',
-      '[&+.task-card]:border-t! [&+.task-card]:border-divider!',
-    ]"
-    :header-style="{ padding: '10px 14px' }"
+    class="task-card @container rounded-none! bg-transparent!"
+    :header-style="{ padding: '10px 0' }"
     :content-style="
-      hasVisibleChapters ? { padding: '0 14px 10px 14px' } : { padding: '0' }
+      hasVisibleChapters ? { padding: '0 0 10px' } : { padding: '0' }
     "
   >
     <template #header>
@@ -208,80 +196,53 @@ const closePreview = () => {
           '@min-[640px]:items-center @min-[640px]:gap-x-3.5',
         ]"
       >
-        <n-flex
-          class="min-w-0 flex-1 @min-[640px]:col-start-2 @min-[640px]:row-start-1"
-          align="center"
-          :wrap="false"
+        <div
+          class="flex min-w-0 flex-1 flex-col gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-1"
         >
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <div class="truncate text-[14px]">{{ job.description }}</div>
-            <task-link :task="job.task" />
-          </div>
-          <n-flex :size="4" :wrap="false" class="shrink-0">
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('top', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowUpOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              置顶
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  @click.stop="emit('bottom', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="KeyboardDoubleArrowDownOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              置底
-            </n-tooltip>
-            <n-tooltip v-if="hasFailedChapters()" trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="warning"
-                  @click.stop="retryAllFailed()"
-                >
-                  <template #icon>
-                    <n-icon :component="RefreshOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              重试失败
-            </n-tooltip>
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <n-button
-                  size="tiny"
-                  circle
-                  quaternary
-                  type="error"
-                  @click.stop="emit('delete', job.task)"
-                >
-                  <template #icon>
-                    <n-icon :component="DeleteOutlineOutlined" />
-                  </template>
-                </n-button>
-              </template>
-              删除
-            </n-tooltip>
+          <n-flex align="center" :wrap="false">
+            <div class="min-w-0 flex-1 truncate text-[14px]">
+              {{ job.description }}
+            </div>
+            <div class="flex shrink-0 items-center gap-1.5" @click.stop>
+              <WorkspaceActionButton
+                v-if="canMoveTop || canMoveBottom"
+                label="移至队首"
+                tooltip="移至队首"
+                :icon="VerticalAlignTopOutlined"
+                icon-only
+                :disabled="!canMoveTop"
+                @action="canMoveTop && emit('top', job.task)"
+              />
+              <WorkspaceActionButton
+                v-if="canMoveTop || canMoveBottom"
+                label="移至队尾"
+                tooltip="移至队尾"
+                :icon="VerticalAlignBottomOutlined"
+                icon-only
+                :disabled="!canMoveBottom"
+                @action="canMoveBottom && emit('bottom', job.task)"
+              />
+              <WorkspaceActionButton
+                v-if="taskState?.hasFailedChapters()"
+                label="重试失败"
+                tooltip="重试失败"
+                :icon="RefreshOutlined"
+                icon-only
+                color="warning"
+                @action="retryAllFailed"
+              />
+              <WorkspaceActionButton
+                label="删除任务"
+                tooltip="删除"
+                :icon="DeleteOutlineOutlined"
+                icon-only
+                color="danger"
+                @action="emit('delete', job.task)"
+              />
+            </div>
           </n-flex>
-        </n-flex>
+          <task-link :task="job.task" />
+        </div>
         <task-progress :status="taskStatus" :progress="taskProgress" />
       </div>
     </template>

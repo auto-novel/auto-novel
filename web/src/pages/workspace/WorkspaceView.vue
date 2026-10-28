@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import { BookOutlined } from '@vicons/material';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import WorkspaceActionButton from './WorkspaceActionButton.vue';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
 import TaskSection from './task/TaskSection.vue';
 import { useWorkspaceRuntime } from './useWorkspaceRuntime';
@@ -29,9 +31,16 @@ const {
 
 <template>
   <div class="layout-content">
-    <h1 class="my-6 text-[30px]/[1.6] font-medium text-ink">
-      {{ isSakura ? 'Sakura' : 'GPT' }}工作区
-    </h1>
+    <div class="my-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="m-0 text-[30px]/[1.6] font-medium text-ink">
+        {{ isSakura ? 'Sakura' : 'GPT' }}工作区
+      </h1>
+      <WorkspaceActionButton
+        label="本地书架"
+        :icon="BookOutlined"
+        @action="showLocalVolumeDrawer = true"
+      />
+    </div>
     <WorkspaceBulletin :translator-id="translatorId" />
 
     <WorkerSection
@@ -54,7 +63,6 @@ const {
       @retry="runProcessLoop"
       @top="topJob"
       @bottom="bottomJob"
-      @open-local-volume="showLocalVolumeDrawer = true"
     />
   </div>
 

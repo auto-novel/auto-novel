@@ -128,6 +128,23 @@ export class TaskState {
     this.initialized = true;
   }
 
+  hasFailedChapters(): boolean {
+    return this.chapters.some((chapter) => chapter.status === 'error');
+  }
+
+  resetFailedChapters(): boolean {
+    let hasFailed = false;
+    for (const chapter of this.chapters) {
+      if (chapter.status !== 'error') continue;
+      chapter.status = 'pending';
+      const state = this.chapterStates.get(chapter.chapterId);
+      if (state) state.errorMessage = undefined;
+      this.chapterStates.delete(chapter.chapterId);
+      hasFailed = true;
+    }
+    return hasFailed;
+  }
+
   getStatus(chapterId: string): ChapterStatus | undefined {
     return this.chapters.find((c) => c.chapterId === chapterId)?.status;
   }
