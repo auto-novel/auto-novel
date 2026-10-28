@@ -192,22 +192,30 @@ watch(
 </script>
 
 <template>
-  <div ref="root" class="chapter-pipeline" tabindex="-1">
-    <div v-if="groups.length" class="pipeline-layout">
+  <div ref="root" class="relative text-ink tabular-nums" tabindex="-1">
+    <div
+      v-if="groups.length"
+      class="grid grid-cols-1 items-stretch gap-2.5 [@media(max-width:480px)]:gap-2"
+    >
       <section
         v-for="group of groups"
         :key="group.status"
         :data-region="group.status"
-        :class="['pipeline-region', `pipeline-region--${group.status}`]"
+        class="relative min-w-0 border-0 bg-transparent p-0"
+        :class="
+          group.status === 'translating'
+            ? '[--region-color:var(--color-info)]'
+            : '[--region-color:var(--color-error)]'
+        "
         :aria-label="`${group.label}章节`"
         tabindex="-1"
       >
         <div
           v-if="group.visible.length"
-          :class="[
-            'region-chapters',
-            { 'region-chapters--active': group.status === 'translating' },
-          ]"
+          class="flex flex-wrap content-start gap-1.25 overflow-y-auto p-0.75"
+          :class="
+            group.status === 'translating' ? 'max-h-75 items-start' : 'max-h-60'
+          "
         >
           <button
             v-for="ch of group.visible"
@@ -215,12 +223,19 @@ watch(
             type="button"
             :data-chapter-id="ch.chapterId"
             :class="[
-              'chapter-token',
+              'box-border inline-flex size-10 flex-[0_0_40px] cursor-pointer',
+              'flex-col items-center justify-center gap-0.75 overflow-hidden',
+              'rounded-[5px] border border-divider bg-transparent p-0.75 text-[11px]',
+              'transition-[border-color,background-color] duration-150 ease-[ease]',
+              'hover:border-(--region-color) hover:bg-hover',
+              'focus-visible:outline-2 focus-visible:outline-offset-1',
+              'focus-visible:outline-(--region-color) motion-reduce:transition-none',
+              group.status === 'translating' && ch.compact
+                ? 'text-muted'
+                : 'text-(--region-color)',
               {
-                'chapter-token--active':
+                'chapter-progress-fill relative isolate':
                   group.status === 'translating' && !ch.compact,
-                'chapter-token--queued':
-                  group.status === 'translating' && ch.compact,
               },
             ]"
             :style="{ '--chapter-progress': `${pct(ch.segmentProgress)}%` }"
@@ -230,7 +245,10 @@ watch(
           >
             <template v-if="group.status === 'translating' && !ch.compact">
               <span>#{{ ch.order }}</span>
-              <span v-if="ch.segmentProgress" class="active-chapter-count">
+              <span
+                v-if="ch.segmentProgress"
+                class="text-[10px]/none whitespace-nowrap"
+              >
                 {{ ch.segmentProgress.completed }}/{{
                   ch.segmentProgress.total
                 }}
@@ -243,7 +261,12 @@ watch(
         <button
           v-if="group.status === 'error' && group.items.length > previewLimit"
           type="button"
-          class="region-expand"
+          :class="[
+            'mt-2 block w-full cursor-pointer border-0 bg-transparent py-1.25',
+            'text-[11px] text-(--region-color) hover:underline',
+            'focus-visible:outline-2 focus-visible:outline-offset-1',
+            'focus-visible:outline-(--region-color)',
+          ]"
           :aria-expanded="errorsExpanded"
           @click="errorsExpanded = !errorsExpanded"
         >
@@ -251,138 +274,30 @@ watch(
         </button>
       </section>
     </div>
-    <div v-else-if="!chapters.length" class="region-empty">暂无章节</div>
+    <div
+      v-else-if="!chapters.length"
+      class="py-3 text-center text-[11px] text-muted"
+    >
+      暂无章节
+    </div>
   </div>
 </template>
 
 <style scoped>
-.chapter-pipeline {
-  --flow-muted: var(--color-muted);
-  --flow-text: var(--color-ink);
-  --flow-border: var(--color-divider);
-  --flow-info: var(--color-info);
-  --flow-error: var(--color-error);
-  position: relative;
-  color: var(--flow-text);
-  font-variant-numeric: tabular-nums;
-}
-.pipeline-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  align-items: stretch;
-}
-.pipeline-region {
-  --region-color: var(--flow-muted);
-  position: relative;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-.pipeline-region--translating {
-  --region-color: var(--flow-info);
-}
-.pipeline-region--error {
-  --region-color: var(--flow-error);
-}
-.region-chapters {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 5px;
-  max-height: 240px;
-  overflow-y: auto;
-  padding: 3px;
-}
-.region-chapters--active {
-  align-items: flex-start;
-  max-height: 300px;
-}
-.chapter-token {
-  box-sizing: border-box;
-  display: inline-flex;
-  flex: 0 0 40px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  width: 40px;
-  height: 40px;
-  overflow: hidden;
-  padding: 3px;
-  border: 1px solid var(--flow-border);
-  border-radius: 5px;
-  background: transparent;
-  color: var(--region-color);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  transition:
-    border-color 150ms,
-    background-color 150ms;
-}
-.chapter-token:hover {
-  border-color: var(--region-color);
-  background: var(--color-hover);
-}
-.chapter-token:focus-visible,
-.region-expand:focus-visible {
-  outline: 2px solid var(--region-color);
-  outline-offset: 1px;
-}
-.chapter-token--queued {
-  color: var(--flow-muted);
-}
-.chapter-token--active {
-  position: relative;
-  isolation: isolate;
-}
-.chapter-token--active::before {
+/* 动态进度底色集中保留，避免将伪元素定位、层叠和过渡规则堆进模板。 */
+.chapter-progress-fill::before {
   position: absolute;
   z-index: -1;
   inset: 0 auto 0 0;
   width: var(--chapter-progress, 0%);
-  background: var(--flow-info);
+  background: var(--color-info);
   opacity: 0.14;
   content: '';
   pointer-events: none;
   transition: width 250ms ease;
 }
-.active-chapter-count {
-  font-size: 10px;
-  line-height: 1;
-  white-space: nowrap;
-}
-.region-empty {
-  padding: 12px 0;
-  color: var(--flow-muted);
-  font-size: 11px;
-  text-align: center;
-}
-.region-expand {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  padding: 5px 0;
-  border: 0;
-  background: transparent;
-  color: var(--region-color);
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.region-expand:hover {
-  text-decoration: underline;
-}
-@media (max-width: 480px) {
-  .pipeline-layout {
-    gap: 8px;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .chapter-token,
-  .chapter-token--active::before {
+  .chapter-progress-fill::before {
     transition: none;
   }
 }

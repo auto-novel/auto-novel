@@ -32,7 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const { isMobile } = useWebKitViewport();
-const themeVars = useThemeVars();
 
 const isSakura = computed(() => props.translatorId === 'sakura');
 const title = computed(() => `试译 · ${props.worker.id}`);
@@ -430,14 +429,16 @@ const handleOpenChange = (open: boolean) => {
   <XDialog
     :open="show"
     :title="title"
-    class="w-[800px] max-w-[95vw]"
+    class="w-200 max-w-[95vw]"
     @update:open="handleOpenChange"
   >
     <template #description>
-      <span class="description-row">
-        <span class="worker-meta" :title="workerMeta">{{ workerMeta }}</span>
+      <span class="flex min-w-0 items-center gap-2">
+        <span class="min-w-0 flex-1 truncate" :title="workerMeta">
+          {{ workerMeta }}
+        </span>
         <c-button
-          class="glossary-toggle"
+          class="flex-none whitespace-nowrap"
           :label="
             rightView === 'glossary'
               ? isMobile
@@ -455,16 +456,22 @@ const handleOpenChange = (open: boolean) => {
       </span>
     </template>
 
-    <div v-if="isMobile && rightView === 'glossary'" class="mobile-glossary">
-      <span class="pane-title">术语表</span>
-      <div class="mobile-glossary-body">
+    <div
+      v-if="isMobile && rightView === 'glossary'"
+      class="flex h-[min(56dvh,460px)] min-h-75 flex-col gap-1.5"
+    >
+      <span class="text-xs font-semibold text-ink">术语表</span>
+      <div class="min-h-0 flex-1">
         <trial-glossary-panel v-model:value="glossary" />
       </div>
     </div>
-    <div v-else class="interactive-grid">
-      <section class="pane">
-        <div class="pane-head">
-          <span class="pane-title">原文</span>
+    <div
+      v-else
+      class="grid grid-cols-2 items-start gap-3 [@media(max-width:767px)]:grid-cols-1"
+    >
+      <section class="flex min-w-0 flex-col gap-1.5">
+        <div class="flex min-h-6 flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold text-ink">原文</span>
         </div>
         <n-input
           v-model:value="textJp"
@@ -482,9 +489,9 @@ const handleOpenChange = (open: boolean) => {
         />
       </section>
 
-      <section ref="resultPaneRef" class="pane">
-        <div class="pane-head">
-          <span class="pane-title">
+      <section ref="resultPaneRef" class="flex min-w-0 flex-col gap-1.5">
+        <div class="flex min-h-6 flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold text-ink">
             {{ rightView === 'glossary' ? '术语表' : '译文' }}
           </span>
           <n-tag
@@ -495,12 +502,15 @@ const handleOpenChange = (open: boolean) => {
           >
             原文已修改
           </n-tag>
-          <span v-if="rightView === 'result' && textZh" class="pane-count">
+          <span
+            v-if="rightView === 'result' && textZh"
+            class="text-[11px] text-muted tabular-nums"
+          >
             {{ textZh.length }} 字
           </span>
           <c-button
             v-if="rightView === 'result'"
-            class="pane-tool"
+            class="ml-auto"
             :label="copied ? '已复制' : '复制'"
             secondary
             :round="false"
@@ -519,7 +529,7 @@ const handleOpenChange = (open: boolean) => {
             @action="downloadTranslation"
           />
         </div>
-        <div class="result-body">
+        <div class="flex min-w-0 flex-col gap-1.5">
           <n-alert
             v-if="error"
             type="error"
@@ -527,7 +537,13 @@ const handleOpenChange = (open: boolean) => {
             title="翻译失败"
             role="alert"
           >
-            <pre class="notice-text">{{ error }}</pre>
+            <pre
+              :class="[
+                'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                'whitespace-pre-wrap [word-break:break-word]',
+              ]"
+              >{{ error }}</pre
+            >
           </n-alert>
           <n-alert
             v-else-if="warning"
@@ -535,16 +551,22 @@ const handleOpenChange = (open: boolean) => {
             :bordered="false"
             title="部分失败"
           >
-            <pre class="notice-text">{{ warning }}</pre>
+            <pre
+              :class="[
+                'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                'whitespace-pre-wrap [word-break:break-word]',
+              ]"
+              >{{ warning }}</pre
+            >
           </n-alert>
-          <div class="result-input-area">
+          <div class="relative">
             <n-input
               v-model:value="textZh"
               type="textarea"
               placeholder="译文会显示在这里"
               :rows="isMobile ? 6 : 14"
               readonly
-              :class="{ 'result-input-hidden': rightView === 'glossary' }"
+              :class="{ invisible: rightView === 'glossary' }"
               :input-props="{
                 spellcheck: false,
                 'aria-label': '译文',
@@ -553,7 +575,7 @@ const handleOpenChange = (open: boolean) => {
             />
             <div
               v-if="!isMobile && rightView === 'glossary'"
-              class="glossary-overlay"
+              class="absolute inset-0 z-1 bg-modal"
             >
               <trial-glossary-panel v-model:value="glossary" />
             </div>
@@ -563,34 +585,54 @@ const handleOpenChange = (open: boolean) => {
     </div>
 
     <template #footer>
-      <div class="interactive-footer">
-        <div class="status-area">
+      <div
+        :class="[
+          'flex w-full flex-col gap-2 min-[768px]:flex-row',
+          'min-[768px]:items-center min-[768px]:justify-between',
+        ]"
+      >
+        <div
+          class="flex min-h-5 flex-wrap items-center gap-1.5 text-xs text-muted"
+        >
           <n-spin v-if="isBusy" :size="12" />
           <span
             v-else
-            class="status-dot"
-            :class="statusTone"
+            class="size-2 rounded-full"
+            :class="{
+              'bg-muted': statusTone === 'idle',
+              'bg-success': statusTone === 'success',
+              'bg-warning': statusTone === 'warning',
+              'bg-error': statusTone === 'error',
+            }"
             aria-hidden="true"
           />
-          <span class="status-text" role="status" aria-live="polite">
+          <span class="whitespace-nowrap" role="status" aria-live="polite">
             {{ statusText }}
           </span>
           <template v-if="phase === 'translating' && progress.total > 0">
-            <span class="status-detail">
+            <span class="tabular-nums">
               {{ progress.done }} / {{ progress.total }} 段
             </span>
             <n-progress
-              class="status-progress"
+              class="w-18 flex-none"
               type="line"
               :percentage="progressPercentage"
               :height="4"
               :show-indicator="false"
             />
           </template>
-          <span v-if="!isBusy && !textJp && !textZh" class="status-hint">
+          <span
+            v-if="!isBusy && !textJp && !textZh"
+            class="text-[11px] opacity-70 [@media(max-width:767px)]:hidden"
+          >
             Ctrl/⌘ + Enter 翻译
           </span>
-          <span v-else-if="!isBusy" class="status-hint">草稿自动保存</span>
+          <span
+            v-else-if="!isBusy"
+            class="text-[11px] opacity-70 [@media(max-width:767px)]:hidden"
+          >
+            草稿自动保存
+          </span>
         </div>
         <n-flex
           align="center"
@@ -619,181 +661,3 @@ const handleOpenChange = (open: boolean) => {
     </template>
   </XDialog>
 </template>
-
-<style scoped>
-.interactive-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-items: start;
-}
-
-.pane {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pane-head {
-  display: flex;
-  min-height: 24px;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.pane-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: v-bind('themeVars.textColor2');
-}
-
-.pane-count {
-  font-size: 11px;
-  color: v-bind('themeVars.textColor3');
-  font-variant-numeric: tabular-nums;
-}
-
-.pane-tool {
-  margin-left: auto;
-}
-
-.description-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.worker-meta {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.glossary-toggle {
-  flex: none;
-  white-space: nowrap;
-}
-
-.result-body {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.result-input-area {
-  position: relative;
-}
-
-.result-input-hidden {
-  visibility: hidden;
-}
-
-.glossary-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: var(--color-modal);
-}
-
-.mobile-glossary {
-  display: flex;
-  height: min(56dvh, 460px);
-  min-height: 300px;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mobile-glossary-body {
-  flex: 1;
-  min-height: 0;
-}
-
-.notice-text {
-  margin: 0;
-  max-height: 120px;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.interactive-footer {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.status-area {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-height: 20px;
-  font-size: 12px;
-  color: v-bind('themeVars.textColor3');
-}
-
-.status-text {
-  white-space: nowrap;
-}
-
-.status-detail {
-  font-variant-numeric: tabular-nums;
-}
-
-.status-progress {
-  width: 72px;
-  flex: none;
-}
-
-.status-hint {
-  font-size: 11px;
-  opacity: 0.7;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: v-bind('themeVars.textColor3');
-}
-
-.status-dot.success {
-  background: v-bind('themeVars.successColor');
-}
-
-.status-dot.warning {
-  background: v-bind('themeVars.warningColor');
-}
-
-.status-dot.error {
-  background: v-bind('themeVars.errorColor');
-}
-
-@media (min-width: 768px) {
-  .interactive-footer {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
-@media (max-width: 767px) {
-  .interactive-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .status-hint {
-    display: none;
-  }
-}
-</style>

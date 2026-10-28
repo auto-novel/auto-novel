@@ -192,25 +192,32 @@ const closePreview = () => {
   <n-card
     size="small"
     :bordered="false"
-    class="task-card"
+    :class="[
+      'task-card @container rounded-none! bg-transparent!',
+      '[&+.task-card]:border-t! [&+.task-card]:border-divider!',
+    ]"
     :header-style="{ padding: '10px 14px' }"
     :content-style="
       hasVisibleChapters ? { padding: '0 14px 10px 14px' } : { padding: '0' }
     "
   >
     <template #header>
-      <div class="task-header">
+      <div
+        :class="[
+          'grid grid-cols-1 @min-[640px]:grid-cols-[56px_minmax(0,1fr)]',
+          '@min-[640px]:items-center @min-[640px]:gap-x-3.5',
+        ]"
+      >
         <n-flex
-          class="task-header-main"
+          class="min-w-0 flex-1 @min-[640px]:col-start-2 @min-[640px]:row-start-1"
           align="center"
           :wrap="false"
-          style="flex: 1; min-width: 0"
         >
           <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <div class="task-name">{{ job.description }}</div>
+            <div class="truncate text-[14px]">{{ job.description }}</div>
             <task-link :task="job.task" />
           </div>
-          <n-flex :size="4" :wrap="false" style="flex-shrink: 0">
+          <n-flex :size="4" :wrap="false" class="shrink-0">
             <n-tooltip trigger="hover">
               <template #trigger>
                 <n-button
@@ -298,37 +305,3 @@ const closePreview = () => {
     "
   />
 </template>
-
-<style scoped>
-@reference '../../../style.css';
-
-.task-card {
-  container-type: inline-size;
-  border-radius: 0;
-  background: transparent;
-}
-.task-card + .task-card {
-  @apply border-t border-divider;
-}
-.task-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-.task-name {
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-@container (min-width: 640px) {
-  .task-header {
-    grid-template-columns: 56px minmax(0, 1fr);
-    column-gap: 14px;
-    align-items: center;
-  }
-  .task-header-main {
-    grid-column: 2;
-    grid-row: 1;
-  }
-}
-</style>

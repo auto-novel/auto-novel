@@ -66,8 +66,8 @@ const importGlossary = () => {
 </script>
 
 <template>
-  <div class="glossary-panel">
-    <div class="glossary-add">
+  <div class="flex h-full min-h-0 flex-col gap-2">
+    <div class="flex flex-none items-center gap-2">
       <n-input
         v-model:value="termsToAdd"
         pair
@@ -75,17 +75,15 @@ const importGlossary = () => {
         separator="=>"
         :placeholder="['日文', '中文']"
         :input-props="{ spellcheck: false }"
-        class="glossary-add-input"
+        class="min-w-0 flex-1"
         @keydown="onAddKeydown"
       />
       <c-button label="添加" :round="false" size="small" @action="addTerm" />
     </div>
 
-    <div class="glossary-meta">
-      <n-text depth="3" class="glossary-meta-text">
-        共 {{ count }} 条 · 下次翻译生效
-      </n-text>
-      <div class="glossary-meta-actions">
+    <div class="flex flex-none flex-wrap items-center gap-x-2 gap-y-1">
+      <span class="text-xs text-muted">共 {{ count }} 条 · 下次翻译生效</span>
+      <div class="ml-auto flex items-center gap-0.5">
         <c-button
           v-if="lastDeleted"
           text
@@ -106,7 +104,7 @@ const importGlossary = () => {
       </div>
     </div>
 
-    <div v-if="showImport" class="glossary-import">
+    <div v-if="showImport" class="flex flex-none items-end gap-2">
       <n-input
         v-model:value="importRaw"
         type="textarea"
@@ -114,7 +112,7 @@ const importGlossary = () => {
         :rows="2"
         placeholder="每行一条：日文 => 中文"
         :input-props="{ spellcheck: false }"
-        class="glossary-import-input"
+        class="min-w-0 flex-1"
       />
       <c-button
         label="导入"
@@ -125,11 +123,20 @@ const importGlossary = () => {
       />
     </div>
 
-    <div v-if="count > 0" class="glossary-list">
+    <div
+      v-if="count > 0"
+      :class="[
+        'flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto',
+        'overscroll-contain pr-1 scrollbar-thin',
+      ]"
+    >
       <div
         v-for="jp in Object.keys(glossary).reverse()"
         :key="jp"
-        class="glossary-row"
+        :class="[
+          'grid grid-cols-[auto_minmax(0,1fr)_18px_minmax(0,1.2fr)] items-center',
+          'gap-1 border-b border-divider py-0.5',
+        ]"
       >
         <c-button
           :icon="DeleteOutlineOutlined"
@@ -140,120 +147,22 @@ const importGlossary = () => {
           :aria-label="`删除词条：${jp}`"
           @action="deleteTerm(jp)"
         />
-        <span class="glossary-jp" :title="jp">{{ jp }}</span>
-        <span class="glossary-arrow">=></span>
+        <span class="truncate text-xs" :title="jp">{{ jp }}</span>
+        <span class="text-[11px] text-muted">=></span>
         <n-input
           v-model:value="glossary[jp]"
           size="tiny"
           placeholder="中文"
           :theme-overrides="{ border: '0', color: 'transparent' }"
-          class="glossary-zh"
+          class="min-w-0"
         />
       </div>
     </div>
-    <div v-else class="glossary-empty">
+    <div
+      v-else
+      class="grid min-h-0 flex-1 place-items-center p-3 text-center text-xs text-muted"
+    >
       还没有术语。添加后会在下次翻译时生效。
     </div>
   </div>
 </template>
-
-<style scoped>
-.glossary-panel {
-  display: flex;
-  height: 100%;
-  min-height: 0;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.glossary-add {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-}
-
-.glossary-add-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.glossary-meta {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-
-.glossary-meta-text {
-  font-size: 12px;
-}
-
-.glossary-meta-actions {
-  display: flex;
-  margin-left: auto;
-  align-items: center;
-  gap: 2px;
-}
-
-.glossary-import {
-  display: flex;
-  flex: none;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.glossary-import-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.glossary-list {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
-  scrollbar-width: thin;
-}
-
-.glossary-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 18px minmax(0, 1.2fr);
-  align-items: center;
-  gap: 4px;
-  border-bottom: 1px solid var(--color-divider);
-  padding: 2px 0;
-}
-
-.glossary-jp {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-.glossary-arrow {
-  color: var(--color-muted);
-  font-size: 11px;
-}
-
-.glossary-zh {
-  min-width: 0;
-}
-
-.glossary-empty {
-  display: grid;
-  flex: 1;
-  min-height: 0;
-  place-items: center;
-  padding: 12px;
-  color: var(--color-muted);
-  font-size: 12px;
-  text-align: center;
-}
-</style>

@@ -35,8 +35,10 @@ const showEditDialog = ref(false);
 const showInteractiveDialog = ref(false);
 const editDialogMounted = ref(false);
 const interactiveDialogMounted = ref(false);
-const statusBadgeClass =
-  'ml-1 inline-flex h-4 cursor-default items-center rounded-xs px-[7px] leading-none whitespace-nowrap tabular-nums';
+const statusBadgeClass = [
+  'ml-1 inline-flex h-4 cursor-default items-center rounded-xs px-1.75',
+  'leading-none whitespace-nowrap tabular-nums',
+];
 
 function openEditDialog() {
   editDialogMounted.value = true;
@@ -84,20 +86,16 @@ const testWorker = async () => {
 
 <template>
   <div class="flex text-sm/[1.6]">
-    <span
-      class="mt-0.5 mr-3 shrink-0 text-[#333639] in-data-[theme=dark]:text-white/82"
-    >
+    <span class="mt-0.5 mr-3 shrink-0 text-ink">
       <DragIndicatorOutlined
         class="drag-trigger inline-block size-4.5 cursor-move align-[-0.125em]"
         aria-hidden="true"
       />
     </span>
     <div class="mb-1 flex grow items-center justify-between">
-      <div class="text-base/[1.6] text-ink in-data-[theme=dark]:text-white/90">
+      <div class="text-base/[1.6] text-ink">
         {{ worker.id }}
-        <span
-          class="text-xs/[1.6] text-muted in-data-[theme=dark]:text-white/52"
-        >
+        <span class="text-xs/[1.6] text-muted">
           <span class="pl-0.5">
             <template v-if="translatorId === 'gpt'">
               {{ (worker as GptPipelineWorker).model }}[{{
@@ -111,25 +109,26 @@ const testWorker = async () => {
               {{ currentConcurrency }} / {{ worker.concurrency ?? 1 }}
             </span>
             <span
-              class="size-2 shrink-0 rounded-full transition-[background,box-shadow] duration-300 ease-in-out"
-              :class="
+              :class="[
+                'size-2 shrink-0 rounded-full',
+                'transition-[background,box-shadow] duration-300 ease-in-out',
                 isWorkerActive()
                   ? 'bg-success shadow-[0_0_6px_var(--color-success)]'
-                  : 'bg-current'
-              "
+                  : 'bg-current',
+              ]"
               aria-hidden="true"
             />
             <span
               v-if="running && !isWorkerActive()"
               :class="statusBadgeClass"
-              class="bg-[#eee] text-[#333639] in-data-[theme=dark]:bg-[#333] in-data-[theme=dark]:text-white/82"
+              class="bg-neutral-soft text-neutral-text"
             >
               待机
             </span>
             <span
               v-if="errorCount"
               :class="statusBadgeClass"
-              class="bg-error/12 text-error in-data-[theme=dark]:bg-error/16"
+              class="bg-error-soft text-error-text"
             >
               ✕ {{ errorCount }}
             </span>

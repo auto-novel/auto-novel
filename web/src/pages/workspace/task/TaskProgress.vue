@@ -12,6 +12,12 @@ const props = defineProps<{
   };
 }>();
 
+const segmentClasses = {
+  done: { fill: 'bg-success', ring: 'stroke-success' },
+  translating: { fill: 'bg-info', ring: 'stroke-info' },
+  error: { fill: 'bg-error', ring: 'stroke-error' },
+};
+
 const progressDescription = computed(() => {
   const { total, done, error, translating, pending } = props.progress;
   return `共 ${total} 章，成功 ${done} 章，处理中 ${translating} 章，失败 ${error} 章，等待 ${pending} 章`;
@@ -33,8 +39,16 @@ const progressPercentage = computed(() => {
 </script>
 
 <template>
-  <div class="task-progress">
-    <div class="task-progress-labels">
+  <div
+    class="mt-1 text-xs/4 font-normal text-muted tabular-nums @min-[640px]:contents"
+  >
+    <div
+      :class="[
+        'mb-1.25 flex flex-wrap items-center justify-start gap-1',
+        '@min-[640px]:col-start-2 @min-[640px]:row-start-2 @min-[640px]:mt-1',
+        '@min-[640px]:mb-0 [&>span]:whitespace-nowrap',
+      ]"
+    >
       <span
         :class="{
           'text-info': status === 'executing',
@@ -59,7 +73,11 @@ const progressPercentage = computed(() => {
       <span>总计{{ progress.total }}</span>
     </div>
     <div
-      class="task-progress-visual"
+      :class="[
+        '@min-[640px]:col-start-1 @min-[640px]:row-span-2',
+        '@min-[640px]:row-start-1 @min-[640px]:self-center',
+        { 'task-progress-visual--executing': status === 'executing' },
+      ]"
       role="progressbar"
       aria-label="章节翻译进度"
       :aria-valuenow="progress.done"
@@ -68,15 +86,27 @@ const progressPercentage = computed(() => {
       :aria-valuetext="progressDescription"
       :title="progressDescription"
     >
-      <div class="task-progress-ring">
-        <svg viewBox="0 0 56 56" aria-hidden="true" focusable="false">
-          <circle class="task-ring-track" cx="28" cy="28" r="23" />
+      <div class="hidden size-14 @min-[640px]:block">
+        <svg
+          class="block size-full"
+          viewBox="0 0 56 56"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle
+            class="fill-none stroke-divider stroke-4"
+            cx="28"
+            cy="28"
+            r="23"
+          />
           <circle
             v-for="segment of progressSegments"
             :key="segment.status"
             :class="[
-              'task-ring-segment',
-              `task-ring-segment--${segment.status}`,
+              'origin-center -rotate-90 fill-none stroke-4',
+              'transition-[stroke-dasharray,stroke-dashoffset] duration-250 ease-[ease]',
+              'motion-reduce:transition-none',
+              segmentClasses[segment.status].ring,
             ]"
             cx="28"
             cy="28"
@@ -85,18 +115,42 @@ const progressPercentage = computed(() => {
             :stroke-dasharray="`${segment.percentage} ${100 - segment.percentage}`"
             :stroke-dashoffset="-segment.offset"
           />
-          <text x="28" y="28" dy=".35em" class="task-ring-percentage">
+          <circle
+            v-if="status === 'executing'"
+            :class="[
+              'task-ring-activity origin-center fill-none stroke-info stroke-4',
+              '[stroke-linecap:round] motion-reduce:hidden',
+            ]"
+            cx="28"
+            cy="28"
+            r="23"
+            pathLength="100"
+            stroke-dasharray="18 82"
+          />
+          <text
+            x="28"
+            y="28"
+            dy=".35em"
+            class="fill-ink text-[11px] font-semibold [text-anchor:middle]"
+          >
             {{ progressPercentage }}%
           </text>
         </svg>
       </div>
-      <div class="task-progress-track" aria-hidden="true">
+      <div
+        :class="[
+          'task-progress-track relative flex h-1 overflow-hidden rounded-xs',
+          'bg-divider @min-[640px]:hidden',
+        ]"
+        aria-hidden="true"
+      >
         <span
           v-for="segment of progressSegments"
           :key="segment.status"
           :class="[
-            'task-progress-fill',
-            `task-progress-fill--${segment.status}`,
+            'h-full flex-none transition-[width] duration-250 ease-[ease]',
+            'motion-reduce:transition-none',
+            segmentClasses[segment.status].fill,
           ]"
           :style="{ width: `${segment.percentage}%` }"
         />
@@ -106,111 +160,42 @@ const progressPercentage = computed(() => {
 </template>
 
 <style scoped>
-@reference '../../../style.css';
-
-.task-progress {
-  margin-top: 4px;
-  @apply text-xs/4 font-normal text-muted;
-  font-variant-numeric: tabular-nums;
+.task-progress-visual--executing .task-progress-track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 65%),
+    transparent
+  );
+  animation: task-progress-flow 1.6s linear infinite;
 }
-.task-progress-labels {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  margin-bottom: 5px;
-  flex-wrap: wrap;
-}
-.task-progress-labels > span {
-  white-space: nowrap;
-}
-.task-progress-track {
-  display: flex;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  @apply bg-divider;
-}
-.task-progress-fill {
-  flex: 0 0 auto;
-  height: 100%;
-  transition: width 250ms ease;
-}
-.task-progress-fill--done {
-  @apply bg-success;
-}
-.task-progress-fill--translating {
-  @apply bg-info;
-}
-.task-progress-fill--error {
-  @apply bg-error;
-}
-.task-progress-ring {
-  display: none;
-  width: 56px;
-  height: 56px;
-}
-.task-progress-ring svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.task-ring-track,
-.task-ring-segment {
-  fill: none;
-  stroke-width: 4;
-}
-.task-ring-track {
-  @apply stroke-divider;
-}
-.task-ring-segment {
-  transform: rotate(-90deg);
-  transform-origin: center;
-  transition:
-    stroke-dasharray 250ms ease,
-    stroke-dashoffset 250ms ease;
-}
-.task-ring-segment--done {
-  @apply stroke-success;
-}
-.task-ring-segment--translating {
-  @apply stroke-info;
-}
-.task-ring-segment--error {
-  @apply stroke-error;
-}
-.task-ring-percentage {
-  @apply fill-ink;
-  font-size: 11px;
-  font-weight: 600;
-  text-anchor: middle;
-}
-@container (min-width: 640px) {
-  /* 展开根容器，让计数和进度环参与任务标题的 Grid 布局。 */
-  .task-progress {
-    display: contents;
+@keyframes task-progress-flow {
+  from {
+    transform: translateX(-100%);
   }
-  .task-progress-labels {
-    grid-column: 2;
-    grid-row: 2;
-    margin: 4px 0 0;
+  to {
+    transform: translateX(100%);
   }
-  .task-progress-visual {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    align-self: center;
+}
+.task-ring-activity {
+  animation: task-ring-spin 1.6s linear infinite;
+}
+@keyframes task-ring-spin {
+  from {
+    transform: rotate(-90deg);
   }
-  .task-progress-ring {
-    display: block;
-  }
-  .task-progress-track {
-    display: none;
+  to {
+    transform: rotate(270deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .task-progress-fill,
-  .task-ring-segment {
-    transition: none;
+  .task-progress-visual--executing .task-progress-track::after,
+  .task-ring-activity {
+    display: none;
+    animation: none;
   }
 }
 </style>

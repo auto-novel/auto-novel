@@ -50,7 +50,11 @@ const link = computed(() => {
     :to="link.url"
     target="_blank"
     rel="noopener noreferrer"
-    class="block text-xs/4 font-normal text-muted underline underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    :class="[
+      'block text-xs/4 font-normal text-muted underline underline-offset-2',
+      'hover:text-primary',
+      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    ]"
   >
     {{ link.text }}
   </RouterLink>

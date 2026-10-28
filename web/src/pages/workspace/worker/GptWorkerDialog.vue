@@ -441,7 +441,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + '翻译器'"
-    style="width: min(750px, calc(100% - 16px))"
+    class="w-[min(750px,calc(100%-16px))]"
   >
     <n-form
       ref="form"
@@ -537,7 +537,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
                 <th>显示名称</th>
                 <th>模型</th>
                 <th>Key</th>
-                <th style="width: 80px">并发</th>
+                <th class="w-20">并发</th>
               </tr>
             </thead>
             <tbody>
@@ -552,13 +552,20 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
                   />
                 </td>
                 <td>{{ w.model }}</td>
-                <td style="font-family: monospace; font-size: 12px">
+                <td class="text-[12px] font-[monospace]">
                   {{ maskKey(w.key) }}
                 </td>
                 <td>
                   <input
                     type="number"
-                    class="concurrency-input"
+                    :class="[
+                      'w-15 rounded-sm border border-divider px-1 py-0.5 text-center',
+                      'text-[13px] outline-none transition-[border-color] duration-200',
+                      'focus:border-primary [&::-webkit-inner-spin-button]:m-0',
+                      '[&::-webkit-inner-spin-button]:appearance-none',
+                      '[&::-webkit-outer-spin-button]:m-0',
+                      '[&::-webkit-outer-spin-button]:appearance-none',
+                    ]"
                     :value="workerConcurrencies[w.uid]"
                     min="1"
                     max="100"
@@ -618,25 +625,3 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
     </template>
   </XDialog>
 </template>
-
-<style scoped>
-.concurrency-input {
-  width: 60px;
-  padding: 2px 4px;
-  border: 1px solid var(--n-border-color);
-  border-radius: 4px;
-  text-align: center;
-  font-size: 13px;
-  /* background: var(--n-color-embedded); */
-  outline: none;
-  transition: border-color 0.2s;
-}
-.concurrency-input:focus {
-  border-color: var(--n-color-target);
-}
-.concurrency-input::-webkit-inner-spin-button,
-.concurrency-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-</style>

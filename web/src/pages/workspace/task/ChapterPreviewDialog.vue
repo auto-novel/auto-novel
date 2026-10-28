@@ -3,8 +3,6 @@ import { XDialog } from '@novelia/web-kit';
 
 import type { ChapterSegmentState } from '@/domain/translator/TaskState';
 
-const themeVars = useThemeVars();
-
 const props = defineProps<{
   show: boolean;
   title: string;
@@ -92,7 +90,7 @@ const onUpdateShow = (val: boolean) => {
     :open="show"
     @update:open="onUpdateShow"
     :title="title"
-    style="width: min(900px, 95vw)"
+    class="w-[min(900px,95vw)]"
   >
     <n-alert
       v-if="chapterState?.errorMessage"
@@ -100,10 +98,13 @@ const onUpdateShow = (val: boolean) => {
       title="章节处理失败"
       :bordered="false"
     >
-      <pre class="preview-error-message">{{ chapterState.errorMessage }}</pre>
+      <pre
+        class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
+        >{{ chapterState.errorMessage }}</pre
+      >
     </n-alert>
-    <div class="preview-header-extra">
-      <div v-if="previewState.previewProgressStatus" class="preview-stats">
+    <div>
+      <div v-if="previewState.previewProgressStatus" class="flex gap-2">
         <n-tag size="small" :bordered="false">
           共 {{ previewState.previewProgressStatus.total }}
         </n-tag>
@@ -117,10 +118,13 @@ const onUpdateShow = (val: boolean) => {
           ✕ {{ previewState.previewProgressStatus.failed }}
         </n-tag>
       </div>
-      <n-divider style="margin: 4px 0 4px" />
+      <n-divider class="mx-0! my-1!" />
     </div>
 
-    <div v-if="previewState.ranges.length > 1" class="segment-tabs">
+    <div
+      v-if="previewState.ranges.length > 1"
+      class="flex flex-wrap gap-1 px-0.5 py-2"
+    >
       <n-button
         v-for="(range, i) of previewState.ranges"
         :key="i"
@@ -128,21 +132,20 @@ const onUpdateShow = (val: boolean) => {
         secondary
         :type="segmentBtnType(previewState.segmentStatuses[i])"
         :title="getSegmentError(i) ?? range.end - range.start + '行'"
-        :class="{ active: selectedSegmentIndex === i }"
-        :style="
-          selectedSegmentIndex === i
-            ? {
-                outline: `2px solid ${themeVars.primaryColor}`,
-                outlineOffset: '1px',
-              }
-            : undefined
-        "
+        class="aspect-square min-w-0! px-0!"
+        :class="{
+          'outline-2! outline-offset-1 outline-primary!':
+            selectedSegmentIndex === i,
+        }"
         @click="selectSegment(i)"
       >
         {{ i + 1 }}
       </n-button>
     </div>
-    <div class="preview-translator" v-if="previewState.translatorId">
+    <div
+      class="px-0.5 py-1 text-[0.85em] opacity-60"
+      v-if="previewState.translatorId"
+    >
       翻译器：{{ previewState.translatorId }}
     </div>
     <n-alert
@@ -151,103 +154,58 @@ const onUpdateShow = (val: boolean) => {
       title="翻译出错"
       :bordered="false"
     >
-      <pre class="preview-error-message">{{
-        previewState.currentSegmentError
-      }}</pre>
+      <pre
+        class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
+        >{{ previewState.currentSegmentError }}</pre
+      >
     </n-alert>
 
-    <n-table :bordered="false" size="small" class="preview-table">
-      <thead>
-        <tr>
-          <th style="width: 50%">原文</th>
-          <th style="width: 50%">译文</th>
+    <n-table :bordered="false" size="small" class="mt-2 table-fixed">
+      <thead class="[@media(max-width:768px)]:hidden">
+        <tr
+          :class="[
+            '[@media(max-width:768px)]:mb-2.5 [@media(max-width:768px)]:block',
+            '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-divider',
+            '[@media(max-width:768px)]:pb-2',
+          ]"
+        >
+          <th class="w-1/2">原文</th>
+          <th class="w-1/2">译文</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(p, i) of previewState.previewParagraphs" :key="i">
-          <td class="preview-jp">{{ p.jp }}</td>
-          <td class="preview-zh">
+        <tr
+          v-for="(p, i) of previewState.previewParagraphs"
+          :key="i"
+          :class="[
+            '[@media(max-width:768px)]:mb-2.5 [@media(max-width:768px)]:block',
+            '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-divider',
+            '[@media(max-width:768px)]:pb-2',
+          ]"
+        >
+          <td
+            :class="[
+              'align-top leading-[1.7]',
+              '[@media(max-width:768px)]:block [@media(max-width:768px)]:w-full!',
+              '[@media(max-width:768px)]:border-0! [@media(max-width:768px)]:px-2!',
+              '[@media(max-width:768px)]:py-0.75! [@media(max-width:768px)]:font-medium',
+            ]"
+          >
+            {{ p.jp }}
+          </td>
+          <td
+            :class="[
+              'align-top leading-[1.7]',
+              '[@media(max-width:768px)]:block [@media(max-width:768px)]:w-full!',
+              '[@media(max-width:768px)]:border-0! [@media(max-width:768px)]:px-2!',
+              '[@media(max-width:768px)]:py-0.75! [@media(max-width:768px)]:opacity-60',
+            ]"
+          >
             <template v-if="p.zh">{{ p.zh }}</template>
-            <span v-else-if="p.jp" class="preview-none">（无译文）</span>
+            <span v-else-if="p.jp" class="opacity-50">（无译文）</span>
           </td>
         </tr>
       </tbody>
     </n-table>
   </XDialog>
 </template>
-
-<style scoped>
-.preview-stats {
-  display: flex;
-  gap: 8px;
-}
-.segment-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 2px;
-}
-.segment-tabs .n-button {
-  min-width: 0;
-  padding-inline: 0;
-  aspect-ratio: 1;
-}
-.preview-table {
-  margin-top: 8px;
-  table-layout: fixed;
-}
-.preview-table td {
-  vertical-align: top;
-  line-height: 1.7;
-}
-
-@media (min-width: 769px) {
-  .preview-jp,
-  .preview-zh {
-    opacity: 1;
-  }
-}
-
-.preview-translator {
-  font-size: 0.85em;
-  opacity: 0.6;
-  padding: 4px 2px;
-}
-
-@media (max-width: 768px) {
-  .preview-table thead {
-    display: none;
-  }
-  .preview-table tr {
-    display: block;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-  }
-  .preview-table td {
-    display: block;
-    width: 100% !important;
-    padding: 3px 8px;
-    border: none;
-  }
-  .preview-jp {
-    font-weight: 500;
-    opacity: 1;
-  }
-  .preview-zh {
-    opacity: 0.6;
-  }
-}
-
-.preview-none {
-  opacity: 0.5;
-}
-.preview-error-message {
-  margin: 0;
-  font-size: 13px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.5;
-}
-</style>

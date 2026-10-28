@@ -106,7 +106,7 @@ function retryTaskCards() {
   </NFlex>
   <XSeparator class="mt-4 mb-2" />
   <XEmpty v-if="filteredJobs.length === 0" title="没有任务" size="compact" />
-  <div v-else class="task-list">
+  <div v-else class="flex flex-col">
     <TaskCard
       v-for="job of filteredJobs"
       ref="taskCardRefs"
@@ -131,10 +131,3 @@ function retryTaskCards() {
     @confirm="deleteAllJobs"
   />
 </template>
-
-<style scoped>
-.task-list {
-  display: flex;
-  flex-direction: column;
-}
-</style>

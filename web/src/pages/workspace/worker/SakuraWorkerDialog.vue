@@ -119,7 +119,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + 'Sakura翻译器'"
-    class="w-[600px]"
+    class="w-150"
   >
     <n-form
       ref="form"
@@ -169,17 +169,17 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         />
       </n-form-item-row>
 
-      <n-text type="error" style="font-size: 12px">
+      <n-text type="error" class="text-[12px]!">
         # 前文长度是临时功能，非默认500无法上传
       </n-text>
       <br />
-      <n-text depth="3" style="font-size: 12px">
+      <n-text depth="3" class="text-[12px]!">
         # 分段长度还在测试中，非默认500无法上传
         <br />
         # API端点例子：http://127.0.0.1:8080
       </n-text>
       <br />
-      <n-text depth="3" style="font-size: 12px">
+      <n-text depth="3" class="text-[12px]!">
         # 并发数仅beta工作区生效，是章节级别的并发。
       </n-text>
     </n-form>
