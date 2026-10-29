@@ -2,13 +2,17 @@
 import { Toast, XSelect, XDialog } from '@novelia/web-kit';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
 
-import type { GptPipelineWorker } from '@/model/Translator';
+import type { GptPipelineWorker, TranslatorPresetId } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
 import {
   openAiProfiles,
   type openAiProfileId,
   type ProfileValues,
 } from '@auto-novel/translator';
+import {
+  harnessPresets,
+  findHarnessPresetGroup,
+} from '@auto-novel/translator/harness/presets';
 
 const props = defineProps<{
   show: boolean;
@@ -30,6 +34,14 @@ const GEMINI_ENDPOINT =
 /** 新建翻译器时默认使用的接口格式 */
 const DEFAULT_PROFILE_ID: openAiProfileId = 'deepseek';
 
+const presetOptions: { label: string; value: TranslatorPresetId }[] = [
+  { label: '通用', value: 'general' },
+  ...harnessPresets.map((preset) => ({
+    label: preset.label,
+    value: preset.id,
+  })),
+];
+
 /**
  * 按接口格式自动填入默认端点：
  * Gemini 用谷歌兼容端点，Anthropic 用 DeepSeek 的 /anthropic，，默认 DeepSeek。
@@ -50,9 +62,11 @@ const initFormValue = (
   concurrency: number;
   profileId: openAiProfileId;
   profileValues: ProfileValues;
+  preset: TranslatorPresetId;
 } => {
   const profileId = worker?.profile?.id ?? DEFAULT_PROFILE_ID;
   const defaultValues = defaultProfileValues(profileId);
+  const preset = worker?.preset ?? 'general';
 
   if (worker === undefined) {
     return {
@@ -63,6 +77,7 @@ const initFormValue = (
       concurrency: 1,
       profileId,
       profileValues: defaultValues,
+      preset,
     };
   } else {
     return {
@@ -76,12 +91,28 @@ const initFormValue = (
         ...defaultValues,
         ...(worker.profile?.values ?? {}),
       },
+      preset,
     };
   }
 };
 
 const formRef = useTemplateRef<FormInst>('form');
 const formValue = ref(initFormValue(props.worker));
+const harnessPreset = computed(() =>
+  findHarnessPresetGroup(formValue.value.preset),
+);
+const harnessModel = computed(() =>
+  harnessPreset.value?.models.find(
+    (preset) => preset.model === formValue.value.model,
+  ),
+);
+const harnessModelOptions = computed(
+  () =>
+    harnessPreset.value?.models.map(({ model }) => ({
+      label: model,
+      value: model,
+    })) ?? [],
+);
 
 /** 已保存或手动输入的 API 端点不随接口格式切换而覆盖。 */
 const preserveEndpoint = ref(Boolean(props.worker?.endpoint.trim()));
@@ -116,6 +147,38 @@ const onProfileChange = (value: string) => {
     formValue.value.endpoint = defaultEndpoint(id);
   }
 };
+
+const onHarnessModelChange = (value: string) => {
+  const preset = harnessPreset.value?.models.find(
+    (preset) => preset.model === value,
+  );
+  if (!preset) return;
+  formValue.value.model = preset.model;
+  formValue.value.endpoint = preset.endpoint;
+  modelText.value = preset.model;
+  preserveEndpoint.value = true;
+};
+
+const onPresetChange = (value: string) => {
+  formValue.value.preset = value as TranslatorPresetId;
+  const model = harnessPreset.value?.models[0];
+  if (model) onHarnessModelChange(model.model);
+  else {
+    formValue.value.endpoint = defaultEndpoint(formValue.value.profileId);
+    formValue.value.model = '';
+    modelText.value = '';
+    preserveEndpoint.value = false;
+  }
+};
+
+watch(
+  () => props.worker,
+  (newWorker) => {
+    formValue.value = initFormValue(newWorker);
+    preserveEndpoint.value = Boolean(newWorker?.endpoint.trim());
+  },
+  { immediate: false },
+);
 
 const emptyCheck = (name: string) => ({
   validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
@@ -371,10 +434,13 @@ const validateIds = (): string | null => {
 
 const addWorkers = () => {
   const endpoint = formValue.value.endpoint.trim();
-  const profile = {
-    id: formValue.value.profileId,
-    values: { ...formValue.value.profileValues },
-  };
+  const preset = formValue.value.preset;
+  const profile = harnessPreset.value
+    ? undefined
+    : {
+        id: formValue.value.profileId,
+        values: { ...formValue.value.profileValues },
+      };
   for (const w of generatedWorkers.value) {
     workspace.addWorker({
       id: workerName(w),
@@ -383,6 +449,7 @@ const addWorkers = () => {
       key: w.key,
       concurrency: workerConcurrencies[w.uid] ?? defaultConcurrency.value,
       profile,
+      preset,
     });
   }
 };
@@ -400,18 +467,29 @@ const submit = async () => {
     emit('update:show', false);
   } else {
     if (!(await doValidate())) return;
-    const { id, model, endpoint, key, concurrency, profileId, profileValues } =
-      formValue.value;
+    const {
+      id,
+      model,
+      endpoint,
+      key,
+      concurrency,
+      profileId,
+      profileValues,
+      preset,
+    } = formValue.value;
     const worker = {
       id: id.trim(),
       model: model.trim(),
       endpoint: endpoint.trim(),
       key: key.trim(),
       concurrency,
-      profile: {
-        id: profileId,
-        values: { ...profileValues },
-      },
+      profile: harnessPreset.value
+        ? undefined
+        : {
+            id: profileId,
+            values: { ...profileValues },
+          },
+      preset,
     };
     const index = workspaceRef.value.workers.findIndex(
       (w) => w.id === props.worker?.id,
@@ -450,8 +528,23 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
       label-placement="left"
       label-width="auto"
     >
-      <n-form-item-row label="接口格式">
+      <n-form-item-row label="预设">
         <XSelect
+          :model-value="formValue.preset"
+          :options="presetOptions"
+          aria-label="预设"
+          class="w-full"
+          @update:model-value="onPresetChange"
+        />
+      </n-form-item-row>
+      <n-form-item-row label="接口格式">
+        <n-input
+          v-if="harnessPreset"
+          :value="harnessModel?.protocol"
+          readonly
+        />
+        <XSelect
+          v-else
           :model-value="formValue.profileId"
           :options="
             openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
@@ -462,7 +555,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         />
       </n-form-item-row>
 
-      <template v-if="currentProfile?.fields.length">
+      <template v-if="!harnessPreset && currentProfile?.fields.length">
         <n-form-item-row
           v-for="field in currentProfile.fields"
           :key="`${formValue.profileId}-${field.key}`"
@@ -500,12 +593,22 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           <n-input
             :value="formValue.endpoint"
             :placeholder="defaultEndpoint(formValue.profileId)"
+            :disabled="Boolean(harnessPreset)"
             @update:value="onEndpointInput"
           />
         </n-form-item-row>
 
         <n-form-item-row path="models" label="模型">
+          <XSelect
+            v-if="harnessPreset"
+            :model-value="modelText"
+            :options="harnessModelOptions"
+            aria-label="模型"
+            class="w-full"
+            @update:model-value="onHarnessModelChange"
+          />
           <n-input
+            v-else
             v-model:value="modelText"
             type="textarea"
             placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
@@ -591,7 +694,16 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           />
         </n-form-item-row>
         <n-form-item-row path="model" label="模型">
+          <XSelect
+            v-if="harnessPreset"
+            :model-value="formValue.model"
+            :options="harnessModelOptions"
+            aria-label="模型"
+            class="w-full"
+            @update:model-value="onHarnessModelChange"
+          />
           <n-input
+            v-else
             v-model:value="formValue.model"
             placeholder="deepseek-v4-pro"
           />
@@ -600,6 +712,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           <n-input
             :value="formValue.endpoint"
             :placeholder="defaultEndpoint(formValue.profileId)"
+            :disabled="Boolean(harnessPreset)"
             @update:value="onEndpointInput"
           />
         </n-form-item-row>

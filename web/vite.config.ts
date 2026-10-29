@@ -136,7 +136,14 @@ export default defineConfig(({ command, mode }) => {
         treeshake: true,
         output: {
           manualChunks(id) {
-            if (id.includes('web/src')) {
+            // Harness 相关代码单独成 chunk：只有启动对应预设时才会下载，
+            // 默认翻译流程不会因额外的模型适配代码增加首屏体积。
+            if (
+              id.includes('/translator/harness/HarnessMode.ts') ||
+              id.endsWith('/translator/dist/harness.js')
+            ) {
+              return 'harness';
+            } else if (id.includes('web/src')) {
               return 'chunk';
             } else if (id.includes('@zip.js')) {
               return 'dep-zip';

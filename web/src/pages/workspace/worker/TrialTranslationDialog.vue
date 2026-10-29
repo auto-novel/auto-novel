@@ -19,6 +19,10 @@ import { downloadFile } from '@/util';
 import type { Glossary } from '@/model/Glossary';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 
 const props = defineProps<{
   show: boolean;
@@ -280,25 +284,48 @@ const translate = async () => {
   };
 
   try {
-    const t = await getTranslator();
-    if (current !== generation) return;
-
     phase.value = 'translating';
-    pipeline = new TranslationPipeline(
-      100,
-      undefined,
-      undefined,
-      isSakura.value ? 'chapter' : 'segment',
-    );
-    pipeline.registerTranslator(t, 1);
-
-    const result = await pipeline.translate(
-      source,
-      glossary.value,
-      undefined,
-      abortController.signal,
-      tracker,
-    );
+    const worker = props.worker as GptPipelineWorker;
+    const harnessPreset = isSakura.value
+      ? undefined
+      : findHarnessPresetGroup(worker.preset);
+    let result: string;
+    if (harnessPreset) {
+      const { translateChapter } = await import(
+        '@auto-novel/translator/harness'
+      );
+      const translatedLines = await translateChapter({
+        source: source.split('\n'),
+        glossary: glossary.value,
+        preset: getHarnessModelPreset(harnessPreset, worker.model),
+        key: worker.key,
+        signal: abortController.signal,
+        onBatchesReady: (batches) => {
+          progress.value = { done: 0, total: batches.length };
+        },
+        onBatchComplete: () => {
+          progress.value.done += 1;
+        },
+      });
+      result = translatedLines.join('\n');
+    } else {
+      const t = await getTranslator();
+      if (current !== generation) return;
+      pipeline = new TranslationPipeline(
+        100,
+        undefined,
+        undefined,
+        isSakura.value ? 'chapter' : 'segment',
+      );
+      pipeline.registerTranslator(t, 1);
+      result = await pipeline.translate(
+        source,
+        glossary.value,
+        undefined,
+        abortController.signal,
+        tracker,
+      );
+    }
     if (current !== generation) return;
 
     textZh.value = result;

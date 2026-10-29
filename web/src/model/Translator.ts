@@ -1,5 +1,6 @@
 import type { Glossary } from './Glossary';
 import type { openAiProfileId, ProfileValues } from '@auto-novel/translator';
+import type { HarnessPresetId } from '@auto-novel/translator/harness/presets';
 
 export type TranslatorId = 'sakura' | 'youdao' | 'gpt';
 
@@ -11,9 +12,12 @@ export interface GptWorker {
   concurrency?: number;
 }
 
+export type TranslatorPresetId = 'general' | HarnessPresetId;
+
 export interface GptPipelineWorker extends GptWorker {
   concurrency: number;
   profile?: { id: openAiProfileId; values?: ProfileValues };
+  preset?: TranslatorPresetId;
 }
 
 export interface SakuraWorker {

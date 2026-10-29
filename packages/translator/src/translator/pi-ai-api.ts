@@ -7,6 +7,8 @@ import type {
   FetchFunction,
   Message,
   Model,
+  ModelCost,
+  Usage,
 } from '@earendil-works/pi-ai';
 import { createPiAiFetch } from './pi-ai-fetch';
 
@@ -27,6 +29,8 @@ export interface PiAiCompletionRequest {
   model: string;
   messages: PiAiMessage[];
   requestParams?: Record<string, unknown>;
+  cost?: ModelCost;
+  onUsage?: (usage: Usage) => void;
   signal?: AbortSignal;
   fetch?: FetchFunction;
 }
@@ -35,6 +39,9 @@ export interface PiAiCompletionResult {
   text: string;
   reasoning?: string;
   finishReason?: string;
+  /** 完整 pi-ai 用量：input 是未命中缓存的输入，output 已包含 reasoning。 */
+  usage: Usage;
+  /** 兼容原接口，等于 usage.input（不含缓存）。 */
   inputTokens?: number;
   outputTokens?: number;
 }
@@ -58,6 +65,17 @@ const streams = {
   'anthropic-messages': anthropicMessagesApi(),
 } as const;
 
+interface ResponsesUsage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  input_tokens_details?: {
+    cached_tokens?: number;
+    cache_write_tokens?: number;
+  };
+  output_tokens_details?: { reasoning_tokens?: number };
+}
+
 export async function createPiAiCompletion(
   request: PiAiCompletionRequest,
 ): Promise<PiAiCompletionResult> {
@@ -65,6 +83,7 @@ export async function createPiAiCompletion(
     request.protocol,
     request.model,
     normalizeEndpoint(request.endpoint, request.protocol),
+    request.cost,
   );
   const messages: Message[] = request.messages.map((message) => {
     if (message.role === 'assistant') {
@@ -102,6 +121,7 @@ export async function createPiAiCompletion(
   const context = normalizeContext({ messages });
   const fetch = createPiAiFetch(request);
   let status: number | undefined;
+  let failedUsage: Usage | undefined;
   const stream = streams[request.protocol].stream(model, context, {
     apiKey: request.key,
     fetch: async (input, init) => {
@@ -112,6 +132,41 @@ export async function createPiAiCompletion(
     signal: request.signal,
     maxRetries: 0,
     cacheRetention: 'none',
+    // pi-ai 在 response.failed 分支直接抛错，尚未解析其终态 usage。
+    onProviderStreamEvent:
+      request.protocol === 'openai-responses'
+        ? async (data) => {
+            const event = data as {
+              type: string;
+              response: { usage?: ResponsesUsage };
+            };
+            if (event.type !== 'response.failed' || !event.response.usage)
+              return;
+            const raw = event.response.usage;
+            const cacheRead = raw.input_tokens_details?.cached_tokens ?? 0;
+            const cacheWrite =
+              raw.input_tokens_details?.cache_write_tokens ?? 0;
+            failedUsage = {
+              input: raw.input_tokens - cacheRead - cacheWrite,
+              output: raw.output_tokens,
+              cacheRead,
+              cacheWrite,
+              reasoning: raw.output_tokens_details?.reasoning_tokens,
+              totalTokens: raw.total_tokens,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            };
+            const { calculateCost } = await import(
+              '@earendil-works/pi-ai/models'
+            );
+            calculateCost(model, failedUsage);
+          }
+        : undefined,
     onPayload: (payload) => ({
       ...(payload as Record<string, unknown>),
       ...request.requestParams,
@@ -119,6 +174,9 @@ export async function createPiAiCompletion(
   });
 
   const result = await stream.result();
+  const usage = failedUsage ?? result.usage;
+  // 即使输出被截断、取消或随后校验失败，已发生的用量也需要保留。
+  request.onUsage?.(usage);
   if (result.stopReason === 'aborted') {
     throw new DOMException(
       result.errorMessage || 'Request aborted',
@@ -166,8 +224,9 @@ export async function createPiAiCompletion(
     text,
     reasoning: reasoning || undefined,
     finishReason: result.stopReason,
-    inputTokens: result.usage.input,
-    outputTokens: result.usage.output,
+    usage,
+    inputTokens: usage.input,
+    outputTokens: usage.output,
   };
 }
 
@@ -175,6 +234,7 @@ function createModel(
   protocol: PiAiProtocol,
   id: string,
   baseUrl: string,
+  cost: ModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 ): Model<PiAiProtocol> {
   return {
     id,
@@ -183,7 +243,7 @@ function createModel(
     provider: 'auto-novel',
     baseUrl,
     input: ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost,
     // Required pi-ai metadata; effort is supplied explicitly by the profile.
     reasoning: false,
     contextWindow: 0,
