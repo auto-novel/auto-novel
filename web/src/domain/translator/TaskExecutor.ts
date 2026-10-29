@@ -57,6 +57,12 @@ export class TaskExecutor {
       if (this.task.type !== 'local' && this.canUpload?.() === false) {
         throw new Error('存在未通过上传检查的翻译器，无法启动网络／文库任务');
       }
+      const checkExecution = () => {
+        context.signal.throwIfAborted();
+        if (this.canUpload?.() === false) {
+          throw new DOMException('任务已失效或不允许上传', 'AbortError');
+        }
+      };
       const fetchAndPrepare = async () => {
         const translator = this.translator;
         // pipeline 内部有分块队列，先等它降到高水位以下再抓新章节，
@@ -64,8 +70,9 @@ export class TaskExecutor {
         if (typeof translator !== 'function') {
           await translator.waitUntilBelowHighWaterMark(signal);
         }
-        context.signal.throwIfAborted();
+        checkExecution();
         const detail = await this.task.fetchChapter(chapterId, context);
+        checkExecution();
 
         // 这里只负责“准备好怎么翻”，真正执行放在 fetch 信号量释放之后，
         // 否则长时间的模型请求会一直占着“同时抓取章节数”的名额。
@@ -133,6 +140,7 @@ export class TaskExecutor {
         return 'error';
       }
 
+      checkExecution();
       await this.task.uploadChapter(
         chapterId,
         detail.glossaryId,
