@@ -1,4 +1,8 @@
 import type { SegmentTracker, LineRange } from '@auto-novel/translator';
+import type {
+  HarnessReasoningRecord,
+  HarnessUsageRecord,
+} from '@auto-novel/translator/harness';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
@@ -25,8 +29,39 @@ export class ChapterSegmentState implements SegmentTracker {
   errorMessage: string | undefined = undefined;
   ranges: LineRange[] = [];
   segments: SegmentInfo[] = [];
+  /** 当前工作区内的请求用量；不持久化到章节数据。 */
+  harnessUsage: HarnessUsageRecord[] = [];
+  /** 按请求顺序记录的思考内容；与 harnessUsage 一样只存在内存里。 */
+  reasoning: HarnessReasoningRecord[] = [];
+  /** 当前章节是否走 Harness；用于预览界面决定是否显示运行轨迹。 */
+  harness = false;
   /** 是否完成 Segment 切分 */
   ready = false;
+
+  /** 汇总当前章节的 token 与人民币估算费用。 */
+  get harnessUsageTotal() {
+    const total = {
+      uncachedInputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: undefined as number | undefined,
+      totalTokens: 0,
+      estimatedCost: 0,
+    };
+    for (const { usage } of this.harnessUsage) {
+      total.uncachedInputTokens += usage.input;
+      total.cacheReadTokens += usage.cacheRead;
+      total.cacheWriteTokens += usage.cacheWrite;
+      total.outputTokens += usage.output;
+      if (usage.reasoning !== undefined) {
+        total.reasoningTokens = (total.reasoningTokens ?? 0) + usage.reasoning;
+      }
+      total.totalTokens += usage.totalTokens;
+      total.estimatedCost += usage.cost.total;
+    }
+    return total;
+  }
 
   get allDone(): boolean {
     return (
@@ -49,8 +84,18 @@ export class ChapterSegmentState implements SegmentTracker {
     return reactive(this) as ChapterSegmentState;
   }
 
+  /** 重试清理译文和思考轨迹，保留已发生的请求用量。 */
+  resetSegments(): void {
+    this.ranges = [];
+    this.segments = [];
+    this.reasoning = [];
+    this.errorMessage = undefined;
+    this.ready = false;
+  }
+
   onSegmentsReady(lines: string[], ranges: LineRange[]): void {
     this.ranges = ranges;
+    this.reasoning = [];
     this.segments = ranges.map((range) => ({
       status: 'pending',
       lines: lines.slice(range.start, range.end),
@@ -137,9 +182,7 @@ export class TaskState {
     for (const chapter of this.chapters) {
       if (chapter.status !== 'error') continue;
       chapter.status = 'pending';
-      const state = this.chapterStates.get(chapter.chapterId);
-      if (state) state.errorMessage = undefined;
-      this.chapterStates.delete(chapter.chapterId);
+      this.chapterStates.get(chapter.chapterId)?.resetSegments();
       hasFailed = true;
     }
     return hasFailed;
@@ -155,7 +198,7 @@ export class TaskState {
     if (status === 'done') {
       const state = this.chapterStates.get(chapterId);
       if (state) {
-        // 预览可能仍持有状态引用，先释放文本，再移除工作区中的状态。
+        // 预览可能仍持有状态引用，先释放正文，再移除工作区中的状态。
         state.segments = [];
         state.ranges = [];
         state.ready = false;

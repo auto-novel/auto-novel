@@ -10,6 +10,7 @@ import type { TranslatorTracker } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
+import type { ChapterTranslator } from '@/domain/translator/TaskExecutor';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
 import type {
@@ -25,6 +26,10 @@ import type {
   TranslateJobRecord,
 } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 
 /** 每个工作区页面持有独立的执行状态，并在页面卸载时停止执行。 */
 export function useWorkspaceRuntime(translatorId: TranslatorId) {
@@ -61,7 +66,11 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   interface WorkerState {
     running: boolean;
     currentConcurrency: number;
+    maxConcurrency: number;
+    mode: 'pipeline' | 'harness';
     allowUpload?: boolean;
+    translateChapter?: ChapterTranslator;
+    controller?: AbortController;
   }
   const workerStates = ref(new Map<string, WorkerState>());
   const workerErrors = computed(() => {
@@ -103,6 +112,9 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     abortPreparationTasks();
     pipeline.clearLoops();
     pipeline.queue.clear();
+    for (const state of workerStates.value.values()) {
+      state.controller?.abort();
+    }
     processLoopAbortController?.abort();
     processLoopAbortController = null;
     executingTasks.clear();
@@ -374,8 +386,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     const controller = processLoopAbortController;
     const signal = controller.signal;
 
-    const processOne = async () => {
-      while (!signal.aborted && hasRunningWorker()) {
+    const processOne = async (worker?: WorkerState) => {
+      const workerSignal = worker?.controller?.signal ?? signal;
+      while (
+        !workerSignal.aborted &&
+        (worker ? worker.running : hasRunningWorker())
+      ) {
         const item = getNextJob(jobs.value, taskStates.value);
         if (!item) break;
 
@@ -385,10 +401,10 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         const task = await getOrCreateTask(job.task);
         const executor = new TaskExecutor(
           task,
-          pipeline,
+          worker?.translateChapter ?? pipeline,
           fetchSemaphore,
           () =>
-            !signal.aborted &&
+            !workerSignal.aborted &&
             taskCache.get(job.task) === task &&
             taskStates.value.get(job.task) === state &&
             !!findCurrentJob(job) &&
@@ -413,7 +429,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
               onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
               segmentTracker,
             },
-            signal,
+            workerSignal,
           )
           .then(() => {
             if (taskStates.value.get(job.task) !== state) return;
@@ -430,11 +446,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
     // 运行中新增的待翻章节（新任务、重试、任务延迟初始化）也要补满窗口，
     // 否则章节并发会一直被卡在循环启动时的待翻章节数。
-    const spawnCount = Math.min(GLOBAL_WINDOW - activeProcessors, pendingCount);
-    for (let i = 0; i < spawnCount; i++) {
+    const startProcessor = (worker?: WorkerState) => {
       activeProcessors++;
-      processOne().finally(() => {
+      if (worker) worker.currentConcurrency++;
+      processOne(worker).finally(() => {
         activeProcessors--;
+        if (worker) worker.currentConcurrency--;
         if (activeProcessors === 0) {
           executingTasks.clear();
           if (processLoopAbortController === controller) {
@@ -445,6 +462,26 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
           runProcessLoop();
         }
       });
+    };
+
+    const chapterWorkers = [...workerStates.value.values()].filter(
+      (state) => state.running && state.translateChapter,
+    );
+    if (chapterWorkers.length > 0) {
+      for (const worker of chapterWorkers) {
+        const slots = Math.min(
+          worker.maxConcurrency - worker.currentConcurrency,
+          GLOBAL_WINDOW - activeProcessors,
+          pendingCount,
+        );
+        for (let i = 0; i < slots; i++) startProcessor(worker);
+      }
+    } else {
+      const spawnCount = Math.min(
+        GLOBAL_WINDOW - activeProcessors,
+        pendingCount,
+      );
+      for (let i = 0; i < spawnCount; i++) startProcessor();
     }
   }
 
@@ -459,28 +496,61 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       return;
     }
 
+    const harnessPreset = isSakura
+      ? undefined
+      : findHarnessPresetGroup((w as GptPipelineWorker).preset);
+    const mode = harnessPreset?.mode ?? 'pipeline';
+    if (
+      [...workerStates.value.values()].some(
+        (state) => state.running && state.mode !== mode,
+      )
+    ) {
+      Toast.warning('请先停止正在运行的另一种预设，再切换翻译方式');
+      return;
+    }
+
     const state = reactive<WorkerState>({
       running: true,
       currentConcurrency: 0,
+      maxConcurrency: w.concurrency ?? 1,
+      mode,
+      controller: mode === 'harness' ? new AbortController() : undefined,
     });
     workerStates.value.set(workerId, state);
 
     try {
-      const log = (msg: string) => console.log(`[${w.id}] ${msg}`);
-      const t = isSakura
-        ? await SakuraTranslator.create({ ...(w as SakuraWorker), log })
-        : new OpenAiTranslator({ ...(w as GptPipelineWorker), log });
+      if (harnessPreset) {
+        const preset = getHarnessModelPreset(
+          harnessPreset,
+          (w as GptPipelineWorker).model,
+        );
+        const { createHarnessMode } = await import(
+          '@/domain/translator/harness/HarnessMode'
+        );
+        if (workerStates.value.get(workerId) !== state) return;
+        state.translateChapter = createHarnessMode(
+          preset,
+          (w as GptPipelineWorker).key,
+          w.id,
+        );
+        state.allowUpload = true;
+      } else {
+        const log = (msg: string) => console.log(`[${w.id}] ${msg}`);
+        const t = isSakura
+          ? await SakuraTranslator.create({ ...(w as SakuraWorker), log })
+          : new OpenAiTranslator({ ...(w as GptPipelineWorker), log });
 
-      if (workerStates.value.get(workerId) !== state) return;
+        if (workerStates.value.get(workerId) !== state) return;
 
-      state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
+        state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
 
-      const workerTracker: TranslatorTracker = {
-        onConcurrencyChange: (current: number) => {
-          state.currentConcurrency = current;
-        },
-      };
-      pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+        const workerTracker: TranslatorTracker = {
+          onConcurrencyChange: (current: number) => {
+            state.currentConcurrency = current;
+          },
+        };
+        pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+      }
 
       runProcessLoop();
     } catch (e) {
@@ -495,6 +565,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
+    state.controller?.abort();
 
     workerStates.value.set(workerId, { ...state, running: false });
 
