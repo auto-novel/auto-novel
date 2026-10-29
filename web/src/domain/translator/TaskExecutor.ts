@@ -45,10 +45,17 @@ export class TaskExecutor {
       if (this.task.type !== 'local' && this.canUpload?.() === false) {
         throw new Error('存在未通过上传检查的翻译器，无法启动网络／文库任务');
       }
+      const checkExecution = () => {
+        context.signal.throwIfAborted();
+        if (this.canUpload?.() === false) {
+          throw new DOMException('任务已失效或不允许上传', 'AbortError');
+        }
+      };
       const fetchAndPrepare = async () => {
         await this.pipeline.waitUntilBelowHighWaterMark(signal);
-        context.signal.throwIfAborted();
+        checkExecution();
         const detail = await this.task.fetchChapter(chapterId, context);
+        checkExecution();
 
         const original = detail.paragraphs.join('\n');
         const history =
@@ -98,6 +105,7 @@ export class TaskExecutor {
         return 'error';
       }
 
+      checkExecution();
       await this.task.uploadChapter(
         chapterId,
         detail.glossaryId,

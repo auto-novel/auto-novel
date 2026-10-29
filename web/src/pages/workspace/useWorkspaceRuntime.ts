@@ -80,7 +80,6 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     }
     return errors;
   });
-  const executingTasks = reactive(new Set<string>());
   interface MetadataState {
     task: TranslationTask;
     createAt: number;
@@ -105,7 +104,6 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     pipeline.queue.clear();
     processLoopAbortController?.abort();
     processLoopAbortController = null;
-    executingTasks.clear();
     workerStates.value.clear();
   });
   async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
@@ -380,19 +378,21 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         if (!item) break;
 
         const { job, chapterId, state } = item;
-        executingTasks.add(job.task);
-
         const task = await getOrCreateTask(job.task);
+        const isCurrentTask = () =>
+          taskCache.get(job.task) === task &&
+          taskStates.value.get(job.task) === state &&
+          !!findCurrentJob(job);
+        if (signal.aborted || !isCurrentTask()) continue;
+
         const executor = new TaskExecutor(
           task,
           pipeline,
           fetchSemaphore,
           () =>
             !signal.aborted &&
-            taskCache.get(job.task) === task &&
-            taskStates.value.get(job.task) === state &&
-            !!findCurrentJob(job) &&
-            canUpload(),
+            isCurrentTask() &&
+            (task.type === 'local' || canUpload()),
         );
 
         const segmentTracker = state.getChapterState(chapterId);
@@ -402,10 +402,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
             chapterId,
             {
               onChapterStatus: (cid: string, st: ChapterStatus) => {
-                state.updateStatus(cid, st);
+                if (isCurrentTask()) state.updateStatus(cid, st);
               },
               onProgress: (finished: number, error: number, total: number) => {
-                const currentJob = findCurrentJob(job);
+                const currentJob = isCurrentTask()
+                  ? findCurrentJob(job)
+                  : undefined;
                 if (currentJob) {
                   currentJob.progress = { finished, error, total };
                 }
@@ -416,14 +418,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
             signal,
           )
           .then(() => {
-            if (taskStates.value.get(job.task) !== state) return;
-            const allProcessed = state.chapters.every(
-              (c) => c.status === 'done' || c.status === 'error',
-            );
-            if (allProcessed) {
-              executingTasks.delete(job.task);
-            }
-            updateJobCompletion(job, task, state);
+            if (isCurrentTask()) updateJobCompletion(job, task, state);
           });
       }
     };
@@ -436,7 +431,6 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       processOne().finally(() => {
         activeProcessors--;
         if (activeProcessors === 0) {
-          executingTasks.clear();
           if (processLoopAbortController === controller) {
             processLoopAbortController = null;
           }
@@ -516,8 +510,16 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   };
 
   const deleteJob = (task: string) => {
-    if (executingTasks.has(task)) {
-      Toast.error('任务正在翻译中');
+    const state = taskStates.value.get(task);
+    const metadata = metadataTasks.get(task);
+    // 原文获取阶段可删除；分段准备好后直到保存结束，仍视为执行中。
+    const inPipeline = state?.chapters.some(
+      (chapter) =>
+        chapter.status === 'translating' &&
+        state.chapterStates.get(chapter.chapterId)?.ready,
+    );
+    if (inPipeline || (metadata && !metadata.settled)) {
+      Toast.error('任务正在翻译或保存中，请先停止翻译器');
       return;
     }
     jobStore.deleteJob(task);
