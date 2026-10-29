@@ -14,6 +14,10 @@ import GptWorkerDialog from './GptWorkerDialog.vue';
 import TrialTranslationDialog from './TrialTranslationDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
 import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
 
@@ -60,21 +64,36 @@ const testWorker = async () => {
   ];
   const reasoningLogs: string[] = [];
   try {
-    const translator =
-      props.translatorId === 'sakura'
-        ? await SakuraTranslator.create(props.worker)
-        : new OpenAiTranslator({
-            ...(props.worker as GptPipelineWorker),
-            log: (msg) => {
-              if (msg.startsWith('思考：')) reasoningLogs.push(msg);
-            },
-          });
-
-    const textZh = await translator.translate(
-      textJp,
-      undefined,
-      new AbortController().signal,
-    );
+    const worker = props.worker as GptPipelineWorker;
+    const harnessPreset =
+      props.translatorId === 'gpt'
+        ? findHarnessPresetGroup(worker.preset)
+        : undefined;
+    const signal = new AbortController().signal;
+    let textZh: string[];
+    if (harnessPreset) {
+      const { translateChapter } = await import(
+        '@auto-novel/translator/harness'
+      );
+      textZh = await translateChapter({
+        source: textJp,
+        glossary: {},
+        preset: getHarnessModelPreset(harnessPreset, worker.model),
+        key: worker.key,
+        signal,
+      });
+    } else {
+      const translator =
+        props.translatorId === 'sakura'
+          ? await SakuraTranslator.create(props.worker)
+          : new OpenAiTranslator({
+              ...worker,
+              log: (msg) => {
+                if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+              },
+            });
+      textZh = await translator.translate(textJp, undefined, signal);
+    }
     const parts = [`原文：${textJp[0]}`, `译文：${textZh.join('')}`];
     if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
     Toast.success(parts.join('\n'));
