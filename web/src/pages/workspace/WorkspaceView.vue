@@ -2,6 +2,7 @@
 import { BookOutlined } from '@vicons/material';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
 import WorkspaceActionButton from './WorkspaceActionButton.vue';
+import WorkspaceLog from './WorkspaceLog.vue';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
 import TaskSection from './task/TaskSection.vue';
 import { useWorkspaceRuntime } from './useWorkspaceRuntime';
@@ -12,6 +13,8 @@ const props = defineProps<{ translatorId: TranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
 const showLocalVolumeDrawer = ref(false);
 const {
+  logs,
+  clearLogs,
   jobs,
   segCacheName,
   taskStates,
@@ -52,6 +55,12 @@ const {
       @stop="stopWorker"
       @start-all="startAllWorkers"
       @stop-all="stopAllWorkers"
+    />
+
+    <WorkspaceLog
+      v-if="workerStates.size > 0"
+      :logs="logs"
+      @clear="clearLogs"
     />
 
     <TaskSection

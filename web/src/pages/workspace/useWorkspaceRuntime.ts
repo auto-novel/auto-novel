@@ -26,6 +26,8 @@ import type {
 } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 
+import { useWorkspaceLog } from './useWorkspaceLog';
+
 /** 每个工作区页面持有独立的执行状态，并在页面卸载时停止执行。 */
 export function useWorkspaceRuntime(translatorId: TranslatorId) {
   const isSakura = translatorId === 'sakura';
@@ -36,6 +38,13 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   const jobStore = useWorkspaceStore(translatorId);
 
   const jobs = computed(() => jobStore.ref.value.jobs);
+  const { logs, appendLog, clearLogs } = useWorkspaceLog();
+  const logTask = (task: string, message: string, warn = false) =>
+    appendLog(
+      jobs.value.find((job) => job.task === task)?.description || task,
+      message,
+      warn ? 'warn' : 'info',
+    );
 
   /** 同时处理的章节数上限 */
   const GLOBAL_WINDOW = 66;
@@ -254,7 +263,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       .prepareExecution({
         signal,
         canUpload: canPrepare,
-        onLog: (message) => console.log(`[${job.task}] ${message}`),
+        onLog: (message) => logTask(job.task, message),
       })
       .then(() => {
         if (!canPrepare()) return;
@@ -269,7 +278,10 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         updateJobCompletion(job, task, state);
       })
       .catch((error) => {
-        if (!signal.aborted) console.warn(`[${job.task}] 任务准备失败`, error);
+        if (!signal.aborted) {
+          logTask(job.task, `任务准备失败：${error}`, true);
+          console.warn(`[${job.task}] 任务准备失败`, error);
+        }
       })
       .finally(() => {
         if (preparationTasks.get(job.task) !== preparation) return;
@@ -337,11 +349,14 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       .translateMetadata(translateTexts, signal, canUploadMetadata)
       .then(() => {
         if (!signal.aborted && metadataTasks.get(job.task) === metadata) {
-          console.log(`[${job.task}] 元数据翻译完成`);
+          logTask(job.task, '元数据翻译完成');
         }
       })
       .catch((e) => {
-        if (!signal.aborted) console.warn(`[${job.task}] 元数据翻译失败`, e);
+        if (!signal.aborted) {
+          logTask(job.task, `元数据翻译失败：${e}`, true);
+          console.warn(`[${job.task}] 元数据翻译失败`, e);
+        }
       })
       .finally(() => {
         if (metadataTasks.get(job.task) !== metadata) return;
@@ -412,7 +427,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
                   currentJob.progress = { finished, error, total };
                 }
               },
-              onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
+              onLog: (msg: string) => logTask(job.task, msg),
               segmentTracker,
             },
             signal,
@@ -460,7 +475,9 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     workerStates.value.set(workerId, state);
 
     try {
-      const log = (msg: string) => console.log(`[${w.id}] ${msg}`);
+      const secrets = 'key' in w ? [w.key] : [];
+      const log = (msg: string) => appendLog(w.id, msg, 'info', secrets);
+      log('正在启动翻译器');
       const t = isSakura
         ? await SakuraTranslator.create({ ...(w as SakuraWorker), log })
         : new OpenAiTranslator({ ...(w as GptPipelineWorker), log });
@@ -475,11 +492,18 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         },
       };
       pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+      log('翻译器已启动');
 
       runProcessLoop();
     } catch (e) {
       if (workerStates.value.get(workerId) !== state) return;
       stopWorker(workerId);
+      appendLog(
+        w.id,
+        `翻译器启动失败：${e}`,
+        'warn',
+        'key' in w ? [w.key] : [],
+      );
       Toast.error(`翻译器启动失败：${e}`);
     }
   };
@@ -489,6 +513,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
+    appendLog(workerId, '翻译器已停止');
 
     workerStates.value.set(workerId, { ...state, running: false });
 
@@ -598,6 +623,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
             };
             updateJobCompletion(job, task, state);
           } catch (e) {
+            logTask(job.task, `任务初始化失败：${e}`, true);
             console.warn('任务初始化失败', job.task, e);
           } finally {
             if (initializingTasks.get(job.task) === initialization) {
@@ -622,6 +648,8 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   };
 
   return {
+    logs,
+    clearLogs,
     jobs,
     segCacheName,
     taskStates,
