@@ -223,7 +223,7 @@ watch(
             type="button"
             :data-chapter-id="ch.chapterId"
             :class="[
-              'box-border inline-flex size-10 flex-[0_0_40px] cursor-pointer',
+              'box-border inline-flex h-10 w-14 flex-[0_0_56px] cursor-pointer whitespace-nowrap',
               'flex-col items-center justify-center gap-0.75 overflow-hidden',
               'rounded-[5px] border border-divider bg-transparent p-0.75 text-[11px]',
               'transition-[border-color,background-color] duration-150 ease-[ease]',
