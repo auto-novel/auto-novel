@@ -14,7 +14,11 @@ export default defineConfig({
       dts: true,
       bundle: true,
       source: {
-        entry: { index: 'src/index.ts' },
+        entry: {
+          index: 'src/index.ts',
+          harness: 'src/harness/index.ts',
+          'harness-presets': 'src/harness/presets.ts',
+        },
         tsconfigPath: 'tsconfig.json',
       },
       output: {
