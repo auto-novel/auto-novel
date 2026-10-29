@@ -7,7 +7,10 @@ import { Alphapolis } from '@/web/alphapolis';
 import { WebNovelAttention, WebNovelType } from '@/web/types';
 import { client } from './utils';
 
-async function createFixtureProvider(filename: string): Promise<Alphapolis> {
+async function createFixtureProvider(
+  filename: string,
+  transformHtml = (html: string) => html,
+): Promise<Alphapolis> {
   const html = await readFile(
     new URL(`../fixtures/alphapolis/${filename}`, import.meta.url),
     'utf8',
@@ -15,7 +18,7 @@ async function createFixtureProvider(filename: string): Promise<Alphapolis> {
   return new Alphapolis(
     ky.create({
       fetch: async () =>
-        new Response(html, {
+        new Response(transformHtml(html), {
           status: 200,
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         }),
@@ -24,6 +27,58 @@ async function createFixtureProvider(filename: string): Promise<Alphapolis> {
 }
 
 describe('alphapolis fixtures', () => {
+  test('skips locked episodes without losing later free episodes', async () => {
+    const provider = await createFixtureProvider('rental.html');
+
+    const data = await provider.getMetadata('6072941-154068823');
+
+    expect(data.toc).toEqual([
+      {
+        title: '1巻',
+        chapterId: null,
+        createAt: '2017-05-25T02:34:00.000Z',
+      },
+      {
+        title: '1-1',
+        chapterId: '481468',
+        createAt: '2017-05-25T02:34:00.000Z',
+      },
+      {
+        title: '首话锁定',
+        chapterId: null,
+        createAt: '2017-05-25T02:35:00.000Z',
+      },
+      {
+        title: '公开话',
+        chapterId: '481486',
+        createAt: '2017-05-25T02:35:00.000Z',
+      },
+      {
+        title: '連載',
+        chapterId: null,
+        createAt: '2017-01-13T11:54:00.000Z',
+      },
+      {
+        title: '番外編　とある傭兵の恋',
+        chapterId: '165163',
+        createAt: '2017-01-13T11:54:00.000Z',
+      },
+    ]);
+  });
+
+  test.each(['null', '"invalid-date"'])(
+    'still rejects invalid public episode timestamps: %s',
+    async (timestamp) => {
+      const provider = await createFixtureProvider('rental.html', (html) =>
+        html.replace('"2017.05.25 11:34"', timestamp),
+      );
+
+      await expect(provider.getMetadata('6072941-154068823')).rejects.toThrow(
+        /发布时间/,
+      );
+    },
+  );
+
   test('parses 702113882-606570085', async () => {
     const provider = await createFixtureProvider(
       '702113882-606570085.260811.html',

@@ -44,6 +44,7 @@ type AlphapolisCoverData = {
       episodeNo?: unknown;
       url?: unknown;
       mainTitle?: unknown;
+      isPublic?: unknown;
       upTime?: unknown;
     }>;
   }>;
@@ -118,9 +119,15 @@ export class Alphapolis implements WebNovelProvider {
         );
       }
 
+      // 锁定话没有发布时间，也不能爬取；先过滤，避免阻断后续免费话。
+      const episodes = chapter.episodes.filter(
+        (episode) => episode.isPublic !== false,
+      );
+      if (episodes.length === 0) continue;
+
       const firstEpisodeCreateAt =
-        typeof chapter.episodes[0]?.upTime === 'string'
-          ? textOrNull(chapter.episodes[0].upTime)
+        typeof episodes[0]?.upTime === 'string'
+          ? textOrNull(episodes[0].upTime)
           : null;
       if (!firstEpisodeCreateAt) {
         throw new CrawlerParseError(
@@ -140,6 +147,8 @@ export class Alphapolis implements WebNovelProvider {
       }
 
       for (const [episodeIndex, episode] of chapter.episodes.entries()) {
+        if (episode.isPublic === false) continue;
+
         const episodeTitle =
           typeof episode.mainTitle === 'string'
             ? textOrNull(episode.mainTitle)
