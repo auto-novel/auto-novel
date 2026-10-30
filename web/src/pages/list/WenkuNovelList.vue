@@ -20,7 +20,9 @@ const { whoami } = storeToRefs(whoamiStore);
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
-const listOptions = getWenkuListOptions(whoami.value.hasNsfwAccess);
+const listOptions = computed(() =>
+  getWenkuListOptions(whoami.value.hasNsfwAccess),
+);
 
 const listValue = computed(
   () =>

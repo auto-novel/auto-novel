@@ -24,7 +24,9 @@ const { whoami } = storeToRefs(whoamiStore);
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
-const listOptions = getWebListOptions(whoami.value.hasNsfwAccess);
+const listOptions = computed(() =>
+  getWebListOptions(whoami.value.hasNsfwAccess),
+);
 
 const listValue = computed(
   () =>

@@ -29,9 +29,11 @@ const { whoami } = storeToRefs(whoamiStore);
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-const listOptions = getWebFavoredListOptions(
-  whoami.value.hasNsfwAccess,
-  setting.value.favoriteCreateTimeFirst,
+const listOptions = computed(() =>
+  getWebFavoredListOptions(
+    whoami.value.hasNsfwAccess,
+    setting.value.favoriteCreateTimeFirst,
+  ),
 );
 
 const listValue = computed(
@@ -55,7 +57,10 @@ const { data: novelPage, error } = WebNovelRepo.useWebNovelFavoredList(
     type: listValue.value.类型,
     level: listValue.value.分级,
     translate: listValue.value.翻译,
-    sort: parseFavoredListValueSort(listOptions.排序, listValue.value.排序),
+    sort: parseFavoredListValueSort(
+      listOptions.value.排序,
+      listValue.value.排序,
+    ),
   }),
 );
 
