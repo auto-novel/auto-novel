@@ -12,7 +12,7 @@ import type {
 } from './types';
 import { WebNovelApi, formatError } from '@/api';
 import { CrawlerService } from '@/domain/crawler';
-import { createWebMetadataCoder } from '@/domain/translate/WebMetadataCoder';
+import { createWebMetadataCoder } from '../WebMetadataCoder';
 import { buildChapterMetaList } from './utils';
 
 export class WebTranslationTask implements TranslationTask {
