@@ -49,7 +49,9 @@ export function useWorkspaceLog() {
     pending.push({
       id: nextId++,
       time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-      source: sanitize(source),
+      // 来源只是翻译器名或任务名，本身不含凭据；若一并替换，
+      // Key 恰好与名称相同时整段来源会变成 [已隐藏]，无法分辨日志归属。
+      source,
       message: sanitize(message),
       level,
     });

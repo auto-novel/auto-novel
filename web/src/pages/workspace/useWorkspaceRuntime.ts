@@ -497,7 +497,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       runProcessLoop();
     } catch (e) {
       if (workerStates.value.get(workerId) !== state) return;
-      stopWorker(workerId);
+      stopWorker(workerId, '启动失败');
       appendLog(
         w.id,
         `翻译器启动失败：${e}`,
@@ -508,12 +508,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     }
   };
 
-  const stopWorker = (workerId: string) => {
+  const stopWorker = (workerId: string, reason = '手动停止') => {
     const state = workerStates.value.get(workerId);
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
-    appendLog(workerId, '翻译器已停止');
+    appendLog(workerId, `翻译器已停止（${reason}）`);
 
     workerStates.value.set(workerId, { ...state, running: false });
 
