@@ -139,7 +139,19 @@ const showQQModal = ref(false);
         /
         <n-a :href="siteUrls.repository" target="_blank">GitHub</n-a>
       </div>
-      <p class="my-4 first:mt-0 last:mb-0">
+      <p class="my-4 text-warning first:mt-0 last:mb-0">
+        安卓 App 已上线，前往
+        <n-a
+          class="underline underline-offset-2"
+          :href="`${siteUrls.androidApp}/releases`"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          发布页
+        </n-a>
+        下载。
+      </p>
+      <p class="my-4 text-warning first:mt-0 last:mb-0">
         交互翻译已恢复，点击工作区翻译器上的「试译」按钮即可使用。
       </p>
       <p class="my-4 first:mt-0 last:mb-0">

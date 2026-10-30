@@ -2,6 +2,7 @@
 export const siteUrls = {
   repository: 'https://github.com/auto-novel/auto-novel',
   addonRepository: 'https://github.com/auto-novel/Addon',
+  androidApp: 'https://github.com/nobYoQ/novelia',
   qqGroup: 'https://qm.qq.com/q/wCCkZFaWC4',
   telegram: 'https://t.me/+hgUSCmuBReQzNmU1',
   sakuraMonitor:
