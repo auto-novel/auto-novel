@@ -59,6 +59,8 @@ export class OpenAiTranslator implements Translator {
       !effort || effort === DEFAULT_FIELD_VALUE ? '默认' : String(effort);
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
+    // 实例级参数只记录一次；translate() 按分段调用，逐次打印会淹没日志。
+    this.log(`请求思考强度：${this.reasoningEffort}`);
   }
 
   async translate(
@@ -70,7 +72,6 @@ export class OpenAiTranslator implements Translator {
     if (lines.every((l) => l.trim().length === 0)) {
       return lines;
     }
-    this.log(`请求思考强度：${this.reasoningEffort}`);
     const logSegInfo = (retry: number, lineNumber: [number, number]) => {
       const parts: string[] = [];
       const [input, output] = lineNumber;
