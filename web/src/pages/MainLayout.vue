@@ -6,7 +6,6 @@ import {
   type WebKitMenuOption,
 } from '@novelia/web-kit';
 import {
-  AndroidOutlined,
   BookOutlined,
   ForumOutlined,
   HistoryOutlined,
@@ -17,7 +16,7 @@ import {
   StarBorderOutlined,
   WorkspacesOutlined,
 } from '@vicons/material';
-import { forumCommunityUrl, siteUrls } from '@/config';
+import { forumCommunityUrl } from '@/config';
 import { useWhoamiStore } from '@/stores';
 
 const route = useRoute();
@@ -109,13 +108,6 @@ const navigationOptions = computed<WebKitMenuOption[]>(() => [
     label: '论坛',
     icon: ForumOutlined,
     href: forumCommunityUrl,
-  },
-  {
-    type: 'external',
-    key: 'android-app',
-    label: '安卓 App',
-    icon: AndroidOutlined,
-    href: siteUrls.androidApp,
   },
   { key: '/setting', label: '设置', icon: SettingsOutlined, to: '/setting' },
 ]);
