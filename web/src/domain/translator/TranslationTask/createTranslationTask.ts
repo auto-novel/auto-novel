@@ -1,8 +1,9 @@
 import type {
   TranslateTaskDesc,
   TranslateTaskParams,
+  TranslatorId,
 } from '@/model/Translator';
-import type { TranslationTask, TranslatorId } from './types';
+import type { TranslationTask } from './types';
 import { LocalTranslationTask } from './LocalTranslationTask';
 import { WebTranslationTask } from './WebTranslationTask';
 import { WenkuTranslationTask } from './WenkuTranslationTask';

@@ -2,9 +2,10 @@ import type { Glossary } from '@auto-novel/translator';
 import type { ChapterMeta } from '../TaskState';
 import type {
   TranslateTaskParams,
+  TranslatorId,
   WenkuTranslateTask,
 } from '@/model/Translator';
-import type { ChapterDetail, TranslationTask, TranslatorId } from './types';
+import type { ChapterDetail, TranslationTask } from './types';
 import { WenkuNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 

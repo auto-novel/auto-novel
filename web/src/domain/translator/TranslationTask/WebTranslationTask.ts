@@ -1,11 +1,14 @@
 import type { Glossary } from '@auto-novel/translator';
 import type { ChapterMeta } from '../TaskState';
-import type { TranslateTaskParams, WebTranslateTask } from '@/model/Translator';
+import type {
+  TranslateTaskParams,
+  WebTranslateTask,
+  TranslatorId,
+} from '@/model/Translator';
 import type {
   ChapterDetail,
   TaskExecutionContext,
   TranslationTask,
-  TranslatorId,
 } from './types';
 import { WebNovelApi, formatError } from '@/api';
 import { CrawlerService } from '@/domain/crawler';
@@ -129,7 +132,7 @@ export class WebTranslationTask implements TranslationTask {
   get needsMetadata(): boolean {
     return (
       this.initialized &&
-      this.translatorId === 'sakura' &&
+      this.translatorId !== 'gpt' &&
       this.task !== undefined &&
       createWebMetadataCoder(this.task, this.params.forceMetadata).needUpload
     );
