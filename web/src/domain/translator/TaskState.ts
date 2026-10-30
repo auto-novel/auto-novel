@@ -149,6 +149,19 @@ export class TaskState {
     return this.chapters.find((c) => c.chapterId === chapterId)?.status;
   }
 
+  /** 停止翻译器后章节回到 pending，但已产生的分段译文仍保留用于预览。 */
+  isPausedChapter(chapterId: string): boolean {
+    const chapter = this.chapters.find((c) => c.chapterId === chapterId);
+    if (chapter?.status !== 'pending') return false;
+    const state = this.chapterStates.get(chapterId);
+    return (
+      !!state?.ready &&
+      state.segments.some(
+        (segment) => segment.status === 'done' || segment.status === 'error',
+      )
+    );
+  }
+
   updateStatus(chapterId: string, status: ChapterStatus): void {
     const ch = this.chapters.find((c) => c.chapterId === chapterId);
     if (ch) ch.status = status;

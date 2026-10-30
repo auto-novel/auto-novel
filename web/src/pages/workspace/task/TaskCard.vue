@@ -43,6 +43,7 @@ const hasVisibleChapters = computed(() =>
   chapterMetas.value.some(
     (chapter) =>
       chapter.status === 'error' ||
+      props.taskState?.isPausedChapter(chapter.chapterId) ||
       (chapter.status === 'translating' &&
         props.taskState?.chapterStates.get(chapter.chapterId)?.ready),
   ),
