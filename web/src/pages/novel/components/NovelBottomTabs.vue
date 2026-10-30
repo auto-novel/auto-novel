@@ -4,6 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import NovelGlossaryEditor from '@/components/NovelGlossaryEditor.vue';
 import type { GenericNovelId } from '@/model/Common';
 import type { Glossary } from '@/model/Glossary';
+import { SingleFingerSwipe } from './UseSingleFingerSwipe';
 
 const props = defineProps<{
   gnid?: GenericNovelId;
@@ -78,6 +79,25 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
       switchTab(targetTab);
     }
   }
+});
+
+const switchNextTab = () => {
+  const currentIndex = availableTabs.value.indexOf(activeTab.value);
+  if (currentIndex !== -1 && currentIndex < availableTabs.value.length - 1) {
+    switchTab(availableTabs.value[currentIndex + 1]);
+  }
+};
+
+const switchPrevTab = () => {
+  const currentIndex = availableTabs.value.indexOf(activeTab.value);
+  if (currentIndex > 0) {
+    switchTab(availableTabs.value[currentIndex - 1]);
+  }
+};
+
+SingleFingerSwipe({
+  onSwipeLeft: switchNextTab,
+  onSwipeRight: switchPrevTab,
 });
 </script>
 
