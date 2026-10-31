@@ -13,9 +13,13 @@ import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import GptWorkerDialog from './GptWorkerDialog.vue';
 import TrialTranslationDialog from './TrialTranslationDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
-import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
+import { TranslationPipeline } from '@auto-novel/translator';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import {
+  createPipelineTranslator,
+  probeTranslator,
+} from '@/domain/translator/createPipelineTranslator';
 
 const props = defineProps<{
   translatorId: TranslatorId;
@@ -59,27 +63,30 @@ const testWorker = async () => {
     '国境の長いトンネルを抜けると雪国であった。夜の底が白くなった。信号所に汽車が止まった。',
   ];
   const reasoningLogs: string[] = [];
+  // 与工作区走同一条流水线，顺带验证重试、校验与降级。
+  const pipeline = new TranslationPipeline();
   try {
-    const translator =
-      props.translatorId === 'sakura'
-        ? await SakuraTranslator.create(props.worker)
-        : new OpenAiTranslator({
-            ...(props.worker as GptPipelineWorker),
-            log: (msg) => {
-              if (msg.startsWith('思考：')) reasoningLogs.push(msg);
-            },
-          });
-
-    const textZh = await translator.translate({
-      lines: textJp,
-      signal: new AbortController().signal,
-      attempt: 0,
-    });
-    const parts = [`原文：${textJp[0]}`, `译文：${textZh.join('')}`];
+    const translator = await createPipelineTranslator(
+      props.translatorId,
+      props.worker,
+      (msg) => {
+        if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+      },
+    );
+    const probe = await probeTranslator(translator);
+    if (!probe.approved) {
+      Toast.warning(`翻译器未通过检查：${probe.reason ?? '未知原因'}`);
+      return;
+    }
+    pipeline.registerTranslator(translator, { concurrency: 1 });
+    const { lines } = await pipeline.translate({ lines: textJp });
+    const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];
     if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
     Toast.success(parts.join('\n'));
   } catch (e: unknown) {
     Toast.error(`翻译器错误：${e}`);
+  } finally {
+    pipeline.dispose();
   }
 };
 </script>

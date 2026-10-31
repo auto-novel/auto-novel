@@ -36,6 +36,7 @@ type PreparedInput = {
 type StartedInput = {
   enqueued: Promise<void>;
   result: Promise<TranslationResult>;
+  signal: AbortSignal;
 };
 
 export class TranslationPipeline {
@@ -46,6 +47,11 @@ export class TranslationPipeline {
   private readonly cache?: SegmentCache;
   /** 当前生命周期；dispose 时取消所有未完成输入，之后换成新的。 */
   private lifecycle = new AbortController();
+  /** 等待“获批”状态变化的消费者；refreshApproval 时唤醒重新判定。 */
+  private readonly approvalWaiters: Array<() => void> = [];
+  /** 已投递但尚未结算的输入；drain 等待它们并把回调错误上抛。 */
+  private readonly pendingSettlements = new Set<Promise<void>>();
+  private settlementError: unknown;
 
   /**
    * 队列水位始终跟随已注册翻译器的总并发（auto）；构造时尚未注册翻译器，
@@ -73,79 +79,83 @@ export class TranslationPipeline {
 
   /**
    * 唯一投递路径：切分并入队。
-   * `translate` 等到结算返回；`run` 只等投递完成就继续补货。
+   * `translate` 等到结算返回；`submit` 只等投递完成。
    */
   private start(input: TranslationInput, signal?: AbortSignal): StartedInput {
     // dispose 也要能取消未完成的输入，避免入队被背压卡住或结算悬空。
     const inputSignal =
       anySignal([signal, this.lifecycle.signal]) ?? this.lifecycle.signal;
-    const { tasks, result } = this.prepareInput(input, inputSignal);
-    // 入队也可能因背压等待，提前接住取消产生的拒绝。
+    // 同步准备错误也进入结果通道，由同一处负责结算回调。
+    const prepared = Promise.resolve().then(() =>
+      this.prepareInput(input, inputSignal),
+    );
+    const enqueued = prepared.then(({ tasks }) =>
+      this.queue.enqueueAll(tasks, inputSignal),
+    );
+    // 投递失败同样是输入失败，不能只等待分段结果而悬空。
+    const result = Promise.all([
+      enqueued,
+      prepared.then(({ result }) => result),
+    ]).then(([, result]) => result);
+    // translate 可能仍在等待入队，提前接住结果的拒绝。
     void result.catch(() => {});
-    return { enqueued: this.queue.enqueueAll(tasks, inputSignal), result };
+    return { enqueued, result, signal: inputSignal };
   }
 
   /**
-   * 按水位拉取输入；每个输入通过自身的 onComplete/onError/onAbort 结算。
-   * 取消时每个在途输入收到 onAbort，run 以 AbortError 结束。
+   * 投递一个输入：切分并入队后立即返回（队列满时在这里等待）。
+   * 结算仍走 `work` 的 onComplete/onError/onAbort；收尾用 `drain()` 等待全部结算。
    */
-  async run(
-    source: AsyncIterable<TranslationWork>,
-    options: { signal?: AbortSignal; maxPendingInputs?: number } = {},
-  ): Promise<void> {
-    const maxPending = options.maxPendingInputs ?? 16;
-    if (!Number.isInteger(maxPending) || maxPending < 1) {
-      throw new RangeError('maxPendingInputs must be a positive integer');
-    }
-    // 取消来源有两个：调用方传入的信号，以及 run 自身结束（含失败）。
-    const controller = new AbortController();
-    const signal =
-      anySignal([options.signal, controller.signal]) ?? controller.signal;
-    const pending = new Set<Promise<void>>();
-    const iterator = source[Symbol.asyncIterator]();
-    let exhausted = false;
+  async submit(work: TranslationWork, signal?: AbortSignal): Promise<void> {
+    const {
+      enqueued,
+      settled,
+      signal: inputSignal,
+    } = this.dispatch(work, signal);
+    this.track(settled, inputSignal);
     try {
-      while (true) {
-        signal.throwIfAborted();
-        if (pending.size >= maxPending) await Promise.race(pending);
-        await this.queue.waitUntilBelowHighWaterMark(signal);
-        const next = await iterator.next();
-        if (next.done) {
-          exhausted = true;
-          break;
-        }
-        const input = next.value;
-        let started: StartedInput;
-        try {
-          started = this.start(input, signal);
-          await started.enqueued;
-        } catch (error) {
-          if (signal.aborted) {
-            await input.onAbort();
-            signal.throwIfAborted();
-          }
-          await input.onError(error);
-          continue;
-        }
-        const task = started.result
-          .then((translated) => {
-            signal.throwIfAborted();
-            return input.onComplete(translated);
-          })
-          .catch((error: unknown) =>
-            signal.aborted ? input.onAbort() : input.onError(error),
-          )
-          .catch((error: unknown) => controller.abort(error))
-          .finally(() => pending.delete(task));
-        pending.add(task);
-      }
-      await Promise.all(pending);
-      signal.throwIfAborted();
-    } finally {
-      controller.abort();
-      await Promise.all(pending);
-      if (!exhausted) await iterator.return?.();
+      await enqueued;
+    } catch {
+      // 回调只走结算通道；投递路径只负责把取消继续上抛。
+      inputSignal.throwIfAborted();
     }
+  }
+
+  /** 等待已投递输入全部结算；结算回调抛错时在这里上抛。 */
+  async drain(): Promise<void> {
+    while (this.pendingSettlements.size > 0) {
+      await Promise.all([...this.pendingSettlements]);
+    }
+    const error = this.settlementError;
+    this.settlementError = undefined;
+    if (error !== undefined) throw error;
+  }
+
+  /** 切分 + 入队，并把结算接到输入的三个回调上。 */
+  private dispatch(
+    work: TranslationWork,
+    signal?: AbortSignal,
+  ): { enqueued: Promise<void>; settled: Promise<void>; signal: AbortSignal } {
+    const { enqueued, result, signal: inputSignal } = this.start(work, signal);
+    const settled = result
+      .then((translated) => {
+        inputSignal.throwIfAborted();
+        return work.onComplete(translated);
+      })
+      .catch((error: unknown) =>
+        inputSignal.aborted ? work.onAbort() : work.onError(error),
+      );
+    return { enqueued, settled, signal: inputSignal };
+  }
+
+  private track(settled: Promise<void>, signal?: AbortSignal): void {
+    const entry = settled
+      .catch((error: unknown) => {
+        // 取消不算结算失败；其余错误留给 drain 上抛。
+        if (!signal?.aborted) this.settlementError = error;
+      })
+      .finally(() => this.pendingSettlements.delete(entry));
+    this.pendingSettlements.add(entry);
   }
 
   private prepareInput(
@@ -234,11 +244,54 @@ export class TranslationPipeline {
       translator,
       abortController: new AbortController(),
       concurrency: configuredConcurrency,
+      approved: options.approved,
     };
     this.translatorLoops.set(id, loop);
     this._updateHighWaterMark();
     this._startLoop(loop, options.tracker);
     return id;
+  }
+
+  /**
+   * 审批状态可能变化后调用：唤醒等待获批的消费者。
+   * 未获批的循环不接任务，任务留在队列里等待而不是判失败。
+   */
+  refreshApproval(): void {
+    for (const wake of this.approvalWaiters.splice(0)) wake();
+  }
+
+  private isApproved(loop: TranslationLoop): boolean {
+    if (!loop.approved) return true;
+    try {
+      return loop.approved();
+    } catch {
+      // 判定本身出错时按“不可用”处理，避免把内容发给未确认的端点。
+      return false;
+    }
+  }
+
+  private async waitUntilApproved(loop: TranslationLoop): Promise<void> {
+    const signal = loop.abortController.signal;
+    while (!this.isApproved(loop)) {
+      signal.throwIfAborted();
+      await new Promise<void>((resolve, reject) => {
+        const wake = () => {
+          cleanup();
+          resolve();
+        };
+        const onAbort = () => {
+          cleanup();
+          reject(signal.reason);
+        };
+        const cleanup = () => {
+          signal.removeEventListener('abort', onAbort);
+          const index = this.approvalWaiters.indexOf(wake);
+          if (index !== -1) this.approvalWaiters.splice(index, 1);
+        };
+        this.approvalWaiters.push(wake);
+        signal.addEventListener('abort', onAbort, { once: true });
+      });
+    }
   }
 
   private async _startLoop(
@@ -324,6 +377,11 @@ export class TranslationPipeline {
     };
 
     while (!loop.abortController.signal.aborted) {
+      try {
+        await this.waitUntilApproved(loop);
+      } catch {
+        break;
+      }
       await semaphore.acquire();
       try {
         const task = await this.queue.dequeue(loop.abortController.signal);
@@ -361,7 +419,7 @@ export class TranslationPipeline {
 
   /**
    * 停止所有翻译器，取消未完成的输入并清空队列。
-   * 未完成的 `translate`/`run` 会以 AbortError 结束；之后仍可重新注册翻译器继续使用。
+   * 未完成的 `translate`/`submit` 会以 AbortError 结束；之后仍可重新注册翻译器继续使用。
    */
   dispose(): void {
     // 先取消输入：在途分段由消费者退出，排队分段由队列清空结算。

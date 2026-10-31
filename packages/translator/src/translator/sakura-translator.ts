@@ -3,6 +3,7 @@ import type {
   SegmentContext,
   TranslateRequest,
   Translator,
+  TranslatorProbe,
   PromptBuilder,
 } from '@/types';
 
@@ -74,32 +75,44 @@ export class SakuraTranslator implements Translator {
     return translator;
   }
 
-  allowUpload() {
-    if (this.prevSegLength !== 500) {
-      this.log('前文长度不是500');
+  /** 只有与本仓库登记过的模型一致时才允许把内容发往该端点。 */
+  async probe(): Promise<TranslatorProbe> {
+    const reason = this.modelRejection();
+    if (reason !== undefined) {
+      this.log(reason);
+      return { approved: false, reason, info: this.modelInfo() };
+    }
+    this.log(`模型为${this.model?.id}，允许上传`);
+    return { approved: true, info: this.modelInfo() };
+  }
+
+  /** 同步判定，供旧调用方使用。 */
+  allowUpload(): boolean {
+    const reason = this.modelRejection();
+    if (reason !== undefined) {
+      this.log(reason);
       return false;
     }
+    this.log(`模型为${this.model?.id}，允许上传`);
+    return true;
+  }
 
-    if (this.model === undefined) {
-      this.log('无法获取模型数据');
-      return false;
-    }
-
-    const metaCurrent = this.model.meta;
+  /** 不允许上传的原因；为空表示通过。 */
+  private modelRejection(): string | undefined {
+    if (this.prevSegLength !== 500) return '前文长度不是500';
+    if (this.model === undefined) return '无法获取模型数据';
     const metaExpected = allowModels[this.model.id]?.meta;
-    if (metaExpected === undefined) {
-      this.log(`模型为${this.model.id}，禁止上传`);
-      return false;
-    }
-
-    for (const key in metaExpected) {
-      if (metaCurrent[key] !== metaExpected[key]) {
-        this.log('模型检查未通过，不要尝试欺骗模型检查');
-        return false;
+    if (metaExpected === undefined) return `模型为${this.model.id}，禁止上传`;
+    for (const key of Object.keys(metaExpected)) {
+      if (this.model.meta[key] !== metaExpected[key]) {
+        return '模型检查未通过，不要尝试欺骗模型检查';
       }
     }
-    this.log(`模型为${this.model.id}，允许上传`);
-    return true;
+    return undefined;
+  }
+
+  private modelInfo(): Record<string, string> | undefined {
+    return this.model === undefined ? undefined : { model: this.model.id };
   }
 
   async translate({

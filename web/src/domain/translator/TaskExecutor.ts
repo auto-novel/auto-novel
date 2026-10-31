@@ -12,7 +12,8 @@ export type ChapterTracker = {
 export class TaskExecutor {
   constructor(
     private task: TranslationTask,
-    private canUpload?: () => boolean,
+    /** 能否更新来源站点的内容（目录/元数据）；与翻译派发无关。 */
+    private canUpdateProvider?: () => boolean,
   ) {}
 
   /** 获取章节；翻译和保存由流水线拉取后执行。 */
@@ -61,18 +62,11 @@ export class TaskExecutor {
       tracker.onLog(`[${title}] 开始获取原文`);
       const context = {
         signal: signal ?? new AbortController().signal,
-        canUpload: this.canUpload,
+        canUpload: this.canUpdateProvider,
         onLog: tracker.onLog,
       };
-      if (this.task.type !== 'local' && this.canUpload?.() === false) {
-        throw new Error('存在未通过上传检查的翻译器，无法启动网络／文库任务');
-      }
-      const checkExecution = () => {
-        context.signal.throwIfAborted();
-        if (this.canUpload?.() === false) {
-          throw new DOMException('任务已失效或不允许上传', 'AbortError');
-        }
-      };
+      // 能否把译文发给翻译器由流水线的 approved 把关，这里只看任务是否还活着。
+      const checkExecution = () => context.signal.throwIfAborted();
       checkExecution();
       const detail = await this.task.fetchChapter(chapterId, context);
       checkExecution();

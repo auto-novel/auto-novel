@@ -115,6 +115,21 @@ export interface Translator {
 
   /** 重试耗尽且失败属于内容形状问题时的降级策略。 */
   fallback?(request: TranslateRequest): Promise<string[]>;
+
+  /**
+   * 能否把内容发往该端点；缺省视为允许。
+   * 用于模型校验、插件/Cookie 检查这类需要联网探测的前置条件。
+   */
+  probe?(): Promise<TranslatorProbe>;
+}
+
+/** 翻译器自检结果；`approved` 为 false 时流水线不会向它派发任务。 */
+export interface TranslatorProbe {
+  approved: boolean;
+  /** 不允许时的原因，用于日志展示。 */
+  reason?: string;
+  /** 展示用信息，如模型名、版本。 */
+  info?: Record<string, string>;
 }
 
 export interface TranslationLoop {
@@ -123,6 +138,8 @@ export interface TranslationLoop {
   abortController: AbortController;
   //并发数不提供时默认 1 并发
   concurrency?: number;
+  /** 能否向该循环派发任务；缺省视为允许。 */
+  approved?: () => boolean;
 }
 
 export interface SegmentCache {
@@ -165,13 +182,13 @@ export interface TranslationResult {
   failed: Array<{ order: number; error: unknown }>;
 }
 
-/** run 的输入：文本 + 该输入的结算回调。 */
+/** 投递单元：原文行 + 该输入的结算回调。 */
 export interface TranslationWork extends TranslationInput {
   /** 翻译完成；failed 非空表示有分段回退为原文。 */
   onComplete: (result: TranslationResult) => Promise<void> | void;
   /** 输入级错误；取消不会走这里。 */
   onError: (error: unknown) => Promise<void> | void;
-  /** 取消时对每个在途输入调用；run 随后以 AbortError 结束。 */
+  /** 该输入被取消时调用；随后 submit 以 AbortError 结束。 */
   onAbort: () => Promise<void> | void;
 }
 
@@ -187,4 +204,9 @@ export interface TranslatorOptions {
   tracker?: TranslatorTracker;
   /** 循环 id；缺省生成随机 id。 */
   id?: string;
+  /**
+   * 能否向该翻译器派发任务；不满足时任务留在队列等待，不判失败。
+   * 状态变化后需调用 `refreshApproval()` 唤醒等待中的消费者。
+   */
+  approved?: () => boolean;
 }

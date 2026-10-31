@@ -1,10 +1,6 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { Toast } from '@novelia/web-kit';
-import {
-  OpenAiTranslator,
-  SakuraTranslator,
-  TranslationPipeline,
-} from '@auto-novel/translator';
+import { TranslationPipeline } from '@auto-novel/translator';
 import type {
   TranslatorTracker,
   TranslationWork,
@@ -12,6 +8,10 @@ import type {
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
+import {
+  createPipelineTranslator,
+  probeTranslator,
+} from '@/domain/translator/createPipelineTranslator';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
 import type {
@@ -20,12 +20,7 @@ import type {
 } from '@/domain/translator/TranslationTask/types';
 import { TaskState } from '@/domain/translator/TaskState';
 import type { ChapterStatus } from '@/domain/translator/TaskState';
-import type {
-  GptPipelineWorker,
-  SakuraWorker,
-  TranslateJob,
-  TranslateJobRecord,
-} from '@/model/Translator';
+import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 
 import { useWorkspaceLog } from './useWorkspaceLog';
@@ -235,13 +230,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     task: TranslationTask,
     state: TaskState,
   ): void {
-    if (
-      !task.prepareExecution ||
-      !canUpload() ||
-      preparationTasks.has(job.task)
-    ) {
-      return;
-    }
+    if (!task.prepareExecution || preparationTasks.has(job.task)) return;
     const preparation = { controller: new AbortController(), settled: false };
     preparationTasks.set(job.task, preparation);
     const signal = preparation.controller.signal;
@@ -250,8 +239,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       preparationTasks.get(job.task) === preparation &&
       taskCache.get(job.task) === task &&
       taskStates.value.get(job.task) === state &&
-      !!findCurrentJob(job) &&
-      canUpload();
+      !!findCurrentJob(job);
     task
       .prepareExecution({
         signal,
@@ -296,7 +284,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     state: TaskState,
   ): void {
     if (!isSakura || !task.needsMetadata || !task.translateMetadata) return;
-    if (!canUpload() || metadataTasks.has(job.task)) return;
+    if (metadataTasks.has(job.task)) return;
     const metadata: MetadataState = {
       task,
       createAt: job.createAt,
@@ -311,8 +299,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       taskCache.get(job.task) === metadata.task &&
       jobs.value.some(
         (it) => it.task === job.task && it.createAt === metadata.createAt,
-      ) &&
-      canUpload();
+      );
 
     // 简介可能含换行，按行翻译后再按原行数拼回
     const translateTexts = async (texts: string[]) => {
@@ -357,6 +344,8 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
   function runProcessLoop(): void {
     if (disposed || !hasRunningWorker()) return;
+    // 没有获批的翻译器时不抓取新章节；审批恢复（启动翻译器）会再次触发本循环。
+    if (!canUpload()) return;
 
     for (const job of jobs.value) {
       if (job.finishAt) continue;
@@ -378,10 +367,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     processLoopAbortController = controller;
     const signal = controller.signal;
 
-    async function* source(): AsyncGenerator<TranslationWork> {
-      while (!signal.aborted && hasRunningWorker()) {
+    /** 取下一个可翻译章节；没有可做的活或审批失效时返回 undefined。 */
+    const nextWork = async (): Promise<TranslationWork | undefined> => {
+      // 审批失效时停止抓取新章节；恢复时会重新进入本循环。
+      while (!signal.aborted && hasRunningWorker() && canUpload()) {
         const item = getNextJob(jobs.value, taskStates.value);
-        if (!item) return;
+        if (!item) return undefined;
 
         const { job, chapterId, state } = item;
         const task = await getOrCreateTask(job.task);
@@ -392,7 +383,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         if (!isCurrentTask()) continue;
         if (signal.aborted) {
           state.updateStatus(chapterId, 'pending');
-          return;
+          return undefined;
         }
 
         const executor = new TaskExecutor(
@@ -429,7 +420,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
           if (isCurrentTask()) updateJobCompletion(job, task, state);
           continue;
         }
-        yield {
+        return {
           ...work,
           onComplete: async (result) => {
             await work.onComplete(result);
@@ -445,10 +436,24 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
           },
         };
       }
-    }
+      return undefined;
+    };
 
-    void pipeline
-      .run(source(), { signal })
+    void (async () => {
+      try {
+        // 推模型：投递一个章节再取下一个，队列满时 submit 自己等待。
+        for (;;) {
+          const work = await nextWork();
+          if (!work) break;
+          await pipeline.submit(work, signal);
+        }
+        await pipeline.drain();
+      } finally {
+        // 出错或取消时停掉在途输入，并等待结算回调收尾。
+        controller.abort();
+        await pipeline.drain().catch(() => {});
+      }
+    })()
       .catch((error) => {
         if (!signal.aborted) {
           appendLog('工作区', `章节翻译流水线失败：${error}`, 'warn');
@@ -458,7 +463,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       .finally(() => {
         if (processLoopAbortController !== controller) return;
         processLoopAbortController = null;
-        // source 已耗尽但回调仍在执行时，可能新增任务或重试章节。
+        // 本轮没有更多可做的章节，但任务可能新增或重试章节。
         if (countPendingChapters(jobs.value, taskStates.value) > 0) {
           runProcessLoop();
         }
@@ -486,13 +491,13 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       const secrets = 'key' in w ? [w.key] : [];
       const log = (msg: string) => appendLog(w.id, msg, 'info', secrets);
       log('正在启动翻译器');
-      const t = isSakura
-        ? await SakuraTranslator.create({ ...(w as SakuraWorker), log })
-        : new OpenAiTranslator({ ...(w as GptPipelineWorker), log });
+      const t = await createPipelineTranslator(translatorId, w, log);
 
       if (workerStates.value.get(workerId) !== state) return;
 
-      state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
+      const probe = await probeTranslator(t);
+      if (workerStates.value.get(workerId) !== state) return;
+      state.allowUpload = probe.approved;
 
       const workerTracker: TranslatorTracker = {
         onConcurrencyChange: (current: number) => {
@@ -503,7 +508,10 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
         concurrency: w.concurrency,
         tracker: workerTracker,
         id: w.id,
+        // 未通过自检时不派发任务，任务留在队列里等待而不是判失败。
+        approved: canUpload,
       });
+      pipeline.refreshApproval();
       log('翻译器已启动');
 
       runProcessLoop();
@@ -525,6 +533,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
+    pipeline.refreshApproval();
     appendLog(workerId, '翻译器已停止');
 
     workerStates.value.set(workerId, { ...state, running: false });

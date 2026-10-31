@@ -36,6 +36,21 @@ async function* stream(
   yield* works;
 }
 
+/** 推模型下的批量执行：逐项投递，最后等全部结算。 */
+async function runAll(
+  pipeline: TranslationPipeline,
+  source: AsyncIterable<TranslationWork>,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    for await (const work of source) await pipeline.submit(work, signal);
+    await pipeline.drain();
+    signal?.throwIfAborted();
+  } finally {
+    await pipeline.drain().catch(() => {});
+  }
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => (resolve = res));
@@ -43,7 +58,7 @@ function deferred<T>() {
 }
 
 describe('TranslationPipeline', () => {
-  it('按分段限制在途水位，容量释放后才拉取下一篇', async () => {
+  it('按水位限制入队，篇目最多领先一篇', async () => {
     const pipeline = createPipeline();
     const gates = Array.from({ length: 4 }, () => deferred<string[]>());
     let requestIndex = 0;
@@ -57,16 +72,17 @@ describe('TranslationPipeline', () => {
       pulled++;
       yield work('丁', { onComplete });
     }
-    const running = pipeline.run(source());
+    const running = runAll(pipeline, source());
     await vi.waitFor(() => expect(translate).toHaveBeenCalledTimes(1));
+    // 第一篇还有分段没入队，submit 仍被水位挡住，不会去拉第二篇。
     expect(pulled).toBe(1);
 
     gates[0].resolve(['一']);
-    await vi.waitFor(() => expect(translate).toHaveBeenCalledTimes(2));
-    expect(pulled).toBe(1);
+    await vi.waitFor(() => expect(pulled).toBe(2));
+    // 第二篇已投递，但同一时刻只有一段在翻译。
+    expect(translate).toHaveBeenCalledTimes(2);
 
     gates[1].resolve(['二']);
-    await vi.waitFor(() => expect(pulled).toBe(2));
     gates[2].resolve(['三']);
     gates[3].resolve(['四']);
     await running;
@@ -94,11 +110,12 @@ describe('TranslationPipeline', () => {
     const onComplete = vi.fn(() => saved.promise);
     const onError = vi.fn();
     let settled = false;
-    const running = pipeline
-      .run(stream(work('甲\n乙\n丙', { onComplete, onError })))
-      .then(() => {
-        settled = true;
-      });
+    const running = runAll(
+      pipeline,
+      stream(work('甲\n乙\n丙', { onComplete, onError })),
+    ).then(() => {
+      settled = true;
+    });
     await vi.waitFor(() =>
       expect(onComplete).toHaveBeenCalledWith({
         lines: ['一', '乙', '三'],
@@ -132,9 +149,10 @@ describe('TranslationPipeline', () => {
     const onError = vi.fn();
     const onAbort = vi.fn();
     const onComplete = vi.fn();
-    const running = pipeline.run(
+    const running = runAll(
+      pipeline,
       stream(work('甲\n乙', { onComplete, onError, onAbort })),
-      { signal: controller.signal },
+      controller.signal,
     );
     const rejected = expect(running).rejects.toMatchObject({
       name: 'AbortError',
@@ -154,6 +172,76 @@ describe('TranslationPipeline', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { name: '背压期间外部取消', dispose: false, lines: ['甲', '乙', '丙'] },
+    { name: '背压期间关闭流水线', dispose: true, lines: ['甲', '乙', '丙'] },
+    { name: '入队后关闭流水线', dispose: true, lines: ['甲'] },
+  ])('$name 只通知一次 onAbort', async ({ dispose, lines }) => {
+    const pipeline = createPipeline();
+    const controller = new AbortController();
+    const translate = vi.fn(
+      ({ signal }: TranslateRequest) =>
+        new Promise<string[]>((_, reject) => {
+          signal?.addEventListener('abort', () => reject(signal.reason), {
+            once: true,
+          });
+        }),
+    );
+    pipeline.registerTranslator({ translate });
+    const input = work(lines);
+    // dispose 场景不传外部 signal，确保使用的是流水线自身的取消信号。
+    const submitting = pipeline.submit(
+      input,
+      dispose ? undefined : controller.signal,
+    );
+    let submitted = false;
+    const outcome = submitting.then(
+      () => {
+        submitted = true;
+      },
+      (error: unknown) => error,
+    );
+    await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
+    expect(submitted).toBe(lines.length === 1);
+
+    if (dispose) pipeline.dispose();
+    else controller.abort();
+
+    if (lines.length > 1) {
+      await expect(outcome).resolves.toMatchObject({ name: 'AbortError' });
+    } else {
+      await expect(outcome).resolves.toBeUndefined();
+    }
+    await pipeline.drain();
+    expect(input.onAbort).toHaveBeenCalledOnce();
+    expect(input.onError).not.toHaveBeenCalled();
+    expect(input.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('准备失败只通知一次 onError，回调错误由 drain 上抛', async () => {
+    const prepareError = new Error('分段失败');
+    const callbackError = new Error('错误处理失败');
+    const pipeline = new TranslationPipeline({
+      segmenter: {
+        segment: () => {
+          throw prepareError;
+        },
+      },
+    });
+    pipelines.push(pipeline);
+    const input = work('甲', {
+      onError: vi.fn(() => {
+        throw callbackError;
+      }),
+    });
+
+    await expect(pipeline.submit(input)).resolves.toBeUndefined();
+    await expect(pipeline.drain()).rejects.toBe(callbackError);
+    expect(input.onError).toHaveBeenCalledExactlyOnceWith(prepareError);
+    expect(input.onAbort).not.toHaveBeenCalled();
+    expect(input.onComplete).not.toHaveBeenCalled();
+  });
+
   it('拉取期间取消也通知已取到的输入，并关闭源', async () => {
     const pipeline = createPipeline();
     const controller = new AbortController();
@@ -169,7 +257,7 @@ describe('TranslationPipeline', () => {
       }
     }
     await expect(
-      pipeline.run(source(), { signal: controller.signal }),
+      runAll(pipeline, source(), controller.signal),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(onAbort).toHaveBeenCalledOnce();
     expect(onError).not.toHaveBeenCalled();
@@ -232,7 +320,8 @@ describe('TranslationPipeline', () => {
     const onSegError = vi.fn();
     const id = pipeline.registerTranslator({ translate: first });
     const onComplete = vi.fn();
-    const running = pipeline.run(
+    const running = runAll(
+      pipeline,
       stream(work('甲', { onComplete, tracker: { onSegError } })),
     );
     await vi.waitFor(() => expect(first).toHaveBeenCalledTimes(1));
@@ -268,12 +357,31 @@ describe('TranslationPipeline', () => {
     });
   });
 
-  it('保存失败通知 onError，且保存背压也限制输入拉取', async () => {
+  it('未获批的翻译器不接任务，获批后恢复派发', async () => {
+    const pipeline = createPipeline();
+    let approved = false;
+    const translate = vi.fn(async ({ lines }: TranslateRequest) =>
+      lines.map((line) => `译${line}`),
+    );
+    pipeline.registerTranslator({ translate }, { approved: () => approved });
+    const pending = pipeline.translate({ lines: ['甲'] });
+
+    // 任务留在队列里等待，既不派发也不判失败。
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(translate).not.toHaveBeenCalled();
+
+    approved = true;
+    pipeline.refreshApproval();
+    await expect(pending).resolves.toEqual({ lines: ['译甲'], failed: [] });
+    expect(translate).toHaveBeenCalledOnce();
+  });
+
+  it('保存失败通知 onError，且 run 收尾前等待结算完成', async () => {
     const pipeline = createPipeline();
     pipeline.registerTranslator({ translate: async () => ['译文'] });
     const saving = deferred<void>();
     const error = new Error('保存失败');
-    let pulled = 0;
+    let finished = false;
     const onComplete = vi.fn(async () => {
       if (onComplete.mock.calls.length === 1) {
         await saving.promise;
@@ -281,18 +389,55 @@ describe('TranslationPipeline', () => {
       }
     });
     const onError = vi.fn();
-    async function* source() {
-      pulled++;
-      yield work('甲', { onComplete, onError });
-      pulled++;
-      yield work('乙');
-    }
-    const running = pipeline.run(source(), { maxPendingInputs: 1 });
+    const running = runAll(
+      pipeline,
+      stream(work('甲', { onComplete, onError })),
+    ).then(() => {
+      finished = true;
+    });
     await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
-    expect(pulled).toBe(1);
+    expect(finished).toBe(false);
+
     saving.resolve();
     await running;
-    expect(pulled).toBe(2);
     expect(onError).toHaveBeenCalledWith(error);
+    expect(finished).toBe(true);
+  });
+
+  it('submit 入队即返回，drain 等待结算', async () => {
+    const pipeline = createPipeline();
+    const gate = deferred<string[]>();
+    pipeline.registerTranslator({ translate: () => gate.promise });
+    const onComplete = vi.fn();
+
+    await pipeline.submit(work('甲', { onComplete }));
+    expect(onComplete).not.toHaveBeenCalled();
+
+    gate.resolve(['译甲']);
+    await pipeline.drain();
+    expect(onComplete).toHaveBeenCalledWith({ lines: ['译甲'], failed: [] });
+  });
+
+  it('submit 在队列满时等待，段完成后才返回', async () => {
+    const pipeline = createPipeline();
+    const gates = [1, 2, 3, 4].map(() => deferred<string[]>());
+    let call = 0;
+    pipeline.registerTranslator({ translate: () => gates[call++].promise });
+
+    let submitted = false;
+    const submitting = pipeline.submit(work('甲\n乙\n丙\n丁')).then(() => {
+      submitted = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 4 段、水位 2：还剩两段没位置。
+    expect(submitted).toBe(false);
+
+    gates[0].resolve(['一']);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(submitted).toBe(false);
+
+    gates[1].resolve(['二']);
+    await submitting;
+    expect(submitted).toBe(true);
   });
 });

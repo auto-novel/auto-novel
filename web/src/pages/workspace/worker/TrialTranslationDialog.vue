@@ -5,12 +5,8 @@ import {
   XDialog,
   useWebKitViewport,
 } from '@novelia/web-kit';
-import {
-  OpenAiTranslator,
-  SakuraTranslator,
-  TranslationPipeline,
-} from '@auto-novel/translator';
-import type { SegmentTracker } from '@auto-novel/translator';
+import { TranslationPipeline } from '@auto-novel/translator';
+import type { Translator, SegmentTracker } from '@auto-novel/translator';
 
 import TrialGlossaryPanel from './TrialGlossaryPanel.vue';
 
@@ -19,6 +15,10 @@ import { downloadFile } from '@/util';
 import type { Glossary } from '@/model/Glossary';
 import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
 import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import {
+  createPipelineTranslator,
+  probeTranslator,
+} from '@/domain/translator/createPipelineTranslator';
 
 const props = defineProps<{
   show: boolean;
@@ -170,7 +170,7 @@ const restoreDraft = () => {
   }
 };
 
-let translatorPromise: Promise<OpenAiTranslator | SakuraTranslator> | undefined;
+let translatorPromise: Promise<Translator> | undefined;
 let controller: AbortController | undefined;
 let generation = 0;
 let copiedTimer: number | undefined;
@@ -185,10 +185,9 @@ watch(
 const getTranslator = () => {
   // Sakura 初始化暂不支持 AbortSignal；保留同一个 Promise，避免停止后重试
   // 叠加模型探测请求。任务结果仍由 generation 隔离。
-  translatorPromise ??= (
-    isSakura.value
-      ? SakuraTranslator.create(props.worker as SakuraWorker)
-      : Promise.resolve(new OpenAiTranslator(props.worker as GptPipelineWorker))
+  translatorPromise ??= createPipelineTranslator(
+    props.translatorId,
+    props.worker,
   ).catch((e: unknown) => {
     translatorPromise = undefined;
     throw e;
@@ -279,6 +278,14 @@ const translate = async () => {
     if (current !== generation) return;
 
     phase.value = 'translating';
+    const probe = await probeTranslator(t);
+    if (current !== generation) return;
+    if (!probe.approved) {
+      // 未通过自检的端点不发送试译内容，与工作区的派发策略保持一致。
+      error.value = `翻译器未通过检查：${probe.reason ?? '未知原因'}`;
+      revealResult();
+      return;
+    }
     pipeline = new TranslationPipeline();
     pipeline.registerTranslator(t, { concurrency: 1 });
 
