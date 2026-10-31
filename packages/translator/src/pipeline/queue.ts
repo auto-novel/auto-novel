@@ -1,7 +1,26 @@
-import type { SegmentQueue, SegmentTask } from '@/types';
+import type { Segment } from '@/types';
 import { Semaphore } from '@/utils';
 
-export class DefaultSegmentQueue implements SegmentQueue {
+/** 分段级进度事件；一次输入共用一份。 */
+interface SegmentObserver {
+  /** 某分段开始翻译。 */
+  start(segment: Segment, translatorId: string): void;
+  /** 某分段完成，译文已合并透传行。 */
+  complete(segment: Segment, translatedLines: readonly string[]): void;
+  /** 某分段失败。 */
+  error(segment: Segment, error: unknown): void;
+}
+
+/** 队列搬运的单位：分段 + 结算句柄 + 该输入的事件出口。 */
+export interface SegmentTask {
+  readonly segment: Segment;
+  readonly observer: SegmentObserver;
+  readonly signal?: AbortSignal;
+  resolve(translatedLines: string[]): void;
+  reject(error: unknown): void;
+}
+
+export class SegmentQueue {
   private readonly _items: SegmentTask[] = [];
   /** 入队容量，由流水线按已注册翻译器的总并发设置；设置前只允许 1 个在途分段。 */
   private _highWaterMark = 1;

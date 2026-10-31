@@ -1,12 +1,13 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 
-import type { SakuraVersion } from './sakura-translator';
+import type { SakuraVersion } from './sakura';
 
-export type ModelMeta = Record<string, number>;
+export type ModelMeta = Readonly<Record<string, number>>;
 
-export const allowModels: {
-  [key: string]: { repo: string; meta: ModelMeta };
-} = {
+/** 同时用于审批和公示；记录及嵌套元数据均不允许外部修改。 */
+export const allowModels: Readonly<
+  Record<string, { readonly repo: string; readonly meta: ModelMeta }>
+> = Object.freeze({
   'sakura-14b-qwen2.5-v1.0-iq4xs': {
     repo: 'SakuraLLM/Sakura-14B-Qwen2.5-v1.0-GGUF',
     meta: {
@@ -51,7 +52,11 @@ export const allowModels: {
       size: 17728790528,
     },
   },
-};
+});
+for (const model of Object.values(allowModels)) {
+  Object.freeze(model.meta);
+  Object.freeze(model);
+}
 
 export const cleanSakuraOutput = (text: string): string =>
   text.replaceAll('<|im_end|>', '').replace(/\r\n?/g, '\n');
@@ -59,7 +64,7 @@ export const cleanSakuraOutput = (text: string): string =>
 export const createSakuraPromptBuilder = (
   version: SakuraVersion,
 ): PromptBuilder => {
-  const build = (lines: string[], context?: SegmentContext) => {
+  const build = (lines: readonly string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
@@ -140,7 +145,10 @@ export const createSakuraPromptBuilder = (
     return messages;
   };
 
-  const parseAnswer = (answer: string, _originalLines: string[]): string[] => {
+  const parseAnswer = (
+    answer: string,
+    _originalLines: readonly string[],
+  ): string[] => {
     const splitText = cleanSakuraOutput(answer).split('\n');
     return splitText;
   };

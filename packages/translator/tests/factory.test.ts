@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createTranslator } from '../src/translator/factory';
-import { OpenAiTranslator } from '../src/translator/openai-translator';
-import { SakuraTranslator } from '../src/translator/sakura-translator';
+import { createTranslator } from '../src/factory';
+import { OpenAiTranslator } from '../src/translator/llm';
+import { SakuraTranslator } from '../src/translator/sakura';
 
 const sakuraMeta = {
   vocab_type: 2,

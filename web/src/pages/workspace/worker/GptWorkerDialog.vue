@@ -6,7 +6,9 @@ import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
 import {
   openAiProfiles,
+  parseOpenAiProfileSelection,
   type openAiProfileId,
+  type OpenAiProfileSelection,
   type ProfileValues,
 } from '@auto-novel/translator';
 
@@ -51,7 +53,20 @@ const initFormValue = (
   profileId: openAiProfileId;
   profileValues: ProfileValues;
 } => {
-  const profileId = worker?.profile?.id ?? DEFAULT_PROFILE_ID;
+  // localStorage 的泛型不校验 JSON；旧非法参数回到默认值，保留可识别的接口格式。
+  let profile: OpenAiProfileSelection | undefined;
+  if (worker?.profile !== undefined) {
+    try {
+      profile = parseOpenAiProfileSelection(worker.profile);
+    } catch {
+      const id = openAiProfiles.find((p) => p.id === worker.profile?.id)?.id;
+      if (id) profile = parseOpenAiProfileSelection({ id });
+      if (props.show) {
+        Toast.warning('已保存的模型配置参数无效，已恢复默认参数，请确认后保存');
+      }
+    }
+  }
+  const profileId = profile?.id ?? DEFAULT_PROFILE_ID;
   const defaultValues = defaultProfileValues(profileId);
 
   if (worker === undefined) {
@@ -74,7 +89,7 @@ const initFormValue = (
       profileId,
       profileValues: {
         ...defaultValues,
-        ...(worker.profile?.values ?? {}),
+        ...(profile?.values ?? {}),
       },
     };
   }
@@ -369,12 +384,20 @@ const validateIds = (): string | null => {
   return null;
 };
 
-const addWorkers = () => {
+const profileForSave = (): OpenAiProfileSelection | undefined => {
+  try {
+    return parseOpenAiProfileSelection({
+      id: formValue.value.profileId,
+      values: formValue.value.profileValues,
+    });
+  } catch (error) {
+    Toast.warning(error instanceof Error ? error.message : '模型配置参数无效');
+    return undefined;
+  }
+};
+
+const addWorkers = (profile: OpenAiProfileSelection) => {
   const endpoint = formValue.value.endpoint.trim();
-  const profile = {
-    id: formValue.value.profileId,
-    values: { ...formValue.value.profileValues },
-  };
   for (const w of generatedWorkers.value) {
     workspace.addWorker({
       id: workerName(w),
@@ -395,23 +418,23 @@ const submit = async () => {
       Toast.warning(idError);
       return;
     }
-    addWorkers();
+    const profile = profileForSave();
+    if (!profile) return;
+    addWorkers(profile);
     Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
     emit('update:show', false);
   } else {
     if (!(await doValidate())) return;
-    const { id, model, endpoint, key, concurrency, profileId, profileValues } =
-      formValue.value;
+    const profile = profileForSave();
+    if (!profile) return;
+    const { id, model, endpoint, key, concurrency } = formValue.value;
     const worker = {
       id: id.trim(),
       model: model.trim(),
       endpoint: endpoint.trim(),
       key: key.trim(),
       concurrency,
-      profile: {
-        id: profileId,
-        values: { ...profileValues },
-      },
+      profile,
     };
     const index = workspaceRef.value.workers.findIndex(
       (w) => w.id === props.worker?.id,
@@ -429,7 +452,9 @@ const submitAndContinue = async () => {
     Toast.warning(idError);
     return;
   }
-  addWorkers();
+  const profile = profileForSave();
+  if (!profile) return;
+  addWorkers(profile);
   Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
 };
 

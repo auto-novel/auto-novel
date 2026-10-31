@@ -4,7 +4,7 @@ import {
   attemptTranslation,
   TRANSLATION_RETRIES,
 } from '../src/pipeline/attempt';
-import { TranslationRejected } from '../src/translator/errors';
+import { TranslationRejected } from '../src/errors';
 
 const request = { lines: ['甲', '乙'] };
 

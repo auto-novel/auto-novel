@@ -1,30 +1,31 @@
-import {
-  createLineSegmenter,
-  createSegmentAssembler,
-  DefaultSegmentQueue,
-} from '@/segment';
-import {
+import { createLineSegmenter, assembleSegments } from './segment';
+import { SegmentQueue, type SegmentTask } from './queue';
+import type {
   LineSegmenter,
-  Segment,
-  SegmentAssembler,
-  SegmentObserver,
-  SegmentTask,
-  TranslationLoop,
   TranslationInput,
   TranslationResult,
   TranslationWork,
   Translator,
   SegmentCache,
   TranslatorOptions,
-  TranslatorTracker,
 } from '@/types';
 import { Semaphore, anySignal, randomUUID } from '@/utils';
 import {
   mergeTranslatedLines,
   splitPassthroughLines,
-} from '@/translation-lines';
+  postprocessTranslationLines,
+} from './lines';
 import { attemptTranslation } from './attempt';
-import { postprocessTranslationLines } from './postprocess';
+
+interface TranslationLoop {
+  id: string;
+  translator: Translator;
+  abortController: AbortController;
+  /** 并发数，缺省为 1。 */
+  concurrency?: number;
+  /** 能否向该循环派发任务；缺省视为允许。 */
+  approved?: () => boolean;
+}
 
 /** 一个输入切分后的任务与整体结果。 */
 type PreparedInput = {
@@ -40,10 +41,9 @@ type StartedInput = {
 };
 
 export class TranslationPipeline {
-  private readonly queue: DefaultSegmentQueue;
+  private readonly queue: SegmentQueue;
   private readonly translatorLoops: Map<string, TranslationLoop>;
   private readonly segmenter: LineSegmenter;
-  private readonly assembler: SegmentAssembler;
   private readonly cache?: SegmentCache;
   /** 当前生命周期；dispose 时取消所有未完成输入，之后换成新的。 */
   private lifecycle = new AbortController();
@@ -61,9 +61,8 @@ export class TranslationPipeline {
     options: { segmenter?: LineSegmenter; cache?: SegmentCache } = {},
   ) {
     this.translatorLoops = new Map();
-    this.queue = new DefaultSegmentQueue();
+    this.queue = new SegmentQueue();
     this.segmenter = options.segmenter ?? createLineSegmenter(1500, 30);
-    this.assembler = createSegmentAssembler();
     this.cache = options.cache;
   }
 
@@ -165,18 +164,16 @@ export class TranslationPipeline {
     signal?.throwIfAborted();
     const { lines, glossary, history, tracker } = input;
     const ranges = this.segmenter.segment(lines);
-    const segments = this.assembler.assemble(
+    const segments = assembleSegments(
       randomUUID(),
       lines,
       ranges,
       glossary ?? {},
       history,
     );
-    tracker?.onSegmentsReady?.(
-      segments.map(({ order, lines }) => ({ order, lines })),
-    );
+    tracker?.onSegmentsReady?.(segments);
     // 取消后不再向调用方转发分段事件，避免把取消记成分段失败。
-    const observer: SegmentObserver = {
+    const observer: SegmentTask['observer'] = {
       start: (segment, translatorId) => {
         if (!signal?.aborted)
           tracker?.onSegStart?.(segment.order, translatorId);
@@ -248,7 +245,7 @@ export class TranslationPipeline {
     };
     this.translatorLoops.set(id, loop);
     this._updateHighWaterMark();
-    this._startLoop(loop, options.tracker);
+    this._startLoop(loop, options.onActiveCountChange);
     return id;
   }
 
@@ -296,13 +293,13 @@ export class TranslationPipeline {
 
   private async _startLoop(
     loop: TranslationLoop,
-    tracker?: TranslatorTracker,
+    onActiveCountChange?: (activeCount: number) => void,
   ): Promise<void> {
     const semaphore = new Semaphore(loop.concurrency ?? 1);
     let activeCount = 0;
-    const updateConcurrency = (delta: number) => {
-      activeCount = activeCount + delta;
-      tracker?.onConcurrencyChange?.(activeCount, semaphore.max);
+    const updateActiveCount = (delta: number) => {
+      activeCount += delta;
+      onActiveCountChange?.(activeCount);
     };
 
     /** 返回 `'requeued'` 表示该分段只是换了翻译器，不算失败。 */
@@ -312,7 +309,7 @@ export class TranslationPipeline {
       const { segment, observer, signal } = task;
       signal?.throwIfAborted();
       // 缓存和历史也要恢复格式；损坏的旧结果视为未命中，重新翻译。
-      const reuse = (lines: string[]) => {
+      const reuse = (lines: readonly string[]) => {
         let processed: string[];
         try {
           processed = postprocessTranslationLines(segment.lines, lines);
@@ -385,7 +382,7 @@ export class TranslationPipeline {
       await semaphore.acquire();
       try {
         const task = await this.queue.dequeue(loop.abortController.signal);
-        updateConcurrency(1);
+        updateActiveCount(1);
         let requeued = false;
         processTask(task)
           .then((outcome) => {
@@ -399,7 +396,7 @@ export class TranslationPipeline {
             // 退回队列的分段仍算在途，由下一个消费者 ack。
             if (!requeued) this.queue.ack();
             semaphore.release();
-            updateConcurrency(-1);
+            updateActiveCount(-1);
           });
       } catch (err: any) {
         semaphore.release();

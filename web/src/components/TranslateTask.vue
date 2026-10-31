@@ -115,8 +115,11 @@ const startTask = async (
         chapterError.value += 1;
         onProgressUpdated();
       },
-      log: (message: string, detail?: string[]) => {
-        cardRef.value!.pushLog({ message, detail });
+      log: (message: string, detail?: readonly string[]) => {
+        cardRef.value!.pushLog({
+          message,
+          detail: detail === undefined ? undefined : [...detail],
+        });
       },
     },
     translatorDesc,

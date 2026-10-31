@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { OpenAiTranslator } from '../src/translator/openai-translator';
+import { OpenAiTranslator } from '../src/translator/llm';
 import { attemptTranslation } from '../src/pipeline/attempt';
 
 // ============================================================

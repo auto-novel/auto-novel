@@ -1,3 +1,4 @@
+/** 通用 LLM 调用客户端：基于 pi-ai 适配协议，封装 SDK 与网关兼容细节。 */
 import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy';
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
 import { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy';
@@ -8,7 +9,6 @@ import type {
   Message,
   Model,
 } from '@earendil-works/pi-ai';
-import { createPiAiFetch } from './pi-ai-fetch';
 
 export type PiAiProtocol =
   | 'openai-completions'
@@ -216,4 +216,41 @@ function normalizeEndpoint(endpoint: string, protocol: PiAiProtocol): string {
   }
   url.pathname = pathname || '/';
   return url.toString().replace(/\/$/, '');
+}
+
+function createPiAiFetch(
+  request: Pick<
+    PiAiCompletionRequest,
+    'protocol' | 'endpoint' | 'key' | 'fetch'
+  >,
+): FetchFunction {
+  const fetch = request.fetch ?? globalThis.fetch;
+  const isOpenRouterMessages =
+    request.protocol === 'anthropic-messages' &&
+    new URL(request.endpoint).hostname === 'openrouter.ai';
+
+  return (input, init) => {
+    const headers = new Headers(
+      init?.headers ?? (input instanceof Request ? input.headers : undefined),
+    );
+    // SDK metadata is not part of the API protocol and can fail gateway CORS.
+    const sdkHeaders: string[] = [];
+    headers.forEach((_, name) => {
+      if (name.startsWith('x-stainless-') || name === 'user-agent') {
+        sdkHeaders.push(name);
+      }
+    });
+    for (const name of sdkHeaders) headers.delete(name);
+
+    if (isOpenRouterMessages) {
+      // OpenRouter requires Bearer auth and does not allow these Anthropic headers.
+      headers.set('authorization', `Bearer ${request.key}`);
+      headers.delete('x-api-key');
+      headers.delete('anthropic-version');
+      headers.delete('anthropic-dangerous-direct-browser-access');
+      headers.delete('anthropic-beta');
+    }
+
+    return fetch(input, { ...init, headers });
+  };
 }

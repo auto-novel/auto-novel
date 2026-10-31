@@ -7,10 +7,10 @@ import type {
   PromptBuilder,
 } from '@/types';
 
-import { validateTranslationLines } from '@/translation-lines';
+import { validateTranslationLines } from '@/pipeline/lines';
 import { getPreviousSource, isAbortError } from '@/utils';
-import { TranslationRejected } from './errors';
-import { createOpenAiApi } from './openai-api';
+import { TranslationRejected } from '@/errors';
+import { createOpenAiApi } from './sakura-client';
 import {
   allowModels,
   cleanSakuraOutput,
@@ -28,7 +28,13 @@ export type SakuraTranslatorConfig = {
   log?: Logger;
 };
 
+type SakuraModel = {
+  readonly id: string;
+  readonly meta: ModelMeta;
+};
+
 type ResolvedSakuraTranslatorConfig = {
+  model?: SakuraModel;
   api: ReturnType<typeof createOpenAiApi>;
   version: SakuraVersion;
   prevSegLength: number;
@@ -42,12 +48,15 @@ export class SakuraTranslator implements Translator {
   private prevSegLength: number;
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
-  model?: {
-    id: string;
-    meta: ModelMeta;
-  };
+  private readonly detectedModel?: SakuraModel;
+
+  /** 探测结果只读公开；审批使用的模型及元数据在创建后不可变。 */
+  get model(): SakuraModel | undefined {
+    return this.detectedModel;
+  }
 
   private constructor(config: ResolvedSakuraTranslatorConfig) {
+    this.detectedModel = config.model;
     this.api = config.api;
     this.version = config.version;
     this.prevSegLength = config.prevSegLength;
@@ -64,15 +73,14 @@ export class SakuraTranslator implements Translator {
     const log = config.log ?? (() => {});
     const model = await SakuraTranslator.detectModel(api, log);
     const version = SakuraTranslator.detectVersion(model?.id);
-    const translator = new SakuraTranslator({
+    return new SakuraTranslator({
+      model,
       api,
       version,
       prevSegLength: config.prevSegLength ?? 500,
       promptBuilder: config.promptBuilder ?? createSakuraPromptBuilder(version),
       log,
     });
-    translator.model = model;
-    return translator;
   }
 
   /** 只有与本仓库登记过的模型一致时才允许把内容发往该端点。 */
@@ -203,14 +211,14 @@ export class SakuraTranslator implements Translator {
     if (model === undefined) {
       return undefined;
     }
-    return {
+    return Object.freeze({
       id: model.id.replace(/(.gguf)$/, ''),
-      meta: model.meta as ModelMeta,
-    };
+      meta: Object.freeze({ ...(model.meta as ModelMeta) }),
+    });
   }
 
   private async createChatCompletions(
-    lines: string[],
+    lines: readonly string[],
     context?: SegmentContext,
     hasDegradation?: boolean,
     signal?: AbortSignal,
@@ -241,7 +249,7 @@ export class SakuraTranslator implements Translator {
   }
 
   private async translateLineByLine(
-    lines: string[],
+    lines: readonly string[],
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {

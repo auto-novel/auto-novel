@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createSegmentAssembler, createLineSegmenter } from '../src/segment';
+import { assembleSegments, createLineSegmenter } from '../src/pipeline/segment';
 import type { Glossary, TranslationHistory } from '../src/types';
 
 // ============================================================
@@ -108,9 +108,9 @@ describe('createLineSegmenter', () => {
 });
 
 // ============================================================
-// createSegmentAssembler 测试
+// assembleSegments 测试
 // ============================================================
-describe('createSegmentAssembler', () => {
+describe('assembleSegments', () => {
   const id = 'test-id';
 
   const makeRanges = (
@@ -119,11 +119,10 @@ describe('createSegmentAssembler', () => {
     pairs.map(([start, end]) => ({ start, end }));
 
   it('应正确组装基本 Segment', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello', 'world', 'foo'];
     const ranges = makeRanges([0, 2], [2, 3]);
 
-    const segments = assembler.assemble(id, lines, ranges, {});
+    const segments = assembleSegments(id, lines, ranges, {});
 
     expect(segments).toHaveLength(2);
 
@@ -144,7 +143,6 @@ describe('createSegmentAssembler', () => {
   });
 
   it('应过滤 glossary，只保留当前段行中出现的词条', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello world', 'foo bar', 'baz'];
     const ranges = makeRanges([0, 2], [2, 3]);
     const glossary: Glossary = {
@@ -154,7 +152,7 @@ describe('createSegmentAssembler', () => {
       baz: '巴兹',
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary);
+    const segments = assembleSegments(id, lines, ranges, glossary);
 
     // 段0: ['hello world', 'foo bar'] => 包含 hello, world
     expect(segments[0].context.glossary).toEqual({
@@ -169,15 +167,13 @@ describe('createSegmentAssembler', () => {
   });
 
   it('无 history 时所有段 expired 为 true', () => {
-    const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(id, ['a', 'b'], makeRanges([0, 2]), {});
+    const segments = assembleSegments(id, ['a', 'b'], makeRanges([0, 2]), {});
 
     expect(segments[0].context.expired).toBe(true);
     expect(segments[0].context.history).toBeUndefined();
   });
 
   it('有 history 且原文和术语表一致时 expired 为 false', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello', 'world'];
     const ranges = makeRanges([0, 2]);
     const glossary: Glossary = { hello: '你好' };
@@ -188,7 +184,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' },
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary, history);
+    const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(false);
     expect(segments[0].context.history).toEqual({
@@ -199,7 +195,6 @@ describe('createSegmentAssembler', () => {
   });
 
   it('有 history 但原文不一致时 expired 为 true', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello', 'changed'];
     const ranges = makeRanges([0, 2]);
     const glossary: Glossary = { hello: '你好' };
@@ -210,7 +205,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' },
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary, history);
+    const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(true);
     // history 仍然保留旧数据
@@ -218,7 +213,6 @@ describe('createSegmentAssembler', () => {
   });
 
   it('有 history 但术语表不一致时 expired 为 true', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello', 'world'];
     const ranges = makeRanges([0, 2]);
     const glossary: Glossary = { hello: '你好', world: '世界' };
@@ -229,13 +223,12 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' }, // 缺少 world
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary, history);
+    const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(true);
   });
 
   it('history 的 glossary 过滤应基于当前段原文，而非历史原文', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['hello', 'world'];
     const ranges = makeRanges([0, 2]);
     const glossary: Glossary = { hello: '你好', world: '世界' };
@@ -246,7 +239,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好', world: '世界', extra: '额外' }, // 历史 glossary 有额外词条
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary, history);
+    const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     // 历史 glossary 被过滤为只包含当前段原文中出现的词条
     expect(segments[0].context.history?.glossary).toEqual({
@@ -258,7 +251,6 @@ describe('createSegmentAssembler', () => {
   });
 
   it('多个段各自独立过滤 glossary 和 history', () => {
-    const assembler = createSegmentAssembler();
     const lines = ['cat', 'dog', 'bird'];
     const ranges = makeRanges([0, 2], [2, 3]);
     const glossary: Glossary = { cat: '猫', dog: '狗', bird: '鸟' };
@@ -269,7 +261,7 @@ describe('createSegmentAssembler', () => {
       glossary: { cat: '猫', dog: '狗', bird: '鸟' },
     };
 
-    const segments = assembler.assemble(id, lines, ranges, glossary, history);
+    const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     // 段0: ['cat', 'dog'] => glossary 只有 cat, dog
     expect(segments[0].context.glossary).toEqual({ cat: '猫', dog: '狗' });
@@ -283,14 +275,12 @@ describe('createSegmentAssembler', () => {
   });
 
   it('空行数组应返回空 Segment 数组', () => {
-    const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(id, [], [], {});
+    const segments = assembleSegments(id, [], [], {});
     expect(segments).toEqual([]);
   });
 
   it('空 glossary 不应影响组装', () => {
-    const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(id, ['a'], makeRanges([0, 1]), {});
+    const segments = assembleSegments(id, ['a'], makeRanges([0, 1]), {});
     expect(segments).toHaveLength(1);
     expect(segments[0].context.glossary).toEqual({});
   });

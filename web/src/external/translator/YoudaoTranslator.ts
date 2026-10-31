@@ -19,7 +19,7 @@ const getClient = lazy(async (): Promise<KyInstance> => {
 });
 
 export const createYoudaoTranslator = async (
-  log?: (message: string, detail?: string[]) => void,
+  log?: (message: string, detail?: readonly string[]) => void,
 ) =>
   new PackageYoudaoTranslator({
     client: await getClient(),

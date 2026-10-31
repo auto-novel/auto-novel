@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_FIELD_VALUE } from '../src/translator/profiles/types';
 import {
+  DEFAULT_FIELD_VALUE,
   buildOpenAiProfileParams,
   openAiProfiles,
-} from '../src/translator/profiles/openai';
+} from '../src/translator/llm-profiles';
 
 // ============================================================
 // 模型配置预设测试

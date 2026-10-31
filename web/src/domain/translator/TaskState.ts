@@ -1,4 +1,4 @@
-import type { SegmentSummary, SegmentTracker } from '@auto-novel/translator';
+import type { Segment, SegmentTracker } from '@auto-novel/translator';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
@@ -15,9 +15,19 @@ export interface SegmentInfo {
   status: SegmentStatus;
   lines: string[];
   translatedLines: string[];
-  error: any;
+  error: unknown;
   translatorId?: string;
 }
+
+/** 翻译器可能抛出任意值，展示时优先取可读消息。 */
+const errorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return String(error);
+};
 
 export class ChapterSegmentState implements SegmentTracker {
   readonly chapterId: string;
@@ -48,10 +58,10 @@ export class ChapterSegmentState implements SegmentTracker {
     return reactive(this) as ChapterSegmentState;
   }
 
-  onSegmentsReady(segments: SegmentSummary[]): void {
+  onSegmentsReady(segments: readonly Segment[]): void {
     this.segments = segments.map((segment) => ({
       status: 'pending',
-      lines: segment.lines,
+      lines: [...segment.lines],
       translatedLines: [],
       error: null,
     }));
@@ -66,15 +76,18 @@ export class ChapterSegmentState implements SegmentTracker {
     }
   }
 
-  onSegComplete(segmentOrder: number, translatedLines: string[]): void {
+  onSegComplete(
+    segmentOrder: number,
+    translatedLines: readonly string[],
+  ): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
       seg.status = 'done';
-      seg.translatedLines = translatedLines;
+      seg.translatedLines = [...translatedLines];
     }
   }
 
-  onSegError(segmentOrder: number, error: any): void {
+  onSegError(segmentOrder: number, error: unknown): void {
     const seg = this.segments[segmentOrder];
     if (seg) {
       seg.status = 'error';
@@ -90,7 +103,7 @@ export class ChapterSegmentState implements SegmentTracker {
 
   getSegmentError(segmentOrder: number): string | undefined {
     const err = this.segments[segmentOrder]?.error;
-    return err ? err.message ?? String(err) : undefined;
+    return err ? errorMessage(err) : undefined;
   }
 
   /** 为已完成的章节注入整章译文 */

@@ -2,7 +2,7 @@ import type { PromptBuilder, SegmentContext } from '@/types';
 import { filterGlossaryForLines } from '@/utils';
 
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
-  const build = (lines: string[], context?: SegmentContext) => {
+  const build = (lines: readonly string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
@@ -47,7 +47,10 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     return messages;
   };
 
-  const parseAnswer = (answer: string, originalLines: string[]): string[] => {
+  const parseAnswer = (
+    answer: string,
+    originalLines: readonly string[],
+  ): string[] => {
     const lineContentMap = new Map<number, string>();
 
     for (const line of answer.split('\n')) {

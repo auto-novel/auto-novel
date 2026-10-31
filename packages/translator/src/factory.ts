@@ -3,11 +3,11 @@ import type { Logger, Translator } from '@/types';
 import {
   OpenAiTranslator,
   type OpenAiTranslatorConfig,
-} from './openai-translator';
+} from './translator/llm';
 import {
   SakuraTranslator,
   type SakuraTranslatorConfig,
-} from './sakura-translator';
+} from './translator/sakura';
 
 /** 可按配置直接创建的翻译器；有道需要浏览器插件提供的客户端，不在此列。 */
 export type TranslatorConfig =

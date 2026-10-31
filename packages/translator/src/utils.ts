@@ -2,9 +2,9 @@ import type { Glossary } from '@/types';
 
 export const filterGlossaryForLines = (
   glossary: Glossary,
-  lines: string[],
+  lines: readonly string[],
 ): Glossary => {
-  const filtered: Glossary = {};
+  const filtered: Record<string, string> = {};
   for (const word in glossary) {
     if (lines.some((line) => line.includes(word))) {
       filtered[word] = glossary[word];

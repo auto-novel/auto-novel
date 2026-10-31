@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DefaultSegmentQueue } from '../src/segment';
-import type { SegmentTask } from '../src/types';
+import { SegmentQueue, type SegmentTask } from '../src/pipeline/queue';
 
-describe('DefaultSegmentQueue', () => {
-  let queue: DefaultSegmentQueue;
+describe('SegmentQueue', () => {
+  let queue: SegmentQueue;
   const HWM = 3; // 测试用高水位线
 
   // 模拟数据的辅助函数
@@ -19,7 +18,7 @@ describe('DefaultSegmentQueue', () => {
   });
 
   beforeEach(() => {
-    queue = new DefaultSegmentQueue();
+    queue = new SegmentQueue();
     queue.setHighWaterMark(HWM);
   });
 

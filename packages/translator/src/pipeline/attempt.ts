@@ -1,5 +1,5 @@
-import { isContentRejection, TranslationRejected } from '@/translator/errors';
-import { validateTranslationLines } from '@/translation-lines';
+import { isContentRejection, TranslationRejected } from '@/errors';
+import { validateTranslationLines } from './lines';
 import type { TranslateRequest, Translator } from '@/types';
 
 /** 每个分段的最大尝试次数。 */
@@ -13,14 +13,14 @@ export const TRANSLATION_RETRIES = 3;
 export async function attemptTranslation(
   translator: Translator,
   request: Omit<TranslateRequest, 'attempt'>,
-): Promise<string[]> {
+): Promise<readonly string[]> {
   const log = translator.log ?? (() => {});
   let contentFailures = 0;
   let lastError: unknown;
 
   for (let attempt = 0; attempt < TRANSLATION_RETRIES; attempt++) {
     request.signal?.throwIfAborted();
-    let translated: string[];
+    let translated: readonly string[];
     try {
       translated = await translator.translate({ ...request, attempt });
     } catch (error) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createPiAiCompletion } from '../src/translator/pi-ai-api';
+import { createPiAiCompletion } from '../src/translator/llm-client';
 
 const sse = (events: Array<{ event?: string; data: unknown }>) =>
   events

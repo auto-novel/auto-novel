@@ -9,7 +9,7 @@ export type Segmentor = (
   textZh?: string[],
 ) => [string[], string[]?][];
 
-export type Logger = (message: string, detail?: string[]) => void;
+export type Logger = (message: string, detail?: readonly string[]) => void;
 
 export type SegmentContext = {
   glossary: Glossary;
@@ -22,7 +22,7 @@ export interface SegmentTranslator {
   id: TranslatorId;
   segmentor: Segmentor;
   translate: (seg: string[], context: SegmentContext) => Promise<string[]>;
-  log: (message: string, detail?: string[]) => void;
+  log: (message: string, detail?: readonly string[]) => void;
 }
 
 export const createLengthSegmentor = (

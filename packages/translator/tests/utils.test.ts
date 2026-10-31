@@ -5,9 +5,9 @@ import {
   mergeTranslatedLines,
   splitPassthroughLines,
   validateTranslationLines,
-} from '../src/translation-lines';
-import { postprocessTranslationLines } from '../src/pipeline/postprocess';
-import { createOpenAiPromptBuilder } from '../src/translator/openai-prompt';
+  postprocessTranslationLines,
+} from '../src/pipeline/lines';
+import { createOpenAiPromptBuilder } from '../src/translator/llm-prompt';
 import {
   cleanSakuraOutput,
   createSakuraPromptBuilder,

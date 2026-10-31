@@ -11,25 +11,24 @@ import {
   createPiAiCompletion,
   PiAiRequestError,
   type PiAiProtocol,
-} from './pi-ai-api';
-import { TranslationRejected } from './errors';
-import { createOpenAiPromptBuilder } from './openai-prompt';
+} from './llm-client';
+import { TranslationRejected } from '@/errors';
+import { createOpenAiPromptBuilder } from './llm-prompt';
 
 import {
   buildOpenAiProfileParams,
   openAiProfiles,
-  type openAiProfileId,
-} from './profiles/openai';
-import { DEFAULT_FIELD_VALUE, type ProfileValues } from './profiles/types';
+  parseOpenAiProfileSelection,
+  DEFAULT_FIELD_VALUE,
+  type OpenAiProfileSelection,
+} from './llm-profiles';
 
 export type OpenAiTranslatorConfig = {
   endpoint: string;
   key: string;
   model: string;
-  profile?: {
-    id: openAiProfileId;
-    values?: ProfileValues;
-  };
+  /** 持久化数据未经类型校验，构造时统一校验一次。 */
+  profile?: OpenAiProfileSelection;
   promptBuilder?: PromptBuilder;
   log?: Logger;
 };
@@ -47,16 +46,16 @@ export class OpenAiTranslator implements Translator {
   constructor(config: OpenAiTranslatorConfig) {
     this.endpoint = config.endpoint;
     this.key = config.key;
+    const profile =
+      config.profile === undefined
+        ? undefined
+        : parseOpenAiProfileSelection(config.profile);
     const apiFormat =
-      openAiProfiles.find((p) => p.id === config.profile?.id)?.apiFormat ??
-      'openai';
+      openAiProfiles.find((p) => p.id === profile?.id)?.apiFormat ?? 'openai';
     this.protocol = apiFormat === 'openai' ? 'openai-completions' : apiFormat;
     this.model = config.model;
-    this.profileParams = buildOpenAiProfileParams(
-      config.profile?.id,
-      config.profile?.values,
-    );
-    const effort = config.profile?.values?.reasoning_effort;
+    this.profileParams = buildOpenAiProfileParams(profile?.id, profile?.values);
+    const effort = profile?.values?.reasoning_effort;
     this.reasoningEffort =
       !effort || effort === DEFAULT_FIELD_VALUE ? '默认' : String(effort);
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
@@ -97,7 +96,7 @@ export class OpenAiTranslator implements Translator {
   }
 
   private async translateLines(
-    lines: string[],
+    lines: readonly string[],
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
@@ -119,7 +118,7 @@ export class OpenAiTranslator implements Translator {
   }
 
   private async binaryTranslate(
-    lines: string[],
+    lines: readonly string[],
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {

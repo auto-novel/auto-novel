@@ -1,10 +1,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { Toast } from '@novelia/web-kit';
 import { TranslationPipeline } from '@auto-novel/translator';
-import type {
-  TranslatorTracker,
-  TranslationWork,
-} from '@auto-novel/translator';
+import type { TranslationWork } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
@@ -499,14 +496,11 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       if (workerStates.value.get(workerId) !== state) return;
       state.allowUpload = probe.approved;
 
-      const workerTracker: TranslatorTracker = {
-        onConcurrencyChange: (current: number) => {
-          state.currentConcurrency = current;
-        },
-      };
       pipeline.registerTranslator(t, {
         concurrency: w.concurrency,
-        tracker: workerTracker,
+        onActiveCountChange: (activeCount) => {
+          state.currentConcurrency = activeCount;
+        },
         id: w.id,
         // 未通过自检时不派发任务，任务留在队列里等待而不是判失败。
         approved: canUpload,

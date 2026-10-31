@@ -3,8 +3,8 @@ import type { KyInstance } from 'ky';
 import type { Logger, TranslateRequest, Translator } from '@/types';
 import { RegexUtil, safeJson } from '@/utils';
 
-import { TranslationUnavailable } from './errors';
-import { createYoudaoApi, type YoudaoTranslateResult } from './youdao-api';
+import { TranslationUnavailable } from '@/errors';
+import { createYoudaoApi, type YoudaoTranslateResult } from './youdao-client';
 import { createGlossaryCodec } from './youdao-glossary';
 
 export type YoudaoTranslatorConfig = {

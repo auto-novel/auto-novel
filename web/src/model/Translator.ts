@@ -1,5 +1,5 @@
 import type { Glossary } from './Glossary';
-import type { openAiProfileId, ProfileValues } from '@auto-novel/translator';
+import type { OpenAiProfileSelection } from '@auto-novel/translator';
 
 export type TranslatorId = 'sakura' | 'youdao' | 'gpt';
 
@@ -13,7 +13,7 @@ export interface GptWorker {
 
 export interface GptPipelineWorker extends GptWorker {
   concurrency: number;
-  profile?: { id: openAiProfileId; values?: ProfileValues };
+  profile?: OpenAiProfileSelection;
 }
 
 export interface SakuraWorker {
@@ -79,7 +79,7 @@ export type TranslateTaskCallback = {
   onStart: (total: number) => void;
   onChapterSuccess: (state: { jp?: number; zh?: number }) => void;
   onChapterFailure: () => void;
-  log: (message: string, detail?: string[]) => void;
+  log: (message: string, detail?: readonly string[]) => void;
 };
 
 type TranslateTaskDescriptor = string;

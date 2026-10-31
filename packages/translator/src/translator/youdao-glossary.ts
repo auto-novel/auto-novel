@@ -32,8 +32,8 @@ const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
  */
 export function createGlossaryCodec(glossary: Glossary) {
   const words = Object.keys(glossary).sort((a, b) => b.length - a.length);
-  const wordToToken: Glossary = {};
-  const tokenToWord: Glossary = {};
+  const wordToToken: Record<string, string> = {};
+  const tokenToWord: Record<string, string> = {};
   const usedTokens: string[] = [];
   let presetIndex = 0;
 
@@ -65,7 +65,7 @@ export function createGlossaryCodec(glossary: Glossary) {
 
   return {
     /** 把术语换成 `$占位符`，长的术语优先。 */
-    encode(lines: string[]): string[] {
+    encode(lines: readonly string[]): string[] {
       return lines.map((line) => {
         let encoded = line;
         for (const word of words) {
@@ -76,7 +76,7 @@ export function createGlossaryCodec(glossary: Glossary) {
     },
 
     /** 把占位符还原成术语译名，容忍译文里多余的 `$ ` 或丢失 `$`。 */
-    decode(lines: string[]): string[] {
+    decode(lines: readonly string[]): string[] {
       return lines.map((line) => {
         let decoded = line;
         for (const token of tokens) {

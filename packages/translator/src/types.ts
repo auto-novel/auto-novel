@@ -1,106 +1,58 @@
-export type Glossary = Record<string, string>;
+export type Glossary = Readonly<Record<string, string>>;
 
 export interface SegmentContext {
-  glossary?: Glossary;
+  readonly glossary?: Glossary;
 
   /** 当前分段之前的原文，仅供理解上下文，不属于待翻译内容。 */
-  previousSource?: string;
+  readonly previousSource?: string;
 
   //过期重翻使用
-  expired?: boolean;
-  history?: TranslationHistory;
+  readonly expired?: boolean;
+  readonly history?: TranslationHistory;
 }
 
 export interface Segment {
-  id: string;
-  order: number;
-  lines: string[];
-  context?: SegmentContext;
-}
-
-/** 分段级进度事件；一次输入共用一份。 */
-export interface SegmentObserver {
-  /** 某分段开始翻译。 */
-  start(segment: Segment, translatorId: string): void;
-  /** 某分段完成，译文已合并透传行。 */
-  complete(segment: Segment, translatedLines: string[]): void;
-  /** 某分段失败。 */
-  error(segment: Segment, error: unknown): void;
-}
-
-/** 队列搬运的单位：分段 + 结算句柄 + 该输入的事件出口。 */
-export interface SegmentTask {
-  readonly segment: Segment;
-  readonly observer: SegmentObserver;
-  readonly signal?: AbortSignal;
-  resolve(translatedLines: string[]): void;
-  reject(error: unknown): void;
+  readonly id: string;
+  readonly order: number;
+  readonly lines: readonly string[];
+  readonly context?: SegmentContext;
 }
 
 /**
  * 行数范围（左闭右开） [start, end)
  */
 export interface LineRange {
-  start: number;
-  end: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 export interface LineSegmenter {
-  segment: (lines: string[]) => LineRange[];
+  segment: (lines: readonly string[]) => readonly LineRange[];
 }
 
 export interface TranslationHistory {
-  lines: string[];
-  translatedLines: string[];
-  glossary: Glossary;
-}
-/**
- * 组装并更新Segment信息
- * 根据history信息决定是否跳过（过期重翻逻辑）
- */
-export interface SegmentAssembler {
-  assemble(
-    id: string,
-    lines: string[],
-    ranges: LineRange[],
-    glossary: Glossary,
-    history?: TranslationHistory,
-  ): Segment[];
-}
-
-export abstract class SegmentQueue {
-  abstract readonly length: number;
-  abstract setHighWaterMark(value: number): void;
-  abstract enqueueAll(
-    tasks: SegmentTask[],
-    signal?: AbortSignal,
-  ): Promise<void>;
-  abstract dequeue(signal?: AbortSignal): Promise<SegmentTask>;
-  abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
-  abstract ack(): void;
-  /** 消费它的翻译器退休时退回队列，不计入失败。 */
-  abstract requeue(tasks: readonly SegmentTask[]): void;
-  abstract removeQueued(tasks: readonly SegmentTask[]): void;
-  abstract clear(): void;
+  readonly lines: readonly string[];
+  readonly translatedLines: readonly string[];
+  readonly glossary: Glossary;
 }
 
 export interface PromptBuilder {
   build: (
-    lines: string[],
+    lines: readonly string[],
     context?: SegmentContext,
   ) => Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-  parseAnswer: (answer: string, originalLines: string[]) => string[];
+  parseAnswer: (answer: string, originalLines: readonly string[]) => string[];
 }
 
-export type Logger = (message: string, detail?: string[]) => void;
+export type Logger = (message: string, detail?: readonly string[]) => void;
 
-/** 一次翻译请求；`lines` 只包含需要翻译的内容行。 */
+/** 一次翻译请求；实现只读借用输入，不应修改原文及上下文。 */
 export interface TranslateRequest {
-  lines: string[];
-  context?: SegmentContext;
-  signal?: AbortSignal;
+  readonly lines: readonly string[];
+  readonly context?: SegmentContext;
+  readonly signal?: AbortSignal;
   /** 从 0 开始的尝试序号；实现可据此调整请求参数。 */
-  attempt: number;
+  readonly attempt: number;
 }
 
 /**
@@ -111,10 +63,10 @@ export interface Translator {
   /** 供流水线记录重试与降级日志；缺省静默。 */
   readonly log?: Logger;
 
-  translate(request: TranslateRequest): Promise<string[]>;
+  translate: (request: TranslateRequest) => Promise<readonly string[]>;
 
   /** 重试耗尽且失败属于内容形状问题时的降级策略。 */
-  fallback?(request: TranslateRequest): Promise<string[]>;
+  fallback?: (request: TranslateRequest) => Promise<readonly string[]>;
 
   /**
    * 能否把内容发往该端点；缺省视为允许。
@@ -132,49 +84,39 @@ export interface TranslatorProbe {
   info?: Record<string, string>;
 }
 
-export interface TranslationLoop {
-  id: string;
-  translator: Translator;
-  abortController: AbortController;
-  //并发数不提供时默认 1 并发
-  concurrency?: number;
-  /** 能否向该循环派发任务；缺省视为允许。 */
-  approved?: () => boolean;
-}
-
+/** 缓存与流水线只读共享分段及译文；缓存命中结果也不会被原位修改。 */
 export interface SegmentCache {
-  get(segment: Segment): Promise<string[] | undefined>;
-  set(segment: Segment, translatedLines: string[]): Promise<void>;
+  get: (segment: Segment) => Promise<readonly string[] | undefined>;
+  set: (segment: Segment, translatedLines: readonly string[]) => Promise<void>;
 }
 
-/** 分段切分结果；只带调用方需要的信息，不暴露内部切分方式。 */
-export interface SegmentSummary {
-  order: number;
-  lines: string[];
-}
-
+/** 事件参数是只读视图；需要编辑或保存为可变状态时由调用方复制。 */
 export interface SegmentTracker {
   /** 文本分段成功 */
-  onSegmentsReady?: (segments: SegmentSummary[]) => void;
+  onSegmentsReady?: (segments: readonly Segment[]) => void;
   /** 某段开始翻译 */
   onSegStart?: (segmentOrder: number, translatorId: string) => void;
   /** 某段完成翻译 */
-  onSegComplete?: (segmentOrder: number, translatedLines: string[]) => void;
+  onSegComplete?: (
+    segmentOrder: number,
+    translatedLines: readonly string[],
+  ) => void;
   /** 某段翻译报错 */
-  onSegError?: (segmentOrder: number, error: any) => void;
+  onSegError?: (segmentOrder: number, error: unknown) => void;
   /** 翻译被取消 */
   onAbort?: () => void;
 }
 
-/** 一篇完整原文；切分和队列背压由流水线负责。 */
+/** 一篇完整原文；切分和队列背压由流水线负责，输入按只读借用。 */
 export interface TranslationInput {
   /** 原文行；行内不应包含换行。 */
-  lines: string[];
-  glossary?: Glossary;
-  history?: TranslationHistory;
-  tracker?: SegmentTracker;
+  readonly lines: readonly string[];
+  readonly glossary?: Glossary;
+  readonly history?: TranslationHistory;
+  readonly tracker?: SegmentTracker;
 }
 
+/** 结算结果归调用方所有，不与事件或缓存共享可变数组。 */
 export interface TranslationResult {
   /** 译文行，与输入行一一对应；失败分段回退为原文。 */
   lines: string[];
@@ -192,16 +134,12 @@ export interface TranslationWork extends TranslationInput {
   onAbort: () => Promise<void> | void;
 }
 
-export interface TranslatorTracker {
-  onConcurrencyChange?: (current: number, max: number) => void;
-}
-
 /** 注册翻译器循环的可选项。 */
 export interface TranslatorOptions {
   /** 并发数，缺省为 1。 */
   concurrency?: number;
-  /** 并发变化回调。 */
-  tracker?: TranslatorTracker;
+  /** 活跃翻译任务数变化。 */
+  onActiveCountChange?: (activeCount: number) => void;
   /** 循环 id；缺省生成随机 id。 */
   id?: string;
   /**

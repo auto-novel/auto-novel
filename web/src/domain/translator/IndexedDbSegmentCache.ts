@@ -26,9 +26,14 @@ export class IndexedDbSegmentCache implements SegmentCache {
     return cached;
   }
 
-  async set(segment: Segment, translatedLines: string[]): Promise<void> {
+  async set(
+    segment: Segment,
+    translatedLines: readonly string[],
+  ): Promise<void> {
     const key = this.computeKey(segment);
-    await TranslationCacheRepo.create(this.storeName, key, translatedLines);
+    await TranslationCacheRepo.create(this.storeName, key, [
+      ...translatedLines,
+    ]);
   }
 
   clear(): Promise<void> {

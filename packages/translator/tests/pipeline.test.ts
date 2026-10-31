@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TranslationPipeline } from '../src/pipeline/translation-pipeline';
+import { TranslationPipeline } from '../src/pipeline/pipeline';
 import type { TranslateRequest, TranslationWork } from '../src/types';
 
 const pipelines: TranslationPipeline[] = [];
