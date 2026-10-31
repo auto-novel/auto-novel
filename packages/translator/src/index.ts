@@ -1,9 +1,11 @@
-export { TranslationPipeline } from './pipeline/translation_pipeline';
-export { DefaultSegmentQueue } from './segment';
-export { Semaphore } from './utils';
+export { TranslationPipeline } from './pipeline/translation-pipeline';
 
 export type { Translator } from './types';
-export { createOpenAiApi, OpenAiError } from './translator/openai-api';
+export {
+  TranslationRejected,
+  TranslationUnavailable,
+} from './translator/errors';
+export type { TranslationRejectionKind } from './translator/errors';
 export type { OpenAiTranslatorConfig } from './translator/openai-translator';
 export { OpenAiTranslator } from './translator/openai-translator';
 export { SakuraTranslator } from './translator/sakura-translator';
@@ -21,25 +23,18 @@ export type {
   Segment,
   SegmentContext,
   SegmentCache,
+  SegmentSummary,
   SegmentTracker,
+  TranslateRequest,
+  TranslatorOptions,
   TranslatorTracker,
-  LineRange,
+  TranslationInput,
+  TranslationResult,
+  TranslationWork,
 } from './types';
 
 export { openAiProfiles } from './translator/profiles/openai';
 
 export type { openAiProfileId } from './translator/profiles/openai';
 
-export type {
-  ProfileField,
-  ProfileValues,
-  TranslatorProfile,
-} from './translator/profiles/types';
-
-export { createPiAiCompletion, PiAiRequestError } from './translator/pi-ai-api';
-export type {
-  PiAiCompletionRequest,
-  PiAiCompletionResult,
-  PiAiMessage,
-  PiAiProtocol,
-} from './translator/pi-ai-api';
+export type { ProfileValues } from './translator/profiles/types';

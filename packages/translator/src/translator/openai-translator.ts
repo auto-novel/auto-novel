@@ -2,19 +2,17 @@ import type {
   Logger,
   PromptBuilder,
   SegmentContext,
+  TranslateRequest,
   Translator,
 } from '@/types';
-import { detectChinese, getPreviousSource } from '@/utils';
-import {
-  isPassthroughLine,
-  validateTranslationLines,
-} from '@/translation-lines';
+import { detectChinese, getPreviousSource, isAbortError } from '@/utils';
 
 import {
   createPiAiCompletion,
   PiAiRequestError,
   type PiAiProtocol,
 } from './pi-ai-api';
+import { TranslationRejected } from './errors';
 import { createOpenAiPromptBuilder } from './openai-prompt';
 
 import {
@@ -44,7 +42,7 @@ export class OpenAiTranslator implements Translator {
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
   private promptBuilder: PromptBuilder;
-  private log: Logger;
+  readonly log: Logger;
 
   constructor(config: OpenAiTranslatorConfig) {
     this.endpoint = config.endpoint;
@@ -65,72 +63,37 @@ export class OpenAiTranslator implements Translator {
     this.log = config.log ?? (() => {});
   }
 
-  async translate(
-    lines: string[],
-    context?: SegmentContext,
-    signal?: AbortSignal,
-  ): Promise<string[]> {
+  async translate({
+    lines,
+    context,
+    signal,
+    attempt,
+  }: TranslateRequest): Promise<string[]> {
     if (lines.length === 0) return [];
-    if (lines.every(isPassthroughLine)) {
-      return lines;
+    if (attempt === 0) this.log(`请求思考强度：${this.reasoningEffort}`);
+
+    let result: string[];
+    try {
+      result = await this.translateLines(lines, context, signal);
+    } catch (error) {
+      // 取消与服务商参数错误不重试。
+      if (error instanceof PiAiRequestError || isAbortError(error)) throw error;
+      this.log(`翻译错误：${error}`);
+      throw new TranslationRejected('request', String(error), error);
     }
-    this.log(`请求思考强度：${this.reasoningEffort}`);
-    const logSegInfo = (retry: number, lineNumber: [number, number]) => {
-      const parts: string[] = [];
-      const [input, output] = lineNumber;
-      parts.push(`第${retry + 1}次`);
-      parts.push(`原文/输出：${input}/${output}行`);
-      this.log(parts.join('　'));
-    };
-
-    let retry = 0;
-    let failBecauseLineNumberNotMatch = 0;
-
-    while (retry < 3) {
-      let result: string[];
-      try {
-        result = await this.translateLines(lines, context, signal);
-      } catch (err: any) {
-        if (err.name === 'AbortError') throw err;
-        this.log(`翻译错误：${err}`);
-        if (err instanceof PiAiRequestError) throw err;
-        retry++;
-        continue;
-      }
-
-      logSegInfo(retry, [lines.length, result.length]);
-      // 单独统计行数错误，用于决定是否启动二分翻译。
-      if (lines.length !== result.length) {
-        failBecauseLineNumberNotMatch++;
-        this.log('输出错误：输出行数不匹配');
-        retry++;
-        continue;
-      }
-
-      try {
-        validateTranslationLines(lines, result);
-      } catch (err) {
-        this.log(`输出错误：${err}`);
-        retry++;
-        continue;
-      }
-
-      const joined = result
-        .filter((_, i) => !isPassthroughLine(lines[i]))
-        .join(' ');
-      if (!detectChinese(joined)) {
-        this.log('输出错误：输出语言不是中文');
-        retry++;
-        continue;
-      }
-      return result;
+    if (!detectChinese(result.join(' '))) {
+      throw new TranslationRejected('language', '输出语言不是中文');
     }
+    return result;
+  }
 
-    // 仅当连续3次行数不匹配且行数大于1时，启动二分翻译
-    if (failBecauseLineNumberNotMatch === 3 && lines.length > 1) {
-      return this.binaryTranslate(lines, context, signal);
-    }
-    throw new Error('翻译失败：重试次数过多');
+  /** 行数始终对不齐时二分翻译，只为修复输出形状。 */
+  async fallback({
+    lines,
+    context,
+    signal,
+  }: TranslateRequest): Promise<string[]> {
+    return this.binaryTranslate(lines, context, signal);
   }
 
   private async translateLines(
@@ -138,11 +101,6 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
-    if (lines.length === 0) return [];
-    if (lines.every(isPassthroughLine)) {
-      return lines;
-    }
-
     const messages = this.promptBuilder.build(lines, context);
     const completion = await createPiAiCompletion({
       protocol: this.protocol,
@@ -182,8 +140,9 @@ export class OpenAiTranslator implements Translator {
           },
           signal,
         );
-        if (result.length !== 1) return [lines[left]];
-        validateTranslationLines([lines[left]], result);
+        if (result.length !== 1 || /[\r\n]/.test(result[0])) {
+          return [lines[left]];
+        }
         return result;
       }
 

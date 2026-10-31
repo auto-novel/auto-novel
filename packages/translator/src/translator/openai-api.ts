@@ -1,14 +1,5 @@
 // Copyright 2023 OpenAI
-import type { Options } from 'ky';
-import ky, { HTTPError } from 'ky';
-
-const safeJson = <T extends object>(text: string) => {
-  try {
-    return JSON.parse(text) as T;
-  } catch (err) {
-    return undefined;
-  }
-};
+import ky, { type Options } from 'ky';
 
 export const createOpenAiApi = (endpoint: string, key: string) => {
   const endpointUrl = new URL(endpoint);
@@ -241,37 +232,5 @@ namespace ChatCompletion {
      * [Learn more](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids).
      */
     user?: string;
-  }
-}
-
-export class OpenAiError extends Error {
-  readonly status: number | undefined;
-  readonly code: string | null | undefined;
-
-  constructor(
-    status: number | undefined,
-    code: string | undefined,
-    message: string | undefined,
-  ) {
-    super(`${status} ${code ?? 'unknown_code'} ${message}`);
-    this.status = status;
-    this.code = code;
-  }
-
-  static async handle(e: unknown): Promise<never> {
-    if (e instanceof HTTPError) {
-      const errText = await e.response.text().catch((err) => {
-        if (err instanceof Error) return err.message;
-        return `${err}`;
-      });
-      const errJson = safeJson<any>(errText);
-      throw new OpenAiError(
-        e.response.status,
-        errJson?.['error']?.['code'],
-        errText,
-      );
-    } else {
-      throw e;
-    }
   }
 }

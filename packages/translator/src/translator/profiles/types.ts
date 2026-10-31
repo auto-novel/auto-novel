@@ -45,8 +45,6 @@ export interface TranslatorProfile<
   buildRequestParams?(
     values: ProfileValues<NoInfer<Fields>>,
   ): Record<string, unknown>;
-
-  extractReasoning?(message: Record<string, any>): string | undefined;
 }
 
 export const defineProfile = <

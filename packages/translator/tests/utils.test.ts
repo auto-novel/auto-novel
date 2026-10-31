@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { detectChinese, filterGlossaryForLines } from '../src/utils';
 import {
   isPassthroughLine,
+  mergeTranslatedLines,
+  splitPassthroughLines,
   validateTranslationLines,
 } from '../src/translation-lines';
 import { postprocessTranslationLines } from '../src/pipeline/postprocess';
@@ -39,13 +41,26 @@ describe('translation preprocessing and postprocessing', () => {
     expect(Object.keys(glossary)).toHaveLength(2);
   });
 
-  it('OpenAI 解析时空行和图片无需模型返回对应编号', () => {
+  it('拆分透传行后回填，模型只看到内容行', () => {
     const lines = ['原文', '  ', '<图片>https://example.test/a.jpg'];
-    expect(createOpenAiPromptBuilder().parseAnswer('#1:译文', lines)).toEqual([
+    const { indexes, content } = splitPassthroughLines(lines);
+    expect(content).toEqual(['原文']);
+    expect(indexes).toEqual([0]);
+    expect(mergeTranslatedLines(lines, indexes, ['译文'])).toEqual([
       '译文',
-      lines[1],
+      '  ',
       lines[2],
     ]);
+    expect(() => mergeTranslatedLines(lines, indexes, [])).toThrow('行数');
+  });
+
+  it('OpenAI 解析按编号取回每一行内容', () => {
+    expect(
+      createOpenAiPromptBuilder().parseAnswer('#1:译文\n#2:另一译文', [
+        '原文',
+        '另一行',
+      ]),
+    ).toEqual(['译文', '另一译文']);
   });
 
   it('Sakura 清除结束标记并统一换行，批量解析保留行边界', () => {

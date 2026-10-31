@@ -48,7 +48,12 @@ export class SakuraTranslator implements SegmentTranslator {
     seg: string[],
     { glossary, previousSource, signal }: SegmentContext,
   ) {
-    return this.translator.translate(seg, { glossary, previousSource }, signal);
+    return this.translator.translate({
+      lines: seg,
+      context: { glossary, previousSource },
+      signal,
+      attempt: 0,
+    });
   }
 }
 

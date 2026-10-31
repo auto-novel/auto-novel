@@ -1,12 +1,14 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { Toast } from '@novelia/web-kit';
 import {
-  Semaphore,
   OpenAiTranslator,
   SakuraTranslator,
   TranslationPipeline,
 } from '@auto-novel/translator';
-import type { TranslatorTracker } from '@auto-novel/translator';
+import type {
+  TranslatorTracker,
+  TranslationWork,
+} from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
@@ -46,17 +48,10 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       warn ? 'warn' : 'info',
     );
 
-  /** 同时处理的章节数上限 */
-  const GLOBAL_WINDOW = 66;
-  /** 同时 fetch 的章节数上限 */
-  const FETCH_CONCURRENCY = 1;
-  const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
-  /** 在途队列水位随已启动翻译器的总并发自动调整，预留一倍缓冲。 */
-  const pipeline = new TranslationPipeline(
-    'auto',
-    undefined,
-    new IndexedDbSegmentCache(segCacheName),
-  );
+  /** 队列水位始终跟随已启动翻译器的总并发，预留一倍缓冲。 */
+  const pipeline = new TranslationPipeline({
+    cache: new IndexedDbSegmentCache(segCacheName),
+  });
 
   // ========== 任务状态管理 ==========
 
@@ -102,16 +97,15 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   >();
 
   let processLoopAbortController: AbortController | null = null;
-  let activeProcessors = 0;
+  let disposed = false;
 
   onUnmounted(() => {
+    disposed = true;
     initializingTasks.clear();
     abortMetadataTasks();
     abortPreparationTasks();
-    pipeline.clearLoops();
-    pipeline.queue.clear();
     processLoopAbortController?.abort();
-    processLoopAbortController = null;
+    pipeline.dispose();
     workerStates.value.clear();
   });
   async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
@@ -324,19 +318,16 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     const translateTexts = async (texts: string[]) => {
       signal.throwIfAborted();
       const lineCounts = texts.map((text) => text.split('\n').length);
-      // 分段失败时 pipeline 会回退为原文，不能把原文当译文上传
-      let failed = false;
-      const lines = (
-        await pipeline.translate(
-          texts.join('\n'),
-          task.glossary,
-          undefined,
-          signal,
-          { onSegError: () => (failed = true) },
-        )
-      ).split('\n');
+      const { lines, failed } = await pipeline.translate(
+        {
+          lines: texts.flatMap((text) => text.split('\n')),
+          glossary: task.glossary,
+        },
+        signal,
+      );
       signal.throwIfAborted();
-      if (failed) throw new Error('分段翻译失败');
+      // 分段失败时 pipeline 会回退为原文，不能把原文当译文上传
+      if (failed.length > 0) throw new Error('分段翻译失败');
       if (
         lines.length !== lineCounts.reduce((total, count) => total + count, 0)
       ) {
@@ -365,7 +356,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   }
 
   function runProcessLoop(): void {
-    if (!hasRunningWorker()) return;
+    if (disposed || !hasRunningWorker()) return;
 
     for (const job of jobs.value) {
       if (job.finishAt) continue;
@@ -380,16 +371,17 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       }
     }
 
-    const pendingCount = countPendingChapters(jobs.value, taskStates.value);
-    if (pendingCount === 0) return;
-    processLoopAbortController ??= new AbortController();
-    const controller = processLoopAbortController;
+    // 停止后也必须等旧 run 退出，防止重新启动时重复拉取或覆盖章节状态。
+    if (processLoopAbortController) return;
+    if (countPendingChapters(jobs.value, taskStates.value) === 0) return;
+    const controller = new AbortController();
+    processLoopAbortController = controller;
     const signal = controller.signal;
 
-    const processOne = async () => {
+    async function* source(): AsyncGenerator<TranslationWork> {
       while (!signal.aborted && hasRunningWorker()) {
         const item = getNextJob(jobs.value, taskStates.value);
-        if (!item) break;
+        if (!item) return;
 
         const { job, chapterId, state } = item;
         const task = await getOrCreateTask(job.task);
@@ -397,63 +389,80 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
           taskCache.get(job.task) === task &&
           taskStates.value.get(job.task) === state &&
           !!findCurrentJob(job);
-        if (signal.aborted || !isCurrentTask()) continue;
+        if (!isCurrentTask()) continue;
+        if (signal.aborted) {
+          state.updateStatus(chapterId, 'pending');
+          return;
+        }
 
         const executor = new TaskExecutor(
           task,
-          pipeline,
-          fetchSemaphore,
           () =>
             !signal.aborted &&
             isCurrentTask() &&
             (task.type === 'local' || canUpload()),
         );
-
         const segmentTracker = state.getChapterState(chapterId);
         if (!segmentTracker) continue;
-        await executor
-          .executeChapter(
-            chapterId,
-            {
-              onChapterStatus: (cid: string, st: ChapterStatus) => {
-                if (isCurrentTask()) state.updateStatus(cid, st);
-              },
-              onProgress: (finished: number, error: number, total: number) => {
-                const currentJob = isCurrentTask()
-                  ? findCurrentJob(job)
-                  : undefined;
-                if (currentJob) {
-                  currentJob.progress = { finished, error, total };
-                }
-              },
-              onLog: (msg: string) => logTask(job.task, msg),
-              segmentTracker,
+        const work = await executor.prepareChapter(
+          chapterId,
+          {
+            onChapterStatus: (cid: string, st: ChapterStatus) => {
+              if (isCurrentTask()) state.updateStatus(cid, st);
             },
-            signal,
-          )
-          .then(() => {
-            if (isCurrentTask()) updateJobCompletion(job, task, state);
-          });
-      }
-    };
-
-    // 运行中新增的待翻章节（新任务、重试、任务延迟初始化）也要补满窗口，
-    // 否则章节并发会一直被卡在循环启动时的待翻章节数。
-    const spawnCount = Math.min(GLOBAL_WINDOW - activeProcessors, pendingCount);
-    for (let i = 0; i < spawnCount; i++) {
-      activeProcessors++;
-      processOne().finally(() => {
-        activeProcessors--;
-        if (activeProcessors === 0) {
-          if (processLoopAbortController === controller) {
-            processLoopAbortController = null;
-          }
+            onProgress: (finished: number, error: number, total: number) => {
+              const currentJob = isCurrentTask()
+                ? findCurrentJob(job)
+                : undefined;
+              if (currentJob) {
+                currentJob.progress = { finished, error, total };
+              }
+            },
+            onLog: (msg: string) => {
+              if (isCurrentTask()) logTask(job.task, msg);
+            },
+            segmentTracker,
+          },
+          signal,
+        );
+        if (!work) {
+          if (isCurrentTask()) updateJobCompletion(job, task, state);
+          continue;
         }
+        yield {
+          ...work,
+          onComplete: async (result) => {
+            await work.onComplete(result);
+            if (isCurrentTask()) updateJobCompletion(job, task, state);
+          },
+          onError: (error) => {
+            work.onError(error);
+            if (isCurrentTask()) updateJobCompletion(job, task, state);
+          },
+          onAbort: () => {
+            work.onAbort();
+            if (isCurrentTask()) updateJobCompletion(job, task, state);
+          },
+        };
+      }
+    }
+
+    void pipeline
+      .run(source(), { signal })
+      .catch((error) => {
+        if (!signal.aborted) {
+          appendLog('工作区', `章节翻译流水线失败：${error}`, 'warn');
+          console.warn('章节翻译流水线失败', error);
+        }
+      })
+      .finally(() => {
+        if (processLoopAbortController !== controller) return;
+        processLoopAbortController = null;
+        // source 已耗尽但回调仍在执行时，可能新增任务或重试章节。
         if (countPendingChapters(jobs.value, taskStates.value) > 0) {
           runProcessLoop();
         }
       });
-    }
   }
 
   // ========== Worker 生命周期管理 ==========
@@ -490,7 +499,11 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
           state.currentConcurrency = current;
         },
       };
-      pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+      pipeline.registerTranslator(t, {
+        concurrency: w.concurrency,
+        tracker: workerTracker,
+        id: w.id,
+      });
       log('翻译器已启动');
 
       runProcessLoop();
@@ -520,8 +533,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       abortMetadataTasks();
       abortPreparationTasks();
       processLoopAbortController?.abort();
-      processLoopAbortController = null;
-      pipeline.queue.clear();
+      pipeline.dispose();
     }
   };
 

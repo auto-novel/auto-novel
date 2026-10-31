@@ -96,19 +96,34 @@ export const safeJson = <T extends object>(text: string) => {
   }
 };
 
-export const delay = (ms: number, signal?: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    let timeout: any = null;
-    const abortHandler = () => {
-      clearTimeout(timeout!);
-      reject(new DOMException('Aborted', 'AbortError'));
-    };
-    timeout = setTimeout(() => {
-      resolve();
-      signal?.removeEventListener('abort', abortHandler);
-    }, ms);
-    signal?.addEventListener('abort', abortHandler);
-  });
+/** 取消不是失败，重试逻辑一律直接放行。 */
+export const isAbortError = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'AbortError';
+
+/**
+ * 合并多个取消信号；任一来源取消即取消。
+ * 优先用原生 `AbortSignal.any`，缺失时退化为手动转发。
+ */
+export function anySignal(
+  signals: ReadonlyArray<AbortSignal | undefined>,
+): AbortSignal | undefined {
+  const list = signals.filter((signal): signal is AbortSignal => !!signal);
+  if (list.length === 0) return undefined;
+  if (list.length === 1) return list[0];
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(list);
+
+  const controller = new AbortController();
+  for (const signal of list) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), {
+      once: true,
+    });
+  }
+  return controller.signal;
+}
 
 export class Semaphore {
   private _current = 0;

@@ -1,9 +1,11 @@
 import type { KyInstance } from 'ky';
 
-import type { Logger, SegmentContext, Translator } from '@/types';
+import type { Logger, TranslateRequest, Translator } from '@/types';
 import { RegexUtil, safeJson } from '@/utils';
 
+import { TranslationUnavailable } from './errors';
 import { createYoudaoApi, type YoudaoTranslateResult } from './youdao-api';
+import { createGlossaryCodec } from './youdao-glossary';
 
 export type YoudaoTranslatorConfig = {
   client: KyInstance;
@@ -12,7 +14,7 @@ export type YoudaoTranslatorConfig = {
 
 export class YoudaoTranslator implements Translator {
   private api: ReturnType<typeof createYoudaoApi>;
-  private log: Logger;
+  readonly log: Logger;
 
   constructor(config: YoudaoTranslatorConfig) {
     this.api = createYoudaoApi(config.client);
@@ -35,13 +37,16 @@ export class YoudaoTranslator implements Translator {
     return this;
   }
 
-  async translate(
-    lines: string[],
-    context?: SegmentContext,
-    signal?: AbortSignal,
-  ): Promise<string[]> {
+  async translate({
+    lines,
+    context,
+    signal,
+  }: TranslateRequest): Promise<string[]> {
+    // 有道不支持提示词术语表，先用占位符替换，译完再还原。
+    const codec = createGlossaryCodec(context?.glossary ?? {});
+    const encoded = codec.encode(lines);
     let from = 'auto';
-    const text = lines.join('\n');
+    const text = encoded.join('\n');
 
     if (RegexUtil.hasHangulChars(text)) {
       from = 'ko';
@@ -60,13 +65,13 @@ export class YoudaoTranslator implements Translator {
     };
 
     let { raw: decoded, json: decodedJson } = await translateWorker(
-      lines,
+      encoded,
       from,
     );
 
     if (decodedJson === undefined) {
       this.log(`　错误：${decoded}`);
-      throw 'quit';
+      throw new TranslationUnavailable('有道翻译返回了无法解析的结果');
     }
 
     switch (decodedJson.code) {
@@ -74,18 +79,20 @@ export class YoudaoTranslator implements Translator {
         break;
       case 20:
         this.log('错误：要翻译的文本过长');
-        throw new Error('错误：要翻译的文本过长');
+        throw new TranslationUnavailable('分段过长，有道无法翻译');
       case 30:
         this.log('错误：无法进行有效的翻译');
-        throw 'quit';
+        throw new TranslationUnavailable('有道无法进行有效的翻译');
       case 40: {
         this.log('警告：语言类型错误，正在尝试自动修复');
         const langs = ['en', 'ja', 'ko'] as const;
         const langResults = await Promise.all(
-          langs.map((lang) => translateWorker(lines, lang)),
+          langs.map((lang) => translateWorker(encoded, lang)),
         );
         const idx = langResults.findIndex(({ json }) => json?.code === 0);
-        if (idx === -1) throw new Error('错误：无法判断语言类型');
+        if (idx === -1) {
+          throw new TranslationUnavailable('有道无法判断原文语言');
+        }
         this.log(`修正成功：已使用 ${langs[idx]} 重新翻译`);
         ({ raw: decoded, json: decodedJson } = langResults[idx]);
         decodedJson = decodedJson!;
@@ -107,9 +114,9 @@ export class YoudaoTranslator implements Translator {
     );
     if (!result) {
       this.log(`　错误：${decoded}`);
-      throw 'quit';
+      throw new TranslationUnavailable('有道未返回译文');
     }
 
-    return result;
+    return codec.decode(result);
   }
 }

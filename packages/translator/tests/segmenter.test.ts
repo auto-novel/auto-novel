@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createSegmentAssembler, createLineSegmenter } from '../src/segment';
 import type { Glossary, TranslationHistory } from '../src/types';
 
@@ -112,33 +112,18 @@ describe('createLineSegmenter', () => {
 // ============================================================
 describe('createSegmentAssembler', () => {
   const id = 'test-id';
-  const onStart = vi.fn();
-  const onComplete = vi.fn();
-  const onError = vi.fn();
 
   const makeRanges = (
     ...pairs: [number, number][]
   ): { start: number; end: number }[] =>
     pairs.map(([start, end]) => ({ start, end }));
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('应正确组装基本 Segment', () => {
     const assembler = createSegmentAssembler();
     const lines = ['hello', 'world', 'foo'];
     const ranges = makeRanges([0, 2], [2, 3]);
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      {},
-      onStart,
-      onComplete,
-      onError,
-    );
+    const segments = assembler.assemble(id, lines, ranges, {});
 
     expect(segments).toHaveLength(2);
 
@@ -149,9 +134,6 @@ describe('createSegmentAssembler', () => {
     expect(segments[0].context.glossary).toEqual({});
     expect(segments[0].context.expired).toBe(true);
     expect(segments[0].context.history).toBeUndefined();
-    expect(segments[0].onStart).toBe(onStart);
-    expect(segments[0].onComplete).toBe(onComplete);
-    expect(segments[0].onError).toBe(onError);
 
     // 第二个段
     expect(segments[1].id).toBe(id);
@@ -172,15 +154,7 @@ describe('createSegmentAssembler', () => {
       baz: '巴兹',
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary);
 
     // 段0: ['hello world', 'foo bar'] => 包含 hello, world
     expect(segments[0].context.glossary).toEqual({
@@ -196,15 +170,7 @@ describe('createSegmentAssembler', () => {
 
   it('无 history 时所有段 expired 为 true', () => {
     const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(
-      id,
-      ['a', 'b'],
-      makeRanges([0, 2]),
-      {},
-      onStart,
-      onComplete,
-      onError,
-    );
+    const segments = assembler.assemble(id, ['a', 'b'], makeRanges([0, 2]), {});
 
     expect(segments[0].context.expired).toBe(true);
     expect(segments[0].context.history).toBeUndefined();
@@ -222,16 +188,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' },
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-      history,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(false);
     expect(segments[0].context.history).toEqual({
@@ -253,16 +210,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' },
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-      history,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(true);
     // history 仍然保留旧数据
@@ -281,16 +229,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好' }, // 缺少 world
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-      history,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary, history);
 
     expect(segments[0].context.expired).toBe(true);
   });
@@ -307,16 +246,7 @@ describe('createSegmentAssembler', () => {
       glossary: { hello: '你好', world: '世界', extra: '额外' }, // 历史 glossary 有额外词条
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-      history,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary, history);
 
     // 历史 glossary 被过滤为只包含当前段原文中出现的词条
     expect(segments[0].context.history?.glossary).toEqual({
@@ -339,16 +269,7 @@ describe('createSegmentAssembler', () => {
       glossary: { cat: '猫', dog: '狗', bird: '鸟' },
     };
 
-    const segments = assembler.assemble(
-      id,
-      lines,
-      ranges,
-      glossary,
-      onStart,
-      onComplete,
-      onError,
-      history,
-    );
+    const segments = assembler.assemble(id, lines, ranges, glossary, history);
 
     // 段0: ['cat', 'dog'] => glossary 只有 cat, dog
     expect(segments[0].context.glossary).toEqual({ cat: '猫', dog: '狗' });
@@ -363,50 +284,14 @@ describe('createSegmentAssembler', () => {
 
   it('空行数组应返回空 Segment 数组', () => {
     const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(
-      id,
-      [],
-      [],
-      {},
-      onStart,
-      onComplete,
-      onError,
-    );
+    const segments = assembler.assemble(id, [], [], {});
     expect(segments).toEqual([]);
   });
 
   it('空 glossary 不应影响组装', () => {
     const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(
-      id,
-      ['a'],
-      makeRanges([0, 1]),
-      {},
-      onStart,
-      onComplete,
-      onError,
-    );
+    const segments = assembler.assemble(id, ['a'], makeRanges([0, 1]), {});
     expect(segments).toHaveLength(1);
     expect(segments[0].context.glossary).toEqual({});
-  });
-
-  it('onComplete 和 onError 回调应正确传递到每个 Segment', () => {
-    const assembler = createSegmentAssembler();
-    const cb1 = vi.fn();
-    const cb2 = vi.fn();
-    const segments = assembler.assemble(
-      id,
-      ['a', 'b'],
-      makeRanges([0, 1], [1, 2]),
-      {},
-      onStart,
-      cb1,
-      cb2,
-    );
-
-    expect(segments[0].onComplete).toBe(cb1);
-    expect(segments[0].onError).toBe(cb2);
-    expect(segments[1].onComplete).toBe(cb1);
-    expect(segments[1].onError).toBe(cb2);
   });
 });

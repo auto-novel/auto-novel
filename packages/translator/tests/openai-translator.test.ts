@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OpenAiTranslator } from '../src/translator/openai-translator';
+import { attemptTranslation } from '../src/pipeline/attempt';
 
 // ============================================================
 // OpenAiTranslator 业务翻译器测试
@@ -40,25 +41,14 @@ describe('OpenAiTranslator', () => {
       model: 'model-1',
     });
 
-    await expect(translator.translate(['原文'])).resolves.toEqual(['译文']);
+    await expect(
+      attemptTranslation(translator, { lines: ['原文'] }),
+    ).resolves.toEqual(['译文']);
     expect(requestBody).toMatchObject({
       model: 'model-1',
       stream: true,
       messages: [{ role: 'system' }, { role: 'user' }],
     });
-  });
-
-  it('全为空行和图片时不请求 API', async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    const translator = new OpenAiTranslator({
-      endpoint: 'https://api.example.test',
-      key: 'test-key',
-      model: 'model-1',
-    });
-    const lines = [' ', '<图片>https://example.test/a.jpg'];
-    await expect(translator.translate(lines)).resolves.toEqual(lines);
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('自定义解析器返回行内换行时进入重试', async () => {
@@ -78,7 +68,9 @@ describe('OpenAiTranslator', () => {
       model: 'model-1',
       promptBuilder: { build: () => [], parseAnswer },
     });
-    await expect(translator.translate(['原文'])).resolves.toEqual(['译文']);
+    await expect(
+      attemptTranslation(translator, { lines: ['原文'] }),
+    ).resolves.toEqual(['译文']);
     expect(parseAnswer).toHaveBeenCalledTimes(2);
   });
 
@@ -107,9 +99,9 @@ describe('OpenAiTranslator', () => {
       model: 'model-1',
     });
 
-    await expect(translator.translate(['原文'])).rejects.toThrow(
-      /unsupported effort/,
-    );
+    await expect(
+      attemptTranslation(translator, { lines: ['原文'] }),
+    ).rejects.toThrow(/unsupported effort/);
     expect(calls).toBe(1);
   });
 
@@ -138,9 +130,9 @@ describe('OpenAiTranslator', () => {
       profile: { id: 'openai-responses', values: {} },
     });
 
-    await expect(translator.translate(['原文'])).rejects.toThrow(
-      /provider_error.*stream failed/,
-    );
+    await expect(
+      attemptTranslation(translator, { lines: ['原文'] }),
+    ).rejects.toThrow(/provider_error.*stream failed/);
     expect(calls).toBe(1);
   });
 });

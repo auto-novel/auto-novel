@@ -70,11 +70,11 @@ const testWorker = async () => {
             },
           });
 
-    const textZh = await translator.translate(
-      textJp,
-      undefined,
-      new AbortController().signal,
-    );
+    const textZh = await translator.translate({
+      lines: textJp,
+      signal: new AbortController().signal,
+      attempt: 0,
+    });
     const parts = [`原文：${textJp[0]}`, `译文：${textZh.join('')}`];
     if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
     Toast.success(parts.join('\n'));

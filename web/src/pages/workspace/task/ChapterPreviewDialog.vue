@@ -50,7 +50,7 @@ const previewState = computed(() => {
             failed: state.errorCount,
           }
         : null,
-    ranges: state?.ranges ?? [],
+    segmentSizes: state?.segments.map((segment) => segment.lines.length) ?? [],
   };
 });
 
@@ -122,16 +122,16 @@ const onUpdateShow = (val: boolean) => {
     </div>
 
     <div
-      v-if="previewState.ranges.length > 1"
+      v-if="previewState.segmentSizes.length > 1"
       class="flex flex-wrap gap-1 px-0.5 py-2"
     >
       <n-button
-        v-for="(range, i) of previewState.ranges"
+        v-for="(size, i) of previewState.segmentSizes"
         :key="i"
         size="small"
         secondary
         :type="segmentBtnType(previewState.segmentStatuses[i])"
-        :title="getSegmentError(i) ?? range.end - range.start + '行'"
+        :title="getSegmentError(i) ?? size + '行'"
         class="aspect-square min-w-0! px-0!"
         :class="{
           'outline-2! outline-offset-1 outline-primary!':

@@ -262,20 +262,15 @@ const translate = async () => {
   resetCopied();
 
   let pipeline: TranslationPipeline | undefined;
-  let segmentErrors = 0;
-  let firstSegmentError: string | undefined;
   const tracker: SegmentTracker = {
-    onSegmentsReady: (_lines, ranges) => {
-      progress.value = { done: 0, total: ranges.length };
+    onSegmentsReady: (segments) => {
+      progress.value = { done: 0, total: segments.length };
     },
     onSegComplete: () => {
       progress.value.done += 1;
     },
-    onSegError: (_order, reason) => {
-      segmentErrors += 1;
+    onSegError: () => {
       progress.value.done += 1;
-      firstSegmentError ??=
-        reason instanceof Error ? reason.message : String(reason);
     },
   };
 
@@ -284,31 +279,33 @@ const translate = async () => {
     if (current !== generation) return;
 
     phase.value = 'translating';
-    pipeline = new TranslationPipeline(100);
-    pipeline.registerTranslator(t, 1);
+    pipeline = new TranslationPipeline();
+    pipeline.registerTranslator(t, { concurrency: 1 });
 
-    const result = await pipeline.translate(
-      source,
-      glossary.value,
-      undefined,
+    const { lines, failed } = await pipeline.translate(
+      { lines: source.split('\n'), glossary: glossary.value, tracker },
       abortController.signal,
-      tracker,
     );
     if (current !== generation) return;
 
-    textZh.value = result;
+    textZh.value = lines.join('\n');
     translatedSource.value = sourceSnapshot;
 
     const issues: string[] = [];
-    if (segmentErrors > 0) {
-      const detail = `${segmentErrors} 个分段未成功，失败部分已保留原文。原因：${firstSegmentError}`;
-      if (segmentErrors === progress.value.total) {
+    if (failed.length > 0) {
+      const [first] = failed;
+      const reason =
+        first.error instanceof Error
+          ? first.error.message
+          : String(first.error);
+      const detail = `${failed.length} 个分段未成功，失败部分已保留原文。原因：${reason}`;
+      if (failed.length === progress.value.total) {
         error.value = detail;
       } else {
         issues.push(detail);
       }
     }
-    if (source.split('\n').length !== result.split('\n').length) {
+    if (source.split('\n').length !== lines.length) {
       issues.push('译文行数与原文不一致，请检查结果');
     }
     if (issues.length > 0) warning.value = issues.join('；') + '。';
@@ -319,8 +316,7 @@ const translate = async () => {
     error.value = e instanceof Error ? e.message : String(e);
     revealResult();
   } finally {
-    pipeline?.clearLoops();
-    pipeline?.queue.clear();
+    pipeline?.dispose();
     if (current === generation) {
       phase.value = 'idle';
       if (controller === abortController) controller = undefined;

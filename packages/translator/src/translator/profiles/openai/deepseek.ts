@@ -36,8 +36,4 @@ export const profile = defineProfile({
       reasoning_effort,
     };
   },
-
-  extractReasoning(message) {
-    return message.reasoning_content;
-  },
 });

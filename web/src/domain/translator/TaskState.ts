@@ -1,4 +1,4 @@
-import type { SegmentTracker, LineRange } from '@auto-novel/translator';
+import type { SegmentSummary, SegmentTracker } from '@auto-novel/translator';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
@@ -23,7 +23,6 @@ export class ChapterSegmentState implements SegmentTracker {
   readonly chapterId: string;
   /** 获取原文、保存译文等章节级错误，与分段翻译错误独立。 */
   errorMessage: string | undefined = undefined;
-  ranges: LineRange[] = [];
   segments: SegmentInfo[] = [];
   /** 是否完成 Segment 切分 */
   ready = false;
@@ -49,11 +48,10 @@ export class ChapterSegmentState implements SegmentTracker {
     return reactive(this) as ChapterSegmentState;
   }
 
-  onSegmentsReady(lines: string[], ranges: LineRange[]): void {
-    this.ranges = ranges;
-    this.segments = ranges.map((range) => ({
+  onSegmentsReady(segments: SegmentSummary[]): void {
+    this.segments = segments.map((segment) => ({
       status: 'pending',
-      lines: lines.slice(range.start, range.end),
+      lines: segment.lines,
       translatedLines: [],
       error: null,
     }));
@@ -96,18 +94,15 @@ export class ChapterSegmentState implements SegmentTracker {
   }
 
   /** 为已完成的章节注入整章译文 */
-  injectDoneTranslation(
-    lines: string[],
-    translatedLines: string[],
-    ranges?: LineRange[],
-  ): void {
-    this.ranges = ranges ?? [{ start: 0, end: lines.length }];
-    this.segments = this.ranges.map((range) => ({
-      status: 'done',
-      lines: lines.slice(range.start, range.end),
-      translatedLines: translatedLines.slice(range.start, range.end),
-      error: null,
-    }));
+  injectDoneTranslation(lines: string[], translatedLines: string[]): void {
+    this.segments = [
+      {
+        status: 'done',
+        lines,
+        translatedLines,
+        error: null,
+      },
+    ];
     this.ready = true;
   }
 }
@@ -157,7 +152,6 @@ export class TaskState {
       if (state) {
         // 预览可能仍持有状态引用，先释放文本，再移除工作区中的状态。
         state.segments = [];
-        state.ranges = [];
         state.ready = false;
       }
       this.chapterStates.delete(chapterId);

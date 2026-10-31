@@ -1,6 +1,5 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 import { filterGlossaryForLines } from '@/utils';
-import { isPassthroughLine } from '@/translation-lines';
 
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
   const build = (lines: string[], context?: SegmentContext) => {
@@ -63,22 +62,13 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
       }
     }
 
-    const result: string[] = [];
-    for (let i = 0; i < originalLines.length; i++) {
-      const lineNum = i + 1;
-      const originalLine = originalLines[i];
-
-      if (isPassthroughLine(originalLine)) {
-        result.push(originalLine);
-      } else {
-        const translated = lineContentMap.get(lineNum);
-        if (translated === undefined) {
-          throw new Error(`行数不匹配`);
-        }
-        result.push(translated);
+    return originalLines.map((_, index) => {
+      const translated = lineContentMap.get(index + 1);
+      if (translated === undefined) {
+        throw new Error(`行数不匹配`);
       }
-    }
-    return result;
+      return translated;
+    });
   };
 
   return { build, parseAnswer };

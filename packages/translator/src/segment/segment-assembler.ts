@@ -16,9 +16,6 @@ export const createSegmentAssembler = (): SegmentAssembler => {
       lines: string[],
       ranges: LineRange[],
       glossary: Glossary,
-      onSegStart: (segment: Segment, translatorId: string) => void,
-      onSegComplete: (segment: Segment, translatedLines: string[]) => void,
-      onSegError: (segment: Segment, reason: any) => void,
       history?: TranslationHistory,
     ): Segment[] {
       return ranges.map((range, index) => {
@@ -63,16 +60,12 @@ export const createSegmentAssembler = (): SegmentAssembler => {
           expired: expired,
           history: segHistory,
         };
-        const segment: Segment = {
-          id: id,
+        return {
+          id,
           order: index,
           lines: segLines,
           context: segContext,
-          onStart: onSegStart,
-          onComplete: onSegComplete,
-          onError: onSegError,
         };
-        return segment;
       });
     },
   };

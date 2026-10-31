@@ -1,15 +1,14 @@
 import type {
   Logger,
   SegmentContext,
+  TranslateRequest,
   Translator,
   PromptBuilder,
 } from '@/types';
 
-import {
-  isPassthroughLine,
-  validateTranslationLines,
-} from '@/translation-lines';
-import { getPreviousSource } from '@/utils';
+import { validateTranslationLines } from '@/translation-lines';
+import { getPreviousSource, isAbortError } from '@/utils';
+import { TranslationRejected } from './errors';
 import { createOpenAiApi } from './openai-api';
 import {
   allowModels,
@@ -41,7 +40,7 @@ export class SakuraTranslator implements Translator {
   private version: SakuraVersion;
   private prevSegLength: number;
   private promptBuilder: PromptBuilder;
-  private log: Logger;
+  readonly log: Logger;
   model?: {
     id: string;
     meta: ModelMeta;
@@ -103,29 +102,60 @@ export class SakuraTranslator implements Translator {
     return true;
   }
 
-  async translate(
-    lines: string[],
-    context?: SegmentContext,
-    signal?: AbortSignal,
-  ): Promise<string[]> {
-    // Sakura 会吞掉空行，导致行数不匹配；只翻译有内容的行，再放回原位置
-    if (lines.some(isPassthroughLine)) {
-      const contentIndexes = lines.flatMap((l, i) =>
-        isPassthroughLine(l) ? [] : [i],
-      );
-      const translated = await this.translate(
-        contentIndexes.map((i) => lines[i]),
-        context,
-        signal,
-      );
-      const result = [...lines];
-      contentIndexes.forEach((lineIndex, i) => {
-        result[lineIndex] = translated[i];
-      });
-      return result;
-    }
+  async translate({
+    lines,
+    context,
+    signal,
+    attempt,
+  }: TranslateRequest): Promise<string[]> {
     if (lines.length === 0) return [];
-    const translateContext: SegmentContext = {
+    const translateContext = this.contextFor(context);
+
+    let text: string;
+    let hasDegradation: boolean;
+    try {
+      ({ text, hasDegradation } = await this.createChatCompletions(
+        lines,
+        translateContext,
+        attempt > 0,
+        signal,
+      ));
+    } catch (error) {
+      if (error instanceof TranslationRejected || isAbortError(error)) {
+        throw error;
+      }
+      this.log(`API 错误：${error}`);
+      throw new TranslationRejected('request', String(error), error);
+    }
+
+    let splitText: string[];
+    try {
+      splitText = this.promptBuilder.parseAnswer(text, lines);
+      validateTranslationLines(lines, splitText);
+    } catch (error) {
+      this.log(`输出错误：${error}`, [lines.join('\n'), text]);
+      throw new TranslationRejected('lines', String(error), error);
+    }
+    if (hasDegradation) {
+      this.log('退化', [lines.join('\n'), text]);
+      throw new TranslationRejected('degraded', '输出退化');
+    }
+    return splitText;
+  }
+
+  /** 整段始终退化时逐行翻译；单段连续两行退化视为翻译器异常。 */
+  async fallback({
+    lines,
+    context,
+    signal,
+  }: TranslateRequest): Promise<string[]> {
+    this.log('逐行翻译');
+    return this.translateLineByLine(lines, this.contextFor(context), signal);
+  }
+
+  /** 按配置裁剪前文原文。 */
+  private contextFor(context?: SegmentContext): SegmentContext {
+    return {
       ...context,
       previousSource: getPreviousSource(
         [context?.previousSource ?? ''],
@@ -133,49 +163,6 @@ export class SakuraTranslator implements Translator {
         this.prevSegLength,
       ),
     };
-
-    let retry = 0;
-    while (retry < 3) {
-      let text: string;
-      let hasDegradation: boolean;
-      try {
-        ({ text, hasDegradation } = await this.createChatCompletions(
-          lines,
-          translateContext,
-          retry > 0,
-          signal,
-        ));
-      } catch (err: any) {
-        if (err.name === 'AbortError') throw err;
-        this.log(`API 错误：${err}`);
-        retry++;
-        continue;
-      }
-
-      let splitText: string[];
-      try {
-        splitText = this.promptBuilder.parseAnswer(text, lines);
-        validateTranslationLines(lines, splitText);
-      } catch (err) {
-        this.log(`输出错误：${err}`, [lines.join('\n'), text]);
-        retry++;
-        continue;
-      }
-      const parts: string[] = [`第${retry + 1}次`];
-      if (hasDegradation) {
-        parts.push('退化');
-      } else {
-        parts.push('成功');
-      }
-      this.log(parts.join('　'), [lines.join('\n'), text]);
-
-      if (!hasDegradation) {
-        return splitText;
-      }
-      retry++;
-    }
-    this.log('逐行翻译');
-    return this.translateLineByLine(lines, translateContext, signal);
   }
 
   private static detectVersion(id?: string): SakuraVersion {
