@@ -3,8 +3,8 @@ export type Glossary = Record<string, string>;
 export interface SegmentContext {
   glossary?: Glossary;
 
-  //初始为空，在PipeLine中动态填充的前文信息
-  prevSegs?: string[][];
+  /** 当前分段之前的原文，仅供理解上下文，不属于待翻译内容。 */
+  previousSource?: string;
 
   //过期重翻使用
   expired?: boolean;
@@ -19,7 +19,6 @@ export interface Segment {
   onStart: (segment: Segment, translatorId: string) => void;
   onComplete: (segment: Segment, translatedLines: string[]) => void;
   onError: (segment: Segment, reason: any) => void;
-  next?: () => Segment | undefined;
 }
 
 /**
@@ -63,7 +62,7 @@ export abstract class SegmentQueue {
   abstract enqueueAll(segments: Segment[], signal?: AbortSignal): Promise<void>;
   abstract dequeue(signal?: AbortSignal): Promise<Segment>;
   abstract waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void>;
-  abstract ack(next?: Segment): void;
+  abstract ack(): void;
   abstract clear(): void;
 }
 

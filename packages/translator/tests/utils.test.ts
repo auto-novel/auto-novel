@@ -1,5 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { detectChinese } from '../src/utils';
+import { detectChinese, filterGlossaryForLines } from '../src/utils';
+import {
+  isPassthroughLine,
+  validateTranslationLines,
+} from '../src/translation-lines';
+import { postprocessTranslationLines } from '../src/pipeline/postprocess';
+import { createOpenAiPromptBuilder } from '../src/translator/openai-prompt';
+import {
+  cleanSakuraOutput,
+  createSakuraPromptBuilder,
+} from '../src/translator/sakura-prompt';
+
+describe('translation preprocessing and postprocessing', () => {
+  it('识别直通行并恢复原文布局，重复处理不改变结果', () => {
+    const original = ['　原文', '  ', '<图片>https://example.test/a.jpg'];
+    const translated = ['  译文', '多余内容', '图片'];
+    expect(original.map(isPassthroughLine)).toEqual([false, true, true]);
+    const result = postprocessTranslationLines(original, translated);
+    expect(result).toEqual(['　译文', '  ', original[2]]);
+    expect(postprocessTranslationLines(original, result)).toEqual(result);
+    expect(translated).toEqual(['  译文', '多余内容', '图片']);
+  });
+
+  it('拒绝错行、行内换行及无效元素', () => {
+    expect(() => validateTranslationLines(['原文'], [])).toThrow('行数');
+    for (const line of ['译\n文', '译\r文', undefined]) {
+      expect(() =>
+        validateTranslationLines(['原文'], [line] as string[]),
+      ).toThrow('无效内容');
+    }
+  });
+
+  it('筛选当前原文出现的术语且不改变输入', () => {
+    const glossary = { 太郎: '小太郎', 花子: '小花' };
+    expect(filterGlossaryForLines(glossary, ['太郎です'])).toEqual({
+      太郎: '小太郎',
+    });
+    expect(Object.keys(glossary)).toHaveLength(2);
+  });
+
+  it('OpenAI 解析时空行和图片无需模型返回对应编号', () => {
+    const lines = ['原文', '  ', '<图片>https://example.test/a.jpg'];
+    expect(createOpenAiPromptBuilder().parseAnswer('#1:译文', lines)).toEqual([
+      '译文',
+      lines[1],
+      lines[2],
+    ]);
+  });
+
+  it('Sakura 清除结束标记并统一换行，批量解析保留行边界', () => {
+    const answer = '译文一\r\n译文二\r译文三<|im_end|>';
+    expect(cleanSakuraOutput(answer)).toBe('译文一\n译文二\n译文三');
+    expect(createSakuraPromptBuilder('1.0').parseAnswer(answer, [])).toEqual([
+      '译文一',
+      '译文二',
+      '译文三',
+    ]);
+  });
+});
 
 describe('detectChinese', () => {
   it.each([

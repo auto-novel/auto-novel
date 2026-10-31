@@ -1,3 +1,33 @@
+import type { Glossary } from '@/types';
+
+export const filterGlossaryForLines = (
+  glossary: Glossary,
+  lines: string[],
+): Glossary => {
+  const filtered: Glossary = {};
+  for (const word in glossary) {
+    if (lines.some((line) => line.includes(word))) {
+      filtered[word] = glossary[word];
+    }
+  }
+  return filtered;
+};
+
+/** 从当前位置向前截取有界原文；不包含当前行，也不依赖任何译文。 */
+export function getPreviousSource(
+  lines: readonly string[],
+  end: number,
+  maxLength = 500,
+): string {
+  if (maxLength <= 0) return '';
+  let source = '';
+  for (let i = end - 1; i >= 0; i--) {
+    source = lines[i] + (i < end - 1 ? '\n' : '') + source;
+    if (source.length >= maxLength) return source.slice(-maxLength);
+  }
+  return source;
+}
+
 export namespace RegexUtil {
   const englishChars = /[a-z]|[A-Z]/;
   export const hasEnglishChars = (str: string) => englishChars.test(str);

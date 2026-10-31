@@ -17,6 +17,7 @@ import {
   TranslatorTracker,
 } from '@/types';
 import { Semaphore, randomUUID } from '@/utils';
+import { postprocessTranslationLines } from './postprocess';
 
 export class TranslationPipeline {
   public queue: SegmentQueue;
@@ -30,7 +31,6 @@ export class TranslationPipeline {
     highWaterMark?: number | 'auto',
     segmenter?: LineSegmenter,
     cache?: SegmentCache,
-    private readonly concurrencyLevel: 'segment' | 'chapter' = 'segment', // 为 chapter 时，传入的章节按分段顺序依次翻译，同时填充前个分段的译文
   ) {
     this.translatorLoops = new Map();
     this.autoHighWaterMark = highWaterMark === 'auto';
@@ -88,10 +88,7 @@ export class TranslationPipeline {
       }
     };
 
-    const prevSegs: string[][] | undefined =
-      this.concurrencyLevel === 'chapter' ? [] : undefined;
     const onSegComplete = (segment: Segment, translatedLines: string[]) => {
-      prevSegs?.push(translatedLines);
       deferredMap.get(segment.order)?.resolve({
         order: segment.order,
         text: translatedLines.join('\n'),
@@ -106,17 +103,6 @@ export class TranslationPipeline {
         tracker?.onSegError?.(segment.order, reason);
       }
       deferredMap.get(segment.order)?.reject(reason);
-      if (this.concurrencyLevel === 'chapter') {
-        // 章节并发模式，单个分片失败，后续自动失败
-        for (const seg of segments) {
-          if (seg.order > segment.order) {
-            deferredMap.get(seg.order)?.reject(reason);
-            if (!signal?.aborted) {
-              tracker?.onSegError?.(seg.order, reason);
-            }
-          }
-        }
-      }
     };
 
     const segments = this.assembler.assemble(
@@ -129,14 +115,6 @@ export class TranslationPipeline {
       onSegError,
       history,
     );
-
-    if (this.concurrencyLevel === 'chapter') {
-      for (const [index, segment] of segments.entries()) {
-        segment.context = { ...segment.context, prevSegs };
-        segment.next = () =>
-          signal?.aborted ? undefined : segments[index + 1];
-      }
-    }
 
     const segmentPromises: Promise<{ order: number; text: string }>[] = [];
     for (const seg of segments) {
@@ -169,11 +147,7 @@ export class TranslationPipeline {
     tracker?: SegmentTracker,
   ): Promise<string> {
     const resultsPromise = Promise.allSettled(segmentPromises);
-    if (this.concurrencyLevel === 'segment') {
-      await this.queue.enqueueAll(segments, signal);
-    } else if (this.concurrencyLevel === 'chapter' && segments.length > 0) {
-      await this.queue.enqueueAll([segments[0]], signal);
-    }
+    await this.queue.enqueueAll(segments, signal);
     const results = await resultsPromise;
 
     if (signal?.aborted) {
@@ -234,25 +208,33 @@ export class TranslationPipeline {
     };
 
     const processSegment = async (segment: Segment) => {
-      // 命中缓存
+      // 缓存和历史也要恢复格式；损坏的旧结果视为未命中，重新翻译。
+      const reuse = (lines: string[]) => {
+        let processed: string[];
+        try {
+          processed = postprocessTranslationLines(segment.lines, lines);
+        } catch {
+          return false;
+        }
+        segment.onComplete(segment, processed);
+        return true;
+      };
       if (this.cache) {
         const cached = await this.cache.get(segment);
-        if (cached) {
-          segment.onComplete(segment, cached);
-          return;
-        }
+        if (cached && reuse(cached)) return;
       }
-      // 旧译文未过期
       if (segment.context?.expired === false && segment.context?.history) {
-        segment.onComplete(segment, segment.context.history.translatedLines);
-        return;
+        if (reuse(segment.context.history.translatedLines)) return;
       }
       loop.abortController.signal.throwIfAborted();
       segment.onStart(segment, loop.id);
-      const translatedLines = await loop.translator.translate(
+      const translatedLines = postprocessTranslationLines(
         segment.lines,
-        segment.context,
-        loop.abortController.signal,
+        await loop.translator.translate(
+          segment.lines,
+          segment.context,
+          loop.abortController.signal,
+        ),
       );
       if (this.cache) {
         await this.cache.set(segment, translatedLines);
@@ -268,19 +250,11 @@ export class TranslationPipeline {
           .then((segment) => {
             updateConcurrency(1);
             processSegment(segment)
-              .then(() => {
-                this.queue.ack(segment.next?.());
-              })
-              .catch((err: any) => {
-                if (
-                  err.name !== 'AbortError' ||
-                  this.concurrencyLevel === 'chapter'
-                ) {
-                  segment.onError(segment, err);
-                }
-                this.queue.ack();
+              .catch((err: unknown) => {
+                segment.onError(segment, err);
               })
               .finally(() => {
+                this.queue.ack();
                 semaphore.release();
                 updateConcurrency(-1);
               });

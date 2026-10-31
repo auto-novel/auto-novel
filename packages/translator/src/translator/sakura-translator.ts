@@ -5,9 +5,15 @@ import type {
   PromptBuilder,
 } from '@/types';
 
+import {
+  isPassthroughLine,
+  validateTranslationLines,
+} from '@/translation-lines';
+import { getPreviousSource } from '@/utils';
 import { createOpenAiApi } from './openai-api';
 import {
   allowModels,
+  cleanSakuraOutput,
   createSakuraPromptBuilder,
   type ModelMeta,
 } from './sakura-prompt';
@@ -16,6 +22,7 @@ export type SakuraVersion = '0.8' | '0.9' | '0.10' | '1.0';
 
 export type SakuraTranslatorConfig = {
   endpoint: string;
+  /** 前文原文的最大字符数；流水线默认提供最近 500 字符。 */
   prevSegLength?: number;
   promptBuilder?: PromptBuilder;
   log?: Logger;
@@ -102,11 +109,9 @@ export class SakuraTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     // Sakura 会吞掉空行，导致行数不匹配；只翻译有内容的行，再放回原位置
-    const isPassthrough = (l: string) =>
-      l.trim().length === 0 || l.startsWith('<图片>');
-    if (lines.some(isPassthrough)) {
+    if (lines.some(isPassthroughLine)) {
       const contentIndexes = lines.flatMap((l, i) =>
-        isPassthrough(l) ? [] : [i],
+        isPassthroughLine(l) ? [] : [i],
       );
       const translated = await this.translate(
         contentIndexes.map((i) => lines[i]),
@@ -120,11 +125,13 @@ export class SakuraTranslator implements Translator {
       return result;
     }
     if (lines.length === 0) return [];
-    const prevSegs = context?.prevSegs ?? [];
-    const truncatedPrevSegs = this.truncatePrevSegs(prevSegs);
     const translateContext: SegmentContext = {
       ...context,
-      prevSegs: truncatedPrevSegs,
+      previousSource: getPreviousSource(
+        [context?.previousSource ?? ''],
+        1,
+        this.prevSegLength,
+      ),
     };
 
     let retry = 0;
@@ -145,41 +152,30 @@ export class SakuraTranslator implements Translator {
         continue;
       }
 
-      const splitText = this.promptBuilder.parseAnswer(text, lines);
-      const linesNotMatched = lines.length !== splitText.length;
+      let splitText: string[];
+      try {
+        splitText = this.promptBuilder.parseAnswer(text, lines);
+        validateTranslationLines(lines, splitText);
+      } catch (err) {
+        this.log(`输出错误：${err}`, [lines.join('\n'), text]);
+        retry++;
+        continue;
+      }
       const parts: string[] = [`第${retry + 1}次`];
       if (hasDegradation) {
         parts.push('退化');
-      } else if (linesNotMatched) {
-        parts.push('行数不匹配');
       } else {
         parts.push('成功');
       }
       this.log(parts.join('　'), [lines.join('\n'), text]);
 
-      if (!hasDegradation && !linesNotMatched) {
+      if (!hasDegradation) {
         return splitText;
       }
       retry++;
     }
     this.log('逐行翻译');
     return this.translateLineByLine(lines, translateContext, signal);
-  }
-
-  private truncatePrevSegs(prevSegs: string[][]): string[][] {
-    if (prevSegs.length === 0) return [];
-
-    let charCount = 0;
-    const result: string[][] = [];
-
-    for (let i = prevSegs.length - 1; i >= 0; i--) {
-      const seg = prevSegs[i];
-      const segChars = seg.join('\n').length;
-      if (charCount + segChars > this.prevSegLength) break;
-      charCount += segChars;
-      result.unshift(seg);
-    }
-    return result;
   }
 
   private static detectVersion(id?: string): SakuraVersion {
@@ -249,16 +245,23 @@ export class SakuraTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
-    const prevSegs = context?.prevSegs ?? [];
+    const sourceLines = context?.previousSource
+      ? [context.previousSource, ...lines]
+      : lines;
+    const sourceOffset = sourceLines.length - lines.length;
     const resultPerLine: string[] = [];
     let degradationLineCount = 0;
 
-    for (const line of lines) {
+    for (const [index, line] of lines.entries()) {
       signal?.throwIfAborted();
 
       const lineContext: SegmentContext = {
         ...context,
-        prevSegs: [...prevSegs, resultPerLine],
+        previousSource: getPreviousSource(
+          sourceLines,
+          sourceOffset + index,
+          this.prevSegLength,
+        ),
       };
 
       const { text, hasDegradation } = await this.createChatCompletions(
@@ -277,9 +280,7 @@ export class SakuraTranslator implements Translator {
         resultPerLine.push(line);
       } else {
         // 单行译文不能含换行，否则上传时按行切分会与原文行数不匹配
-        resultPerLine.push(
-          text.replaceAll('<|im_end|>', '').replaceAll(/\r?\n/g, ''),
-        );
+        resultPerLine.push(cleanSakuraOutput(text).replaceAll('\n', ''));
       }
     }
 

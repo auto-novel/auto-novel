@@ -112,6 +112,7 @@ describe('createLineSegmenter', () => {
 // ============================================================
 describe('createSegmentAssembler', () => {
   const id = 'test-id';
+  const onStart = vi.fn();
   const onComplete = vi.fn();
   const onError = vi.fn();
 
@@ -134,6 +135,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       {},
+      onStart,
       onComplete,
       onError,
     );
@@ -147,6 +149,7 @@ describe('createSegmentAssembler', () => {
     expect(segments[0].context.glossary).toEqual({});
     expect(segments[0].context.expired).toBe(true);
     expect(segments[0].context.history).toBeUndefined();
+    expect(segments[0].onStart).toBe(onStart);
     expect(segments[0].onComplete).toBe(onComplete);
     expect(segments[0].onError).toBe(onError);
 
@@ -174,6 +177,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
     );
@@ -197,6 +201,7 @@ describe('createSegmentAssembler', () => {
       ['a', 'b'],
       makeRanges([0, 2]),
       {},
+      onStart,
       onComplete,
       onError,
     );
@@ -222,6 +227,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
       history,
@@ -252,6 +258,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
       history,
@@ -279,6 +286,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
       history,
@@ -304,6 +312,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
       history,
@@ -335,6 +344,7 @@ describe('createSegmentAssembler', () => {
       lines,
       ranges,
       glossary,
+      onStart,
       onComplete,
       onError,
       history,
@@ -353,7 +363,15 @@ describe('createSegmentAssembler', () => {
 
   it('空行数组应返回空 Segment 数组', () => {
     const assembler = createSegmentAssembler();
-    const segments = assembler.assemble(id, [], [], {}, onComplete, onError);
+    const segments = assembler.assemble(
+      id,
+      [],
+      [],
+      {},
+      onStart,
+      onComplete,
+      onError,
+    );
     expect(segments).toEqual([]);
   });
 
@@ -364,6 +382,7 @@ describe('createSegmentAssembler', () => {
       ['a'],
       makeRanges([0, 1]),
       {},
+      onStart,
       onComplete,
       onError,
     );
@@ -380,6 +399,7 @@ describe('createSegmentAssembler', () => {
       ['a', 'b'],
       makeRanges([0, 1], [1, 2]),
       {},
+      onStart,
       cb1,
       cb2,
     );

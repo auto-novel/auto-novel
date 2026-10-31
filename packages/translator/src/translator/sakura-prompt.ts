@@ -53,12 +53,14 @@ export const allowModels: {
   },
 };
 
+export const cleanSakuraOutput = (text: string): string =>
+  text.replaceAll('<|im_end|>', '').replace(/\r\n?/g, '\n');
+
 export const createSakuraPromptBuilder = (
   version: SakuraVersion,
 ): PromptBuilder => {
   const build = (lines: string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
-    const prevSegs = context?.prevSegs;
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
       content: string;
@@ -71,9 +73,7 @@ export const createSakuraPromptBuilder = (
       ),
     );
     const text = normalizedLines.join('\n');
-
-    const prevText =
-      prevSegs && prevSegs.length > 0 ? prevSegs.flat().join('\n') : '';
+    const prevText = context?.previousSource ?? '';
 
     if (version === '1.0') {
       messages.push({
@@ -82,7 +82,7 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
       if (Object.keys(glossary).length === 0) {
         messages.push({
@@ -105,7 +105,7 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地使用给定的术语表以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的代词，也不要擅自增加或减少换行。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
       const glossaryHint = Object.entries(glossary)
         .map(([jp, zh]) => `${jp}->${zh}`)
@@ -122,7 +122,7 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
       // 对于术语表直接替换
       let replacedText = text;
@@ -141,7 +141,7 @@ export const createSakuraPromptBuilder = (
   };
 
   const parseAnswer = (answer: string, _originalLines: string[]): string[] => {
-    const splitText = answer.replaceAll('<|im_end|>', '').split('\n');
+    const splitText = cleanSakuraOutput(answer).split('\n');
     return splitText;
   };
 

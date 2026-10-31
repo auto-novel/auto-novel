@@ -284,12 +284,7 @@ const translate = async () => {
     if (current !== generation) return;
 
     phase.value = 'translating';
-    pipeline = new TranslationPipeline(
-      100,
-      undefined,
-      undefined,
-      isSakura.value ? 'chapter' : 'segment',
-    );
+    pipeline = new TranslationPipeline(100);
     pipeline.registerTranslator(t, 1);
 
     const result = await pipeline.translate(

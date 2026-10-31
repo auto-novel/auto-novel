@@ -14,7 +14,8 @@ export type Logger = (message: string, detail?: string[]) => void;
 
 export type SegmentContext = {
   glossary: Glossary;
-  prevSegs: string[][];
+  /** 最近最多 500 字符的前文原文，不包含译文。 */
+  previousSource?: string;
   signal?: AbortSignal;
 };
 

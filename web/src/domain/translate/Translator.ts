@@ -68,19 +68,25 @@ export class Translator {
         if (textJp.length === 0) return [];
 
         const segsZh: string[][] = [];
+        let previousSource = '';
         const segs = this.segTranslator.segmentor(textJp, oldTextZh);
         const size = segs.length;
         for (const [index, [segJp, oldSegZh]] of segs.entries()) {
           const segZh = await this.translateSeg(segJp, {
             logPrefix: `分段${index + 1}/${size}`,
             ...context,
-            prevSegs: segsZh,
+            previousSource,
             oldSegZh,
           });
           if (segJp.length !== segZh.length) {
             throw new Error('翻译结果行数不匹配。不应当出现，请反馈给站长。');
           }
           segsZh.push(segZh);
+          // 只累积原文；缓存命中或复用旧译文也不能改变上下文来源。
+          previousSource = [previousSource, segJp.join('\n')]
+            .filter(Boolean)
+            .join('\n')
+            .slice(-500);
         }
         return segsZh.flat();
       },
@@ -95,7 +101,7 @@ export class Translator {
       glossary,
       oldSegZh,
       oldGlossary,
-      prevSegs,
+      previousSource,
       force,
       signal,
     }: {
@@ -103,7 +109,7 @@ export class Translator {
       glossary?: Glossary;
       oldSegZh?: string[];
       oldGlossary?: Glossary;
-      prevSegs: string[][];
+      previousSource?: string;
       force?: boolean;
       signal?: AbortSignal;
     },
@@ -147,7 +153,7 @@ export class Translator {
     this.log(logPrefix);
     const segOutput = await this.segTranslator.translate(seg, {
       glossary: segGlossary,
-      prevSegs,
+      previousSource,
       signal,
     });
     if (segOutput.length !== seg.length) {

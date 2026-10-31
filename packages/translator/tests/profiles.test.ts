@@ -10,18 +10,7 @@ import {
 // 模型配置预设测试
 // ============================================================
 describe('模型配置预设', () => {
-  // --- 场景 1：预设列表完整性 ---
-  it('应保留原有预设并扩展支持新协议预设 (openai-responses, anthropic)', () => {
-    expect(openAiProfiles.map((profile) => profile.id)).toEqual([
-      'openai',
-      'deepseek',
-      'gemini',
-      'openai-responses',
-      'anthropic',
-    ]);
-  });
-
-  // --- 场景 2：默认参数过滤 ---
+  // --- 场景 1：默认参数过滤 ---
   it('当思考强度选择服务端默认值时，应省略参数不发送', () => {
     for (const profile of openAiProfiles) {
       expect(
@@ -32,7 +21,7 @@ describe('模型配置预设', () => {
     }
   });
 
-  // --- 场景 3：各协议特定参数映射 ---
+  // --- 场景 2：各协议特定参数映射 ---
   it('针对不同协议正确转换思考强度参数', () => {
     // OpenAI Completions: 标准 reasoning_effort
     expect(

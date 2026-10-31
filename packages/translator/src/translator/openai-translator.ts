@@ -4,7 +4,11 @@ import type {
   SegmentContext,
   Translator,
 } from '@/types';
-import { detectChinese } from '@/utils';
+import { detectChinese, getPreviousSource } from '@/utils';
+import {
+  isPassthroughLine,
+  validateTranslationLines,
+} from '@/translation-lines';
 
 import {
   createPiAiCompletion,
@@ -67,7 +71,7 @@ export class OpenAiTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
-    if (lines.every((l) => l.trim().length === 0)) {
+    if (lines.every(isPassthroughLine)) {
       return lines;
     }
     this.log(`请求思考强度：${this.reasoningEffort}`);
@@ -95,6 +99,7 @@ export class OpenAiTranslator implements Translator {
       }
 
       logSegInfo(retry, [lines.length, result.length]);
+      // 单独统计行数错误，用于决定是否启动二分翻译。
       if (lines.length !== result.length) {
         failBecauseLineNumberNotMatch++;
         this.log('输出错误：输出行数不匹配');
@@ -102,7 +107,17 @@ export class OpenAiTranslator implements Translator {
         continue;
       }
 
-      const joined = result.join(' ');
+      try {
+        validateTranslationLines(lines, result);
+      } catch (err) {
+        this.log(`输出错误：${err}`);
+        retry++;
+        continue;
+      }
+
+      const joined = result
+        .filter((_, i) => !isPassthroughLine(lines[i]))
+        .join(' ');
       if (!detectChinese(joined)) {
         this.log('输出错误：输出语言不是中文');
         retry++;
@@ -124,7 +139,7 @@ export class OpenAiTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     if (lines.length === 0) return [];
-    if (lines.every((l) => l.trim().length === 0)) {
+    if (lines.every(isPassthroughLine)) {
       return lines;
     }
 
@@ -150,6 +165,10 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
+    const sourceLines = context?.previousSource
+      ? [context.previousSource, ...lines]
+      : lines;
+    const sourceOffset = sourceLines.length - lines.length;
     const binary = async (left: number, right: number): Promise<string[]> => {
       signal?.throwIfAborted();
 
@@ -157,10 +176,15 @@ export class OpenAiTranslator implements Translator {
       if (right - left === 1) {
         const result = await this.translateLines(
           [lines[left]],
-          context,
+          {
+            ...context,
+            previousSource: getPreviousSource(sourceLines, sourceOffset + left),
+          },
           signal,
         );
-        return result.length === 1 ? result : [lines[left]];
+        if (result.length !== 1) return [lines[left]];
+        validateTranslationLines([lines[left]], result);
+        return result;
       }
 
       const mid = Math.floor((left + right) / 2);

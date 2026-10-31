@@ -56,7 +56,6 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     'auto',
     undefined,
     new IndexedDbSegmentCache(segCacheName),
-    isSakura ? 'chapter' : 'segment',
   );
 
   // ========== 任务状态管理 ==========

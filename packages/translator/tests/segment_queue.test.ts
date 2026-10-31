@@ -41,7 +41,7 @@ describe('DefaultSegmentQueue', () => {
   // --- 场景 3：高水位线背压测试 ---
   it('当达到高水位线时，waitUntilBelowHighWaterMark 应该阻塞', async () => {
     // 1. 填满到水位线 (3个)
-    queue.enqueueAll([
+    await queue.enqueueAll([
       createSegment('1'),
       createSegment('2'),
       createSegment('3'),
@@ -52,15 +52,16 @@ describe('DefaultSegmentQueue', () => {
       isResolved = true;
     });
 
-    // 此时 queue.length = 3, 不小于 HWM(3)，所以 Promise 应该是 pending 状态
-    // 我们稍微等待一下，确认它没有立即 resolve
-    await new Promise((r) => setTimeout(r, 50));
+    await Promise.resolve();
     expect(isResolved).toBe(false);
 
-    // 2. 消费者取走一个，水位降至 2
+    // 取走但尚未完成的分段仍计入在途水位。
     await queue.dequeue();
+    await Promise.resolve();
+    expect(isResolved).toBe(false);
+    queue.ack();
 
-    // 3. 此时等待的 Promise 应该被唤醒了
+    // 消费者完成分段后才释放水位。
     await waitPromise;
     expect(isResolved).toBe(true);
     expect(queue.length).toBe(2);

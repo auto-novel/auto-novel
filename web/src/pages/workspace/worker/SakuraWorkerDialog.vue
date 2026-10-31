@@ -178,10 +178,6 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         <br />
         # API端点例子：http://127.0.0.1:8080
       </n-text>
-      <br />
-      <n-text depth="3" class="text-[12px]!">
-        # 并发数仅beta工作区生效，是章节级别的并发。
-      </n-text>
     </n-form>
 
     <template #footer>

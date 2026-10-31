@@ -7,16 +7,7 @@ import type {
   SegmentContext,
   TranslationHistory,
 } from '@/types';
-
-const filterGlossary = (glossary: Glossary, lines: string[]): Glossary => {
-  const filtered: Glossary = {};
-  for (const word in glossary) {
-    if (lines.some((line) => line.includes(word))) {
-      filtered[word] = glossary[word];
-    }
-  }
-  return filtered;
-};
+import { filterGlossaryForLines, getPreviousSource } from '@/utils';
 
 export const createSegmentAssembler = (): SegmentAssembler => {
   return {
@@ -34,7 +25,8 @@ export const createSegmentAssembler = (): SegmentAssembler => {
         const { start, end } = range;
 
         const segLines = lines.slice(start, end);
-        const segGlossary = filterGlossary(glossary, segLines);
+        const previousSource = getPreviousSource(lines, start);
+        const segGlossary = filterGlossaryForLines(glossary, segLines);
 
         let expired = true; //标记是否过期
         let segHistory: TranslationHistory | undefined;
@@ -44,7 +36,10 @@ export const createSegmentAssembler = (): SegmentAssembler => {
             start,
             end,
           );
-          const oldSegGlossary = filterGlossary(history.glossary, segLines);
+          const oldSegGlossary = filterGlossaryForLines(
+            history.glossary,
+            segLines,
+          );
 
           segHistory = {
             lines: oldSegLines,
@@ -52,9 +47,10 @@ export const createSegmentAssembler = (): SegmentAssembler => {
             glossary: oldSegGlossary,
           };
 
-          //原文一致，且术语表一致才跳过
+          // 当前原文、前文原文和术语表一致才跳过。
           if (
             isEqual(segLines, oldSegLines) &&
+            previousSource === getPreviousSource(history.lines, start) &&
             isEqual(segGlossary, oldSegGlossary)
           ) {
             expired = false;
@@ -63,7 +59,7 @@ export const createSegmentAssembler = (): SegmentAssembler => {
 
         const segContext: SegmentContext = {
           glossary: segGlossary,
-          prevSegs: [],
+          previousSource,
           expired: expired,
           history: segHistory,
         };

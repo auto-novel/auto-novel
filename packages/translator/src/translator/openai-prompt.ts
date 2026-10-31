@@ -1,4 +1,6 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
+import { filterGlossaryForLines } from '@/utils';
+import { isPassthroughLine } from '@/translation-lines';
 
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
   const build = (lines: string[], context?: SegmentContext) => {
@@ -19,9 +21,7 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     const parts: string[] = [];
 
     //术语表处理
-    const pairs = Object.entries(glossary).filter(([jp]) =>
-      lines.some((line) => line.includes(jp)),
-    );
+    const pairs = Object.entries(filterGlossaryForLines(glossary, lines));
     if (pairs.length > 0) {
       parts.push('翻译的时候参考下面的术语表：');
       for (const [jp, zh] of pairs) {
@@ -29,7 +29,16 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
       }
     }
 
-    parts.push('小说原文如下，注意要保留每一段开头的编号：');
+    if (context?.previousSource) {
+      parts.push(
+        '以下是前文原文，仅供理解上下文，不要翻译或输出这部分内容：',
+        '<前文原文>',
+        context.previousSource,
+        '</前文原文>',
+      );
+    }
+
+    parts.push('仅翻译以下当前原文，注意要保留每一段开头的编号：');
     lines.forEach((line, i) => parts.push(`#${i + 1}:${line}`));
     if (lines.length === 1) {
       parts.push('原文到此为止'); // 防止乱编
@@ -59,15 +68,14 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
       const lineNum = i + 1;
       const originalLine = originalLines[i];
 
-      if (originalLine.trim().length === 0) {
+      if (isPassthroughLine(originalLine)) {
         result.push(originalLine);
       } else {
         const translated = lineContentMap.get(lineNum);
         if (translated === undefined) {
           throw new Error(`行数不匹配`);
         }
-        const heading = originalLine.match(/^(\s*)/)?.[1] ?? '';
-        result.push(heading + translated.trimStart());
+        result.push(translated);
       }
     }
     return result;

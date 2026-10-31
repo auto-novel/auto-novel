@@ -57,11 +57,15 @@ export class TaskExecutor {
         const detail = await this.task.fetchChapter(chapterId, context);
         checkExecution();
 
-        const original = detail.paragraphs.join('\n');
+        // 单个段落内的换行不是段落分隔符，拼接前清理，避免译文错位。
+        const paragraphs = detail.paragraphs.map((line) =>
+          line.replace(/[\r\n]/g, ''),
+        );
+        const original = paragraphs.join('\n');
         const history =
           this.task.level !== 'all' && detail.oldParagraphZh
             ? {
-                lines: detail.paragraphs,
+                lines: paragraphs,
                 translatedLines: detail.oldParagraphZh,
                 glossary: detail.oldGlossary ?? {},
               }

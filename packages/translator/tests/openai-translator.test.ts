@@ -48,6 +48,40 @@ describe('OpenAiTranslator', () => {
     });
   });
 
+  it('全为空行和图片时不请求 API', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator({
+      endpoint: 'https://api.example.test',
+      key: 'test-key',
+      model: 'model-1',
+    });
+    const lines = [' ', '<图片>https://example.test/a.jpg'];
+    await expect(translator.translate(lines)).resolves.toEqual(lines);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('自定义解析器返回行内换行时进入重试', async () => {
+    vi.stubGlobal('fetch', async () =>
+      mockStreamResponse([
+        { choices: [{ index: 0, delta: { content: '译文' } }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      ]),
+    );
+    const parseAnswer = vi
+      .fn()
+      .mockReturnValueOnce(['译\n文'])
+      .mockReturnValue(['译文']);
+    const translator = new OpenAiTranslator({
+      endpoint: 'https://api.example.test',
+      key: 'test-key',
+      model: 'model-1',
+      promptBuilder: { build: () => [], parseAnswer },
+    });
+    await expect(translator.translate(['原文'])).resolves.toEqual(['译文']);
+    expect(parseAnswer).toHaveBeenCalledTimes(2);
+  });
+
   // --- 场景 2：服务商参数错误直接中断 ---
   it('当遇到服务商返回参数错误时，应直接向外抛出而不进行重试', async () => {
     let calls = 0;
