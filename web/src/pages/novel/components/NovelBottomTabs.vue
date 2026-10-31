@@ -93,6 +93,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
         v-if="$slots.wenkuToc"
         name="wenkuToc"
         tab="目录"
+        display-directive="show:lazy"
         style="min-height: 400px"
       >
         <slot name="wenkuToc" />
@@ -102,6 +103,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
         v-if="!hideComment"
         name="comment"
         tab="评论区"
+        display-directive="show:lazy"
         style="min-height: 400px"
       >
         <slot name="commentNotice" />
