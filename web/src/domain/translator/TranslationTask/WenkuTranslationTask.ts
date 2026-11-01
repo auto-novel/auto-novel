@@ -5,7 +5,11 @@ import type {
   TranslatorId,
   WenkuTranslateTask,
 } from '@/model/Translator';
-import type { ChapterDetail, TranslationTask } from './types';
+import type {
+  ChapterDetail,
+  TaskExecutionContext,
+  TranslationTask,
+} from './types';
 import { WenkuNovelApi } from '@/api';
 import { buildChapterMetaList } from './utils';
 
@@ -18,7 +22,6 @@ export class WenkuTranslationTask implements TranslationTask {
   glossaryId = '';
   initialized = false;
 
-  private api!: ReturnType<typeof WenkuNovelApi.createTranslationApi>;
   private params: TranslateTaskParams;
 
   constructor(
@@ -33,14 +36,8 @@ export class WenkuTranslationTask implements TranslationTask {
   }
 
   async initMeta(signal?: AbortSignal): Promise<void> {
-    this.api = WenkuNovelApi.createTranslationApi(
-      this.novelId,
-      this.volumeId,
-      this.translatorId,
-      signal,
-    );
-
-    const task = await this.api.getTranslateTask();
+    const task = await this.createApi(signal).getTranslateTask();
+    signal?.throwIfAborted();
     this.glossary = {};
     this.glossaryId = task.glossaryId;
 
@@ -69,8 +66,14 @@ export class WenkuTranslationTask implements TranslationTask {
     this.initialized = true;
   }
 
-  async fetchChapter(chapterId: string): Promise<ChapterDetail> {
-    const chapterTask = await this.api.getChapterTranslateTask(chapterId);
+  async fetchChapter(
+    chapterId: string,
+    context?: TaskExecutionContext,
+  ): Promise<ChapterDetail> {
+    this.checkExecution(context);
+    const api = this.createApi(context?.signal);
+    const chapterTask = await api.getChapterTranslateTask(chapterId);
+    this.checkExecution(context);
     return {
       paragraphs: chapterTask.paragraphJp,
       glossary: chapterTask.glossary,
@@ -84,10 +87,30 @@ export class WenkuTranslationTask implements TranslationTask {
     chapterId: string,
     glossaryId: string,
     translatedParagraphs: string[],
+    context?: TaskExecutionContext,
   ): Promise<void> {
-    await this.api.updateChapterTranslation(chapterId, {
+    this.checkExecution(context);
+    const api = this.createApi(context?.signal);
+    await api.updateChapterTranslation(chapterId, {
       glossaryId,
       paragraphsZh: translatedParagraphs,
     });
+  }
+
+  private checkExecution(context?: TaskExecutionContext): void {
+    context?.signal.throwIfAborted();
+    if (context?.canUpload?.() === false) {
+      throw new DOMException('任务已停止或不允许上传', 'AbortError');
+    }
+  }
+
+  private createApi(signal?: AbortSignal) {
+    // API 捕获信号，仅供当前请求使用，不能沿用初始化或上一轮执行的信号。
+    return WenkuNovelApi.createTranslationApi(
+      this.novelId,
+      this.volumeId,
+      this.translatorId,
+      signal,
+    );
   }
 }
