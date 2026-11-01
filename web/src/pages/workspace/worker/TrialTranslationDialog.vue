@@ -286,7 +286,9 @@ const translate = async () => {
       revealResult();
       return;
     }
-    pipeline = new TranslationPipeline();
+    pipeline = new TranslationPipeline({
+      segmentLength: isSakura.value ? 500 : undefined,
+    });
     pipeline.registerTranslator(t, { concurrency: 1 });
 
     const { lines, failed } = await pipeline.translate(

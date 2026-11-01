@@ -42,6 +42,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
   /** 队列水位始终跟随已启动翻译器的总并发，预留一倍缓冲。 */
   const pipeline = new TranslationPipeline({
+    segmentLength: isSakura ? 500 : undefined,
     cache: new IndexedDbSegmentCache(segCacheName),
   });
 

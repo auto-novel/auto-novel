@@ -58,11 +58,17 @@ export class TranslationPipeline {
    * 因此从 1 开始，注册后由 _updateHighWaterMark 上调。
    */
   constructor(
-    options: { segmenter?: LineSegmenter; cache?: SegmentCache } = {},
+    options: {
+      segmenter?: LineSegmenter;
+      segmentLength?: number;
+      cache?: SegmentCache;
+    } = {},
   ) {
     this.translatorLoops = new Map();
     this.queue = new SegmentQueue();
-    this.segmenter = options.segmenter ?? createLineSegmenter(1500, 30);
+    this.segmenter =
+      options.segmenter ??
+      createLineSegmenter(options.segmentLength ?? 1500, 30);
     this.cache = options.cache;
   }
 

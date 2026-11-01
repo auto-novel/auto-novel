@@ -19,7 +19,7 @@ export function createPipelineTranslator(
       {
         kind: 'sakura',
         endpoint: worker.endpoint,
-        prevSegLength: (worker as SakuraWorker).prevSegLength,
+        prevSegLength: 500,
       },
       log,
     );

@@ -64,7 +64,9 @@ const testWorker = async () => {
   ];
   const reasoningLogs: string[] = [];
   // 与工作区走同一条流水线，顺带验证重试、校验与降级。
-  const pipeline = new TranslationPipeline();
+  const pipeline = new TranslationPipeline({
+    segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
+  });
   try {
     const translator = await createPipelineTranslator(
       props.translatorId,
