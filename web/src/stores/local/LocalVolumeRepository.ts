@@ -47,11 +47,14 @@ export const createLocalVolumeStore = async () => {
     chapterId: string,
     translatorId: TranslatorId,
     translation: ChapterTranslation,
+    beforeWrite?: () => void,
   ) => {
     const chapter = await dao.updateChapter(
       id,
       chapterId,
       (value: LocalVolumeChapter) => {
+        // DAO 读取也会等待；在实际写入前复查。写入开始后继续更新目录，保持一致。
+        beforeWrite?.();
         value[translatorId] = translation;
         return value;
       },

@@ -12,7 +12,7 @@ export type ChapterTracker = {
 export class TaskExecutor {
   constructor(
     private task: TranslationTask,
-    /** 能否更新来源站点的内容（目录/元数据）；与翻译派发无关。 */
+    /** 任务仍有效且允许保存／更新来源；翻译器派发审批由流水线负责。 */
     private canUpdateProvider?: () => boolean,
   ) {}
 
@@ -39,6 +39,7 @@ export class TaskExecutor {
     const onError = (error: unknown) => {
       if (
         signal?.aborted ||
+        this.canUpdateProvider?.() === false ||
         (error instanceof Error && error.name === 'AbortError')
       ) {
         markChapterPending();
@@ -52,7 +53,13 @@ export class TaskExecutor {
 
     if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = undefined;
 
+    const checkExecution = () => {
+      signal?.throwIfAborted();
+      if (this.canUpdateProvider?.() === false)
+        throw new DOMException('任务已失效或不允许保存', 'AbortError');
+    };
     try {
+      checkExecution();
       if (!this.task.initialized) await this.task.initMeta(signal);
       const chapter = this.task.chapters.find(
         (ch) => ch.chapterId === chapterId,
@@ -65,8 +72,6 @@ export class TaskExecutor {
         canUpload: this.canUpdateProvider,
         onLog: tracker.onLog,
       };
-      // 能否把译文发给翻译器由流水线的 approved 把关，这里只看任务是否还活着。
-      const checkExecution = () => context.signal.throwIfAborted();
       checkExecution();
       const detail = await this.task.fetchChapter(chapterId, context);
       checkExecution();

@@ -2,7 +2,11 @@ import type { Glossary } from '@auto-novel/translator';
 import type { ChapterMeta } from '../TaskState';
 import type { TranslateTaskParams, TranslatorId } from '@/model/Translator';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
-import type { ChapterDetail, TranslationTask } from './types';
+import type {
+  ChapterDetail,
+  TaskExecutionContext,
+  TranslationTask,
+} from './types';
 import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
 import { useLocalVolumeStore } from '@/stores';
 import { buildChapterMetaList } from './utils';
@@ -85,8 +89,15 @@ export class LocalTranslationTask implements TranslationTask {
     chapterId: string,
     glossaryId: string,
     translatedParagraphs: string[],
+    context?: TaskExecutionContext,
   ): Promise<void> {
+    const checkExecution = () => {
+      context?.signal.throwIfAborted();
+      if (context?.canUpload?.() === false)
+        throw new DOMException('任务已失效或不允许保存', 'AbortError');
+    };
     await this._ensureStore();
+    checkExecution();
     await this.volumeStore.updateTranslation(
       this.volumeId,
       chapterId,
@@ -96,6 +107,7 @@ export class LocalTranslationTask implements TranslationTask {
         glossary: this.glossary,
         paragraphs: translatedParagraphs,
       },
+      checkExecution,
     );
   }
 }
