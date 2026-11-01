@@ -95,8 +95,9 @@ export const createSakuraPromptBuilder = (
           content: `将下面的日文文本翻译成中文：${text}`,
         });
       } else {
-        const glossaryHint = Object.entries(glossary)
-          .map(([jp, zh]) => `${jp}->${zh}`)
+        const glossaryHint = Object.keys(glossary)
+          .sort()
+          .map((jp) => `${jp}->${glossary[jp]}`)
           .join('\n');
         messages.push({
           role: 'user',
@@ -112,8 +113,9 @@ export const createSakuraPromptBuilder = (
       if (prevText) {
         messages.push({ role: 'user', content: prevText });
       }
-      const glossaryHint = Object.entries(glossary)
-        .map(([jp, zh]) => `${jp}->${zh}`)
+      const glossaryHint = Object.keys(glossary)
+        .sort()
+        .map((jp) => `${jp}->${glossary[jp]}`)
         .join('\n');
       messages.push({
         role: 'user',

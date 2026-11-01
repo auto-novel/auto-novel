@@ -1,5 +1,4 @@
 import type { Segment } from '@/types';
-import { Semaphore } from '@/utils';
 
 /** 分段级进度事件；一次输入共用一份。 */
 interface SegmentObserver {
@@ -30,10 +29,10 @@ export class SegmentQueue {
   /** 等待出队的消费者 resolve 回调队列（FIFO） */
   private readonly _dequeueResolvers: Array<(task: SegmentTask) => void> = [];
 
-  /** 水位变化通知；实际入队仍由入队锁串行检查容量。 */
+  /** 水位变化通知；实际入队仍由 Promise 链串行检查容量。 */
   private _hwResolvers: Array<() => void> = [];
-  /** 入队锁，防止多任务 enqueueAll 交错 */
-  private readonly _enqueueLock = new Semaphore(1);
+  /** 串行入队链；始终正常完成，避免一次失败阻断后续输入。 */
+  private _enqueueTail: Promise<void> = Promise.resolve();
 
   setHighWaterMark(value: number): void {
     if (!Number.isFinite(value) || value <= 0) {
@@ -47,8 +46,8 @@ export class SegmentQueue {
     return this._items.length;
   }
 
-  async enqueueAll(tasks: SegmentTask[], signal?: AbortSignal): Promise<void> {
-    await this._enqueueLock.use(async () => {
+  enqueueAll(tasks: SegmentTask[], signal?: AbortSignal): Promise<void> {
+    const enqueued = this._enqueueTail.then(async () => {
       let offset = 0;
       while (offset < tasks.length) {
         await this.waitUntilBelowHighWaterMark(signal);
@@ -61,6 +60,8 @@ export class SegmentQueue {
         offset += count;
       }
     });
+    this._enqueueTail = enqueued.catch(() => {});
+    return enqueued;
   }
 
   private _enqueue(tasks: SegmentTask[]): void {

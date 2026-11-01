@@ -10,6 +10,7 @@ import type {
 import { validateTranslationLines } from '@/pipeline/lines';
 import { getPreviousSource, isAbortError } from '@/utils';
 import { TranslationRejected } from '@/errors';
+import { createTranslationCacheKey } from '@/cache';
 import { createOpenAiApi } from './sakura-client';
 import {
   allowModels,
@@ -85,24 +86,22 @@ export class SakuraTranslator implements Translator {
 
   /** 只有与本仓库登记过的模型一致时才允许把内容发往该端点。 */
   async probe(): Promise<TranslatorProbe> {
-    const reason = this.modelRejection();
-    if (reason !== undefined) {
-      this.log(reason);
-      return { approved: false, reason, info: this.modelInfo() };
-    }
-    this.log(`模型为${this.model?.id}，允许上传`);
-    return { approved: true, info: this.modelInfo() };
+    return this.checkUpload();
   }
 
   /** 同步判定，供旧调用方使用。 */
   allowUpload(): boolean {
+    return this.checkUpload().approved;
+  }
+
+  private checkUpload(): TranslatorProbe {
     const reason = this.modelRejection();
-    if (reason !== undefined) {
-      this.log(reason);
-      return false;
-    }
-    this.log(`模型为${this.model?.id}，允许上传`);
-    return true;
+    this.log(reason ?? `模型为${this.model?.id}，允许上传`);
+    const info =
+      this.model === undefined ? undefined : { model: this.model.id };
+    return reason === undefined
+      ? { approved: true, info }
+      : { approved: false, reason, info };
   }
 
   /** 不允许上传的原因；为空表示通过。 */
@@ -119,8 +118,14 @@ export class SakuraTranslator implements Translator {
     return undefined;
   }
 
-  private modelInfo(): Record<string, string> | undefined {
-    return this.model === undefined ? undefined : { model: this.model.id };
+  getCacheKey({ lines, context }: Pick<TranslateRequest, 'lines' | 'context'>) {
+    return createTranslationCacheKey(
+      this.model?.id,
+      lines,
+      this.promptBuilder,
+      this.modelRejection() === undefined,
+      this.contextFor(context),
+    );
   }
 
   async translate({
@@ -190,7 +195,6 @@ export class SakuraTranslator implements Translator {
     if (id?.includes('0.8')) return '0.8';
     if (id?.includes('0.9')) return '0.9';
     if (id?.includes('0.10')) return '0.10';
-    if (id?.includes('1.0')) return '1.0';
     return '1.0';
   }
 

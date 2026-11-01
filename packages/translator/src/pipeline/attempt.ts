@@ -55,5 +55,7 @@ export async function attemptTranslation(
   log(
     `翻译失败：${lastError instanceof Error ? lastError.message : lastError}`,
   );
-  throw new Error('翻译失败：重试次数过多');
+  throw Object.assign(new Error('翻译失败：重试次数过多'), {
+    cause: lastError,
+  });
 }

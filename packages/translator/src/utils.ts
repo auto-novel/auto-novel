@@ -125,62 +125,6 @@ export function anySignal(
   return controller.signal;
 }
 
-export class Semaphore {
-  private _current = 0;
-  private queue: Array<() => void> = [];
-  constructor(private _max: number) {
-    if (_max <= 0)
-      throw new Error('Semaphore max capacity must be greater than 0');
-  }
-
-  get max(): number {
-    return this._max;
-  }
-
-  get current(): number {
-    return this._current;
-  }
-
-  async acquire(): Promise<void> {
-    if (this._current < this._max) {
-      this._current++;
-      return;
-    }
-    return new Promise<void>((resolve) => {
-      this.queue.push(resolve);
-    });
-  }
-
-  release(): void {
-    if (this.queue.length > 0) {
-      const next = this.queue.shift()!;
-      next();
-    } else {
-      this._current--;
-    }
-  }
-
-  setMax(max: number): void {
-    if (max <= 0)
-      throw new Error('Semaphore max capacity must be greater than 0');
-    this._max = max;
-    while (this.queue.length > 0 && this._current < this._max) {
-      this._current++;
-      const next = this.queue.shift()!;
-      next();
-    }
-  }
-
-  async use<T>(fn: () => Promise<T> | T): Promise<T> {
-    await this.acquire();
-    try {
-      return await fn();
-    } finally {
-      this.release();
-    }
-  }
-}
-
 export function randomUUID(): string {
   if (
     typeof crypto !== 'undefined' &&

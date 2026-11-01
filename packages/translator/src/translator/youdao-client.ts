@@ -49,7 +49,7 @@ export const createYoudaoApi = (client: KyInstance) => {
   let key = 'fsdsogkndfokasodnaso';
 
   const rlog = async () => {
-    client.get('https://rlogs.youdao.com/rlog.php', {
+    await client.get('https://rlogs.youdao.com/rlog.php', {
       searchParams: {
         _npid: 'fanyiweb',
         _ncat: 'pageview',

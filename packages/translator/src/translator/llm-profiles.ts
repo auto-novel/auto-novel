@@ -1,3 +1,5 @@
+import type { PiAiProtocol } from './llm-client';
+
 // 配置字段与类型。
 type SelectField = {
   readonly key: string;
@@ -216,6 +218,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export function parseOpenAiProfileSelection(
   value: unknown,
 ): OpenAiProfileSelection {
+  return parseProfile(value).selection;
+}
+
+function parseProfile(value: unknown): {
+  profile: TranslatorProfile;
+  selection: OpenAiProfileSelection;
+} {
   if (!isRecord(value)) throw new TypeError('模型配置必须是对象');
   const profile: TranslatorProfile | undefined = openAiProfiles.find(
     (profile) => profile.id === value.id,
@@ -245,7 +254,10 @@ export function parseOpenAiProfileSelection(
       throw new TypeError(`模型配置 ${profile.id} 的参数 ${key} 无效`);
   }
 
-  return { id: profile.id, values } as OpenAiProfileSelection;
+  return {
+    profile,
+    selection: { id: profile.id, values } as OpenAiProfileSelection,
+  };
 }
 
 const stripDefault = (values: ProfileValues): ProfileValues => {
@@ -263,19 +275,26 @@ const stripDefault = (values: ProfileValues): ProfileValues => {
   return result;
 };
 
-export const buildOpenAiProfileParams = (
-  id: openAiProfileId | undefined,
-  values: ProfileValues = {},
-): Record<string, unknown> => {
-  if (!id) return {};
-
-  const selection = parseOpenAiProfileSelection({ id, values });
-  const profile: TranslatorProfile | undefined = openAiProfiles.find(
-    (profile) => profile.id === selection.id,
-  );
-
-  if (!profile) return {};
-
-  const _values = stripDefault(selection.values ?? {});
-  return profile.buildRequestParams?.(_values) ?? _values;
-};
+/** 构造翻译器时只校验／查找一次，统一解析协议、请求参数和日志用思考强度。 */
+export function resolveOpenAiProfile(value: unknown): {
+  protocol: PiAiProtocol;
+  requestParams: Record<string, unknown>;
+  reasoningEffort: string;
+} {
+  if (value === undefined) {
+    return {
+      protocol: 'openai-completions',
+      requestParams: {},
+      reasoningEffort: '默认',
+    };
+  }
+  const { profile, selection } = parseProfile(value);
+  const values = stripDefault(selection.values ?? {});
+  const effort = values.reasoning_effort;
+  return {
+    protocol:
+      profile.apiFormat === 'openai' ? 'openai-completions' : profile.apiFormat,
+    requestParams: profile.buildRequestParams?.(values) ?? values,
+    reasoningEffort: effort ? String(effort) : '默认',
+  };
+}

@@ -7,19 +7,13 @@ import type {
 } from '@/types';
 import { detectChinese, getPreviousSource, isAbortError } from '@/utils';
 
-import {
-  createPiAiCompletion,
-  PiAiRequestError,
-  type PiAiProtocol,
-} from './llm-client';
+import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
+import { createTranslationCacheKey } from '@/cache';
 
 import {
-  buildOpenAiProfileParams,
-  openAiProfiles,
-  parseOpenAiProfileSelection,
-  DEFAULT_FIELD_VALUE,
+  resolveOpenAiProfile,
   type OpenAiProfileSelection,
 } from './llm-profiles';
 
@@ -46,20 +40,23 @@ export class OpenAiTranslator implements Translator {
   constructor(config: OpenAiTranslatorConfig) {
     this.endpoint = config.endpoint;
     this.key = config.key;
-    const profile =
-      config.profile === undefined
-        ? undefined
-        : parseOpenAiProfileSelection(config.profile);
-    const apiFormat =
-      openAiProfiles.find((p) => p.id === profile?.id)?.apiFormat ?? 'openai';
-    this.protocol = apiFormat === 'openai' ? 'openai-completions' : apiFormat;
+    const profile = resolveOpenAiProfile(config.profile);
+    this.protocol = profile.protocol;
     this.model = config.model;
-    this.profileParams = buildOpenAiProfileParams(profile?.id, profile?.values);
-    const effort = profile?.values?.reasoning_effort;
-    this.reasoningEffort =
-      !effort || effort === DEFAULT_FIELD_VALUE ? '默认' : String(effort);
+    this.profileParams = profile.requestParams;
+    this.reasoningEffort = profile.reasoningEffort;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
+  }
+
+  getCacheKey({ lines, context }: Pick<TranslateRequest, 'lines' | 'context'>) {
+    return createTranslationCacheKey(
+      this.model,
+      lines,
+      this.promptBuilder,
+      true,
+      context,
+    );
   }
 
   async translate({
@@ -71,28 +68,43 @@ export class OpenAiTranslator implements Translator {
     if (lines.length === 0) return [];
     if (attempt === 0) this.log(`请求思考强度：${this.reasoningEffort}`);
 
-    let result: string[];
-    try {
-      result = await this.translateLines(lines, context, signal);
-    } catch (error) {
-      // 取消与服务商参数错误不重试。
-      if (error instanceof PiAiRequestError || isAbortError(error)) throw error;
-      this.log(`翻译错误：${error}`);
-      throw new TranslationRejected('request', String(error), error);
-    }
+    const result = await this.translateLines(lines, context, signal);
     if (!detectChinese(result.join(' '))) {
       throw new TranslationRejected('language', '输出语言不是中文');
     }
     return result;
   }
 
-  /** 行数始终对不齐时二分翻译，只为修复输出形状。 */
+  /** 输出形状反复失败时串行逐行翻译，避免降级请求突破外层并发限制。 */
   async fallback({
     lines,
     context,
     signal,
   }: TranslateRequest): Promise<string[]> {
-    return this.binaryTranslate(lines, context, signal);
+    const sourceLines = context?.previousSource
+      ? [context.previousSource, ...lines]
+      : lines;
+    const sourceOffset = sourceLines.length - lines.length;
+    const translatedLines: string[] = [];
+    for (let index = 0; index < lines.length; index++) {
+      signal?.throwIfAborted();
+      this.log(`逐行翻译第${index + 1}/${lines.length}行`);
+      const result = await this.translateLines(
+        [lines[index]],
+        {
+          ...context,
+          previousSource: getPreviousSource(sourceLines, sourceOffset + index),
+        },
+        signal,
+      );
+      signal?.throwIfAborted();
+      translatedLines.push(
+        result.length === 1 && !/[\r\n]/.test(result[0])
+          ? result[0]
+          : lines[index],
+      );
+    }
+    return translatedLines;
   }
 
   private async translateLines(
@@ -114,65 +126,16 @@ export class OpenAiTranslator implements Translator {
       this.log(`思考：${completion.reasoning}`);
     }
 
-    return this.promptBuilder.parseAnswer(completion.text, lines);
-  }
-
-  private async binaryTranslate(
-    lines: readonly string[],
-    context?: SegmentContext,
-    signal?: AbortSignal,
-  ): Promise<string[]> {
-    const sourceLines = context?.previousSource
-      ? [context.previousSource, ...lines]
-      : lines;
-    const sourceOffset = sourceLines.length - lines.length;
-    const binary = async (left: number, right: number): Promise<string[]> => {
+    try {
+      return this.promptBuilder.parseAnswer(completion.text, lines);
+    } catch (error) {
       signal?.throwIfAborted();
-
-      if (left >= right) return [];
-      if (right - left === 1) {
-        const result = await this.translateLines(
-          [lines[left]],
-          {
-            ...context,
-            previousSource: getPreviousSource(sourceLines, sourceOffset + left),
-          },
-          signal,
-        );
-        if (result.length !== 1 || /[\r\n]/.test(result[0])) {
-          return [lines[left]];
-        }
-        return result;
-      }
-
-      const mid = Math.floor((left + right) / 2);
-      const [partLeft, partRight] = await Promise.all([
-        binary(left, mid),
-        binary(mid, right),
-      ]);
-      this.log(`翻译${left + 1}到${right}行`);
-
-      // 校验子结果行数是否匹配，不匹配则继续递归
-      const expectedLeftLen = mid - left;
-      const expectedRightLen = right - mid;
-      const fixedLeft =
-        partLeft.length === expectedLeftLen
-          ? partLeft
-          : await binary(left, mid);
-      const fixedRight =
-        partRight.length === expectedRightLen
-          ? partRight
-          : await binary(mid, right);
-
-      if (
-        fixedLeft.length !== expectedLeftLen ||
-        fixedRight.length !== expectedRightLen
-      ) {
-        this.log('失败，继续二分');
-      }
-      return fixedLeft.concat(fixedRight);
-    };
-
-    return binary(0, lines.length);
+      if (isAbortError(error)) throw error;
+      throw new TranslationRejected(
+        'lines',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
+    }
   }
 }

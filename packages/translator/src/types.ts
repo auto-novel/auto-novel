@@ -63,6 +63,11 @@ export interface Translator {
   /** 供流水线记录重试与降级日志；缺省静默。 */
   readonly log?: Logger;
 
+  /** 分段缓存键；包含模型、翻译器自身的上传可信状态与实际提示词，未知模型或未实现时不使用新版缓存。 */
+  getCacheKey?(
+    input: Pick<TranslateRequest, 'lines' | 'context'>,
+  ): string | undefined;
+
   translate: (request: TranslateRequest) => Promise<readonly string[]>;
 
   /** 重试耗尽且失败属于内容形状问题时的降级策略。 */
@@ -84,10 +89,10 @@ export interface TranslatorProbe {
   info?: Record<string, string>;
 }
 
-/** 缓存与流水线只读共享分段及译文；缓存命中结果也不会被原位修改。 */
+/** 键由翻译器生成，缓存只负责存储；命中译文只读借用，不会被原位修改。 */
 export interface SegmentCache {
-  get: (segment: Segment) => Promise<readonly string[] | undefined>;
-  set: (segment: Segment, translatedLines: readonly string[]) => Promise<void>;
+  get: (key: string) => Promise<readonly string[] | undefined>;
+  set: (key: string, translatedLines: readonly string[]) => Promise<void>;
 }
 
 /** 事件参数是只读视图；需要编辑或保存为可变状态时由调用方复制。 */

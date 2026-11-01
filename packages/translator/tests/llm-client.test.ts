@@ -332,6 +332,25 @@ describe('createPiAiCompletion', () => {
     });
   });
 
+  it('网络失败保留 fetch 原始异常并归类为可重试请求错误', async () => {
+    const error = new TypeError('fetch failed');
+    await expect(
+      createPiAiCompletion({
+        protocol: 'openai-completions',
+        endpoint: 'https://api.example.test',
+        key: 'test-key',
+        model: 'model-1',
+        messages: [{ role: 'user', content: 'source' }],
+        fetch: async () => {
+          throw error;
+        },
+      }),
+    ).rejects.toMatchObject({
+      kind: 'request',
+      cause: { name: 'PiAiRequestError', status: undefined, cause: error },
+    });
+  });
+
   // --- 场景 2：服务商错误与流异常处理 ---
   it('当服务商返回参数错误时，应直接抛出异常且不进行重试', async () => {
     let calls = 0;
@@ -465,7 +484,14 @@ describe('createPiAiCompletion', () => {
             ]),
           ),
       }),
-    ).rejects.toThrow(/server_error.*provider failed/);
+    ).rejects.toMatchObject({
+      kind: 'request',
+      cause: {
+        name: 'PiAiRequestError',
+        status: 200,
+        message: expect.stringMatching(/server_error.*provider failed/),
+      },
+    });
   });
 
   it('当 OpenAI Responses 流式响应缺少终态事件时，应抛出异常拒绝结果', async () => {
@@ -560,7 +586,11 @@ describe('createPiAiCompletion', () => {
             ]),
           ),
       }),
-    ).rejects.toThrow(/输出被截断/);
+    ).rejects.toMatchObject({
+      kind: 'degraded',
+      message: expect.stringMatching(/输出被截断/),
+      cause: { name: 'PiAiRequestError', status: 200 },
+    });
   });
 
   it('当响应已完成但翻译正文内容为空时，应抛出异常', async () => {
@@ -588,7 +618,7 @@ describe('createPiAiCompletion', () => {
             ]),
           ),
       }),
-    ).rejects.toThrow(/响应正文为空/);
+    ).rejects.toMatchObject({ kind: 'lines', message: '响应正文为空' });
   });
 
   // --- 场景 3：请求生命周期与取消控制 ---

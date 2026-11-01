@@ -3,6 +3,7 @@ import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messag
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
 import { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy';
 import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript';
+import { TranslationRejected } from '@/errors';
 import type {
   AssistantMessage,
   FetchFunction,
@@ -44,6 +45,7 @@ export class PiAiRequestError extends Error {
     readonly protocol: PiAiProtocol,
     readonly status: number | undefined,
     message: string,
+    readonly cause?: unknown,
   ) {
     super(
       `${protocol}${status === undefined ? '' : ` HTTP ${status}`}：${message}`,
@@ -102,12 +104,19 @@ export async function createPiAiCompletion(
   const context = normalizeContext({ messages });
   const fetch = createPiAiFetch(request);
   let status: number | undefined;
+  let fetchError: unknown;
+  request.signal?.throwIfAborted();
   const stream = streams[request.protocol].stream(model, context, {
     apiKey: request.key,
     fetch: async (input, init) => {
-      const response = await fetch(input, init);
-      status = response.status;
-      return response;
+      try {
+        const response = await fetch(input, init);
+        status = response.status;
+        return response;
+      } catch (error) {
+        fetchError = error;
+        throw error;
+      }
     },
     signal: request.signal,
     maxRetries: 0,
@@ -119,6 +128,7 @@ export async function createPiAiCompletion(
   });
 
   const result = await stream.result();
+  request.signal?.throwIfAborted();
   if (result.stopReason === 'aborted') {
     throw new DOMException(
       result.errorMessage || 'Request aborted',
@@ -126,14 +136,30 @@ export async function createPiAiCompletion(
     );
   }
   if (result.stopReason !== 'stop') {
-    throw new PiAiRequestError(
+    const error = new PiAiRequestError(
       request.protocol,
       status,
       result.errorMessage ||
         (result.stopReason === 'length'
           ? '输出被截断，已达到输出 token 上限'
           : `响应未完成：${result.stopReason}`),
+      fetchError,
     );
+    if (result.stopReason === 'length') {
+      throw new TranslationRejected('degraded', error.message, error);
+    }
+    // HTTP 鉴权／参数错误直接失败；网络、限流、服务端及流中断允许重试。
+    if (
+      result.stopReason === 'error' &&
+      (status === undefined ||
+        (status >= 200 && status < 300) ||
+        status === 408 ||
+        status === 429 ||
+        status >= 500)
+    ) {
+      throw new TranslationRejected('request', error.message, error);
+    }
+    throw error;
   }
 
   const text = result.content
@@ -148,7 +174,7 @@ export async function createPiAiCompletion(
     .map((content) => content.text)
     .join('');
   if (text.length === 0) {
-    throw new PiAiRequestError(request.protocol, status, '响应正文为空');
+    throw new TranslationRejected('lines', '响应正文为空');
   }
   const reasoning = result.content
     .filter(

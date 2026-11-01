@@ -40,13 +40,17 @@ describe('attemptTranslation', () => {
   });
 
   it('传输失败重试耗尽后抛错，不触发降级', async () => {
+    const error = new TranslationRejected('request', '请求超时');
     const translate = vi.fn(async () => {
-      throw new TranslationRejected('request', '请求超时');
+      throw error;
     });
     const fallback = vi.fn(async ({ lines }: { lines: string[] }) => lines);
     await expect(
       attemptTranslation({ translate, fallback }, request),
-    ).rejects.toThrow('重试次数过多');
+    ).rejects.toMatchObject({
+      message: '翻译失败：重试次数过多',
+      cause: error,
+    });
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
     expect(fallback).not.toHaveBeenCalled();
   });

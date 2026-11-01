@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OpenAiTranslator } from '../src/translator/llm';
-import { attemptTranslation } from '../src/pipeline/attempt';
+import {
+  attemptTranslation,
+  TRANSLATION_RETRIES,
+} from '../src/pipeline/attempt';
 
 // ============================================================
 // OpenAiTranslator 业务翻译器测试
@@ -74,8 +77,87 @@ describe('OpenAiTranslator', () => {
     expect(parseAnswer).toHaveBeenCalledTimes(2);
   });
 
-  // --- 场景 2：服务商参数错误直接中断 ---
-  it('当遇到服务商返回参数错误时，应直接向外抛出而不进行重试', async () => {
+  it('解析失败保留原始异常并归类为 lines', async () => {
+    vi.stubGlobal('fetch', async () =>
+      mockStreamResponse([
+        { choices: [{ index: 0, delta: { content: '译文' } }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      ]),
+    );
+    const error = new Error('无法解析编号');
+    const translator = new OpenAiTranslator({
+      endpoint: 'https://api.example.test',
+      key: 'test-key',
+      model: 'model-1',
+      promptBuilder: {
+        build: () => [],
+        parseAnswer: () => {
+          throw error;
+        },
+      },
+    });
+    await expect(
+      translator.translate({ lines: ['原文'], attempt: 0 }),
+    ).rejects.toMatchObject({ kind: 'lines', cause: error });
+  });
+
+  it('缺少行编号重试耗尽后触发内容降级', async () => {
+    const fetch = vi.fn(async () =>
+      mockStreamResponse([
+        { choices: [{ index: 0, delta: { content: '译文' } }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      ]),
+    );
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator({
+      endpoint: 'https://api.example.test',
+      key: 'test-key',
+      model: 'model-1',
+    });
+    const fallback = vi
+      .spyOn(translator, 'fallback')
+      .mockResolvedValue(['译文']);
+
+    await expect(
+      attemptTranslation(translator, { lines: ['原文'] }),
+    ).resolves.toEqual(['译文']);
+    expect(fetch).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
+    expect(fallback).toHaveBeenCalledOnce();
+  });
+
+  it.each([408, 429, 500])(
+    'HTTP %s 错误可重试，恢复后返回译文而不降级',
+    async (status) => {
+      const fetch = vi.fn(async () => {
+        if (fetch.mock.calls.length === 1) {
+          return new Response(
+            JSON.stringify({ error: { message: 'temporary failure' } }),
+            { status, headers: { 'content-type': 'application/json' } },
+          );
+        }
+        return mockStreamResponse([
+          { choices: [{ index: 0, delta: { content: '#1:译文' } }] },
+          { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+        ]);
+      });
+      vi.stubGlobal('fetch', fetch);
+      const translator = new OpenAiTranslator({
+        endpoint: 'https://api.example.test',
+        key: 'test-key',
+        model: 'model-1',
+      });
+      const fallback = vi.spyOn(translator, 'fallback');
+
+      await expect(
+        attemptTranslation(translator, { lines: ['原文'] }),
+      ).resolves.toEqual(['译文']);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fallback).not.toHaveBeenCalled();
+    },
+  );
+
+  // --- 场景 2：服务商参数／鉴权错误直接中断 ---
+  it.each([400, 401])('HTTP %s 直接抛出而不重试', async (status) => {
     let calls = 0;
     vi.stubGlobal('fetch', async () => {
       calls++;
@@ -87,7 +169,7 @@ describe('OpenAiTranslator', () => {
           },
         }),
         {
-          status: 400,
+          status,
           headers: { 'content-type': 'application/json' },
         },
       );
@@ -102,37 +184,6 @@ describe('OpenAiTranslator', () => {
     await expect(
       attemptTranslation(translator, { lines: ['原文'] }),
     ).rejects.toThrow(/unsupported effort/);
-    expect(calls).toBe(1);
-  });
-
-  // --- 场景 3：Responses 流式失败直接中断 ---
-  it('当 OpenAI Responses 流式响应失败时，应直接抛给调用方而不触发重试', async () => {
-    let calls = 0;
-    vi.stubGlobal('fetch', async () => {
-      calls++;
-      return new Response(
-        [
-          'event: response.output_item.added',
-          'data: {"type":"response.output_item.added","output_index":0,"item":{"type":"message","role":"assistant","content":[]}}',
-          '',
-          'event: response.failed',
-          'data: {"type":"response.failed","response":{"status":"failed","error":{"code":"provider_error","message":"stream failed"}}}',
-          '',
-        ].join('\n'),
-        { status: 200, headers: { 'content-type': 'text/event-stream' } },
-      );
-    });
-
-    const translator = new OpenAiTranslator({
-      endpoint: 'https://api.example.test/v1',
-      key: 'test-key',
-      model: 'model-1',
-      profile: { id: 'openai-responses', values: {} },
-    });
-
-    await expect(
-      attemptTranslation(translator, { lines: ['原文'] }),
-    ).rejects.toThrow(/provider_error.*stream failed/);
     expect(calls).toBe(1);
   });
 });

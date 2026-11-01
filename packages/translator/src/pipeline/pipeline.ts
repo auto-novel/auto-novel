@@ -9,7 +9,7 @@ import type {
   SegmentCache,
   TranslatorOptions,
 } from '@/types';
-import { Semaphore, anySignal, randomUUID } from '@/utils';
+import { anySignal, randomUUID } from '@/utils';
 import {
   mergeTranslatedLines,
   splitPassthroughLines,
@@ -106,11 +106,15 @@ export class TranslationPipeline {
    * 结算仍走 `work` 的 onComplete/onError/onAbort；收尾用 `drain()` 等待全部结算。
    */
   async submit(work: TranslationWork, signal?: AbortSignal): Promise<void> {
-    const {
-      enqueued,
-      settled,
-      signal: inputSignal,
-    } = this.dispatch(work, signal);
+    const { enqueued, result, signal: inputSignal } = this.start(work, signal);
+    const settled = result
+      .then((translated) => {
+        inputSignal.throwIfAborted();
+        return work.onComplete(translated);
+      })
+      .catch((error: unknown) =>
+        inputSignal.aborted ? work.onAbort() : work.onError(error),
+      );
     this.track(settled, inputSignal);
     try {
       await enqueued;
@@ -128,23 +132,6 @@ export class TranslationPipeline {
     const error = this.settlementError;
     this.settlementError = undefined;
     if (error !== undefined) throw error;
-  }
-
-  /** 切分 + 入队，并把结算接到输入的三个回调上。 */
-  private dispatch(
-    work: TranslationWork,
-    signal?: AbortSignal,
-  ): { enqueued: Promise<void>; settled: Promise<void>; signal: AbortSignal } {
-    const { enqueued, result, signal: inputSignal } = this.start(work, signal);
-    const settled = result
-      .then((translated) => {
-        inputSignal.throwIfAborted();
-        return work.onComplete(translated);
-      })
-      .catch((error: unknown) =>
-        inputSignal.aborted ? work.onAbort() : work.onError(error),
-      );
-    return { enqueued, settled, signal: inputSignal };
   }
 
   private track(settled: Promise<void>, signal?: AbortSignal): void {
@@ -245,7 +232,7 @@ export class TranslationPipeline {
     };
     this.translatorLoops.set(id, loop);
     this._updateHighWaterMark();
-    this._startLoop(loop, options.onActiveCountChange);
+    void this._startWorkers(loop, options.onActiveCountChange);
     return id;
   }
 
@@ -291,11 +278,10 @@ export class TranslationPipeline {
     }
   }
 
-  private async _startLoop(
+  private async _startWorkers(
     loop: TranslationLoop,
     onActiveCountChange?: (activeCount: number) => void,
   ): Promise<void> {
-    const semaphore = new Semaphore(loop.concurrency ?? 1);
     let activeCount = 0;
     const updateActiveCount = (delta: number) => {
       activeCount += delta;
@@ -307,40 +293,49 @@ export class TranslationPipeline {
       task: SegmentTask,
     ): Promise<'done' | 'requeued'> => {
       const { segment, observer, signal } = task;
-      signal?.throwIfAborted();
-      // 缓存和历史也要恢复格式；损坏的旧结果视为未命中，重新翻译。
-      const reuse = (lines: readonly string[]) => {
-        let processed: string[];
-        try {
-          processed = postprocessTranslationLines(segment.lines, lines);
-        } catch {
-          return false;
-        }
-        task.resolve(processed);
-        observer.complete(segment, processed);
-        return true;
-      };
-      if (this.cache) {
-        const cached = await this.cache.get(segment);
-        if (cached && reuse(cached)) return 'done';
-      }
-      if (segment.context?.expired === false && segment.context?.history) {
-        if (reuse(segment.context.history.translatedLines)) return 'done';
-      }
-      // 空行与图片行不透传给翻译器，等译文回来再按原位回填。
-      const { indexes, content } = splitPassthroughLines(segment.lines);
-      if (content.length === 0) {
-        const original = [...segment.lines];
-        task.resolve(original);
-        observer.complete(segment, original);
-        return 'done';
-      }
-      // 输入取消与翻译器退休都算取消；不再逐段手工转发。
+      // 缓存读取也属于本次派发；翻译器退休后不能再采用其缓存或开始请求。
       const requestSignal =
         anySignal([signal, loop.abortController.signal]) ??
         loop.abortController.signal;
       try {
         requestSignal.throwIfAborted();
+        // 历史和缓存统一校验行数／行内结构，并按原文恢复缩进、空行和图片。
+        const reuse = (lines: readonly string[]) => {
+          let processed: string[];
+          try {
+            processed = postprocessTranslationLines(segment.lines, lines);
+          } catch {
+            return false;
+          }
+          task.resolve(processed);
+          observer.complete(segment, processed);
+          return true;
+        };
+        if (segment.context?.expired === false && segment.context?.history) {
+          if (reuse(segment.context.history.translatedLines)) return 'done';
+        }
+        const { indexes, content } = splitPassthroughLines(segment.lines);
+        if (content.length === 0) {
+          const original = [...segment.lines];
+          task.resolve(original);
+          observer.complete(segment, original);
+          return 'done';
+        }
+
+        // 每次派发只算一次键，读写共用；换翻译器重派时按新模型重新生成。
+        let cacheKey: string | undefined;
+        let cached: readonly string[] | undefined;
+        if (this.cache) {
+          try {
+            cacheKey = loop.translator.getCacheKey?.(segment);
+            if (cacheKey !== undefined) cached = await this.cache.get(cacheKey);
+          } catch (error) {
+            requestSignal.throwIfAborted();
+            loop.translator.log?.(`读取翻译缓存失败，已跳过：${String(error)}`);
+          }
+        }
+        requestSignal.throwIfAborted();
+        if (cached && reuse(cached)) return 'done';
         observer.start(segment, loop.id);
         const translatedLines = mergeTranslatedLines(
           segment.lines,
@@ -352,8 +347,13 @@ export class TranslationPipeline {
           }),
         );
         requestSignal.throwIfAborted();
-        if (this.cache) {
-          await this.cache.set(segment, translatedLines);
+        if (this.cache && cacheKey !== undefined) {
+          try {
+            await this.cache.set(cacheKey, translatedLines);
+          } catch (error) {
+            requestSignal.throwIfAborted();
+            loop.translator.log?.(`写入翻译缓存失败，已跳过：${String(error)}`);
+          }
         }
         requestSignal.throwIfAborted();
         task.resolve(translatedLines);
@@ -373,36 +373,33 @@ export class TranslationPipeline {
       }
     };
 
-    while (!loop.abortController.signal.aborted) {
-      try {
-        await this.waitUntilApproved(loop);
-      } catch {
-        break;
-      }
-      await semaphore.acquire();
-      try {
-        const task = await this.queue.dequeue(loop.abortController.signal);
-        updateActiveCount(1);
-        let requeued = false;
-        processTask(task)
-          .then((outcome) => {
-            requeued = outcome === 'requeued';
-          })
-          .catch((error: unknown) => {
+    // 每个 worker 同时只处理一个任务，由 worker 数量直接保证并发上限。
+    const worker = async () => {
+      while (!loop.abortController.signal.aborted) {
+        try {
+          await this.waitUntilApproved(loop);
+          const task = await this.queue.dequeue(loop.abortController.signal);
+          let requeued = false;
+          try {
+            updateActiveCount(1);
+            requeued = (await processTask(task)) === 'requeued';
+          } catch (error) {
             task.reject(error);
             task.observer.error(task.segment, error);
-          })
-          .finally(() => {
+          } finally {
             // 退回队列的分段仍算在途，由下一个消费者 ack。
             if (!requeued) this.queue.ack();
-            semaphore.release();
             updateActiveCount(-1);
-          });
-      } catch (err: any) {
-        semaphore.release();
-        if (loop.abortController.signal.aborted) break;
+          }
+        } catch {
+          // 退休时退出等待；单次任务或通知异常不应终止其他任务的消费。
+          if (loop.abortController.signal.aborted) break;
+        }
       }
-    }
+    };
+    await Promise.all(
+      Array.from({ length: loop.concurrency ?? 1 }, () => worker()),
+    );
   }
 
   unregisterTranslator(translatorId: string): void {
