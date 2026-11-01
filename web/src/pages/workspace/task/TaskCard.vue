@@ -11,11 +11,11 @@ import {
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
-import type { ChapterMeta, TaskState } from '@/domain/translator/TaskState';
-import { ChapterSegmentState } from '@/domain/translator/TaskState';
+import type {
+  ChapterSegmentState,
+  TaskState,
+} from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
-import { TranslateTaskDescriptor } from '@/model/Translator';
-import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
 import type {
   TranslationTask,
   TranslatorId,
@@ -83,19 +83,6 @@ const taskProgress = computed(() => {
     pending: chapters.length - done - error - translating,
   };
 });
-async function getChapterMetas(): Promise<ChapterMeta[]> {
-  if (props.taskState?.initialized) return chapterMetas.value;
-
-  let task = props.taskCacheEntry;
-  if (!task) {
-    task = createTask(props.job.task);
-  }
-  if (!task.initialized) {
-    await task.initMeta();
-  }
-  return task.chapters;
-}
-
 const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
   if (props.job.finishAt) return 'done';
   if (!chapterMetas.value.length)
@@ -114,58 +101,21 @@ function retryAllFailed() {
   }
 }
 
-function createTask(taskDesc: string): TranslationTask {
-  const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-  return createTranslationTask(desc, props.translatorId, params);
-}
-
 const showPreview = ref(false);
 const previewData = ref<{
   title: string;
   chapterState: ChapterSegmentState | null;
 } | null>(null);
-const openPreview = async (chapterId: string) => {
-  try {
-    const chapters = await getChapterMetas();
-    const meta = chapters.find((c) => c.chapterId === chapterId);
-    const title = meta?.title ?? chapterId;
-
-    const chapterState = props.taskState?.chapterStates.get(chapterId);
-
-    let chapterStateForPreview: ChapterSegmentState | null = null;
-    if (chapterState?.ready || chapterState?.errorMessage) {
-      // 获取失败时也可直接展示已记录的原因，不再重新请求原文。
-      chapterStateForPreview = chapterState;
-    } else {
-      let previewTask = props.taskCacheEntry;
-      if (!previewTask) {
-        previewTask = createTask(props.job.task);
-      }
-      if (!previewTask.initialized) {
-        await previewTask.initMeta();
-      }
-      const detail = await previewTask.fetchChapter(chapterId);
-
-      if (chapterState?.ready) {
-        chapterStateForPreview = chapterState;
-      } else if (props.taskState?.getStatus(chapterId) === 'done') {
-        const tlParagraphs = detail.oldParagraphZh;
-        if (tlParagraphs?.length) {
-          const loadedState = new ChapterSegmentState(chapterId);
-          loadedState.injectDoneTranslation(detail.paragraphs, tlParagraphs);
-          chapterStateForPreview = loadedState;
-        }
-      } else {
-        chapterStateForPreview = chapterState ?? null;
-      }
-    }
-
-    previewData.value = { title, chapterState: chapterStateForPreview };
-    showPreview.value = true;
-  } catch (e) {
-    console.error('加载预览失败', e);
-    Toast.error('加载预览失败');
+const openPreview = (chapterId: string) => {
+  const chapterState = props.taskState?.chapterStates.get(chapterId);
+  if (!chapterState || (!chapterState.ready && !chapterState.errorMessage)) {
+    Toast.info('章节已完成或预览已失效');
+    return;
   }
+
+  const meta = chapterMetas.value.find((c) => c.chapterId === chapterId);
+  previewData.value = { title: meta?.title ?? chapterId, chapterState };
+  showPreview.value = true;
 };
 
 const closePreview = () => {
