@@ -30,7 +30,10 @@ export const translate = async (
   }
 
   if (taskDesc.type === 'web' || taskDesc.type === 'wenku') {
-    if (!translator.allowUpload()) {
+    if (!translator.trusted) {
+      taskCallback.log(
+        translator.untrustedReason ?? '翻译器不可信，无法上传译文',
+      );
       return;
     }
   }

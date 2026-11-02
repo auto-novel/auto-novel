@@ -30,11 +30,17 @@ export class Translator {
     this.log = log ?? (() => {});
   }
 
-  allowUpload() {
+  get trusted(): boolean {
     return !(
       this.segTranslator instanceof SakuraTranslator &&
-      !this.segTranslator.allowUpload()
+      !this.segTranslator.trusted
     );
+  }
+
+  get untrustedReason(): string | undefined {
+    return this.segTranslator instanceof SakuraTranslator
+      ? this.segTranslator.untrustedReason
+      : undefined;
   }
 
   sakuraModel() {

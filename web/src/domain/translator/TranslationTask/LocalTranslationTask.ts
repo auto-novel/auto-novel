@@ -93,8 +93,8 @@ export class LocalTranslationTask implements TranslationTask {
   ): Promise<void> {
     const checkExecution = () => {
       context?.signal.throwIfAborted();
-      if (context?.canUpload?.() === false)
-        throw new DOMException('任务已失效或不允许保存', 'AbortError');
+      if (context?.canCommit?.() === false)
+        throw new DOMException('任务已失效', 'AbortError');
     };
     await this._ensureStore();
     checkExecution();

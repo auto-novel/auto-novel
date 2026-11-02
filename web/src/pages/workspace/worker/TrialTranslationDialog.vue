@@ -277,14 +277,6 @@ const translate = async () => {
     if (current !== generation) return;
 
     phase.value = 'translating';
-    const probe = (await t.probe?.()) ?? { approved: true };
-    if (current !== generation) return;
-    if (!probe.approved) {
-      // 未通过自检的端点不发送试译内容，与工作区的派发策略保持一致。
-      error.value = `翻译器未通过检查：${probe.reason ?? '未知原因'}`;
-      revealResult();
-      return;
-    }
     pipeline = new TranslationPipeline({
       segmentLength: isSakura.value ? 500 : undefined,
     });

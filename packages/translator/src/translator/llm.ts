@@ -28,6 +28,7 @@ export type OpenAiTranslatorConfig = {
 };
 
 export class OpenAiTranslator implements Translator {
+  readonly trusted = true;
   private endpoint: string;
   private key: string;
   private protocol: PiAiProtocol;
@@ -54,7 +55,7 @@ export class OpenAiTranslator implements Translator {
       this.model,
       lines,
       this.promptBuilder,
-      true,
+      this.trusted,
       context,
     );
   }

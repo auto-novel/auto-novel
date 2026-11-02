@@ -13,7 +13,7 @@ describe('attemptTranslation', () => {
     const translate = vi.fn(async () => ['只有一行']);
     const fallback = vi.fn(async ({ lines }) => lines.map((l) => `译${l}`));
     await expect(
-      attemptTranslation({ translate, fallback }, request),
+      attemptTranslation({ trusted: false, translate, fallback }, request),
     ).resolves.toEqual(['译甲', '译乙']);
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
     expect(fallback).toHaveBeenCalledOnce();
@@ -21,9 +21,9 @@ describe('attemptTranslation', () => {
 
   it('无降级策略时抛出失败', async () => {
     const translate = vi.fn(async () => []);
-    await expect(attemptTranslation({ translate }, request)).rejects.toThrow(
-      '重试次数过多',
-    );
+    await expect(
+      attemptTranslation({ trusted: false, translate }, request),
+    ).rejects.toThrow('重试次数过多');
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
   });
 
@@ -33,7 +33,7 @@ describe('attemptTranslation', () => {
     });
     const fallback = vi.fn(async ({ lines }: { lines: string[] }) => lines);
     await expect(
-      attemptTranslation({ translate, fallback }, request),
+      attemptTranslation({ trusted: false, translate, fallback }, request),
     ).rejects.toThrow('重试次数过多');
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
     expect(fallback).not.toHaveBeenCalled();
@@ -46,7 +46,7 @@ describe('attemptTranslation', () => {
     });
     const fallback = vi.fn(async ({ lines }: { lines: string[] }) => lines);
     await expect(
-      attemptTranslation({ translate, fallback }, request),
+      attemptTranslation({ trusted: false, translate, fallback }, request),
     ).rejects.toMatchObject({
       message: '翻译失败：重试次数过多',
       cause: error,
@@ -60,7 +60,7 @@ describe('attemptTranslation', () => {
       throw new Error('鉴权失败');
     });
     await expect(
-      attemptTranslation({ translate: fatal }, request),
+      attemptTranslation({ trusted: false, translate: fatal }, request),
     ).rejects.toThrow('鉴权失败');
     expect(fatal).toHaveBeenCalledOnce();
 
@@ -69,7 +69,7 @@ describe('attemptTranslation', () => {
     const cancelled = vi.fn(async () => ['译甲', '译乙']);
     await expect(
       attemptTranslation(
-        { translate: cancelled },
+        { trusted: false, translate: cancelled },
         {
           ...request,
           signal: aborted.signal,
@@ -86,10 +86,9 @@ describe('attemptTranslation', () => {
       if (attempt < 2) throw new TranslationRejected('degraded', '输出退化');
       return ['译甲', '译乙'];
     });
-    await expect(attemptTranslation({ translate }, request)).resolves.toEqual([
-      '译甲',
-      '译乙',
-    ]);
+    await expect(
+      attemptTranslation({ trusted: false, translate }, request),
+    ).resolves.toEqual(['译甲', '译乙']);
     expect(attempts).toEqual([0, 1, 2]);
   });
 });

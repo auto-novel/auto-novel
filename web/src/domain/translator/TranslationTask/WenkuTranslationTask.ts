@@ -99,8 +99,8 @@ export class WenkuTranslationTask implements TranslationTask {
 
   private checkExecution(context?: TaskExecutionContext): void {
     context?.signal.throwIfAborted();
-    if (context?.canUpload?.() === false) {
-      throw new DOMException('任务已停止或不允许上传', 'AbortError');
+    if (context?.canCommit?.() === false) {
+      throw new DOMException('任务已停止或失效', 'AbortError');
     }
   }
 

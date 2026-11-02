@@ -13,6 +13,7 @@ export type YoudaoTranslatorConfig = {
 };
 
 export class YoudaoTranslator implements Translator {
+  readonly trusted = true;
   private api: ReturnType<typeof createYoudaoApi>;
   readonly log: Logger;
 

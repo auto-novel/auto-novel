@@ -18,10 +18,6 @@ export type TranslatorConfig =
   | ({ kind: 'sakura' } & SakuraTranslatorConfig)
   | ({ kind: 'youdao' } & YoudaoTranslatorConfig);
 
-/**
- * 按配置创建翻译器并等待初始化，因此统一返回 Promise。
- * 是否允许派发由 `Translator.probe()` 与流水线的 `approved` 决定。
- */
 export function createTranslator(
   config: TranslatorConfig,
 ): Promise<Translator> {

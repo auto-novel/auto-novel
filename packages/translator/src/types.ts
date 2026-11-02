@@ -60,6 +60,10 @@ export interface TranslateRequest {
  * 重试、结构校验与降级时机由流水线统一决定。
  */
 export interface Translator {
+  /** 是否符合公共译文库的上传要求；不代表端点安全认证。 */
+  readonly trusted: boolean;
+  readonly untrustedReason?: string;
+
   /** 供流水线记录重试与降级日志；缺省静默。 */
   readonly log?: Logger;
 
@@ -72,21 +76,6 @@ export interface Translator {
 
   /** 重试耗尽且失败属于内容形状问题时的降级策略。 */
   fallback?: (request: TranslateRequest) => Promise<readonly string[]>;
-
-  /**
-   * 能否把内容发往该端点；缺省视为允许。
-   * 用于模型校验、插件/Cookie 检查这类需要联网探测的前置条件。
-   */
-  probe?(): Promise<TranslatorProbe>;
-}
-
-/** 翻译器自检结果；`approved` 为 false 时流水线不会向它派发任务。 */
-export interface TranslatorProbe {
-  approved: boolean;
-  /** 不允许时的原因，用于日志展示。 */
-  reason?: string;
-  /** 展示用信息，如模型名、版本。 */
-  info?: Record<string, string>;
 }
 
 /** 键由翻译器生成，缓存只负责存储；命中译文只读借用，不会被原位修改。 */
@@ -114,6 +103,8 @@ export interface SegmentTracker {
 
 /** 一篇完整原文；切分和队列背压由流水线负责，输入按只读借用。 */
 export interface TranslationInput {
+  /** 只交给可信翻译器；缺省不限制，无匹配翻译器时等待，可取消。 */
+  readonly trustedOnly?: boolean;
   /** 原文行；行内不应包含换行。 */
   readonly lines: readonly string[];
   readonly glossary?: Glossary;
@@ -147,9 +138,4 @@ export interface TranslatorOptions {
   onActiveCountChange?: (activeCount: number) => void;
   /** 循环 id；缺省生成随机 id。 */
   id?: string;
-  /**
-   * 能否向该翻译器派发任务；不满足时任务留在队列等待，不判失败。
-   * 状态变化后需调用 `refreshApproval()` 唤醒等待中的消费者。
-   */
-  approved?: () => boolean;
 }

@@ -2,37 +2,39 @@ import type { Segment } from '@/types';
 
 /** 分段级进度事件；一次输入共用一份。 */
 interface SegmentObserver {
-  /** 某分段开始翻译。 */
   start(segment: Segment, translatorId: string): void;
-  /** 某分段完成，译文已合并透传行。 */
   complete(segment: Segment, translatedLines: readonly string[]): void;
-  /** 某分段失败。 */
   error(segment: Segment, error: unknown): void;
 }
 
-/** 队列搬运的单位：分段 + 结算句柄 + 该输入的事件出口。 */
+/** 分段及其输入的调度约束、结算句柄。 */
 export interface SegmentTask {
   readonly segment: Segment;
+  readonly trustedOnly?: boolean;
   readonly observer: SegmentObserver;
   readonly signal?: AbortSignal;
   resolve(translatedLines: string[]): void;
   reject(error: unknown): void;
 }
 
+interface Consumer {
+  accepts: (task: SegmentTask) => boolean;
+  resolve: (task: SegmentTask) => void;
+}
+
 export class SegmentQueue {
   private readonly _items: SegmentTask[] = [];
-  /** 入队容量，由流水线按已注册翻译器的总并发设置；设置前只允许 1 个在途分段。 */
   private _highWaterMark = 1;
-  /** 系统中所有在途（排队中+翻译中）的分片总数 */
-  private _enqueuedCount = 0;
-
-  /** 等待出队的消费者 resolve 回调队列（FIFO） */
-  private readonly _dequeueResolvers: Array<(task: SegmentTask) => void> = [];
-
-  /** 水位变化通知；实际入队仍由 Promise 链串行检查容量。 */
+  // 两类输入分别背压，避免没有可信翻译器时，受限输入占满容量堵住本地／试译。
+  // 每类最多 highWaterMark 个在途分段；同类输入仍按投递顺序串行入队。
+  private readonly _enqueuedCount = [0, 0];
+  private readonly _enqueueTail = [Promise.resolve(), Promise.resolve()];
+  private readonly _dequeueResolvers: Consumer[] = [];
   private _hwResolvers: Array<() => void> = [];
-  /** 串行入队链；始终正常完成，避免一次失败阻断后续输入。 */
-  private _enqueueTail: Promise<void> = Promise.resolve();
+
+  private lane(trustedOnly = false): number {
+    return trustedOnly ? 1 : 0;
+  }
 
   setHighWaterMark(value: number): void {
     if (!Number.isFinite(value) || value <= 0) {
@@ -46,141 +48,131 @@ export class SegmentQueue {
     return this._items.length;
   }
 
+  /** 一次输入的所有分段必须使用同一 trustedOnly 约束。 */
   enqueueAll(tasks: SegmentTask[], signal?: AbortSignal): Promise<void> {
-    const enqueued = this._enqueueTail.then(async () => {
+    const trustedOnly = tasks[0]?.trustedOnly === true;
+    if (tasks.some((task) => (task.trustedOnly === true) !== trustedOnly)) {
+      return Promise.reject(new Error('同一输入的可信要求必须一致'));
+    }
+    const lane = this.lane(trustedOnly);
+    const enqueued = this._enqueueTail[lane].then(async () => {
       let offset = 0;
       while (offset < tasks.length) {
-        await this.waitUntilBelowHighWaterMark(signal);
+        await this.waitUntilBelowHighWaterMark(signal, trustedOnly);
         signal?.throwIfAborted();
-        const count = Math.min(
-          tasks.length - offset,
-          this._highWaterMark - this._enqueuedCount,
-        );
-        this._enqueue(tasks.slice(offset, offset + count));
+        // 等待恢复与本次执行之间，移除翻译器可能再次降低水位。
+        const capacity = this._highWaterMark - this._enqueuedCount[lane];
+        if (capacity <= 0) continue;
+        const count = Math.min(tasks.length - offset, capacity);
+        this._enqueuedCount[lane] += count;
+        this.dispatch(tasks.slice(offset, offset + count));
         offset += count;
       }
     });
-    this._enqueueTail = enqueued.catch(() => {});
+    this._enqueueTail[lane] = enqueued.catch(() => {});
     return enqueued;
   }
 
-  private _enqueue(tasks: SegmentTask[]): void {
-    const segLen = tasks.length;
-    if (segLen === 0) return;
-    this._enqueuedCount += segLen;
-
-    const resolverLen = this._dequeueResolvers.length;
-    const matchCount = Math.min(segLen, resolverLen);
-
-    if (matchCount > 0) {
-      for (let i = 0; i < matchCount; i++) {
-        this._dequeueResolvers[i](tasks[i]);
-      }
-      this._dequeueResolvers.splice(0, matchCount);
+  /** 分配给最早匹配的消费者；不匹配的任务保留原顺序。 */
+  private dispatch(tasks: readonly SegmentTask[], front = false): void {
+    const remaining: SegmentTask[] = [];
+    for (const task of tasks) {
+      const index = this._dequeueResolvers.findIndex((consumer) =>
+        consumer.accepts(task),
+      );
+      if (index === -1) remaining.push(task);
+      else this._dequeueResolvers.splice(index, 1)[0].resolve(task);
     }
-    if (segLen > matchCount) {
-      for (let i = matchCount; i < segLen; i++) {
-        this._items.push(tasks[i]);
-      }
-    }
+    if (front) this._items.unshift(...remaining);
+    else this._items.push(...remaining);
   }
 
-  async dequeue(signal?: AbortSignal): Promise<SegmentTask> {
+  async dequeue(
+    signal?: AbortSignal,
+    accepts: (task: SegmentTask) => boolean = () => true,
+  ): Promise<SegmentTask> {
     signal?.throwIfAborted();
-
-    if (this._items.length > 0) {
-      const item = this._items.shift()!;
-      return item;
-    }
+    const index = this._items.findIndex(accepts);
+    if (index !== -1) return this._items.splice(index, 1)[0];
     return new Promise<SegmentTask>((resolve, reject) => {
       const onAbort = () => {
-        const idx = this._dequeueResolvers.indexOf(dequeueResolver);
-        if (idx !== -1) this._dequeueResolvers.splice(idx, 1);
+        const index = this._dequeueResolvers.indexOf(consumer);
+        if (index !== -1) this._dequeueResolvers.splice(index, 1);
         reject(signal!.reason);
       };
-      const dequeueResolver = (task: SegmentTask) => {
-        signal?.removeEventListener('abort', onAbort);
-        resolve(task);
+      const consumer: Consumer = {
+        accepts,
+        resolve: (task) => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve(task);
+        },
       };
-
       signal?.addEventListener('abort', onAbort, { once: true });
-      this._dequeueResolvers.push(dequeueResolver);
+      this._dequeueResolvers.push(consumer);
     });
   }
 
-  async waitUntilBelowHighWaterMark(signal?: AbortSignal): Promise<void> {
+  async waitUntilBelowHighWaterMark(
+    signal?: AbortSignal,
+    trustedOnly = false,
+  ): Promise<void> {
     signal?.throwIfAborted();
-
-    while (this._enqueuedCount >= this._highWaterMark) {
+    while (this._enqueuedCount[this.lane(trustedOnly)] >= this._highWaterMark) {
       await new Promise<void>((resolve, reject) => {
-        const onAbort = () => {
-          const idx = this._hwResolvers.indexOf(onReady);
-          if (idx !== -1) this._hwResolvers.splice(idx, 1);
+        const cleanup = () => {
           signal?.removeEventListener('abort', onAbort);
-          reject(signal!.reason);
+          const index = this._hwResolvers.indexOf(wake);
+          if (index !== -1) this._hwResolvers.splice(index, 1);
         };
-        const onReady = () => {
-          signal?.removeEventListener('abort', onAbort);
+        const wake = () => {
+          cleanup();
           resolve();
         };
-        this._hwResolvers.push(onReady);
+        const onAbort = () => {
+          cleanup();
+          reject(signal!.reason);
+        };
+        this._hwResolvers.push(wake);
         signal?.addEventListener('abort', onAbort, { once: true });
       });
       signal?.throwIfAborted();
     }
   }
 
-  /** 消费者完成一个分片后调用，释放一个槽位。 */
-  ack(): void {
-    this._enqueuedCount--;
+  /** 消费完成后释放该类输入的一个槽位。 */
+  ack(task: SegmentTask): void {
+    this._enqueuedCount[this.lane(task.trustedOnly)]--;
     this._tryResolveHw();
   }
 
   private _tryResolveHw(): void {
-    if (this._enqueuedCount < this._highWaterMark) {
-      // 拉取者可能发现输入已耗尽，因此不能只唤醒一个等待者。
-      for (const resolve of this._hwResolvers.splice(0)) resolve();
-    }
+    for (const resolve of this._hwResolvers.splice(0)) resolve();
   }
 
-  /**
-   * 分段未能完成（例如消费它的翻译器被移除）时退回队列。
-   * 在途计数不变，因此调用方不得再 ack 该分段。
-   */
+  /** 翻译器退休时按原约束退回任务，在途计数不变。 */
   requeue(tasks: readonly SegmentTask[]): void {
-    if (tasks.length === 0) return;
-    // 先还给等待中的消费者，其余放到队首，尽量保持原有推进顺序。
-    const waiterCount = Math.min(tasks.length, this._dequeueResolvers.length);
-    for (let i = 0; i < waiterCount; i++) {
-      this._dequeueResolvers[i](tasks[i]);
-    }
-    if (waiterCount > 0) this._dequeueResolvers.splice(0, waiterCount);
-    if (tasks.length > waiterCount) {
-      this._items.unshift(...tasks.slice(waiterCount));
-    }
-    this._tryResolveHw();
+    this.dispatch(tasks, true);
   }
 
-  /** 只移除尚未开始的分段；执行中的分段仍由消费者 ack。 */
+  /** 执行中的分段仍由消费者 ack。 */
   removeQueued(tasks: readonly SegmentTask[]): void {
     const removed = new Set(tasks);
-    const before = this._items.length;
     let write = 0;
     for (const task of this._items) {
-      if (!removed.has(task)) this._items[write++] = task;
+      if (removed.has(task)) {
+        this._enqueuedCount[this.lane(task.trustedOnly)]--;
+      } else this._items[write++] = task;
     }
     this._items.length = write;
-    this._enqueuedCount -= before - write;
     this._tryResolveHw();
   }
 
-  /** 清空队列；残留任务按失败结算，避免调用方永久等待。 */
   clear(): void {
-    const tasks = this._items.splice(0);
-    this._enqueuedCount -= tasks.length;
-    for (const task of tasks) task.reject(new Error('翻译流水线已关闭'));
-    const hw = this._hwResolvers.splice(0);
-    for (const resolve of hw) resolve();
+    for (const task of this._items.splice(0)) {
+      this._enqueuedCount[this.lane(task.trustedOnly)]--;
+      task.reject(new Error('翻译流水线已关闭'));
+    }
+    this._tryResolveHw();
     this._dequeueResolvers.splice(0);
   }
 }

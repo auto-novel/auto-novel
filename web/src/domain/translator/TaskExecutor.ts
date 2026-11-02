@@ -9,11 +9,39 @@ export type ChapterTracker = {
   segmentTracker?: ChapterSegmentState;
 };
 
+/** 取消等待不支持 signal 的底层调用；仍接住其迟到结果，避免重复更新章节状态。 */
+function awaitWithSignal<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!signal) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener('abort', onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    // 即使已取消也注册两个处理器，吸收底层调用的迟到拒绝。
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error: unknown) => {
+        cleanup();
+        reject(error);
+      },
+    );
+    if (signal.aborted) onAbort();
+  });
+}
+
 export class TaskExecutor {
   constructor(
     private task: TranslationTask,
-    /** 任务仍有效且允许保存／更新来源；翻译器派发审批由流水线负责。 */
-    private canUpdateProvider?: () => boolean,
+    /** 任务生命周期仍有效；翻译器资格由流水线按输入要求匹配。 */
+    private canCommit?: () => boolean,
   ) {}
 
   /** 获取章节；翻译和保存由流水线拉取后执行。 */
@@ -39,7 +67,7 @@ export class TaskExecutor {
     const onError = (error: unknown) => {
       if (
         signal?.aborted ||
-        this.canUpdateProvider?.() === false ||
+        this.canCommit?.() === false ||
         (error instanceof Error && error.name === 'AbortError')
       ) {
         markChapterPending();
@@ -55,12 +83,13 @@ export class TaskExecutor {
 
     const checkExecution = () => {
       signal?.throwIfAborted();
-      if (this.canUpdateProvider?.() === false)
-        throw new DOMException('任务已失效或不允许保存', 'AbortError');
+      if (this.canCommit?.() === false)
+        throw new DOMException('任务已失效', 'AbortError');
     };
     try {
       checkExecution();
-      if (!this.task.initialized) await this.task.initMeta(signal);
+      if (!this.task.initialized)
+        await awaitWithSignal(this.task.initMeta(signal), signal);
       const chapter = this.task.chapters.find(
         (ch) => ch.chapterId === chapterId,
       );
@@ -69,11 +98,14 @@ export class TaskExecutor {
       tracker.onLog(`[${title}] 开始获取原文`);
       const context = {
         signal: signal ?? new AbortController().signal,
-        canUpload: this.canUpdateProvider,
+        canCommit: this.canCommit,
         onLog: tracker.onLog,
       };
       checkExecution();
-      const detail = await this.task.fetchChapter(chapterId, context);
+      const detail = await awaitWithSignal(
+        this.task.fetchChapter(chapterId, context),
+        signal,
+      );
       checkExecution();
 
       // 单个段落内的换行不是段落分隔符，拼接前清理，避免译文错位。
@@ -92,6 +124,7 @@ export class TaskExecutor {
       tracker.onLog(`[${title}] 开始翻译`);
 
       return {
+        trustedOnly: this.task.type !== 'local',
         lines: paragraphs,
         glossary: detail.glossary,
         history,

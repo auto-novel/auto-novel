@@ -45,6 +45,44 @@ describe('SegmentQueue', () => {
     expect(result.segment.id).toBe('async-1');
   });
 
+  it('条件出队跳过不匹配的队首，并在退回时只唤醒匹配消费者', async () => {
+    const restricted = { ...createTask('remote'), trustedOnly: true };
+    const ordinary = createTask('local');
+    const accepts = (task: SegmentTask) => !task.trustedOnly;
+    const controller = new AbortController();
+    const local = queue.dequeue(controller.signal, accepts);
+    const remote = queue.dequeue();
+    await queue.enqueueAll([restricted]);
+    expect(await remote).toBe(restricted);
+    // 退回的受限任务不能交给仍在等待的普通消费者。
+    queue.requeue([restricted]);
+    await queue.enqueueAll([ordinary]);
+    expect(await local).toBe(ordinary);
+    expect(await queue.dequeue()).toBe(restricted);
+    queue.ack(ordinary);
+    queue.ack(restricted);
+  });
+
+  it('等待恢复后水位再次下调，不破坏计数或重复入队', async () => {
+    queue.setHighWaterMark(4);
+    await queue.enqueueAll(['1', '2', '3'].map(createTask));
+    const enqueuing = queue.enqueueAll(['4', '5'].map(createTask));
+    queueMicrotask(() => queue.setHighWaterMark(1));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(queue.length).toBe(3);
+
+    const received: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const task = await queue.dequeue();
+      received.push(task.segment.id);
+      queue.ack(task);
+    }
+    await enqueuing;
+    expect(received).toEqual(['1', '2', '3', '4', '5']);
+    expect(queue.length).toBe(0);
+  });
+
   // --- 场景 3：高水位线背压测试 ---
   it('当达到高水位线时，waitUntilBelowHighWaterMark 应该阻塞', async () => {
     // 1. 填满到水位线 (3个)
@@ -60,10 +98,10 @@ describe('SegmentQueue', () => {
     expect(isResolved).toBe(false);
 
     // 取走但尚未完成的分段仍计入在途水位。
-    await queue.dequeue();
+    const task = await queue.dequeue();
     await Promise.resolve();
     expect(isResolved).toBe(false);
-    queue.ack();
+    queue.ack(task);
 
     // 消费者完成分段后才释放水位。
     await Promise.all([waitPromise, secondWait]);

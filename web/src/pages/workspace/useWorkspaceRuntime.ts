@@ -38,7 +38,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       warn ? 'warn' : 'info',
     );
 
-  /** 队列水位始终跟随已启动翻译器的总并发，预留一倍缓冲。 */
+  /** 每类输入的队列水位跟随已注册翻译器总并发，预留一倍缓冲，独立背压。 */
   const pipeline = new TranslationPipeline({
     segmentLength: isSakura ? 500 : undefined,
     cache: new IndexedDbSegmentCache(segCacheName),
@@ -55,7 +55,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   interface WorkerState {
     running: boolean;
     currentConcurrency: number;
-    allowUpload?: boolean;
+    trusted?: boolean;
   }
   const workerStates = ref(new Map<string, WorkerState>());
   const workerErrors = computed(() => {
@@ -87,6 +87,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     { controller: AbortController; settled: boolean }
   >();
 
+  let trustedInputsController = new AbortController();
+
   let processLoopAbortController: AbortController | null = null;
   let disposed = false;
 
@@ -109,54 +111,32 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     return task;
   }
 
-  function getNextJob(
-    jobs: TranslateJob[],
-    taskStatesMap: Map<string, TaskState>,
-  ): { job: TranslateJob; chapterId: string; state: TaskState } | null {
-    for (const job of jobs) {
+  /** 只枚举，不修改状态；取任务和判断是否还有任务共用同一筛选。 */
+  function* schedulableChapters() {
+    for (const job of jobs.value) {
       if (job.finishAt) continue;
-      if (taskCache.get(job.task)?.needsPreparation) continue;
-      const state = taskStatesMap.get(job.task);
+      const task = taskCache.get(job.task);
+      if (!task || task.needsPreparation || !canRunTask(task)) continue;
+      const state = taskStates.value.get(job.task);
       if (!state) continue;
-      for (const ch of state.chapters) {
-        if (ch.status !== 'pending') continue;
-        ch.status = 'translating';
-        return { job, chapterId: ch.chapterId, state };
+      for (const chapter of state.chapters) {
+        if (chapter.status === 'pending') yield { job, chapter, state };
       }
     }
-    return null;
-  }
-
-  function countPendingChapters(
-    jobs: TranslateJob[],
-    taskStatesMap: Map<string, TaskState>,
-  ): number {
-    let count = 0;
-    for (const job of jobs) {
-      if (job.finishAt) continue;
-      if (taskCache.get(job.task)?.needsPreparation) continue;
-      const state = taskStatesMap.get(job.task);
-      if (!state) continue;
-      for (const ch of state.chapters) {
-        if (ch.status === 'pending') count++;
-      }
-    }
-    return count;
   }
 
   function hasRunningWorker(): boolean {
     return [...workerStates.value.values()].some(
-      (s) => s.running && s.allowUpload !== undefined,
+      (s) => s.running && s.trusted !== undefined,
     );
   }
 
-  function canUpload(): boolean {
-    return (
-      hasRunningWorker() &&
-      [...workerStates.value.values()].every(
-        (s) => !s.running || s.allowUpload !== false,
-      )
-    );
+  function canRunTask(task: TranslationTask): boolean {
+    return task.type === 'local'
+      ? hasRunningWorker()
+      : [...workerStates.value.values()].some(
+          (state) => state.running && state.trusted === true,
+        );
   }
 
   function abortMetadataTasks(): void {
@@ -226,7 +206,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     task: TranslationTask,
     state: TaskState,
   ): void {
-    if (!task.prepareExecution || preparationTasks.has(job.task)) return;
+    if (
+      !canRunTask(task) ||
+      !task.prepareExecution ||
+      preparationTasks.has(job.task)
+    )
+      return;
     const preparation = { controller: new AbortController(), settled: false };
     preparationTasks.set(job.task, preparation);
     const signal = preparation.controller.signal;
@@ -239,7 +224,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     task
       .prepareExecution({
         signal,
-        canUpload: canPrepare,
+        canCommit: canPrepare,
         onLog: (message) => logTask(job.task, message),
       })
       .then(() => {
@@ -279,7 +264,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     task: TranslationTask,
     state: TaskState,
   ): void {
-    if (!isSakura || !task.needsMetadata || !task.translateMetadata) return;
+    if (
+      !canRunTask(task) ||
+      !isSakura ||
+      !task.needsMetadata ||
+      !task.translateMetadata
+    )
+      return;
     if (metadataTasks.has(job.task)) return;
     const metadata: MetadataState = {
       task,
@@ -289,7 +280,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     };
     metadataTasks.set(job.task, metadata);
     const signal = metadata.controller.signal;
-    const canUploadMetadata = () =>
+    const canCommitMetadata = () =>
       !signal.aborted &&
       metadataTasks.get(job.task) === metadata &&
       taskCache.get(job.task) === metadata.task &&
@@ -303,6 +294,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       const lineCounts = texts.map((text) => text.split('\n').length);
       const { lines, failed } = await pipeline.translate(
         {
+          trustedOnly: true,
           lines: texts.flatMap((text) => text.split('\n')),
           glossary: task.glossary,
         },
@@ -319,7 +311,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       return lineCounts.map((count) => lines.splice(0, count).join('\n'));
     };
     task
-      .translateMetadata(translateTexts, signal, canUploadMetadata)
+      .translateMetadata(translateTexts, signal, canCommitMetadata)
       .then(() => {
         if (!signal.aborted && metadataTasks.get(job.task) === metadata) {
           logTask(job.task, '元数据翻译完成');
@@ -340,14 +332,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
   function runProcessLoop(): void {
     if (disposed || !hasRunningWorker()) return;
-    // 没有获批的翻译器时不抓取新章节；审批恢复（启动翻译器）会再次触发本循环。
-    if (!canUpload()) return;
 
     for (const job of jobs.value) {
       if (job.finishAt) continue;
       const task = taskCache.get(job.task);
       const state = taskStates.value.get(job.task);
-      if (task?.initialized && state?.initialized) {
+      if (task?.initialized && state?.initialized && canRunTask(task)) {
         if (task.needsPreparation) {
           prepareTaskOnce(job, task, state);
           continue;
@@ -358,36 +348,51 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
     // 停止后也必须等旧 run 退出，防止重新启动时重复拉取或覆盖章节状态。
     if (processLoopAbortController) return;
-    if (countPendingChapters(jobs.value, taskStates.value) === 0) return;
+    if (schedulableChapters().next().done) return;
     const controller = new AbortController();
     processLoopAbortController = controller;
     const signal = controller.signal;
+    // 每轮只转发一次取消；可信翻译器恢复时可在本轮内创建新的可信任务组。
+    signal.addEventListener('abort', () => trustedInputsController.abort(), {
+      once: true,
+    });
 
-    /** 取下一个可翻译章节；没有可做的活或审批失效时返回 undefined。 */
-    const nextWork = async (): Promise<TranslationWork | undefined> => {
-      // 审批失效时停止抓取新章节；恢复时会重新进入本循环。
-      while (!signal.aborted && hasRunningWorker() && canUpload()) {
-        const item = getNextJob(jobs.value, taskStates.value);
+    /** 取下一个可翻译章节；没有可交给当前翻译器的章节时返回 undefined。 */
+    const nextWork = async (): Promise<
+      | {
+          work: TranslationWork;
+          signal: AbortSignal;
+        }
+      | undefined
+    > => {
+      // 跳过缺少可信翻译器的远程任务，仍可继续处理本地任务。
+      while (!signal.aborted && hasRunningWorker()) {
+        const item = schedulableChapters().next().value;
         if (!item) return undefined;
 
-        const { job, chapterId, state } = item;
+        const { job, chapter, state } = item;
+        const { chapterId } = chapter;
+        chapter.status = 'translating';
         const task = await getOrCreateTask(job.task);
         const isCurrentTask = () =>
           taskCache.get(job.task) === task &&
           taskStates.value.get(job.task) === state &&
           !!findCurrentJob(job);
         if (!isCurrentTask()) continue;
-        if (signal.aborted) {
+        if (signal.aborted || !canRunTask(task)) {
           state.updateStatus(chapterId, 'pending');
-          return undefined;
+          if (signal.aborted) return undefined;
+          continue;
         }
 
+        if (task.type !== 'local' && trustedInputsController.signal.aborted) {
+          trustedInputsController = new AbortController();
+        }
+        const inputSignal =
+          task.type === 'local' ? signal : trustedInputsController.signal;
         const executor = new TaskExecutor(
           task,
-          () =>
-            !signal.aborted &&
-            isCurrentTask() &&
-            (task.type === 'local' || canUpload()),
+          () => !inputSignal.aborted && isCurrentTask(),
         );
         const segmentTracker = state.getChapterState(chapterId);
         if (!segmentTracker) continue;
@@ -410,25 +415,28 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             },
             segmentTracker,
           },
-          signal,
+          inputSignal,
         );
         if (!work) {
           if (isCurrentTask()) updateJobCompletion(job, task, state);
           continue;
         }
         return {
-          ...work,
-          onComplete: async (result) => {
-            await work.onComplete(result);
-            if (isCurrentTask()) updateJobCompletion(job, task, state);
-          },
-          onError: (error) => {
-            work.onError(error);
-            if (isCurrentTask()) updateJobCompletion(job, task, state);
-          },
-          onAbort: () => {
-            work.onAbort();
-            if (isCurrentTask()) updateJobCompletion(job, task, state);
+          signal: inputSignal,
+          work: {
+            ...work,
+            onComplete: async (result) => {
+              await work.onComplete(result);
+              if (isCurrentTask()) updateJobCompletion(job, task, state);
+            },
+            onError: async (error) => {
+              await work.onError(error);
+              if (isCurrentTask()) updateJobCompletion(job, task, state);
+            },
+            onAbort: async () => {
+              await work.onAbort();
+              if (isCurrentTask()) updateJobCompletion(job, task, state);
+            },
           },
         };
       }
@@ -439,9 +447,14 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       try {
         // 推模型：投递一个章节再取下一个，队列满时 submit 自己等待。
         for (;;) {
-          const work = await nextWork();
-          if (!work) break;
-          await pipeline.submit(work, signal);
+          const input = await nextWork();
+          if (!input) break;
+          try {
+            await pipeline.submit(input.work, input.signal);
+          } catch (error) {
+            // 唯一可信翻译器停止只取消受限输入，不能连带中断本地章节。
+            if (!input.signal.aborted || signal.aborted) throw error;
+          }
         }
         await pipeline.drain();
       } finally {
@@ -460,7 +473,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         if (processLoopAbortController !== controller) return;
         processLoopAbortController = null;
         // 本轮没有更多可做的章节，但任务可能新增或重试章节。
-        if (countPendingChapters(jobs.value, taskStates.value) > 0) {
+        if (!schedulableChapters().next().done) {
           runProcessLoop();
         }
       });
@@ -494,9 +507,9 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
       if (workerStates.value.get(workerId) !== state) return;
 
-      const probe = (await t.probe?.()) ?? { approved: true };
-      if (workerStates.value.get(workerId) !== state) return;
-      state.allowUpload = probe.approved;
+      state.trusted = t.trusted === true;
+      if (!t.trusted)
+        log(`翻译器仅可用于本地翻译：${t.untrustedReason ?? '未通过可信检查'}`);
 
       pipeline.registerTranslator(t, {
         concurrency: w.concurrency,
@@ -504,10 +517,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           state.currentConcurrency = activeCount;
         },
         id: w.id,
-        // 未通过自检时不派发任务，任务留在队列里等待而不是判失败。
-        approved: canUpload,
       });
-      pipeline.refreshApproval();
       log('翻译器已启动');
 
       runProcessLoop();
@@ -529,10 +539,19 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
-    pipeline.refreshApproval();
     appendLog(workerId, '翻译器已停止');
 
     workerStates.value.set(workerId, { ...state, running: false });
+
+    if (
+      ![...workerStates.value.values()].some(
+        (s) => s.running && s.trusted === true,
+      )
+    ) {
+      trustedInputsController.abort();
+      abortMetadataTasks();
+      abortPreparationTasks();
+    }
 
     if ([...workerStates.value.values()].every((s) => !s.running)) {
       abortMetadataTasks();

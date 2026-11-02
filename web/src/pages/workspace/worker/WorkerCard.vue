@@ -74,11 +74,6 @@ const testWorker = async () => {
         if (msg.startsWith('思考：')) reasoningLogs.push(msg);
       },
     });
-    const probe = (await translator.probe?.()) ?? { approved: true };
-    if (!probe.approved) {
-      Toast.warning(`翻译器未通过检查：${probe.reason ?? '未知原因'}`);
-      return;
-    }
     pipeline.registerTranslator(translator, { concurrency: 1 });
     const { lines } = await pipeline.translate({ lines: textJp });
     const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];

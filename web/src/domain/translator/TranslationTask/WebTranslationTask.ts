@@ -103,7 +103,7 @@ export class WebTranslationTask implements TranslationTask {
         {
           safeUpdateToc: this.level !== 'sync',
           signal: context.signal,
-          canUpdate: context.canUpload,
+          canUpdate: context.canCommit,
         },
       );
       context.onLog('目录已更新');
@@ -124,8 +124,8 @@ export class WebTranslationTask implements TranslationTask {
 
   private checkExecution(context?: TaskExecutionContext): void {
     context?.signal.throwIfAborted();
-    if (context?.canUpload?.() === false) {
-      throw new DOMException('任务已停止或不允许上传', 'AbortError');
+    if (context?.canCommit?.() === false) {
+      throw new DOMException('任务已停止或失效', 'AbortError');
     }
   }
 
@@ -142,14 +142,14 @@ export class WebTranslationTask implements TranslationTask {
   async translateMetadata(
     translate: (texts: string[]) => Promise<string[]>,
     signal?: AbortSignal,
-    canUpload?: () => boolean,
+    canCommit?: () => boolean,
   ): Promise<void> {
     if (!this.needsMetadata || !this.task) return;
     const coder = createWebMetadataCoder(this.task, this.params.forceMetadata);
     const checkUpload = () => {
       signal?.throwIfAborted();
-      if (canUpload?.() === false) {
-        throw new Error('存在未通过上传检查的翻译器，无法启动网络／文库任务');
+      if (canCommit?.() === false) {
+        throw new Error('任务已停止或失效');
       }
     };
     checkUpload();
@@ -178,7 +178,7 @@ export class WebTranslationTask implements TranslationTask {
           this.novelId,
           chapterId,
           syncFromProvider,
-          { signal: context.signal, canUpdate: context.canUpload },
+          { signal: context.signal, canUpdate: context.canCommit },
         );
         context.onLog(action === 'created' ? '章节已创建' : '章节已更新');
         syncFromProvider = false;

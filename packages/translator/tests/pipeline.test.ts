@@ -63,7 +63,7 @@ describe('TranslationPipeline', () => {
     const gates = Array.from({ length: 4 }, () => deferred<string[]>());
     let requestIndex = 0;
     const translate = vi.fn(() => gates[requestIndex++].promise);
-    pipeline.registerTranslator({ translate });
+    pipeline.registerTranslator({ trusted: false, translate });
     let pulled = 0;
     const onComplete = vi.fn();
     async function* source() {
@@ -97,6 +97,7 @@ describe('TranslationPipeline', () => {
     const first = deferred<string[]>();
     pipeline.registerTranslator(
       {
+        trusted: false,
         translate: vi.fn(async ({ lines }: TranslateRequest) => {
           if (lines[0] === '甲') return first.promise;
           if (lines[0] === '乙') throw new Error('失败');
@@ -145,7 +146,7 @@ describe('TranslationPipeline', () => {
         });
       });
     });
-    pipeline.registerTranslator({ translate });
+    pipeline.registerTranslator({ trusted: false, translate });
     const onError = vi.fn();
     const onAbort = vi.fn();
     const onComplete = vi.fn();
@@ -187,7 +188,7 @@ describe('TranslationPipeline', () => {
           });
         }),
     );
-    pipeline.registerTranslator({ translate });
+    pipeline.registerTranslator({ trusted: false, translate });
     const input = work(lines);
     // dispose 场景不传外部 signal，确保使用的是流水线自身的取消信号。
     const submitting = pipeline.submit(
@@ -272,7 +273,7 @@ describe('TranslationPipeline', () => {
     const translate = vi.fn(async ({ lines }: TranslateRequest) =>
       lines.map((line) => `译${line}`),
     );
-    pipeline.registerTranslator({ translate });
+    pipeline.registerTranslator({ trusted: false, translate });
 
     await expect(
       pipeline.translate({
@@ -289,7 +290,7 @@ describe('TranslationPipeline', () => {
   it('全为透传行的分段不调用翻译器', async () => {
     const pipeline = createPipeline();
     const translate = vi.fn(async ({ lines }: TranslateRequest) => lines);
-    pipeline.registerTranslator({ translate });
+    pipeline.registerTranslator({ trusted: false, translate });
 
     await expect(
       pipeline.translate({ lines: [' ', '<图片>x'] }),
@@ -318,7 +319,10 @@ describe('TranslationPipeline', () => {
       `好${lines[0]}`,
     ]);
     const onSegError = vi.fn();
-    const id = pipeline.registerTranslator({ translate: first });
+    const id = pipeline.registerTranslator({
+      trusted: false,
+      translate: first,
+    });
     const onComplete = vi.fn();
     const running = runAll(
       pipeline,
@@ -326,7 +330,10 @@ describe('TranslationPipeline', () => {
     );
     await vi.waitFor(() => expect(first).toHaveBeenCalledTimes(1));
 
-    pipeline.registerTranslator({ translate: second }, { id: 'second' });
+    pipeline.registerTranslator(
+      { trusted: false, translate: second },
+      { id: 'second' },
+    );
     pipeline.unregisterTranslator(id);
     await running;
 
@@ -338,7 +345,10 @@ describe('TranslationPipeline', () => {
     const pipeline = createPipeline();
     const gate = deferred<string[]>();
     const translate = vi.fn(() => gate.promise);
-    pipeline.registerTranslator({ translate }, { concurrency: 1 });
+    pipeline.registerTranslator(
+      { trusted: false, translate },
+      { concurrency: 1 },
+    );
     // 第一段占住容量，其余分段排在队列或等待入队。
     const pending = pipeline.translate({ lines: ['甲', '乙', '丙'] });
     await vi.waitFor(() => expect(translate).toHaveBeenCalledTimes(1));
@@ -348,6 +358,7 @@ describe('TranslationPipeline', () => {
 
     // 重新注册后仍可继续使用。
     pipeline.registerTranslator({
+      trusted: false,
       translate: async ({ lines }: TranslateRequest) =>
         lines.map((line) => `译${line}`),
     });
@@ -357,28 +368,63 @@ describe('TranslationPipeline', () => {
     });
   });
 
-  it('未获批的翻译器不接任务，获批后恢复派发', async () => {
+  it('受限输入等待可信翻译器，不阻塞普通输入的入队和翻译', async () => {
     const pipeline = createPipeline();
-    let approved = false;
-    const translate = vi.fn(async ({ lines }: TranslateRequest) =>
-      lines.map((line) => `译${line}`),
+    const untrusted = vi.fn(async ({ lines }: TranslateRequest) =>
+      lines.map((line) => `本地${line}`),
     );
-    pipeline.registerTranslator({ translate }, { approved: () => approved });
-    const pending = pipeline.translate({ lines: ['甲'] });
+    pipeline.registerTranslator({ trusted: false, translate: untrusted });
+    const input = { ...work('甲\n乙\n丙\n丁'), trustedOnly: true };
+    const submitting = pipeline.submit(input);
 
-    // 任务留在队列里等待，既不派发也不判失败。
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(translate).not.toHaveBeenCalled();
+    // 受限输入超过水位且没有匹配消费者；普通输入仍应独立推进。
+    await expect(pipeline.translate({ lines: ['戊'] })).resolves.toEqual({
+      lines: ['本地戊'],
+      failed: [],
+    });
+    expect(input.onComplete).not.toHaveBeenCalled();
+    expect(untrusted.mock.calls.map(([{ lines }]) => lines)).toEqual([['戊']]);
 
-    approved = true;
-    pipeline.refreshApproval();
-    await expect(pending).resolves.toEqual({ lines: ['译甲'], failed: [] });
-    expect(translate).toHaveBeenCalledOnce();
+    const trusted = vi.fn(async ({ lines }: TranslateRequest) =>
+      lines.map((line) => `远程${line}`),
+    );
+    pipeline.registerTranslator({ trusted: true, translate: trusted });
+    await submitting;
+    await pipeline.drain();
+    expect(input.onComplete).toHaveBeenCalledWith({
+      lines: ['远程甲', '远程乙', '远程丙', '远程丁'],
+      failed: [],
+    });
+  });
+
+  it('可信限定的 translate 可取消，取消后普通输入仍可翻译', async () => {
+    const pipeline = createPipeline();
+    const translate = vi.fn(async () => ['译文']);
+    pipeline.registerTranslator({ trusted: false, translate });
+    const controller = new AbortController();
+    const pending = pipeline.translate(
+      { lines: ['甲', '乙', '丙'], trustedOnly: true },
+      controller.signal,
+    );
+    const rejected = expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    await pipeline.translate({ lines: ['丁'] });
+    controller.abort();
+    await rejected;
+    await expect(pipeline.translate({ lines: ['戊'] })).resolves.toEqual({
+      lines: ['译文'],
+      failed: [],
+    });
+    expect(translate).toHaveBeenCalledTimes(2);
   });
 
   it('保存失败通知 onError，且 run 收尾前等待结算完成', async () => {
     const pipeline = createPipeline();
-    pipeline.registerTranslator({ translate: async () => ['译文'] });
+    pipeline.registerTranslator({
+      trusted: false,
+      translate: async () => ['译文'],
+    });
     const saving = deferred<void>();
     const error = new Error('保存失败');
     let finished = false;
@@ -407,7 +453,10 @@ describe('TranslationPipeline', () => {
   it('submit 入队即返回，drain 等待结算', async () => {
     const pipeline = createPipeline();
     const gate = deferred<string[]>();
-    pipeline.registerTranslator({ translate: () => gate.promise });
+    pipeline.registerTranslator({
+      trusted: false,
+      translate: () => gate.promise,
+    });
     const onComplete = vi.fn();
 
     await pipeline.submit(work('甲', { onComplete }));
@@ -422,7 +471,10 @@ describe('TranslationPipeline', () => {
     const pipeline = createPipeline();
     const gates = [1, 2, 3, 4].map(() => deferred<string[]>());
     let call = 0;
-    pipeline.registerTranslator({ translate: () => gates[call++].promise });
+    pipeline.registerTranslator({
+      trusted: false,
+      translate: () => gates[call++].promise,
+    });
 
     let submitted = false;
     const submitting = pipeline.submit(work('甲\n乙\n丙\n丁')).then(() => {

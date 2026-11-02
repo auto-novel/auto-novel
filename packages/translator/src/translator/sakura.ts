@@ -3,7 +3,6 @@ import type {
   SegmentContext,
   TranslateRequest,
   Translator,
-  TranslatorProbe,
   PromptBuilder,
 } from '@/types';
 
@@ -49,6 +48,8 @@ export class SakuraTranslator implements Translator {
   private prevSegLength: number;
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
+  readonly trusted: boolean;
+  readonly untrustedReason?: string;
   private readonly detectedModel?: SakuraModel;
 
   /** 探测结果只读公开；审批使用的模型及元数据在创建后不可变。 */
@@ -63,6 +64,9 @@ export class SakuraTranslator implements Translator {
     this.prevSegLength = config.prevSegLength;
     this.promptBuilder = config.promptBuilder;
     this.log = config.log;
+    this.untrustedReason = this.modelRejection();
+    this.trusted = this.untrustedReason === undefined;
+    this.log(this.untrustedReason ?? `模型为${this.model?.id}，允许上传`);
   }
 
   get currentVersion(): SakuraVersion {
@@ -84,26 +88,6 @@ export class SakuraTranslator implements Translator {
     });
   }
 
-  /** 只有与本仓库登记过的模型一致时才允许把内容发往该端点。 */
-  async probe(): Promise<TranslatorProbe> {
-    return this.checkUpload();
-  }
-
-  /** 同步判定，供旧调用方使用。 */
-  allowUpload(): boolean {
-    return this.checkUpload().approved;
-  }
-
-  private checkUpload(): TranslatorProbe {
-    const reason = this.modelRejection();
-    this.log(reason ?? `模型为${this.model?.id}，允许上传`);
-    const info =
-      this.model === undefined ? undefined : { model: this.model.id };
-    return reason === undefined
-      ? { approved: true, info }
-      : { approved: false, reason, info };
-  }
-
   /** 不允许上传的原因；为空表示通过。 */
   private modelRejection(): string | undefined {
     if (this.prevSegLength !== 500) return '前文长度不是500';
@@ -123,7 +107,7 @@ export class SakuraTranslator implements Translator {
       this.model?.id,
       lines,
       this.promptBuilder,
-      this.modelRejection() === undefined,
+      this.trusted,
       this.contextFor(context),
     );
   }

@@ -21,10 +21,8 @@ interface TranslationLoop {
   id: string;
   translator: Translator;
   abortController: AbortController;
-  /** 并发数，缺省为 1。 */
-  concurrency?: number;
-  /** 能否向该循环派发任务；缺省视为允许。 */
-  approved?: () => boolean;
+  concurrency: number;
+  trusted: boolean;
 }
 
 /** 一个输入切分后的任务与整体结果。 */
@@ -47,14 +45,12 @@ export class TranslationPipeline {
   private readonly cache?: SegmentCache;
   /** 当前生命周期；dispose 时取消所有未完成输入，之后换成新的。 */
   private lifecycle = new AbortController();
-  /** 等待“获批”状态变化的消费者；refreshApproval 时唤醒重新判定。 */
-  private readonly approvalWaiters: Array<() => void> = [];
   /** 已投递但尚未结算的输入；drain 等待它们并把回调错误上抛。 */
   private readonly pendingSettlements = new Set<Promise<void>>();
   private settlementError: unknown;
 
   /**
-   * 队列水位始终跟随已注册翻译器的总并发（auto）；构造时尚未注册翻译器，
+   * 每类输入的队列水位跟随已注册翻译器的总并发；构造时尚未注册翻译器，
    * 因此从 1 开始，注册后由 _updateHighWaterMark 上调。
    */
   constructor(
@@ -185,6 +181,7 @@ export class TranslationPipeline {
         new Promise<string[]>((resolve, reject) => {
           tasks.push({
             segment,
+            trustedOnly: input.trustedOnly,
             observer,
             signal,
             resolve,
@@ -234,54 +231,12 @@ export class TranslationPipeline {
       translator,
       abortController: new AbortController(),
       concurrency: configuredConcurrency,
-      approved: options.approved,
+      trusted: translator.trusted === true,
     };
     this.translatorLoops.set(id, loop);
     this._updateHighWaterMark();
     void this._startWorkers(loop, options.onActiveCountChange);
     return id;
-  }
-
-  /**
-   * 审批状态可能变化后调用：唤醒等待获批的消费者。
-   * 未获批的循环不接任务，任务留在队列里等待而不是判失败。
-   */
-  refreshApproval(): void {
-    for (const wake of this.approvalWaiters.splice(0)) wake();
-  }
-
-  private isApproved(loop: TranslationLoop): boolean {
-    if (!loop.approved) return true;
-    try {
-      return loop.approved();
-    } catch {
-      // 判定本身出错时按“不可用”处理，避免把内容发给未确认的端点。
-      return false;
-    }
-  }
-
-  private async waitUntilApproved(loop: TranslationLoop): Promise<void> {
-    const signal = loop.abortController.signal;
-    while (!this.isApproved(loop)) {
-      signal.throwIfAborted();
-      await new Promise<void>((resolve, reject) => {
-        const wake = () => {
-          cleanup();
-          resolve();
-        };
-        const onAbort = () => {
-          cleanup();
-          reject(signal.reason);
-        };
-        const cleanup = () => {
-          signal.removeEventListener('abort', onAbort);
-          const index = this.approvalWaiters.indexOf(wake);
-          if (index !== -1) this.approvalWaiters.splice(index, 1);
-        };
-        this.approvalWaiters.push(wake);
-        signal.addEventListener('abort', onAbort, { once: true });
-      });
-    }
   }
 
   private async _startWorkers(
@@ -383,8 +338,10 @@ export class TranslationPipeline {
     const worker = async () => {
       while (!loop.abortController.signal.aborted) {
         try {
-          await this.waitUntilApproved(loop);
-          const task = await this.queue.dequeue(loop.abortController.signal);
+          const task = await this.queue.dequeue(
+            loop.abortController.signal,
+            (task) => !task.trustedOnly || loop.trusted,
+          );
           let requeued = false;
           try {
             updateActiveCount(1);
@@ -394,7 +351,7 @@ export class TranslationPipeline {
             task.observer.error(task.segment, error);
           } finally {
             // 退回队列的分段仍算在途，由下一个消费者 ack。
-            if (!requeued) this.queue.ack();
+            if (!requeued) this.queue.ack(task);
             updateActiveCount(-1);
           }
         } catch {
@@ -403,9 +360,7 @@ export class TranslationPipeline {
         }
       }
     };
-    await Promise.all(
-      Array.from({ length: loop.concurrency ?? 1 }, () => worker()),
-    );
+    await Promise.all(Array.from({ length: loop.concurrency }, () => worker()));
   }
 
   unregisterTranslator(translatorId: string): void {
@@ -436,9 +391,9 @@ export class TranslationPipeline {
   private _updateHighWaterMark(): void {
     let totalConcurrency = 0;
     for (const loop of this.translatorLoops.values()) {
-      totalConcurrency += loop.concurrency ?? 1;
+      totalConcurrency += loop.concurrency;
     }
-    // 使用配置容量而非瞬时忙碌数；降低阈值不移除已在途的分段。
+    // 每类输入独立使用配置容量；降低阈值不移除已在途的分段。
     this.queue.setHighWaterMark(Math.max(1, totalConcurrency * 2));
   }
 }

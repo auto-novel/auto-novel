@@ -19,7 +19,6 @@ export type {
   SegmentContext,
   TranslateRequest,
   Translator,
-  TranslatorProbe,
 } from './types';
 export { TranslationRejected, TranslationUnavailable } from './errors';
 
