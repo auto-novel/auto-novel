@@ -89,6 +89,9 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     { controller: AbortController; settled: boolean }
   >();
 
+  /** 元数据准备串行链；始终正常完成，避免一次失败阻断后续准备。 */
+  let prepareChain: Promise<void> = Promise.resolve();
+
   let processLoopAbortController: AbortController | null = null;
   let disposed = false;
 
@@ -238,12 +241,14 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       taskCache.get(job.task) === task &&
       taskStates.value.get(job.task) === state &&
       !!findCurrentJob(job);
-    task
-      .prepareExecution({
-        signal,
-        canUpload: canPrepare,
-        onLog: (message) => logTask(job.task, message),
-      })
+    prepareChain = prepareChain
+      .then(() =>
+        task.prepareExecution!({
+          signal,
+          canUpload: canPrepare,
+          onLog: (message) => logTask(job.task, message),
+        }),
+      )
       .then(() => {
         if (!canPrepare()) return;
         state.initChapters(task.chapters);
