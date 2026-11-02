@@ -96,6 +96,14 @@ const clearCache = async () =>
     <n-h1>Sakura工作区（待废弃）</n-h1>
 
     <bulletin>
+      <n-alert type="warning" title="旧工作区废弃公告" class="mb-4">
+        旧工作区将于11月4日晚正式废弃，请尽快切换至
+        <router-link to="/workspace/sakura-pipeline">
+          新版Sakura工作区
+        </router-link>
+        。
+      </n-alert>
+
       <n-flex>
         <n-a
           :href="forumPostUrls.sakuraDeployGuide"
