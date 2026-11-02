@@ -69,10 +69,12 @@ const { whoami } = storeToRefs(whoamiStore);
 
 const glossary = ref<Glossary>({});
 const originalGlossary = ref<Glossary>({});
+const termsToAdd = ref<[string, string]>(['', '']);
 
 const resetState = () => {
   glossary.value = { ...props.value };
   originalGlossary.value = { ...props.value };
+  termsToAdd.value = ['', ''];
 };
 
 onMounted(() => {
@@ -88,6 +90,7 @@ watch(
 );
 
 const isGlossaryChanged = () => {
+  if (termsToAdd.value.some((term) => term.trim() !== '')) return true;
   const cur = glossary.value;
   const orig = originalGlossary.value;
   const curKeys = Object.keys(cur);
@@ -140,7 +143,6 @@ const submitGlossary = () => {
 };
 
 const importGlossaryRaw = ref('');
-const termsToAdd = ref<[string, string]>(['', '']);
 
 const deletedTerms = ref<[string, string][]>([]);
 
