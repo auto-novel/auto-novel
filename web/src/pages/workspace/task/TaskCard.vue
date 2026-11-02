@@ -85,11 +85,6 @@ const taskProgress = computed(() => {
 });
 const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
   if (props.job.finishAt) return 'done';
-  if (!chapterMetas.value.length)
-    return props.taskCacheEntry?.needsPreparation ||
-      props.taskCacheEntry?.needsMetadata
-      ? 'pending'
-      : 'done';
   if (taskProgress.value.translating > 0) return 'executing';
   return 'pending';
 });

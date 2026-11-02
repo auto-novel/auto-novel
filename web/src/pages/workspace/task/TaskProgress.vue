@@ -24,11 +24,16 @@ const progressDescription = computed(() => {
   const { total, done, error, translating, pending } = props.progress;
   return `共 ${total} 章，成功 ${done} 章，处理中 ${translating} 章，失败 ${error} 章，等待 ${pending} 章`;
 });
+/** 空任务没有章节可分摊进度，已完成时整圈视为完成。 */
+const emptyFinished = computed(
+  () => props.progress.total === 0 && props.status === 'done',
+);
 const progressSegments = computed(() => {
   const { total } = props.progress;
   let offset = 0;
   return (['done', 'translating', 'error'] as const).map((status) => {
-    const percentage = total > 0 ? (props.progress[status] / total) * 100 : 0;
+    let percentage = total > 0 ? (props.progress[status] / total) * 100 : 0;
+    if (emptyFinished.value) percentage = status === 'done' ? 100 : 0;
     const segment = { status, percentage, offset };
     offset += percentage;
     return segment;
@@ -42,6 +47,7 @@ const filledPercentage = computed(() => {
 });
 const progressPercentage = computed(() => {
   const { done, total } = props.progress;
+  if (emptyFinished.value) return 100;
   return total > 0 ? Math.round((done / total) * 100) : 0;
 });
 </script>
@@ -80,7 +86,7 @@ const progressPercentage = computed(() => {
       class="@min-[640px]:col-start-1 @min-[640px]:row-span-2 @min-[640px]:row-start-1 @min-[640px]:self-center"
       role="progressbar"
       aria-label="章节翻译进度"
-      :aria-valuenow="progress.done"
+      :aria-valuenow="emptyFinished ? 1 : progress.done"
       :aria-valuemin="0"
       :aria-valuemax="progress.total || 1"
       :aria-valuetext="progressDescription"
