@@ -14,6 +14,12 @@ export interface TaskExecutionContext {
   onLog: (message: string) => void;
 }
 
+export interface PreparedMetadata {
+  lines: string[];
+  glossary: Glossary;
+  save(translated: string[]): Promise<void>;
+}
+
 export interface TranslationTask {
   readonly type: 'local' | 'web' | 'wenku';
   readonly description: string;
@@ -21,20 +27,13 @@ export interface TranslationTask {
   readonly glossary: Glossary;
   readonly glossaryId: string;
   readonly level: 'normal' | 'expire' | 'all' | 'sync';
-  /** 初始化标记，initMeta 执行完毕后设为 true*/
+  /** initialize 完成后为 true；调度层负责串行初始化同一任务版本。 */
   initialized: boolean;
-  /** 调用以初始化内部参数。防止多个Task初始化时发出大量请求 */
-  initMeta(signal?: AbortSignal): Promise<void>;
-  /** 只允许浏览器爬虫只在正式执行任务时更新目录。 */
-  readonly needsPreparation?: boolean;
-  prepareExecution?(context: TaskExecutionContext): Promise<void>;
-  /** 即使没有待翻章节，也可能需要翻译网络小说元数据 */
-  readonly needsMetadata?: boolean;
-  /** 翻译元数据（标题、简介、目录），仅网络小说支持 */
-  translateMetadata?(
-    translate: (texts: string[]) => Promise<string[]>,
-    signal?: AbortSignal,
-  ): Promise<void>;
+  /** 正式执行前初始化；网络小说先按需更新目录，再加载任务快照。 */
+  initialize(context: TaskExecutionContext): Promise<void>;
+  /** 独立于正文列表的元数据翻译单元。 */
+  readonly metadataUnit?: ChapterMeta;
+  prepareMetadata?(context: TaskExecutionContext): Promise<PreparedMetadata>;
   fetchChapter(
     chapterId: string,
     context?: TaskExecutionContext,

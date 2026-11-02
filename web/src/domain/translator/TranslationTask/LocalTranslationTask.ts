@@ -37,12 +37,13 @@ export class LocalTranslationTask implements TranslationTask {
     this.storeLoaded = true;
   }
 
-  async initMeta(signal?: AbortSignal): Promise<void> {
-    signal?.throwIfAborted();
+  async initialize({ signal }: TaskExecutionContext): Promise<void> {
+    signal.throwIfAborted();
+    if (this.initialized) return;
     await this._ensureStore();
-    signal?.throwIfAborted();
+    signal.throwIfAborted();
     const metadata = await this.volumeStore.getVolume(this.volumeId);
-    signal?.throwIfAborted();
+    signal.throwIfAborted();
     if (!metadata) throw new Error('小说不存在');
 
     this.glossary = metadata.glossary ?? {};

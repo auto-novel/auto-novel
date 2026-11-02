@@ -34,7 +34,7 @@ const emit = defineEmits<{
 const jobRecord = computed(() => props.job as TranslateJobRecord);
 const chapterMetas = computed(() => props.taskState?.chapters ?? []);
 const hasVisibleChapters = computed(() =>
-  chapterMetas.value.some(
+  (props.taskState?.units ?? []).some(
     (chapter) =>
       chapter.status === 'error' ||
       (chapter.status === 'translating' &&
@@ -79,7 +79,11 @@ const taskProgress = computed(() => {
 });
 const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
   if (props.job.finishAt) return 'done';
-  if (taskProgress.value.translating > 0) return 'executing';
+  if (
+    taskProgress.value.translating > 0 ||
+    props.taskState?.metadataUnit?.status === 'translating'
+  )
+    return 'executing';
   return 'pending';
 });
 
@@ -102,7 +106,7 @@ const openPreview = (chapterId: string) => {
     return;
   }
 
-  const meta = chapterMetas.value.find((c) => c.chapterId === chapterId);
+  const meta = props.taskState?.units.find((c) => c.chapterId === chapterId);
   previewData.value = { title: meta?.title ?? chapterId, chapterState };
   showPreview.value = true;
 };
@@ -181,6 +185,16 @@ const closePreview = () => {
             </div>
           </n-flex>
           <task-link :task="job.task" />
+          <span v-if="taskState?.metadataUnit" class="text-xs text-muted">
+            小说信息：{{
+              {
+                pending: '等待',
+                translating: '处理中',
+                done: '已完成',
+                error: '失败，可重试',
+              }[taskState.metadataUnit.status]
+            }}
+          </span>
         </div>
         <task-progress :status="taskStatus" :progress="taskProgress" />
       </div>

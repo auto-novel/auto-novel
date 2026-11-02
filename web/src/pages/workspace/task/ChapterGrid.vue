@@ -36,7 +36,7 @@ const startedChapters = shallowRef(new Set<ChapterSegmentState>());
 // 记录本次执行已开始的章节，分段间隙不缩回小号；按状态实例区分重试。
 watch(
   () =>
-    (props.taskState?.chapters ?? []).flatMap((ch) => {
+    (props.taskState?.units ?? []).flatMap((ch) => {
       if (ch.status !== 'translating') return [];
       const state = props.taskState?.chapterStates.get(ch.chapterId);
       if (!state?.ready) return [];
@@ -67,7 +67,7 @@ watch(
 );
 
 const chapters = computed(() =>
-  (props.taskState?.chapters ?? []).map((ch) => {
+  (props.taskState?.units ?? []).map((ch) => {
     const state = props.taskState?.chapterStates.get(ch.chapterId);
     let phase: keyof typeof phaseLabels = 'queued';
     if (ch.status === 'translating') {
@@ -134,7 +134,7 @@ function description(ch: Chapter): string {
     ch.status === 'translating'
       ? phaseLabels[ch.phase]
       : statusLabels[ch.status];
-  return `任务内编号 #${ch.order} · ${ch.title} · ${statusLabel}${
+  return `${ch.kind === 'metadata' ? '小说信息' : `任务内编号 #${ch.order}`} · ${ch.title} · ${statusLabel}${
     progress ? ` · 已完成 ${progress.completed}/${progress.total} 段` : ''
   } · 点击查看预览`;
 }
@@ -148,7 +148,7 @@ function chapterElement(chapterId: string): HTMLElement | undefined {
 // 章节移出或跨分区时仅恢复键盘焦点，不播放进出动画。
 watch(
   () =>
-    (props.taskState?.chapters ?? []).map(
+    (props.taskState?.units ?? []).map(
       (ch) => [ch.chapterId, ch.status] as const,
     ),
   async (current, previous) => {
@@ -244,7 +244,9 @@ watch(
             @click="emit('preview', ch.chapterId)"
           >
             <template v-if="group.status === 'translating' && !ch.compact">
-              <span>#{{ ch.order }}</span>
+              <span>
+                {{ ch.kind === 'metadata' ? '信息' : `#${ch.order}` }}
+              </span>
               <span
                 v-if="ch.segmentProgress"
                 class="text-[10px]/none whitespace-nowrap"
@@ -254,7 +256,9 @@ watch(
                 }}
               </span>
             </template>
-            <template v-else>#{{ ch.order }}</template>
+            <template v-else>
+              {{ ch.kind === 'metadata' ? '信息' : `#${ch.order}` }}
+            </template>
           </button>
         </div>
 
@@ -270,7 +274,7 @@ watch(
           :aria-expanded="errorsExpanded"
           @click="errorsExpanded = !errorsExpanded"
         >
-          {{ errorsExpanded ? '收起' : `查看全部 ${group.items.length} 章` }}
+          {{ errorsExpanded ? '收起' : `查看全部 ${group.items.length} 项` }}
         </button>
       </section>
     </div>

@@ -51,7 +51,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   const taskCache = new Map<string, TranslationTask>();
   const taskLifecycles = new Map<string, TaskLifecycle>();
   /** 同一版本只初始化一次；跨标签页替换对象不能重建执行状态。 */
-  const initializingTasks = new Map<string, TaskLifecycle>();
+  const initializingTasks = new Map<string, AbortController>();
+  const initializationErrors = new Set<string>();
 
   interface WorkerState {
     running: boolean;
@@ -75,17 +76,6 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     }
     return errors;
   });
-  interface MetadataState {
-    controller: AbortController;
-    settled: boolean;
-  }
-  /** 元数据独立于章节窗口；已结束的尝试保留到任务清除，避免重复上传。 */
-  const metadataTasks = new Map<string, MetadataState>();
-  const preparationTasks = new Map<
-    string,
-    { controller: AbortController; settled: boolean }
-  >();
-
   let trustedInputsController = new AbortController();
 
   let processLoopAbortController: AbortController | null = null;
@@ -95,9 +85,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     disposed = true;
     for (const lifecycle of taskLifecycles.values()) lifecycle.abort();
     taskLifecycles.clear();
-    initializingTasks.clear();
-    abortMetadataTasks();
-    abortPreparationTasks();
+    abortInitializations();
     processLoopAbortController?.abort();
     pipeline.dispose();
     workerStates.value.clear();
@@ -114,15 +102,15 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   }
 
   /** 只枚举，不修改状态；取任务和判断是否还有任务共用同一筛选。 */
-  function* schedulableChapters() {
+  function* schedulableUnits() {
     for (const job of jobs.value) {
       if (job.finishAt) continue;
       const task = taskCache.get(job.task);
-      if (!task || task.needsPreparation || !canRunTask(task)) continue;
+      if (!task || !task.initialized || !canRunTask(task)) continue;
       const state = taskStates.value.get(job.task);
       if (!state) continue;
-      for (const chapter of state.chapters) {
-        if (chapter.status === 'pending') yield { job, chapter, state };
+      for (const unit of state.units) {
+        if (unit.status === 'pending') yield { job, unit, state };
       }
     }
   }
@@ -141,22 +129,53 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         );
   }
 
-  function abortMetadataTasks(): void {
-    for (const [key, state] of metadataTasks) {
-      if (state.settled) continue;
-      state.controller.abort();
-      metadataTasks.delete(key);
+  function abortInitializations(remoteOnly = false): void {
+    for (const [key, controller] of initializingTasks) {
+      if (remoteOnly && taskCache.get(key)?.type === 'local') continue;
+      controller.abort();
+      initializingTasks.delete(key);
+      // 不复用可能仍在等待插件返回的旧初始化快照。
+      taskCache.delete(key);
+    }
+  }
+
+  /** 仅加载即将执行的任务；上一任务还有待处理/在途单元时不预取目录。 */
+  function initializeNextTask(): void {
+    if (initializingTasks.size) return;
+    for (const job of jobs.value) {
+      if (job.finishAt || initializationErrors.has(job.task)) continue;
+      let task: TranslationTask;
+      try {
+        task = getOrCreateTask(job.task);
+      } catch (error) {
+        reportInitializationError(job, error);
+        continue;
+      }
+      if (!canRunTask(task)) continue;
+      const state = taskStates.value.get(job.task);
+      if (state?.initialized) {
+        if (
+          state.units.some(
+            (unit) =>
+              unit.status === 'pending' || unit.status === 'translating',
+          )
+        )
+          return;
+        continue;
+      }
+      const controller = new AbortController();
+      initializingTasks.set(job.task, controller);
+      void initializeTask(job, taskLifecycles.get(job.task)!, controller);
+      return;
     }
   }
 
   function clearTaskRuntimeState(task: string): void {
     taskLifecycles.get(task)?.abort();
     taskLifecycles.delete(task);
+    initializingTasks.get(task)?.abort();
     initializingTasks.delete(task);
-    preparationTasks.get(task)?.controller.abort();
-    preparationTasks.delete(task);
-    metadataTasks.get(task)?.controller.abort();
-    metadataTasks.delete(task);
+    initializationErrors.delete(task);
     taskStates.value.delete(task);
     taskCache.delete(task);
   }
@@ -181,173 +200,28 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     const currentJob = findCurrentJob(job);
     if (
       !currentJob ||
-      task.needsPreparation ||
       taskCache.get(job.task) !== task ||
       taskStates.value.get(job.task) !== state
     ) {
       return;
     }
-    const metadata = metadataTasks.get(job.task);
     if (
-      state.chapters.every((chapter) => chapter.status === 'done') &&
-      (!isSakura || !task.needsMetadata || metadata?.settled)
+      state.initialized &&
+      state.units.every((unit) => unit.status === 'done')
     ) {
       currentJob.finishAt = Date.now();
     }
-  }
-
-  function abortPreparationTasks(): void {
-    for (const [key, preparation] of preparationTasks) {
-      preparation.controller.abort();
-      // 等待插件返回后再释放占位
-      if (preparation.settled) preparationTasks.delete(key);
-    }
-  }
-
-  function prepareTaskOnce(
-    job: TranslateJob,
-    task: TranslationTask,
-    state: TaskState,
-  ): void {
-    if (
-      !canRunTask(task) ||
-      !task.prepareExecution ||
-      preparationTasks.has(job.task)
-    )
-      return;
-    const preparation = { controller: new AbortController(), settled: false };
-    preparationTasks.set(job.task, preparation);
-    const signal = taskLifecycles
-      .get(job.task)!
-      .signalFor(preparation.controller.signal);
-    const isCurrentPreparation = () =>
-      !signal.aborted &&
-      preparationTasks.get(job.task) === preparation &&
-      taskCache.get(job.task) === task &&
-      taskStates.value.get(job.task) === state &&
-      !!findCurrentJob(job);
-    task
-      .prepareExecution({
-        signal,
-        onLog: (message) => {
-          if (isCurrentPreparation()) logTask(job.task, message);
-        },
-      })
-      .then(() => {
-        if (!isCurrentPreparation()) return;
-        state.initChapters(task.chapters);
-        const currentJob = findCurrentJob(job)!;
-        currentJob.progress = {
-          finished: task.chapters.filter((chapter) => chapter.status === 'done')
-            .length,
-          error: 0,
-          total: task.chapters.length,
-        };
-        updateJobCompletion(job, task, state);
-      })
-      .catch((error) => {
-        if (!signal.aborted) {
-          logTask(job.task, `任务准备失败：${error}`, true);
-          console.warn(`[${job.task}] 任务准备失败`, error);
-        }
-      })
-      .finally(() => {
-        if (preparationTasks.get(job.task) !== preparation) return;
-        preparation.settled = true;
-        if (signal.aborted || !task.needsPreparation) {
-          preparationTasks.delete(job.task);
-          runProcessLoop();
-        }
-      });
-  }
-
-  /**
-   * 翻译标题、简介和目录。与旧版工作区一致，GPT 不翻译元数据。
-   * 不阻塞章节翻译，失败只记录日志。
-   */
-  function translateMetadataOnce(
-    job: TranslateJob,
-    task: TranslationTask,
-    state: TaskState,
-  ): void {
-    if (
-      !canRunTask(task) ||
-      !isSakura ||
-      !task.needsMetadata ||
-      !task.translateMetadata
-    )
-      return;
-    if (metadataTasks.has(job.task)) return;
-    const metadata: MetadataState = {
-      controller: new AbortController(),
-      settled: false,
-    };
-    metadataTasks.set(job.task, metadata);
-    const signal = taskLifecycles
-      .get(job.task)!
-      .signalFor(metadata.controller.signal);
-
-    // 简介可能含换行，按行翻译后再按原行数拼回
-    const translateTexts = async (texts: string[]) => {
-      signal.throwIfAborted();
-      const lineCounts = texts.map((text) => text.split('\n').length);
-      const { lines, failed } = await pipeline.translate(
-        {
-          trustedOnly: true,
-          lines: texts.flatMap((text) => text.split('\n')),
-          glossary: task.glossary,
-        },
-        signal,
-      );
-      signal.throwIfAborted();
-      // 分段失败时 pipeline 会回退为原文，不能把原文当译文上传
-      if (failed.length > 0) throw new Error('分段翻译失败');
-      if (
-        lines.length !== lineCounts.reduce((total, count) => total + count, 0)
-      ) {
-        throw new Error('元数据译文行数不匹配');
-      }
-      return lineCounts.map((count) => lines.splice(0, count).join('\n'));
-    };
-    task
-      .translateMetadata(translateTexts, signal)
-      .then(() => {
-        if (!signal.aborted && metadataTasks.get(job.task) === metadata) {
-          logTask(job.task, '元数据翻译完成');
-        }
-      })
-      .catch((e) => {
-        if (!signal.aborted) {
-          logTask(job.task, `元数据翻译失败：${e}`, true);
-          console.warn(`[${job.task}] 元数据翻译失败`, e);
-        }
-      })
-      .finally(() => {
-        if (metadataTasks.get(job.task) !== metadata) return;
-        metadata.settled = true;
-        updateJobCompletion(job, task, state);
-      });
+    runProcessLoop();
   }
 
   function runProcessLoop(): void {
     if (disposed || !hasRunningWorker()) return;
 
-    for (const job of jobs.value) {
-      if (job.finishAt) continue;
-      const task = taskCache.get(job.task);
-      const state = taskStates.value.get(job.task);
-      if (task?.initialized && state?.initialized && canRunTask(task)) {
-        if (task.needsPreparation) {
-          prepareTaskOnce(job, task, state);
-          continue;
-        }
-        translateMetadataOnce(job, task, state);
-      }
-    }
+    initializeNextTask();
 
     // 停止后也必须等旧 run 退出，防止重新启动时重复拉取或覆盖章节状态。
     if (processLoopAbortController) return;
-    if (schedulableChapters().next().done) return;
+    if (schedulableUnits().next().done) return;
     const controller = new AbortController();
     processLoopAbortController = controller;
     const signal = controller.signal;
@@ -356,7 +230,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       once: true,
     });
 
-    /** 取下一个可翻译章节；没有可交给当前翻译器的章节时返回 undefined。 */
+    /** 取下一个翻译单元；没有可交给当前翻译器的单元时返回 undefined。 */
     const nextWork = async (): Promise<
       | {
           work: TranslationWork;
@@ -366,12 +240,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     > => {
       // 跳过缺少可信翻译器的远程任务，仍可继续处理本地任务。
       while (!signal.aborted && hasRunningWorker()) {
-        const item = schedulableChapters().next().value;
+        const item = schedulableUnits().next().value;
         if (!item) return undefined;
 
-        const { job, chapter, state } = item;
-        const { chapterId } = chapter;
-        chapter.status = 'translating';
+        const { job, unit, state } = item;
+        const { chapterId } = unit;
+        state.updateStatus(chapterId, 'translating');
         const task = getOrCreateTask(job.task);
         const isCurrentTask = () =>
           !disposed &&
@@ -396,19 +270,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         const executor = new TaskExecutor(task);
         const segmentTracker = state.getChapterState(chapterId);
         if (!segmentTracker) continue;
-        const work = await executor.prepareChapter(
-          chapterId,
+        const work = await executor.prepareUnit(
+          unit,
           {
             onChapterStatus: (cid: string, st: ChapterStatus) => {
-              if (isCurrentTask()) state.updateStatus(cid, st);
-            },
-            onProgress: (finished: number, error: number, total: number) => {
-              const currentJob = isCurrentTask()
-                ? findCurrentJob(job)
-                : undefined;
-              if (currentJob) {
-                currentJob.progress = { finished, error, total };
-              }
+              if (!isCurrentTask()) return;
+              state.updateStatus(cid, st);
+              findCurrentJob(job)!.progress = state.progress;
             },
             onLog: (msg: string) => {
               if (isCurrentTask()) logTask(job.task, msg);
@@ -445,7 +313,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
     void (async () => {
       try {
-        // 推模型：投递一个章节再取下一个，队列满时 submit 自己等待。
+        // 推模型：投递一个翻译单元再取下一个，队列满时 submit 自己等待。
         for (;;) {
           const input = await nextWork();
           if (!input) break;
@@ -465,17 +333,15 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     })()
       .catch((error) => {
         if (!signal.aborted) {
-          appendLog('工作区', `章节翻译流水线失败：${error}`, 'warn');
-          console.warn('章节翻译流水线失败', error);
+          appendLog('工作区', `翻译流水线失败：${error}`, 'warn');
+          console.warn('翻译流水线失败', error);
         }
       })
       .finally(() => {
         if (processLoopAbortController !== controller) return;
         processLoopAbortController = null;
         // 本轮没有更多可做的章节，但任务可能新增或重试章节。
-        if (!schedulableChapters().next().done) {
-          runProcessLoop();
-        }
+        runProcessLoop();
       });
   }
 
@@ -495,6 +361,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       currentConcurrency: 0,
     });
     workerStates.value.set(workerId, state);
+    initializationErrors.clear();
 
     try {
       const secrets = 'key' in w ? [w.key] : [];
@@ -549,16 +416,15 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       )
     ) {
       trustedInputsController.abort();
-      abortMetadataTasks();
-      abortPreparationTasks();
+      abortInitializations(true);
     }
 
     if ([...workerStates.value.values()].every((s) => !s.running)) {
-      abortMetadataTasks();
-      abortPreparationTasks();
+      abortInitializations();
       processLoopAbortController?.abort();
       pipeline.dispose();
     }
+    runProcessLoop();
   };
 
   const startAllWorkers = () => {
@@ -571,14 +437,14 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
   const deleteJob = (task: string) => {
     const state = taskStates.value.get(task);
-    const metadata = metadataTasks.get(task);
+
     // 原文获取阶段可删除；分段准备好后直到保存结束，仍视为执行中。
-    const inPipeline = state?.chapters.some(
+    const inPipeline = state?.units.some(
       (chapter) =>
         chapter.status === 'translating' &&
         state.chapterStates.get(chapter.chapterId)?.ready,
     );
-    if (inPipeline || (metadata && !metadata.settled)) {
+    if (inPipeline) {
       Toast.error('任务正在翻译或保存中，请先停止翻译器');
       return;
     }
@@ -586,43 +452,47 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     clearTaskRuntimeState(task);
   };
 
+  function reportInitializationError(job: TranslateJob, error: unknown): void {
+    initializationErrors.add(job.task);
+    logTask(job.task, `任务初始化失败：${error}`, true);
+    console.warn('任务初始化失败', job.task, error);
+  }
+
   async function initializeTask(
     job: TranslateJob,
     lifecycle: TaskLifecycle,
+    controller: AbortController,
   ): Promise<void> {
+    const signal = lifecycle.signalFor(controller.signal);
     try {
       const task = getOrCreateTask(job.task);
-      lifecycle.signal.throwIfAborted();
-      if (!task.initialized) await task.initMeta(lifecycle.signal);
+      signal.throwIfAborted();
+      await task.initialize({
+        signal,
+        onLog: (message) => {
+          if (!signal.aborted) logTask(job.task, message);
+        },
+      });
       if (
-        lifecycle.signal.aborted ||
-        initializingTasks.get(job.task) !== lifecycle ||
+        signal.aborted ||
+        initializingTasks.get(job.task) !== controller ||
         taskCache.get(job.task) !== task
       ) {
         return;
       }
       const currentJob = findCurrentJob(job);
       if (!currentJob) return;
-      const chapters = task.chapters;
       const state = reactive(new TaskState(job.task)) as TaskState;
-      state.initChapters(chapters);
+      state.initialize(task.chapters, task.metadataUnit);
       taskStates.value.set(job.task, state);
-      const doneCount = chapters.filter((c) => c.status === 'done').length;
-      currentJob.progress = {
-        finished: doneCount,
-        error: 0,
-        total: chapters.length,
-      };
+      currentJob.progress = state.progress;
       updateJobCompletion(job, task, state);
     } catch (e) {
-      if (!lifecycle.signal.aborted) {
-        logTask(job.task, `任务初始化失败：${e}`, true);
-        console.warn('任务初始化失败', job.task, e);
-      }
+      if (!signal.aborted) reportInitializationError(job, e);
     } finally {
-      if (initializingTasks.get(job.task) === lifecycle) {
+      if (initializingTasks.get(job.task) === controller) {
         initializingTasks.delete(job.task);
-        // 单个任务初始化完成即可推进，不能被同批次的慢请求阻塞。
+        // 当前任务加载完成后才推进队列，不在页面挂载时批量请求目录。
         runProcessLoop();
       }
     }
@@ -633,18 +503,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     () => {
       if (disposed) return;
       const workspaceJobs = [...jobs.value];
-      const uninitialized: {
-        job: TranslateJob;
-        lifecycle: TaskLifecycle;
-      }[] = [];
       const activeTasks = new Set(workspaceJobs.map((job) => job.task));
       const knownTasks = new Set([
         ...taskStates.value.keys(),
         ...taskCache.keys(),
         ...taskLifecycles.keys(),
         ...initializingTasks.keys(),
-        ...metadataTasks.keys(),
-        ...preparationTasks.keys(),
+        ...initializationErrors,
       ]);
       for (const task of knownTasks) {
         if (!activeTasks.has(task)) clearTaskRuntimeState(task);
@@ -657,23 +522,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           lifecycle = new TaskLifecycle(job.createAt);
           taskLifecycles.set(job.task, lifecycle);
         }
-        const state = taskStates.value.get(job.task);
-        if (state?.initialized || initializingTasks.has(job.task)) {
-          continue;
-        }
-        if (job.finishAt) {
-          taskStates.value.set(
-            job.task,
-            reactive(new TaskState(job.task)) as TaskState,
-          );
-          continue;
-        }
-        initializingTasks.set(job.task, lifecycle);
-        uninitialized.push({ job, lifecycle });
       }
-      for (const { job, lifecycle } of uninitialized) {
-        void initializeTask(job, lifecycle);
-      }
+      runProcessLoop();
     },
     // 删除／替换同步终止旧版本，不能等下一次渲染才阻止保存。
     { immediate: true, flush: 'sync' },

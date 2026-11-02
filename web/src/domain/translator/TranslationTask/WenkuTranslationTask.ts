@@ -35,10 +35,11 @@ export class WenkuTranslationTask implements TranslationTask {
     this.params = params;
   }
 
-  async initMeta(signal?: AbortSignal): Promise<void> {
-    signal?.throwIfAborted();
+  async initialize({ signal }: TaskExecutionContext): Promise<void> {
+    signal.throwIfAborted();
+    if (this.initialized) return;
     const task = await this.createApi(signal).getTranslateTask();
-    signal?.throwIfAborted();
+    signal.throwIfAborted();
     this.glossary = {};
     this.glossaryId = task.glossaryId;
 

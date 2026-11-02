@@ -4,6 +4,7 @@ export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
 
 export interface ChapterMeta {
+  kind?: 'chapter' | 'metadata';
   chapterId: string;
   title: string;
   order: number;
@@ -102,8 +103,10 @@ export class ChapterSegmentState implements SegmentTracker {
   }
 
   getSegmentError(segmentOrder: number): string | undefined {
-    const err = this.segments[segmentOrder]?.error;
-    return err ? errorMessage(err) : undefined;
+    const segment = this.segments[segmentOrder];
+    return segment?.status === 'error'
+      ? errorMessage(segment.error)
+      : undefined;
   }
 
   /** 为已完成的章节注入整章译文 */
@@ -123,26 +126,46 @@ export class ChapterSegmentState implements SegmentTracker {
 export class TaskState {
   readonly taskDesc: string;
   chapters: ChapterMeta[] = [];
+  metadataUnit?: ChapterMeta;
   readonly chapterStates = new Map<string, ChapterSegmentState>();
-  /** initChapters 执行完毕后设为 true */
+  /** initialize 执行完毕后设为 true */
   initialized = false;
 
   constructor(taskDesc: string) {
     this.taskDesc = taskDesc;
   }
 
-  initChapters(chapters: ChapterMeta[]): void {
+  initialize(chapters: ChapterMeta[], metadataUnit?: ChapterMeta): void {
+    this.chapterStates.clear();
     this.chapters = chapters;
+    this.metadataUnit = metadataUnit;
     this.initialized = true;
   }
 
+  /** 正文章节进度；元数据只参与任务完成判断，不计入章节数量。 */
+  get progress(): { finished: number; error: number; total: number } {
+    let finished = 0;
+    let error = 0;
+    for (const chapter of this.chapters) {
+      if (chapter.status === 'done') finished++;
+      else if (chapter.status === 'error') error++;
+    }
+    return { finished, error, total: this.chapters.length };
+  }
+
+  get units(): ChapterMeta[] {
+    return this.metadataUnit
+      ? [this.metadataUnit, ...this.chapters]
+      : this.chapters;
+  }
+
   hasFailedChapters(): boolean {
-    return this.chapters.some((chapter) => chapter.status === 'error');
+    return this.units.some((chapter) => chapter.status === 'error');
   }
 
   resetFailedChapters(): boolean {
     let hasFailed = false;
-    for (const chapter of this.chapters) {
+    for (const chapter of this.units) {
       if (chapter.status !== 'error') continue;
       chapter.status = 'pending';
       const state = this.chapterStates.get(chapter.chapterId);
@@ -154,11 +177,11 @@ export class TaskState {
   }
 
   getStatus(chapterId: string): ChapterStatus | undefined {
-    return this.chapters.find((c) => c.chapterId === chapterId)?.status;
+    return this.units.find((c) => c.chapterId === chapterId)?.status;
   }
 
   updateStatus(chapterId: string, status: ChapterStatus): void {
-    const ch = this.chapters.find((c) => c.chapterId === chapterId);
+    const ch = this.units.find((c) => c.chapterId === chapterId);
     if (ch) ch.status = status;
     if (status === 'done') {
       const state = this.chapterStates.get(chapterId);
@@ -172,7 +195,7 @@ export class TaskState {
   }
 
   getChapterState(chapterId: string): ChapterSegmentState | undefined {
-    if (!this.chapters.some((c) => c.chapterId === chapterId)) return undefined;
+    if (!this.units.some((c) => c.chapterId === chapterId)) return undefined;
     let state = this.chapterStates.get(chapterId);
     if (!state) {
       state = new ChapterSegmentState(chapterId);

@@ -7,6 +7,7 @@ import type {
 } from '@/model/Translator';
 import type {
   ChapterDetail,
+  PreparedMetadata,
   TaskExecutionContext,
   TranslationTask,
 } from './types';
@@ -20,14 +21,13 @@ export class WebTranslationTask implements TranslationTask {
   readonly description: string;
   readonly level: 'normal' | 'expire' | 'all' | 'sync';
   chapters: ChapterMeta[] = [];
+  metadataUnit?: ChapterMeta;
   glossary: Glossary = {};
   glossaryId = '';
   initialized = false;
 
   private params: TranslateTaskParams;
   private task?: WebTranslateTask;
-  private initialization?: Promise<void>;
-  private prepared = false;
 
   constructor(
     private providerId: string,
@@ -40,18 +40,18 @@ export class WebTranslationTask implements TranslationTask {
     this.params = params;
   }
 
-  initMeta(signal?: AbortSignal): Promise<void> {
-    this.initialization ??= this.loadMeta(signal).finally(() => {
-      this.initialization = undefined;
-    });
-    return this.initialization;
+  async initialize(context: TaskExecutionContext): Promise<void> {
+    context.signal.throwIfAborted();
+    if (this.initialized) return;
+    if (this.params.useBrowserCrawler) await this.updateToc(context);
+    await this.loadMeta(context.signal);
   }
 
-  private async loadMeta(signal?: AbortSignal): Promise<void> {
-    signal?.throwIfAborted();
+  private async loadMeta(signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
     const api = this.createApi(signal);
     const task = await api.getTranslateTask();
-    signal?.throwIfAborted();
+    signal.throwIfAborted();
     this.task = task;
     this.glossary = task.glossary;
     this.glossaryId = task.glossaryUuid;
@@ -80,19 +80,22 @@ export class WebTranslationTask implements TranslationTask {
       isExpired,
       toMeta,
     );
+    this.metadataUnit =
+      this.translatorId !== 'gpt' &&
+      createWebMetadataCoder(task, this.params.forceMetadata).needUpload
+        ? {
+            // NUL 不会出现在合法远程章节 ID 中；分派仍只检查 kind。
+            chapterId: '\u0000metadata',
+            kind: 'metadata',
+            title: '小说信息',
+            order: -1,
+            status: 'pending',
+          }
+        : undefined;
     this.initialized = true;
   }
 
-  get needsPreparation(): boolean {
-    return this.params.useBrowserCrawler && !this.prepared;
-  }
-
-  async prepareExecution(context: TaskExecutionContext): Promise<void> {
-    context.signal.throwIfAborted();
-    if (!this.needsPreparation) return;
-    // 预览可能正在初始化，先等待读取完成，再刷新目录和任务快照。
-    if (this.initialization) await this.initialization;
-    context.signal.throwIfAborted();
+  private async updateToc(context: TaskExecutionContext): Promise<void> {
     try {
       context.onLog('获取小说信息');
       const novel = await WebNovelApi.getNovel(this.providerId, this.novelId);
@@ -115,40 +118,26 @@ export class WebTranslationTask implements TranslationTask {
       context.onLog(`目录更新跳过：${await formatError(error)}`);
     }
     context.signal.throwIfAborted();
-    // 抓取期间预览可能发起旧快照读取，不应该将其复用为更新后的目录。
-    if (this.initialization) await this.initialization;
-    context.signal.throwIfAborted();
-    await this.initMeta(context.signal);
-    context.signal.throwIfAborted();
-    this.prepared = true;
   }
 
-  get needsMetadata(): boolean {
-    return (
-      this.initialized &&
-      this.translatorId !== 'gpt' &&
-      this.task !== undefined &&
-      createWebMetadataCoder(this.task, this.params.forceMetadata).needUpload
-    );
-  }
-
-  /** 翻译标题、简介和目录，与旧版工作区一致 */
-  async translateMetadata(
-    translate: (texts: string[]) => Promise<string[]>,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    if (!this.needsMetadata || !this.task) return;
+  /** 编码与保存闭包绑定同一任务快照，上传使用本轮执行的取消信号。 */
+  async prepareMetadata(
+    context: TaskExecutionContext,
+  ): Promise<PreparedMetadata> {
+    context.signal.throwIfAborted();
+    if (!this.metadataUnit || !this.task) throw new Error('没有待翻译的元数据');
     const coder = createWebMetadataCoder(this.task, this.params.forceMetadata);
-    signal?.throwIfAborted();
-    const translated =
-      coder.encoded.length === 0 ? [] : await translate(coder.encoded);
-    signal?.throwIfAborted();
-    if (translated.length !== coder.encoded.length) {
-      throw new Error('元数据翻译结果数量不匹配');
-    }
-    // initMeta 的请求可能早于本轮运行，上传必须绑定本轮的取消信号。
-    const api = this.createApi(signal);
-    await api.updateMetadataTranslation(coder.recover(translated));
+    return {
+      lines: coder.encoded,
+      glossary: this.task.glossary,
+      save: async (translated) => {
+        context.signal.throwIfAborted();
+        const metadata = coder.recover(translated);
+        await this.createApi(context.signal).updateMetadataTranslation(
+          metadata,
+        );
+      },
+    };
   }
 
   async fetchChapter(

@@ -1,15 +1,21 @@
 import type { TranslationWork } from '@auto-novel/translator';
-import type { ChapterStatus, ChapterSegmentState } from './TaskState';
-import type { TranslationTask } from './TranslationTask/types';
+import type {
+  ChapterMeta,
+  ChapterStatus,
+  ChapterSegmentState,
+} from './TaskState';
+import type {
+  TranslationTask,
+  PreparedMetadata,
+} from './TranslationTask/types';
 
 export type ChapterTracker = {
   onChapterStatus: (chapterId: string, status: ChapterStatus) => void;
-  onProgress: (finished: number, error: number, total: number) => void;
   onLog: (msg: string) => void;
   segmentTracker?: ChapterSegmentState;
 };
 
-/** 取消等待不支持 signal 的底层调用；仍接住其迟到结果，避免重复更新章节状态。 */
+/** 取消等待不支持 signal 的底层调用；仍接住其迟到结果。 */
 function awaitWithSignal<T>(
   promise: Promise<T>,
   signal?: AbortSignal,
@@ -22,7 +28,6 @@ function awaitWithSignal<T>(
       reject(signal.reason);
     };
     signal.addEventListener('abort', onAbort, { once: true });
-    // 即使已取消也注册两个处理器，吸收底层调用的迟到拒绝。
     promise.then(
       (value) => {
         cleanup();
@@ -40,107 +45,127 @@ function awaitWithSignal<T>(
 export class TaskExecutor {
   constructor(private task: TranslationTask) {}
 
-  /** 获取章节；翻译和保存由流水线拉取后执行。 */
-  async prepareChapter(
-    chapterId: string,
+  /** 获取翻译单元；翻译与保存回调统一交给流水线。零行元数据直接保存。 */
+  async prepareUnit(
+    unit: ChapterMeta,
     tracker: ChapterTracker,
     signal?: AbortSignal,
   ): Promise<TranslationWork | undefined> {
-    let title = chapterId;
-    const updateProgress = () => {
-      const chapters = this.task.chapters;
-      const finished = chapters.filter((ch) => ch.status === 'done').length;
-      const errors = chapters.filter((ch) => ch.status === 'error').length;
-      tracker.onProgress(finished, errors, chapters.length);
-    };
-    /** 标记失败并刷新进度；fetch、翻译、保存失败都走这里。 */
-    const markChapterError = () => {
-      tracker.onChapterStatus(chapterId, 'error');
-      updateProgress();
-    };
-    const markChapterPending = () =>
-      tracker.onChapterStatus(chapterId, 'pending');
+    const isMetadata = unit.kind === 'metadata';
+    const chapterId = unit.chapterId;
+    const title = unit.title;
+    const setStatus = (status: ChapterStatus) =>
+      tracker.onChapterStatus(chapterId, status);
+    const markError = () => setStatus('error');
+    const markPending = () => setStatus('pending');
     const onError = (error: unknown) => {
       if (
         signal?.aborted ||
         (error instanceof Error && error.name === 'AbortError')
       ) {
-        markChapterPending();
+        markPending();
         return;
       }
       const message = error instanceof Error ? error.message : String(error);
       if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = message;
-      markChapterError();
+      markError();
       tracker.onLog(`[${title}] ❌ 失败: ${message}`);
     };
-
     if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = undefined;
 
     try {
       signal?.throwIfAborted();
-      if (!this.task.initialized)
-        await awaitWithSignal(this.task.initMeta(signal), signal);
-      const chapter = this.task.chapters.find(
-        (ch) => ch.chapterId === chapterId,
-      );
-      if (!chapter) throw new Error(`章节 ${chapterId} 不存在`);
-      title = chapter.title;
-      tracker.onLog(`[${title}] 开始获取原文`);
+      if (!this.task.initialized) throw new Error('翻译任务尚未初始化');
       const context = {
         signal: signal ?? new AbortController().signal,
         onLog: tracker.onLog,
       };
+      let prepared: PreparedMetadata;
+      let history: TranslationWork['history'];
+      if (isMetadata) {
+        if (
+          this.task.metadataUnit?.kind !== 'metadata' ||
+          this.task.metadataUnit.chapterId !== unit.chapterId ||
+          !this.task.prepareMetadata
+        ) {
+          throw new Error('元数据单元不存在或已失效');
+        }
+        tracker.onLog(`[${title}] 开始获取原文`);
+        prepared = await awaitWithSignal(
+          this.task.prepareMetadata(context),
+          signal,
+        );
+      } else {
+        if (
+          !this.task.chapters.some((chapter) => chapter.chapterId === chapterId)
+        ) {
+          throw new Error(`章节 ${chapterId} 不存在或已失效`);
+        }
+        tracker.onLog(`[${title}] 开始获取原文`);
+        const detail = await awaitWithSignal(
+          this.task.fetchChapter(chapterId, context),
+          signal,
+        );
+        // 单段内的换行不是段落分隔符，避免译文错位。
+        const paragraphs = detail.paragraphs.map((line) =>
+          line.replace(/[\r\n]/g, ''),
+        );
+        history =
+          this.task.level !== 'all' && detail.oldParagraphZh
+            ? {
+                lines: paragraphs,
+                translatedLines: detail.oldParagraphZh,
+                glossary: detail.oldGlossary ?? {},
+              }
+            : undefined;
+        prepared = {
+          lines: paragraphs,
+          glossary: detail.glossary,
+          save: (lines) =>
+            this.task.uploadChapter(
+              chapterId,
+              detail.glossaryId,
+              lines,
+              context,
+            ),
+        };
+      }
       signal?.throwIfAborted();
-      const detail = await awaitWithSignal(
-        this.task.fetchChapter(chapterId, context),
-        signal,
-      );
-      signal?.throwIfAborted();
-
-      // 单个段落内的换行不是段落分隔符，拼接前清理，避免译文错位。
-      const paragraphs = detail.paragraphs.map((line) =>
-        line.replace(/[\r\n]/g, ''),
-      );
-      const history =
-        this.task.level !== 'all' && detail.oldParagraphZh
-          ? {
-              lines: paragraphs,
-              translatedLines: detail.oldParagraphZh,
-              glossary: detail.oldGlossary ?? {},
-            }
-          : undefined;
-      tracker.onChapterStatus(chapterId, 'translating');
+      setStatus('translating');
+      const save = async (lines: string[]) => {
+        signal?.throwIfAborted();
+        if (lines.length !== prepared.lines.length)
+          throw new Error('翻译结果数量不匹配');
+        await prepared.save(lines);
+        // 保存成功后即使立即停止也视为完成，避免重复上传。
+        setStatus('done');
+        tracker.onLog(`[${title}] ✅ 完成`);
+      };
+      if (isMetadata && prepared.lines.length === 0) {
+        tracker.segmentTracker?.onSegmentsReady([]);
+        await save([]);
+        return undefined;
+      }
       tracker.onLog(`[${title}] 开始翻译`);
-
       return {
         trustedOnly: this.task.type !== 'local',
-        lines: paragraphs,
-        glossary: detail.glossary,
+        lines: prepared.lines,
+        glossary: prepared.glossary,
         history,
         tracker: tracker.segmentTracker,
         onComplete: async (result) => {
           signal?.throwIfAborted();
           if (result.failed.length > 0) {
-            markChapterError();
+            markError();
             tracker.onLog(
               `[${title}] ⚠️ ${result.failed.length} 个分段翻译失败，已回退为原文`,
             );
             return;
           }
-
-          await this.task.uploadChapter(
-            chapterId,
-            detail.glossaryId,
-            result.lines,
-            context,
-          );
-          // 上传成功后即使立即停止也视为完成，避免重复抓取和上传。
-          tracker.onChapterStatus(chapterId, 'done');
-          updateProgress();
-          tracker.onLog(`[${title}] ✅ 完成`);
+          await save(result.lines);
         },
         onError,
-        onAbort: markChapterPending,
+        onAbort: markPending,
       };
     } catch (error) {
       onError(error);
