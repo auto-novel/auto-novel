@@ -20,11 +20,14 @@ export type ChapterTranslator = (
   signal?: AbortSignal,
 ) => Promise<string[]>;
 
+export type TaskTranslator =
+  | { mode: 'pipeline'; pipeline: TranslationPipeline }
+  | { mode: 'harness'; translateChapter: ChapterTranslator };
+
 export class TaskExecutor {
   constructor(
     private task: TranslationTask,
-    /** pipeline 模式传翻译管线；harness 模式传章节翻译函数 */
-    private translator: TranslationPipeline | ChapterTranslator,
+    private translator: TaskTranslator,
     private fetchSemaphore: Semaphore,
     private canUpload?: () => boolean,
   ) {}
@@ -63,12 +66,12 @@ export class TaskExecutor {
           throw new DOMException('任务已失效或不允许上传', 'AbortError');
         }
       };
+      const translator = this.translator;
       const fetchAndPrepare = async () => {
-        const translator = this.translator;
         // pipeline 内部有分块队列，先等它降到高水位以下再抓新章节，
         // 避免把整章原文一股脑推进内存；harness 是直接的函数调用，没有队列。
-        if (typeof translator !== 'function') {
-          await translator.waitUntilBelowHighWaterMark(signal);
+        if (translator.mode === 'pipeline') {
+          await translator.pipeline.waitUntilBelowHighWaterMark(signal);
         }
         checkExecution();
         const detail = await this.task.fetchChapter(chapterId, context);
@@ -77,8 +80,9 @@ export class TaskExecutor {
         // 这里只负责“准备好怎么翻”，真正执行放在 fetch 信号量释放之后，
         // 否则长时间的模型请求会一直占着“同时抓取章节数”的名额。
         let translate: () => Promise<string[]>;
-        if (typeof translator === 'function') {
-          translate = () => translator(detail, tracker, signal);
+        if (translator.mode === 'harness') {
+          translate = () =>
+            translator.translateChapter(detail, tracker, signal);
         } else {
           const history =
             this.task.level !== 'all' && detail.oldParagraphZh
@@ -90,16 +94,17 @@ export class TaskExecutor {
               : undefined;
           // pipeline 模式：先把整章拆成分块并启动各分块任务，
           // 返回的函数只负责等待所有分块完成并拼回整章文本。
-          const { segments, segmentPromises } = translator.prepareSegments(
-            detail.paragraphs.join('\n'),
-            detail.glossary,
-            history,
-            signal,
-            tracker.segmentTracker,
-          );
+          const { segments, segmentPromises } =
+            translator.pipeline.prepareSegments(
+              detail.paragraphs.join('\n'),
+              detail.glossary,
+              history,
+              signal,
+              tracker.segmentTracker,
+            );
           translate = async () =>
             (
-              await translator.resolveTranslation(
+              await translator.pipeline.resolveTranslation(
                 segments,
                 segmentPromises,
                 signal,
@@ -126,7 +131,7 @@ export class TaskExecutor {
       // pipeline 会把失败的分块记在 segmentTracker 里并用原文回退，
       // 所以这里需要单独检查；harness 没有分块概念，失败会直接抛错走 catch。
       if (
-        typeof this.translator !== 'function' &&
+        translator.mode === 'pipeline' &&
         tracker.segmentTracker &&
         tracker.segmentTracker.errorCount > 0
       ) {

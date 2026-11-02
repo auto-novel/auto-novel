@@ -79,7 +79,7 @@ const testWorker = async () => {
         source: textJp,
         glossary: {},
         preset: getHarnessModelPreset(harnessPreset, worker.model),
-        key: worker.key,
+        apiKey: worker.key,
         signal,
       });
     } else {

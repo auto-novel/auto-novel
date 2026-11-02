@@ -14,13 +14,17 @@ import type { Glossary, Logger, LineRange } from '../types';
 import type { Usage } from '@earendil-works/pi-ai';
 import { createPiAiCompletion } from '../translator/pi-ai-api';
 import type { HarnessPreset } from './presets';
-import { outputInstructions, parseBatchOutput } from './output';
+import {
+  outputInstructions,
+  parseBatchOutput,
+  type HarnessParagraph,
+} from './output';
 
 export interface HarnessUsageRecord {
   model: string;
   batch: number;
-  /** 本次请求在顶层批次内的阶段：首次、修正 n、二分。 */
-  stage?: string;
+  /** 本次请求的可读标签：首次、修正 n、二分。 */
+  attemptLabel?: string;
   /** 本次请求覆盖的原文行区间；二分后会小于顶层批次。 */
   start?: number;
   end?: number;
@@ -30,7 +34,7 @@ export interface HarnessUsageRecord {
 /** 一次模型响应携带的思考内容；纠正和二分产生的中间请求也会各记一条。 */
 export interface HarnessReasoningRecord {
   batch: number;
-  stage: string;
+  attemptLabel: string;
   start: number;
   end: number;
   reasoning: string;
@@ -45,7 +49,7 @@ export interface HarnessInput {
   source: string[];
   glossary: Glossary;
   preset: HarnessPreset;
-  key: string;
+  apiKey: string;
   signal?: AbortSignal;
   onLog?: Logger;
   onUsage?: (record: HarnessUsageRecord) => void;
@@ -62,18 +66,22 @@ export interface HarnessInput {
  * 单个批次包含的原文段数。批次太大容易超出模型上下文，太小则会丢失
  * 段落之间的语境，还会增加请求次数。
  */
-const BATCH_SIZE = 20;
-const MAX_CORRECTIONS = 3;
+const DEFAULT_BATCH_SIZE = 20;
+const MAX_BATCH_RETRY_COUNT = 3;
 /** 段落编号固定 4 位，保证按字符串排序时顺序仍与原文一致。 */
 const paragraphId = (index: number) => `p${String(index).padStart(4, '0')}`;
 
 const planBatches = (total: number): HarnessBatch[] => {
   const batches: HarnessBatch[] = [];
-  for (let start = 0, index = 0; start < total; start += BATCH_SIZE, index++) {
+  for (
+    let start = 0, index = 0;
+    start < total;
+    start += DEFAULT_BATCH_SIZE, index++
+  ) {
     batches.push({
       index,
       start,
-      end: Math.min(start + BATCH_SIZE, total),
+      end: Math.min(start + DEFAULT_BATCH_SIZE, total),
     });
   }
   return batches;
@@ -83,19 +91,19 @@ const planBatches = (total: number): HarnessBatch[] => {
  * 把带编号的段落拼成多行文本，供提示词使用。
  * 空行不发送，也不会占用编号；start 用于让批次内的编号延续整章序号。
  */
-const numberedLines = (lines: string[], start = 0) =>
-  lines
-    .map((line, index) =>
-      line.trim() ? `${paragraphId(start + index)}#${line}` : '',
-    )
-    .filter(Boolean)
-    .join('\n');
+const toParagraphs = (lines: string[], start = 0): HarnessParagraph[] =>
+  lines.flatMap((text, index) =>
+    text.trim() ? [{ id: paragraphId(start + index), text }] : [],
+  );
+
+const numberedLines = (paragraphs: HarnessParagraph[]) =>
+  paragraphs.map(({ id, text }) => `${id}#${text}`).join('\n');
 
 export async function translateChapter({
   source,
   glossary,
   preset,
-  key,
+  apiKey,
   signal,
   onLog,
   onUsage,
@@ -108,7 +116,7 @@ export async function translateChapter({
   // 每次请求都会重复带上整章原文和术语表：模型看到当前批次之外的内容后，
   // 更容易保持人物称谓、语气和专有名词的一致。这部分只作为输入，不产生译文输出。
   const prefix = [
-    `<chapter_source>\n${numberedLines(source)}\n</chapter_source>`,
+    `<chapter_source>\n${numberedLines(toParagraphs(source))}\n</chapter_source>`,
     `<glossary>\n${Object.entries(glossary)
       .map(([jp, zh]) => `${jp} => ${zh}`)
       .join('\n')}\n</glossary>`,
@@ -120,19 +128,18 @@ export async function translateChapter({
   const translateBatch = async (
     batch: HarnessBatch,
     previous: string[],
-    stage: string,
+    attemptLabel: string,
   ): Promise<string[]> => {
     const lines = source.slice(batch.start, batch.end);
     // 只把非空段落计入本批：空行原样保留，不需要也不应该让模型翻译。
-    const paragraphIds = lines.flatMap((line, index) =>
-      line.trim() ? [paragraphId(batch.start + index)] : [],
-    );
-    const count = paragraphIds.length;
+    const paragraphs = toParagraphs(lines, batch.start);
+    const count = paragraphs.length;
     if (count === 0) return lines;
-    let correction = '';
-    for (let attempt = 0; attempt <= MAX_CORRECTIONS; attempt++) {
+    let retryPrompt = '';
+    for (let attempt = 0; attempt <= MAX_BATCH_RETRY_COUNT; attempt++) {
       signal?.throwIfAborted();
-      const requestStage = attempt === 0 ? stage : `${stage} · 修正 ${attempt}`;
+      const requestLabel =
+        attempt === 0 ? attemptLabel : `${attemptLabel} · 修正 ${attempt}`;
       // 请求结构：system 放翻译规则和输出格式；user 按
       // 「整章原文 → 已译内容 → 当前批次」摆放，最后明确要求返回本批译文。
       // 把 current_batch 放在最后，模型更容易把注意力落在真正要翻译的段落上。
@@ -141,7 +148,7 @@ export async function translateChapter({
           protocol: preset.protocol,
           endpoint: preset.endpoint,
           model: preset.model,
-          key,
+          key: apiKey,
           signal,
           messages: [
             {
@@ -154,10 +161,10 @@ ${outputInstructions[preset.outputFormat]}
               role: 'user',
               content: [
                 prefix,
-                `<translated_so_far>\n${numberedLines(previous)}\n</translated_so_far>`,
-                `<current_batch>\n${numberedLines(lines, batch.start)}\n</current_batch>`,
+                `<translated_so_far>\n${numberedLines(toParagraphs(previous))}\n</translated_so_far>`,
+                `<current_batch>\n${numberedLines(paragraphs)}\n</current_batch>`,
                 `请返回本批 ${count} 段的译文。`,
-                correction,
+                retryPrompt,
               ]
                 .filter(Boolean)
                 .join('\n\n'),
@@ -169,7 +176,7 @@ ${outputInstructions[preset.outputFormat]}
             onUsage?.({
               model: preset.model,
               batch: batch.index + 1,
-              stage: requestStage,
+              attemptLabel: requestLabel,
               start: batch.start,
               end: batch.end,
               usage,
@@ -180,7 +187,7 @@ ${outputInstructions[preset.outputFormat]}
         if (response.reasoning) {
           onReasoning?.({
             batch: batch.index + 1,
-            stage: requestStage,
+            attemptLabel: requestLabel,
             start: batch.start,
             end: batch.end,
             reasoning: response.reasoning,
@@ -189,11 +196,11 @@ ${outputInstructions[preset.outputFormat]}
         const translations = parseBatchOutput(
           response.text,
           preset.outputFormat,
-          paragraphIds,
-          lines.filter((line) => line.trim()),
+          paragraphs,
         );
         let index = 0;
         return lines.map((line) =>
+          // 恢复原文的段首空格缩进。
           line.trim()
             ? line.match(/^\s*/)![0] + translations[index++].trim()
             : line,
@@ -201,13 +208,14 @@ ${outputInstructions[preset.outputFormat]}
       } catch (error) {
         // 请求失败与输出校验失败共用恢复次数，只有主动取消立即退出。
         signal?.throwIfAborted();
-        if (attempt === MAX_CORRECTIONS) {
+        if (attempt === MAX_BATCH_RETRY_COUNT) {
+          // 仅剩一段需要翻译时无法继续细分，直接将错误交给上层。
           if (count === 1) throw error;
           break;
         }
-        correction = `上次翻译失败：${(error as Error).message}。请按规定格式重新返回当前批次完整的 ${count} 段译文，不要只补漏段。`;
+        retryPrompt = `上次翻译失败：${(error as Error).message}。请按规定格式重新返回当前批次完整的 ${count} 段译文，不要只补漏段。`;
         onLog?.(
-          `批次 ${batch.index + 1}，${paragraphIds[0]}-${paragraphIds[count - 1]} 修正 ${attempt + 1}/${MAX_CORRECTIONS}：${(error as Error).message}`,
+          `批次 ${batch.index + 1}，${paragraphs[0].id}-${paragraphs[count - 1].id} 修正 ${attempt + 1}/${MAX_BATCH_RETRY_COUNT}：${(error as Error).message}`,
         );
       }
     }

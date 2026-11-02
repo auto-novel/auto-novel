@@ -14,17 +14,18 @@ const isAbortError = (error: unknown) =>
  */
 export function createHarnessMode(
   preset: HarnessPreset,
-  key: string,
+  apiKey: string,
   translatorId = preset.model,
 ): ChapterTranslator {
   return async (detail, tracker, signal) => {
     const segmentTracker = tracker.segmentTracker;
+    let currentBatchIndex: number | undefined;
     try {
       return await translateChapter({
         source: detail.paragraphs,
         glossary: detail.glossary,
         preset,
-        key,
+        apiKey,
         signal,
         onLog: tracker.onLog,
         onUsage: (record) => {
@@ -36,6 +37,7 @@ export function createHarnessMode(
           segmentTracker.onSegmentsReady(detail.paragraphs, batches);
         },
         onBatchStart: (batch) => {
+          currentBatchIndex = batch.index;
           segmentTracker?.onSegStart(batch.index, translatorId);
         },
         onReasoning: (record) => {
@@ -43,18 +45,15 @@ export function createHarnessMode(
         },
         onBatchComplete: (batch, translatedLines) => {
           segmentTracker?.onSegComplete(batch.index, translatedLines);
+          currentBatchIndex = undefined;
         },
       });
     } catch (error) {
       if (isAbortError(error)) {
         segmentTracker?.onAbort();
       } else {
-        // 串行执行时只有当前批次处于 translating，直接复用现有分段状态定位。
-        const index = segmentTracker?.segments.findIndex(
-          (segment) => segment.status === 'translating',
-        );
-        if (index !== undefined && index >= 0) {
-          segmentTracker?.onSegError(index, error);
+        if (currentBatchIndex !== undefined) {
+          segmentTracker?.onSegError(currentBatchIndex, error);
         }
       }
       throw error;

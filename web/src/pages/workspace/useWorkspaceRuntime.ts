@@ -10,7 +10,10 @@ import type { TranslatorTracker } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
-import type { ChapterTranslator } from '@/domain/translator/TaskExecutor';
+import type {
+  ChapterTranslator,
+  TaskTranslator,
+} from '@/domain/translator/TaskExecutor';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
 import type {
@@ -403,7 +406,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
         const executor = new TaskExecutor(
           task,
-          worker?.translateChapter ?? pipeline,
+          (worker?.translateChapter
+            ? {
+                mode: 'harness',
+                translateChapter: worker.translateChapter,
+              }
+            : { mode: 'pipeline', pipeline }) satisfies TaskTranslator,
           fetchSemaphore,
           () =>
             !workerSignal.aborted &&

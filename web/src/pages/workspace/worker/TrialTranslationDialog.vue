@@ -298,7 +298,7 @@ const translate = async () => {
         source: source.split('\n'),
         glossary: glossary.value,
         preset: getHarnessModelPreset(harnessPreset, worker.model),
-        key: worker.key,
+        apiKey: worker.key,
         signal: abortController.signal,
         onBatchesReady: (batches) => {
           progress.value = { done: 0, total: batches.length };

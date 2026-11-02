@@ -1,5 +1,10 @@
 import type { HarnessOutputFormat } from './presets';
 
+export interface HarnessParagraph {
+  id: string;
+  text: string;
+}
+
 /**
  * 模型输出格式约定与解析。
  *
@@ -20,9 +25,10 @@ export const outputInstructions: Record<HarnessOutputFormat, string> = {
 export function parseBatchOutput(
   text: string,
   format: HarnessOutputFormat,
-  paragraphIds: string[],
-  sourceLines: string[],
+  paragraphs: HarnessParagraph[],
 ): string[] {
+  const paragraphIds = paragraphs.map(({ id }) => id);
+  const sourceLines = paragraphs.map(({ text: source }) => source);
   let translations: unknown;
   switch (format) {
     case 'json':
@@ -47,21 +53,21 @@ export function parseBatchOutput(
       translations = text.trim().split(/\r?\n/);
       break;
   }
-  // 先确认结构，编号规范化后再检查正文非空。
-  if (
-    !Array.isArray(translations) ||
-    !translations.every(
-      (line: unknown) => typeof line === 'string' && !/[\r\n]/.test(line),
-    )
-  ) {
+  const isStringArray = (value: unknown): value is string[] =>
+    Array.isArray(value) &&
+    value.every((line: unknown) => typeof line === 'string');
+  if (!isStringArray(translations)) {
     throw new Error(`译文格式错误，需要 ${paragraphIds.length} 段单行译文`);
+  }
+  if (translations.some((line) => /[\r\n]/.test(line))) {
+    throw new Error('译文格式错误，单段译文不能包含换行');
   }
   if (translations.length !== paragraphIds.length) {
     throw new Error(
       `译文段数错误，需要 ${paragraphIds.length} 段，实际 ${translations.length} 段`,
     );
   }
-  let result = translations as string[];
+  let result = translations;
   if (format !== 'paragraph-id') {
     const markers = result.map(
       (line) => line.trimStart().match(/^p\d{4,}#/)?.[0],
