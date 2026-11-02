@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { TaskExecutor } from '../src/domain/translator/prepare-work';
+import { WorkPreparer } from '../src/domain/translator/prepare-work';
 import { buildChapterList } from '../src/domain/translator/tasks/chapter-preparation';
 import type {
   TranslationTask,
-  TranslationMetadata,
+  TaskMetadataUnit,
 } from '../src/domain/translator/tasks/task';
 import {
-  ChapterSegmentState,
+  UnitDetailState,
   TaskState,
-  type ChapterStatus,
+  type UnitStatus,
 } from '../src/domain/translator/task-state';
 
 function createTask(type: TranslationTask['type']) {
@@ -41,7 +41,7 @@ function createTracker(task: TranslationTask) {
   state.initialize(task.chapters, task.metadataUnit);
   return {
     state,
-    onChapterStatus: vi.fn((id: string, status: ChapterStatus) =>
+    onUnitStatus: vi.fn((id: string, status: UnitStatus) =>
       state.updateStatus(id, status),
     ),
     onLog: vi.fn(),
@@ -49,7 +49,7 @@ function createTracker(task: TranslationTask) {
 }
 
 function createMetadataTask(lines = ['原文标题']) {
-  const metadataUnit: TranslationMetadata = {
+  const metadataUnit: TaskMetadataUnit = {
     kind: 'metadata',
     title: '小说信息',
   };
@@ -68,7 +68,7 @@ describe('metadata translation units', () => {
   it('shares the translation/save lifecycle without fetching chapters or changing chapter progress', async () => {
     const task = createMetadataTask();
     const tracker = createTracker(task);
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.metadataUnit!,
       tracker,
       new AbortController().signal,
@@ -95,7 +95,7 @@ describe('metadata translation units', () => {
   it('saves zero-line metadata directly without producing pipeline work', async () => {
     const task = createMetadataTask([]);
     const tracker = createTracker(task);
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.metadataUnit!,
       tracker,
       new AbortController().signal,
@@ -109,7 +109,7 @@ describe('metadata translation units', () => {
     const task = createMetadataTask();
     const tracker = createTracker(task);
     const state = tracker.state;
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.metadataUnit!,
       tracker,
       new AbortController().signal,
@@ -120,8 +120,8 @@ describe('metadata translation units', () => {
     });
     expect(task.save).not.toHaveBeenCalled();
     expect(state.metadataUnit?.status).toBe('error');
-    expect(state.getChapterState(state.metadataUnit!.chapterId)).toBeDefined();
-    expect(state.resetFailedChapters()).toBe(true);
+    expect(state.getUnitDetails(state.metadataUnit!.chapterId)).toBeDefined();
+    expect(state.resetFailedUnits()).toBe(true);
     expect(state.metadataUnit?.status).toBe('pending');
     expect(state.chapters).toHaveLength(1);
     expect(state.units).toHaveLength(2);
@@ -131,7 +131,7 @@ describe('metadata translation units', () => {
     const task = createMetadataTask([]);
     task.save.mockRejectedValue(new Error('upload failed'));
     const tracker = createTracker(task);
-    await new TaskExecutor(task).prepareUnit(
+    await new WorkPreparer(task).prepareUnit(
       tracker.state.metadataUnit!,
       tracker,
       new AbortController().signal,
@@ -141,13 +141,13 @@ describe('metadata translation units', () => {
   });
 });
 
-describe('TaskExecutor trust requirements', () => {
+describe('WorkPreparer trust requirements', () => {
   it.each(['local', 'web', 'wenku'] as const)(
     'sets the trust requirement for %s inputs',
     async (type) => {
       const task = createTask(type);
       const tracker = createTracker(task);
-      const work = await new TaskExecutor(task).prepareUnit(
+      const work = await new WorkPreparer(task).prepareUnit(
         tracker.state.chapters[0],
         tracker,
         new AbortController().signal,
@@ -163,7 +163,7 @@ describe('TaskExecutor trust requirements', () => {
     task.save.mockImplementation(async () => {
       controller.abort();
     });
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       controller.signal,
@@ -176,12 +176,12 @@ describe('TaskExecutor trust requirements', () => {
       { kind: 'chapter', chapterId: '1' },
       expect.objectContaining({ signal: controller.signal }),
     );
-    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
+    expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'done');
     expect(tracker.state.progress).toEqual({ finished: 1, error: 0, total: 1 });
   });
 });
 
-describe('TaskExecutor prepared units', () => {
+describe('WorkPreparer prepared units', () => {
   it('saves empty chapters directly without submitting pipeline work', async () => {
     const task = createTask('local');
     task.prepareUnit.mockResolvedValue({
@@ -190,8 +190,8 @@ describe('TaskExecutor prepared units', () => {
       save: task.save,
     });
     const tracker = createTracker(task);
-    const segmentTracker = new ChapterSegmentState('1');
-    const work = await new TaskExecutor(task).prepareUnit(
+    const segmentTracker = new UnitDetailState('1');
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       { ...tracker, segmentTracker },
       new AbortController().signal,
@@ -217,7 +217,7 @@ describe('TaskExecutor prepared units', () => {
       save: task.save,
     });
     const tracker = createTracker(task);
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       new AbortController().signal,
@@ -226,20 +226,20 @@ describe('TaskExecutor prepared units', () => {
   });
 });
 
-describe('TaskExecutor preparation boundaries', () => {
+describe('WorkPreparer preparation boundaries', () => {
   it('keeps colliding UI keys independent and dispatches only clean identities', async () => {
     const task = createMetadataTask();
     task.chapters[0].chapterId = '\u0000metadata';
     const tracker = createTracker(task);
     expect(tracker.state.metadataUnit!.chapterId).not.toBe('\u0000metadata');
-    const executor = new TaskExecutor(task);
+    const preparer = new WorkPreparer(task);
     const signal = new AbortController().signal;
-    const chapterWork = await executor.prepareUnit(
+    const chapterWork = await preparer.prepareUnit(
       tracker.state.chapters[0],
       tracker,
       signal,
     );
-    const metadataWork = await executor.prepareUnit(
+    const metadataWork = await preparer.prepareUnit(
       tracker.state.metadataUnit!,
       tracker,
       signal,
@@ -261,21 +261,21 @@ describe('TaskExecutor preparation boundaries', () => {
     const tracker = createTracker(task);
     const controller = new AbortController();
     controller.abort();
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       controller.signal,
     );
     expect(work).toBeUndefined();
     expect(task.prepareUnit).not.toHaveBeenCalled();
-    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'pending');
+    expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'pending');
   });
 
   it('uses the same required signal to prevent saving after cancellation', async () => {
     const task = createTask('local');
     const controller = new AbortController();
     const tracker = createTracker(task);
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       controller.signal,
@@ -296,17 +296,14 @@ describe('TaskExecutor preparation boundaries', () => {
         metadataUnit: kind === 'metadata' ? undefined : source.metadataUnit,
       };
       const tracker = createTracker(task);
-      const work = await new TaskExecutor(task).prepareUnit(
+      const work = await new WorkPreparer(task).prepareUnit(
         { ...tracker.state.chapters[0], kind, chapterId: 'missing' },
         tracker,
         new AbortController().signal,
       );
       expect(work).toBeUndefined();
       expect(task.prepareUnit).not.toHaveBeenCalled();
-      expect(tracker.onChapterStatus).toHaveBeenLastCalledWith(
-        'missing',
-        'error',
-      );
+      expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('missing', 'error');
     },
   );
 });
@@ -373,7 +370,7 @@ describe('TaskState ownership', () => {
   });
 
   it('shows falsy segment errors and hides stale errors once retried', () => {
-    const state = new ChapterSegmentState('1');
+    const state = new UnitDetailState('1');
     state.segments = [
       {
         status: 'done',
@@ -405,14 +402,14 @@ describe('TaskState ownership', () => {
       'metadata',
       'chapter',
     ]);
-    state.getChapterState(state.metadataUnit!.chapterId);
+    state.getUnitDetails(state.metadataUnit!.chapterId);
     state.updateStatus(state.metadataUnit!.chapterId, 'error');
     expect(state.progress).toEqual({ finished: 0, error: 0, total: 1 });
     state.updateStatus('1', 'error');
     expect(state.progress).toEqual({ finished: 0, error: 1, total: 1 });
     state.initialize([]);
     expect(state.units).toEqual([]);
-    expect(state.chapterStates.size).toBe(0);
+    expect(state.unitDetails.size).toBe(0);
     expect(state.progress).toEqual({ finished: 0, error: 0, total: 0 });
   });
 
@@ -421,10 +418,10 @@ describe('TaskState ownership', () => {
     task.initialized = false;
     const tracker = {
       ...createTracker(task),
-      onChapterStatus: vi.fn(),
+      onUnitStatus: vi.fn(),
       onLog: vi.fn(),
     };
-    const work = await new TaskExecutor(task).prepareUnit(
+    const work = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       new AbortController().signal,
@@ -432,24 +429,21 @@ describe('TaskState ownership', () => {
     expect(work).toBeUndefined();
     expect(task.initialize).not.toHaveBeenCalled();
     expect(task.prepareUnit).not.toHaveBeenCalled();
-    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'error');
+    expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'error');
     expect(task.chapters[0]).not.toHaveProperty('status');
     expect(task.chapters[0].completed).toBe(false);
 
     task.initialized = true;
-    const prepared = await new TaskExecutor(task).prepareUnit(
+    const prepared = await new WorkPreparer(task).prepareUnit(
       tracker.state.chapters[0],
       tracker,
       new AbortController().signal,
     );
-    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith(
-      '1',
-      'translating',
-    );
+    expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'translating');
     expect(task.chapters[0]).not.toHaveProperty('status');
     expect(task.chapters[0].completed).toBe(false);
     await prepared!.onComplete({ lines: ['译文'], failed: [] });
-    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
+    expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'done');
     expect(task.chapters[0]).not.toHaveProperty('status');
     expect(task.chapters[0].completed).toBe(false);
     expect(task.initialize).not.toHaveBeenCalled();

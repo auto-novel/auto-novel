@@ -1,15 +1,11 @@
 import type { TranslationWork } from '@auto-novel/translator';
-import type {
-  ChapterMeta,
-  ChapterStatus,
-  ChapterSegmentState,
-} from './task-state';
+import type { UnitState, UnitStatus, UnitDetailState } from './task-state';
 import type { TranslationTask, TranslationUnitRef } from './tasks/task';
 
-export type ChapterTracker = {
-  onChapterStatus: (chapterId: string, status: ChapterStatus) => void;
+export type UnitTracker = {
+  onUnitStatus: (chapterId: string, status: UnitStatus) => void;
   onLog: (msg: string) => void;
-  segmentTracker?: ChapterSegmentState;
+  segmentTracker?: UnitDetailState;
 };
 
 /** 取消等待不支持 signal 的底层调用；仍接住其迟到结果。 */
@@ -38,20 +34,20 @@ function awaitWithSignal<T>(
   });
 }
 
-export class TaskExecutor {
+export class WorkPreparer {
   constructor(private task: TranslationTask) {}
 
   /** 获取翻译单元；翻译与保存回调统一交给流水线。零行单元直接保存。 */
   async prepareUnit(
-    unit: ChapterMeta,
-    tracker: ChapterTracker,
+    unit: UnitState,
+    tracker: UnitTracker,
     signal: AbortSignal,
   ): Promise<TranslationWork | undefined> {
     const isMetadata = unit.kind === 'metadata';
     const chapterId = unit.chapterId;
     const title = unit.title;
-    const setStatus = (status: ChapterStatus) =>
-      tracker.onChapterStatus(chapterId, status);
+    const setStatus = (status: UnitStatus) =>
+      tracker.onUnitStatus(chapterId, status);
     const markError = () => setStatus('error');
     const markPending = () => setStatus('pending');
     const onError = (error: unknown) => {

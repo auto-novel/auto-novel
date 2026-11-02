@@ -6,7 +6,7 @@ export type TranslationUnitRef =
   | { readonly kind: 'metadata' };
 
 /** 初始化快照，不承载执行中的 UI 状态。 */
-export interface TranslationChapter {
+export interface TaskChapter {
   readonly kind: 'chapter';
   readonly chapterId: string;
   readonly title: string;
@@ -14,7 +14,8 @@ export interface TranslationChapter {
   readonly completed: boolean;
 }
 
-export interface TranslationMetadata {
+/** 任务中的元数据翻译单元描述，不承载元数据内容或执行状态。 */
+export interface TaskMetadataUnit {
   readonly kind: 'metadata';
   readonly title: string;
 }
@@ -34,13 +35,13 @@ export interface PreparedUnit {
 
 export interface TranslationTask {
   readonly type: 'local' | 'web' | 'wenku';
-  readonly chapters: readonly TranslationChapter[];
+  readonly chapters: readonly TaskChapter[];
   /** initialize 完成后为 true；调度层负责串行初始化同一任务版本。 */
   readonly initialized: boolean;
   /** 正式执行前初始化；网络小说先按需更新目录，再加载任务快照。 */
   initialize(context: TaskExecutionContext): Promise<void>;
   /** 独立于正文列表的元数据翻译单元。 */
-  readonly metadataUnit?: TranslationMetadata;
+  readonly metadataUnit?: TaskMetadataUnit;
   prepareUnit(
     unit: TranslationUnitRef,
     context: TaskExecutionContext,

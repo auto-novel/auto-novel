@@ -64,12 +64,12 @@ function deleteJobs() {
 }
 
 const hasFailedTasks = computed(() =>
-  props.jobs.some((job) => props.taskStates.get(job.task)?.hasFailedChapters()),
+  props.jobs.some((job) => props.taskStates.get(job.task)?.hasFailedUnits()),
 );
 function retryFailedTasks() {
   let hasFailed = false;
   for (const job of props.jobs) {
-    if (!props.taskStates.get(job.task)?.resetFailedChapters()) continue;
+    if (!props.taskStates.get(job.task)?.resetFailedUnits()) continue;
     delete job.finishAt;
     hasFailed = true;
   }

@@ -7,8 +7,8 @@ import type {
   PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
-  TranslationChapter,
-  TranslationMetadata,
+  TaskChapter,
+  TaskMetadataUnit,
   TranslationUnitRef,
 } from './task';
 import { WebNovelApi, formatError } from '@/api';
@@ -19,8 +19,8 @@ import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 export class WebTranslationTask implements TranslationTask {
   readonly type = 'web' as const;
   private readonly level: TranslateTaskParams['level'];
-  chapters: readonly TranslationChapter[] = [];
-  metadataUnit?: TranslationMetadata;
+  chapters: readonly TaskChapter[] = [];
+  metadataUnit?: TaskMetadataUnit;
   initialized = false;
 
   private params: TranslateTaskParams;

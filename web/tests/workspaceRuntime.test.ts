@@ -505,7 +505,7 @@ describe('lazy task loading and metadata units', () => {
     expect(store.ref.value.jobs[0]).not.toHaveProperty('finishAt');
     const state = runtime.taskStates.value.get('web')!;
     expect(state.metadataUnit?.status).toBe('error');
-    expect(state.resetFailedChapters()).toBe(true);
+    expect(state.resetFailedUnits()).toBe(true);
     mocks.failMetadata = false;
     runtime.runProcessLoop();
     await vi.waitFor(() =>

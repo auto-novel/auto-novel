@@ -7,7 +7,7 @@ import type {
   PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
-  TranslationChapter,
+  TaskChapter,
   TranslationUnitRef,
 } from './task';
 import { WenkuNovelApi } from '@/api';
@@ -16,7 +16,7 @@ import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 export class WenkuTranslationTask implements TranslationTask {
   readonly type = 'wenku' as const;
   private readonly level: TranslateTaskParams['level'];
-  chapters: readonly TranslationChapter[] = [];
+  chapters: readonly TaskChapter[] = [];
   initialized = false;
 
   private params: TranslateTaskParams;

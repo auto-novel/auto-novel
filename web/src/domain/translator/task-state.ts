@@ -1,20 +1,20 @@
 import type { Segment, SegmentTracker } from '@auto-novel/translator';
-import type { TranslationChapter, TranslationMetadata } from './tasks/task';
+import type { TaskChapter, TaskMetadataUnit } from './tasks/task';
 
-export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
+export type UnitStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
 
-export interface ChapterMeta {
+export interface UnitState {
   readonly kind: 'chapter' | 'metadata';
   /** UI 跟踪键；元数据键不作为远程章节 ID 使用。 */
   readonly chapterId: string;
   title: string;
   order: number;
-  status: ChapterStatus;
+  status: UnitStatus;
   segmentProgress?: { completed: number; total: number };
 }
 
-export interface SegmentInfo {
+export interface SegmentState {
   status: SegmentStatus;
   lines: string[];
   translatedLines: string[];
@@ -32,11 +32,11 @@ const errorMessage = (error: unknown): string => {
   return String(error);
 };
 
-export class ChapterSegmentState implements SegmentTracker {
+export class UnitDetailState implements SegmentTracker {
   readonly chapterId: string;
-  /** 获取原文、保存译文等章节级错误，与分段翻译错误独立。 */
+  /** 获取原文、保存译文等单元级错误，与分段翻译错误独立。 */
   errorMessage: string | undefined = undefined;
-  segments: SegmentInfo[] = [];
+  segments: SegmentState[] = [];
   /** 是否完成 Segment 切分 */
   ready = false;
 
@@ -52,7 +52,7 @@ export class ChapterSegmentState implements SegmentTracker {
 
   constructor(chapterId: string) {
     this.chapterId = chapterId;
-    return reactive(this) as ChapterSegmentState;
+    return reactive(this) as UnitDetailState;
   }
 
   onSegmentsReady(segments: readonly Segment[]): void {
@@ -107,17 +107,17 @@ export class ChapterSegmentState implements SegmentTracker {
 }
 
 export class TaskState {
-  chapters: ChapterMeta[] = [];
-  metadataUnit?: ChapterMeta;
-  readonly chapterStates = new Map<string, ChapterSegmentState>();
+  chapters: UnitState[] = [];
+  metadataUnit?: UnitState;
+  readonly unitDetails = new Map<string, UnitDetailState>();
   /** initialize 执行完毕后设为 true */
   initialized = false;
 
   initialize(
-    chapters: readonly TranslationChapter[],
-    metadataUnit?: TranslationMetadata,
+    chapters: readonly TaskChapter[],
+    metadataUnit?: TaskMetadataUnit,
   ): void {
-    this.chapterStates.clear();
+    this.unitDetails.clear();
     this.chapters = chapters.map((chapter) => ({
       kind: chapter.kind,
       chapterId: chapter.chapterId,
@@ -152,49 +152,49 @@ export class TaskState {
     return { finished, error, total: this.chapters.length };
   }
 
-  get units(): ChapterMeta[] {
+  get units(): UnitState[] {
     return this.metadataUnit
       ? [this.metadataUnit, ...this.chapters]
       : this.chapters;
   }
 
-  hasFailedChapters(): boolean {
+  hasFailedUnits(): boolean {
     return this.units.some((chapter) => chapter.status === 'error');
   }
 
-  resetFailedChapters(): boolean {
+  resetFailedUnits(): boolean {
     let hasFailed = false;
     for (const chapter of this.units) {
       if (chapter.status !== 'error') continue;
       chapter.status = 'pending';
-      const state = this.chapterStates.get(chapter.chapterId);
+      const state = this.unitDetails.get(chapter.chapterId);
       if (state) state.errorMessage = undefined;
-      this.chapterStates.delete(chapter.chapterId);
+      this.unitDetails.delete(chapter.chapterId);
       hasFailed = true;
     }
     return hasFailed;
   }
 
-  updateStatus(chapterId: string, status: ChapterStatus): void {
+  updateStatus(chapterId: string, status: UnitStatus): void {
     const ch = this.units.find((c) => c.chapterId === chapterId);
     if (ch) ch.status = status;
     if (status === 'done') {
-      const state = this.chapterStates.get(chapterId);
+      const state = this.unitDetails.get(chapterId);
       if (state) {
         // 预览可能仍持有状态引用，先释放文本，再移除工作区中的状态。
         state.segments = [];
         state.ready = false;
       }
-      this.chapterStates.delete(chapterId);
+      this.unitDetails.delete(chapterId);
     }
   }
 
-  getChapterState(chapterId: string): ChapterSegmentState | undefined {
+  getUnitDetails(chapterId: string): UnitDetailState | undefined {
     if (!this.units.some((c) => c.chapterId === chapterId)) return undefined;
-    let state = this.chapterStates.get(chapterId);
+    let state = this.unitDetails.get(chapterId);
     if (!state) {
-      state = new ChapterSegmentState(chapterId);
-      this.chapterStates.set(chapterId, state);
+      state = new UnitDetailState(chapterId);
+      this.unitDetails.set(chapterId, state);
     }
     return state;
   }

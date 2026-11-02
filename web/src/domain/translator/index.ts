@@ -1,20 +1,20 @@
-export { TaskExecutor } from './prepare-work';
-export type { ChapterTracker } from './prepare-work';
+export { WorkPreparer } from './prepare-work';
+export type { UnitTracker } from './prepare-work';
 export { IndexedDbSegmentCache } from './segment-cache';
 export { TaskLifecycle } from './task-lifecycle';
-export { ChapterSegmentState, TaskState } from './task-state';
+export { UnitDetailState, TaskState } from './task-state';
 export type {
-  ChapterMeta,
-  ChapterStatus,
-  SegmentInfo,
+  UnitState,
+  UnitStatus,
+  SegmentState,
   SegmentStatus,
 } from './task-state';
 export { createTranslationTask } from './tasks/create-task';
 export type {
   PreparedUnit,
   TaskExecutionContext,
-  TranslationChapter,
-  TranslationMetadata,
+  TaskChapter,
+  TaskMetadataUnit,
   TranslationTask,
   TranslationUnitRef,
 } from './tasks/task';

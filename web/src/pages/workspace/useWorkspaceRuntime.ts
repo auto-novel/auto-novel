@@ -5,13 +5,13 @@ import type { TranslationWork } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import {
-  TaskExecutor,
+  WorkPreparer,
   TaskLifecycle,
   IndexedDbSegmentCache,
   createTranslationTask,
   TaskState,
 } from '@/domain/translator';
-import type { TranslationTask, ChapterStatus } from '@/domain/translator';
+import type { TranslationTask, UnitStatus } from '@/domain/translator';
 import { toTranslatorConfig } from '@/model/Translator';
 import type {
   TranslateJob,
@@ -67,7 +67,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   const workerErrors = computed(() => {
     const errors = new Map<string, number>();
     for (const [, state] of taskStates.value) {
-      for (const [, chapterState] of state.chapterStates) {
+      for (const [, chapterState] of state.unitDetails) {
         for (const seg of chapterState.segments) {
           if (seg.status === 'error' && seg.translatorId) {
             errors.set(
@@ -271,13 +271,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           .signalFor(
             task.type === 'local' ? signal : trustedInputsController.signal,
           );
-        const executor = new TaskExecutor(task);
-        const segmentTracker = state.getChapterState(chapterId);
+        const preparer = new WorkPreparer(task);
+        const segmentTracker = state.getUnitDetails(chapterId);
         if (!segmentTracker) continue;
-        const work = await executor.prepareUnit(
+        const work = await preparer.prepareUnit(
           unit,
           {
-            onChapterStatus: (cid: string, st: ChapterStatus) => {
+            onUnitStatus: (cid: string, st: UnitStatus) => {
               if (!isCurrentTask()) return;
               state.updateStatus(cid, st);
               findCurrentJob(job)!.progress = state.progress;
@@ -446,7 +446,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     const inPipeline = state?.units.some(
       (chapter) =>
         chapter.status === 'translating' &&
-        state.chapterStates.get(chapter.chapterId)?.ready,
+        state.unitDetails.get(chapter.chapterId)?.ready,
     );
     if (inPipeline) {
       Toast.error('任务正在翻译或保存中，请先停止翻译器');

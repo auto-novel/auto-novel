@@ -11,7 +11,7 @@ import {
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
-import type { ChapterSegmentState, TaskState } from '@/domain/translator';
+import type { UnitDetailState, TaskState } from '@/domain/translator';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 
 const props = defineProps<{
@@ -35,7 +35,7 @@ const hasVisibleChapters = computed(() =>
     (chapter) =>
       chapter.status === 'error' ||
       (chapter.status === 'translating' &&
-        props.taskState?.chapterStates.get(chapter.chapterId)?.ready),
+        props.taskState?.unitDetails.get(chapter.chapterId)?.ready),
   ),
 );
 const taskProgress = computed(() => {
@@ -62,7 +62,7 @@ const taskProgress = computed(() => {
     if (chapter.status === 'done') done++;
     else if (chapter.status === 'error') error++;
     else if (chapter.status === 'translating') {
-      const state = props.taskState?.chapterStates.get(chapter.chapterId);
+      const state = props.taskState?.unitDetails.get(chapter.chapterId);
       if (state?.ready) translating++;
     }
   }
@@ -85,7 +85,7 @@ const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
 });
 
 function retryAllFailed() {
-  if (props.taskState?.resetFailedChapters()) {
+  if (props.taskState?.resetFailedUnits()) {
     delete props.job.finishAt;
     emit('retry', props.job.task);
   }
@@ -94,10 +94,10 @@ function retryAllFailed() {
 const showPreview = ref(false);
 const previewData = ref<{
   title: string;
-  chapterState: ChapterSegmentState | null;
+  chapterState: UnitDetailState | null;
 } | null>(null);
 const openPreview = (chapterId: string) => {
-  const chapterState = props.taskState?.chapterStates.get(chapterId);
+  const chapterState = props.taskState?.unitDetails.get(chapterId);
   if (!chapterState || (!chapterState.ready && !chapterState.errorMessage)) {
     Toast.info('章节已完成或预览已失效');
     return;
@@ -163,7 +163,7 @@ const closePreview = () => {
                 @action="canMoveBottom && emit('bottom', job.task)"
               />
               <WorkspaceActionButton
-                v-if="taskState?.hasFailedChapters()"
+                v-if="taskState?.hasFailedUnits()"
                 label="重试失败"
                 tooltip="重试失败"
                 :icon="RefreshOutlined"

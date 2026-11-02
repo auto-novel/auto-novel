@@ -5,7 +5,7 @@ import type {
   PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
-  TranslationChapter,
+  TaskChapter,
   TranslationUnitRef,
 } from './task';
 import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
@@ -15,7 +15,7 @@ import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 export class LocalTranslationTask implements TranslationTask {
   readonly type = 'local' as const;
   private readonly level: TranslateTaskParams['level'];
-  chapters: readonly TranslationChapter[] = [];
+  chapters: readonly TaskChapter[] = [];
   private glossary: Glossary = {};
   private glossaryId = '';
   initialized = false;

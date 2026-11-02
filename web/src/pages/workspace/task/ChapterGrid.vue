@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import type {
-  ChapterSegmentState,
-  ChapterStatus,
+  UnitDetailState,
+  UnitStatus,
   TaskState,
 } from '@/domain/translator';
 
@@ -18,7 +18,7 @@ const root = ref<HTMLElement>();
 const errorsExpanded = ref(false);
 const previewLimit = 6;
 
-const statusLabels: Record<ChapterStatus, string> = {
+const statusLabels: Record<UnitStatus, string> = {
   pending: '等待',
   translating: '处理中',
   done: '成功',
@@ -31,14 +31,14 @@ const phaseLabels = {
   saving: '保存中',
 };
 
-const startedChapters = shallowRef(new Set<ChapterSegmentState>());
+const startedChapters = shallowRef(new Set<UnitDetailState>());
 
 // 记录本次执行已开始的章节，分段间隙不缩回小号；按状态实例区分重试。
 watch(
   () =>
     (props.taskState?.units ?? []).flatMap((ch) => {
       if (ch.status !== 'translating') return [];
-      const state = props.taskState?.chapterStates.get(ch.chapterId);
+      const state = props.taskState?.unitDetails.get(ch.chapterId);
       if (!state?.ready) return [];
       return [
         {
@@ -52,7 +52,7 @@ watch(
       ];
     }),
   (states) => {
-    const next = new Set<ChapterSegmentState>();
+    const next = new Set<UnitDetailState>();
     for (const { state, started } of states) {
       if (started || startedChapters.value.has(state)) next.add(state);
     }
@@ -68,7 +68,7 @@ watch(
 
 const chapters = computed(() =>
   (props.taskState?.units ?? []).map((ch) => {
-    const state = props.taskState?.chapterStates.get(ch.chapterId);
+    const state = props.taskState?.unitDetails.get(ch.chapterId);
     let phase: keyof typeof phaseLabels = 'queued';
     if (ch.status === 'translating') {
       if ((state?.translatingCount ?? 0) > 0) phase = 'translating';

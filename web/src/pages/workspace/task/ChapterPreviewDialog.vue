@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { XDialog } from '@novelia/web-kit';
 
-import type { ChapterSegmentState } from '@/domain/translator';
+import type { UnitDetailState } from '@/domain/translator';
 
 const props = defineProps<{
   show: boolean;
   title: string;
-  chapterState: ChapterSegmentState | null;
+  chapterState: UnitDetailState | null;
 }>();
 
 const emit = defineEmits<{

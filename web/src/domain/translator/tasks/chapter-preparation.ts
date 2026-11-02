@@ -1,6 +1,6 @@
 import type { Glossary } from '@auto-novel/translator';
 import type { TranslateTaskParams } from '@/model/Translator';
-import type { PreparedUnit, TranslationChapter } from './task';
+import type { PreparedUnit, TaskChapter } from './task';
 
 /** 正文段落保持一一对应；元数据由自己的 coder 处理，不使用此转换。 */
 export function prepareChapterInput(
@@ -32,8 +32,8 @@ export function buildChapterList<T>(
   isDone: (item: T) => boolean,
   isExpired: (item: T) => boolean,
   toMeta: (item: T) => { chapterId: string; title: string },
-): TranslationChapter[] {
-  const chapters: TranslationChapter[] = [];
+): TaskChapter[] {
+  const chapters: TaskChapter[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const order = startIndex + i;
