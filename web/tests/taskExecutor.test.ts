@@ -310,13 +310,13 @@ describe('WorkPreparer preparation boundaries', () => {
 
 describe('TaskState ownership', () => {
   it.each([
-    ['normal', [false]],
-    ['expire', [false, true, false]],
-    ['all', [false, false, false]],
-    ['sync', [false, false, false]],
+    ['normal', ['new'], [3]],
+    ['expire', ['new', 'expired'], [3, 5]],
+    ['all', ['new', 'current', 'expired'], [3, 4, 5]],
+    ['sync', ['new', 'current', 'expired'], [3, 4, 5]],
   ] as const)(
     'maps %s chapter definitions to initial UI states',
-    (level, expected) => {
+    (level, expectedIds, expectedOrders) => {
       const items = [
         { chapterId: 'new', done: false, expired: false },
         { chapterId: 'current', done: true, expired: false },
@@ -330,20 +330,39 @@ describe('TaskState ownership', () => {
         (item) => item.expired,
         (item) => ({ chapterId: item.chapterId, title: item.chapterId }),
       );
-      expect(chapters.map((chapter) => chapter.completed)).toEqual(expected);
-      expect(chapters.map((chapter) => chapter.order)).toEqual(
-        level === 'normal' ? [3] : [3, 4, 5],
-      );
+      expect(chapters.map((chapter) => chapter.chapterId)).toEqual(expectedIds);
+      expect(chapters.every((chapter) => !chapter.completed)).toBe(true);
+      expect(chapters.map((chapter) => chapter.order)).toEqual(expectedOrders);
       expect(chapters.every((chapter) => chapter.kind === 'chapter')).toBe(
         true,
       );
       const state = new TaskState();
       state.initialize(chapters);
       expect(state.chapters.map((chapter) => chapter.status)).toEqual(
-        expected.map((completed) => (completed ? 'done' : 'pending')),
+        expectedIds.map(() => 'pending'),
       );
+      expect(state.progress).toEqual({
+        finished: 0,
+        error: 0,
+        total: expectedIds.length,
+      });
     },
   );
+
+  it('has no chapter progress when all chapters are current in expire mode', () => {
+    const chapters = buildChapterList(
+      [{ chapterId: 'current', title: 'Current' }],
+      0,
+      'expire',
+      () => true,
+      () => false,
+      (item) => item,
+    );
+    const state = new TaskState();
+    state.initialize(chapters);
+    expect(state.chapters).toEqual([]);
+    expect(state.progress).toEqual({ finished: 0, error: 0, total: 0 });
+  });
 
   it('owns UI objects without mutating task definitions or another state', () => {
     const task = createMetadataTask();

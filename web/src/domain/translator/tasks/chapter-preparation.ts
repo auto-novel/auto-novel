@@ -39,16 +39,12 @@ export function buildChapterList<T>(
     const order = startIndex + i;
     const done = isDone(item);
     if (level === 'normal' && done) continue;
-    const completed =
-      level !== 'all' &&
-      level !== 'sync' &&
-      done &&
-      !(level === 'expire' && isExpired(item));
+    if (level === 'expire' && done && !isExpired(item)) continue;
     chapters.push({
       ...toMeta(item),
       kind: 'chapter',
       order,
-      completed,
+      completed: false,
     });
   }
   return chapters;
