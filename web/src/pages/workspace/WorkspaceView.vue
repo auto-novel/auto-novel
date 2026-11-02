@@ -16,7 +16,7 @@ const {
   logs,
   clearLogs,
   jobs,
-  segCacheName,
+  clearTranslationCache,
   taskStates,
   workerStates,
   workerErrors,
@@ -49,7 +49,7 @@ const {
       :translator-id="translatorId"
       :worker-states="workerStates"
       :worker-errors="workerErrors"
-      :cache-name="segCacheName"
+      :clear-translation-cache="clearTranslationCache"
       @start="startWorker"
       @stop="stopWorker"
       @start-all="startAllWorkers"

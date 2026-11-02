@@ -1,25 +1,22 @@
-import type { Glossary } from '@auto-novel/translator';
-import type { ChapterMeta } from '../TaskState';
 import type {
   TranslateTaskParams,
   TranslatorId,
   WenkuTranslateTask,
 } from '@/model/Translator';
 import type {
-  ChapterDetail,
+  PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
+  TranslationChapter,
+  TranslationUnitRef,
 } from './types';
 import { WenkuNovelApi } from '@/api';
-import { buildChapterMetaList } from './utils';
+import { buildChapterList, prepareChapterInput } from './utils';
 
 export class WenkuTranslationTask implements TranslationTask {
   readonly type = 'wenku' as const;
-  readonly description: string;
-  readonly level: 'normal' | 'expire' | 'all' | 'sync';
-  chapters: ChapterMeta[] = [];
-  glossary: Glossary = {};
-  glossaryId = '';
+  private readonly level: TranslateTaskParams['level'];
+  chapters: readonly TranslationChapter[] = [];
   initialized = false;
 
   private params: TranslateTaskParams;
@@ -30,7 +27,6 @@ export class WenkuTranslationTask implements TranslationTask {
     private translatorId: TranslatorId,
     params: TranslateTaskParams,
   ) {
-    this.description = `wenku/${novelId}/${volumeId}`;
     this.level = params.level;
     this.params = params;
   }
@@ -40,8 +36,6 @@ export class WenkuTranslationTask implements TranslationTask {
     if (this.initialized) return;
     const task = await this.createApi(signal).getTranslateTask();
     signal.throwIfAborted();
-    this.glossary = {};
-    this.glossaryId = task.glossaryId;
 
     const { startIndex, endIndex, level } = this.params;
 
@@ -49,15 +43,12 @@ export class WenkuTranslationTask implements TranslationTask {
       item.glossaryId !== undefined;
     const isExpired = (item: WenkuTranslateTask['toc'][number]) =>
       item.glossaryId !== undefined && item.glossaryId !== task.glossaryId;
-    const toMeta = (
-      item: WenkuTranslateTask['toc'][number],
-      _order: number,
-    ) => ({
+    const toMeta = (item: WenkuTranslateTask['toc'][number]) => ({
       chapterId: item.chapterId,
       title: item.chapterId,
     });
 
-    this.chapters = buildChapterMetaList(
+    this.chapters = buildChapterList(
       task.toc.slice(startIndex, endIndex),
       startIndex,
       level,
@@ -68,38 +59,36 @@ export class WenkuTranslationTask implements TranslationTask {
     this.initialized = true;
   }
 
-  async fetchChapter(
-    chapterId: string,
-    context?: TaskExecutionContext,
-  ): Promise<ChapterDetail> {
-    context?.signal.throwIfAborted();
-    const api = this.createApi(context?.signal);
+  async prepareUnit(
+    unit: TranslationUnitRef,
+    context: TaskExecutionContext,
+  ): Promise<PreparedUnit> {
+    context.signal.throwIfAborted();
+    if (unit.kind === 'metadata') throw new Error('文库任务不支持元数据单元');
+    const chapterId = unit.chapterId;
+    const api = this.createApi(context.signal);
     const chapterTask = await api.getChapterTranslateTask(chapterId);
-    context?.signal.throwIfAborted();
+    context.signal.throwIfAborted();
+    const glossaryId = chapterTask.glossaryId;
     return {
-      paragraphs: chapterTask.paragraphJp,
-      glossary: chapterTask.glossary,
-      glossaryId: chapterTask.glossaryId,
-      oldParagraphZh: chapterTask.oldParagraphZh ?? null,
-      oldGlossary: chapterTask.oldGlossary,
+      ...prepareChapterInput(
+        chapterTask.paragraphJp,
+        chapterTask.glossary,
+        this.level,
+        chapterTask.oldParagraphZh,
+        chapterTask.oldGlossary,
+      ),
+      save: async (translated) => {
+        context.signal.throwIfAborted();
+        await api.updateChapterTranslation(chapterId, {
+          glossaryId,
+          paragraphsZh: [...translated],
+        });
+      },
     };
   }
 
-  async uploadChapter(
-    chapterId: string,
-    glossaryId: string,
-    translatedParagraphs: string[],
-    context?: TaskExecutionContext,
-  ): Promise<void> {
-    context?.signal.throwIfAborted();
-    const api = this.createApi(context?.signal);
-    await api.updateChapterTranslation(chapterId, {
-      glossaryId,
-      paragraphsZh: translatedParagraphs,
-    });
-  }
-
-  private createApi(signal?: AbortSignal) {
+  private createApi(signal: AbortSignal) {
     // API 捕获信号，仅供当前请求使用，不能沿用初始化或上一轮执行的信号。
     return WenkuNovelApi.createTranslationApi(
       this.novelId,

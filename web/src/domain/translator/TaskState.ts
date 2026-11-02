@@ -1,11 +1,16 @@
 import type { Segment, SegmentTracker } from '@auto-novel/translator';
+import type {
+  TranslationChapter,
+  TranslationMetadata,
+} from './TranslationTask/types';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';
 
 export interface ChapterMeta {
-  kind?: 'chapter' | 'metadata';
-  chapterId: string;
+  readonly kind: 'chapter' | 'metadata';
+  /** UI 跟踪键；元数据键不作为远程章节 ID 使用。 */
+  readonly chapterId: string;
   title: string;
   order: number;
   status: ChapterStatus;
@@ -38,12 +43,6 @@ export class ChapterSegmentState implements SegmentTracker {
   /** 是否完成 Segment 切分 */
   ready = false;
 
-  get allDone(): boolean {
-    return (
-      this.segments.length > 0 &&
-      this.segments.every((s) => s.status === 'done')
-    );
-  }
   get completedCount(): number {
     return this.segments.filter((s) => s.status === 'done').length;
   }
@@ -108,37 +107,40 @@ export class ChapterSegmentState implements SegmentTracker {
       ? errorMessage(segment.error)
       : undefined;
   }
-
-  /** 为已完成的章节注入整章译文 */
-  injectDoneTranslation(lines: string[], translatedLines: string[]): void {
-    this.segments = [
-      {
-        status: 'done',
-        lines,
-        translatedLines,
-        error: null,
-      },
-    ];
-    this.ready = true;
-  }
 }
 
 export class TaskState {
-  readonly taskDesc: string;
   chapters: ChapterMeta[] = [];
   metadataUnit?: ChapterMeta;
   readonly chapterStates = new Map<string, ChapterSegmentState>();
   /** initialize 执行完毕后设为 true */
   initialized = false;
 
-  constructor(taskDesc: string) {
-    this.taskDesc = taskDesc;
-  }
-
-  initialize(chapters: ChapterMeta[], metadataUnit?: ChapterMeta): void {
+  initialize(
+    chapters: readonly TranslationChapter[],
+    metadataUnit?: TranslationMetadata,
+  ): void {
     this.chapterStates.clear();
-    this.chapters = chapters;
-    this.metadataUnit = metadataUnit;
+    this.chapters = chapters.map((chapter) => ({
+      kind: chapter.kind,
+      chapterId: chapter.chapterId,
+      title: chapter.title,
+      order: chapter.order,
+      status: chapter.completed ? 'done' : 'pending',
+    }));
+    // 仅供 UI 跟踪使用；不限制真实章节 ID，也不把此键传给 Task。
+    const chapterIds = new Set(chapters.map((chapter) => chapter.chapterId));
+    let metadataKey = '\u0000metadata';
+    while (chapterIds.has(metadataKey)) metadataKey += '\u0000';
+    this.metadataUnit = metadataUnit
+      ? {
+          kind: 'metadata',
+          chapterId: metadataKey,
+          title: metadataUnit.title,
+          order: -1,
+          status: 'pending',
+        }
+      : undefined;
     this.initialized = true;
   }
 
@@ -174,10 +176,6 @@ export class TaskState {
       hasFailed = true;
     }
     return hasFailed;
-  }
-
-  getStatus(chapterId: string): ChapterStatus | undefined {
-    return this.units.find((c) => c.chapterId === chapterId)?.status;
   }
 
   updateStatus(chapterId: string, status: ChapterStatus): void {

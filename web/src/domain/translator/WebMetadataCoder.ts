@@ -14,7 +14,7 @@ export const createWebMetadataCoder = (
       encoded.push(part);
       return translatedIndex;
     });
-    return (translated: string[]) =>
+    return (translated: readonly string[]) =>
       parts
         .map((part) => (typeof part === 'number' ? translated[part] : part))
         .join('');
@@ -58,7 +58,7 @@ export const createWebMetadataCoder = (
   const tocOffset = encoded.length;
   encoded.push(...tocWordsNeedTranslate);
 
-  const recover = (translated: string[]) => {
+  const recover = (translated: readonly string[]) => {
     if (translated.length !== encoded.length) {
       throw new Error('元数据翻译结果数量不匹配');
     }

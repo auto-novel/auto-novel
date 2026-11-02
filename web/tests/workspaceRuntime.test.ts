@@ -3,7 +3,7 @@ import { effectScope, ref } from 'vue';
 import type { EffectScope } from 'vue';
 
 import type {
-  ChapterDetail,
+  PreparedUnit,
   TranslationTask,
 } from '../src/domain/translator/TranslationTask/types';
 import type { TranslationWork } from '@auto-novel/translator';
@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   blockRemote: false,
   failMetadata: false,
   parseTask: vi.fn((desc: string) => ({ desc, params: {} })),
+  clearCache: vi.fn<(storeName: string) => Promise<void>>(),
 }));
 
 vi.mock('vue', async (importOriginal) => {
@@ -26,7 +27,12 @@ vi.mock('vue', async (importOriginal) => {
 vi.mock('@/stores', () => ({ useWorkspaceStore: () => mocks.store }));
 vi.mock('@novelia/web-kit', () => ({ Toast: { error: vi.fn() } }));
 vi.mock('@/domain/translator/IndexedDbSegmentCache', () => ({
-  IndexedDbSegmentCache: class {},
+  IndexedDbSegmentCache: class {
+    constructor(readonly storeName: string) {}
+    clear() {
+      return mocks.clearCache(this.storeName);
+    }
+  },
 }));
 vi.mock('@/domain/translator/TranslationTask/createTranslationTask', () => ({
   createTranslationTask: (desc: string) => mocks.tasks.get(desc),
@@ -67,42 +73,54 @@ vi.mock('@auto-novel/translator', () => ({
   },
 }));
 
-function task(type: TranslationTask['type']): TranslationTask {
+type MutableTaskState = { initialized: boolean };
+
+function task(type: TranslationTask['type']) {
+  const chapterSave = vi.fn();
+  const metadataSave = vi.fn();
   return {
     type,
-    description: type,
-    level: 'normal',
-    initialized: false,
+    initialized: false as boolean,
     chapters: [
-      { chapterId: '1', title: 'chapter', order: 0, status: 'pending' },
+      {
+        kind: 'chapter',
+        chapterId: '1',
+        title: 'chapter',
+        order: 0,
+        completed: false,
+      },
     ],
-    glossary: {},
-    glossaryId: '',
-    initialize: vi.fn().mockImplementation(async function (
-      this: TranslationTask,
-    ) {
-      this.initialized = true;
-    }),
-    fetchChapter: vi.fn().mockResolvedValue({
-      paragraphs: ['原文'],
-      glossary: {},
-      glossaryId: '',
-    }),
-    uploadChapter: vi.fn(),
+    initialize: vi
+      .fn<TranslationTask['initialize']>()
+      .mockImplementation(async function (this: MutableTaskState) {
+        this.initialized = true;
+      }),
+    chapterSave,
+    metadataSave,
+    prepareUnit: vi
+      .fn<TranslationTask['prepareUnit']>()
+      .mockImplementation(async (unit) => ({
+        lines: [unit.kind === 'metadata' ? '元数据' : '原文'],
+        glossary: {},
+        save: unit.kind === 'metadata' ? metadataSave : chapterSave,
+      })),
     metadataUnit:
       type === 'web'
         ? {
             kind: 'metadata',
-            chapterId: 'metadata',
             title: '小说信息',
-            order: -1,
-            status: 'pending',
           }
         : undefined,
-    prepareMetadata: vi
-      .fn()
-      .mockResolvedValue({ lines: ['元数据'], glossary: {}, save: vi.fn() }),
+  } satisfies TranslationTask & {
+    chapterSave: typeof chapterSave;
+    metadataSave: typeof metadataSave;
   };
+}
+
+function metadataPreparations(task: TranslationTask) {
+  return vi
+    .mocked(task.prepareUnit)
+    .mock.calls.filter(([unit]) => unit.kind === 'metadata');
 }
 
 const runtimeScopes: EffectScope[] = [];
@@ -113,11 +131,28 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function createRuntime() {
+function createRuntime(translatorId: 'sakura' | 'gpt' = 'sakura') {
   const scope = effectScope();
   runtimeScopes.push(scope);
-  return scope.run(() => useWorkspaceRuntime('sakura'))!;
+  return scope.run(() => useWorkspaceRuntime(translatorId))!;
 }
+
+it.each(['sakura', 'gpt'] as const)(
+  'clears only the %s workspace cache and propagates failures',
+  async (translatorId) => {
+    mocks.store = { ref: ref({ jobs: [], workers: [] }) };
+    const runtime = createRuntime(translatorId);
+    mocks.clearCache.mockReset().mockResolvedValue(undefined);
+    await expect(runtime.clearTranslationCache()).resolves.toBeUndefined();
+    expect(mocks.clearCache).toHaveBeenCalledExactlyOnceWith(
+      `${translatorId}-seg-cache`,
+    );
+
+    const error = new Error('cache unavailable');
+    mocks.clearCache.mockRejectedValueOnce(error);
+    await expect(runtime.clearTranslationCache()).rejects.toBe(error);
+  },
+);
 
 function setupLifecycleRuntime(
   tasks: Record<string, TranslationTask>,
@@ -165,7 +200,7 @@ describe('workspace task version lifecycle', () => {
     await vi.waitFor(() =>
       expect(initializing.initialize).toHaveBeenCalledOnce(),
     );
-    expect(active.fetchChapter).not.toHaveBeenCalled();
+    expect(active.prepareUnit).not.toHaveBeenCalled();
     const initializationSignal = vi.mocked(initializing.initialize).mock
       .calls[0][0]!.signal;
 
@@ -174,25 +209,29 @@ describe('workspace task version lifecycle', () => {
     metadata.resolve();
     await metadata.promise;
     await Promise.resolve();
-    expect(active.uploadChapter).not.toHaveBeenCalled();
+    expect(active.chapterSave).not.toHaveBeenCalled();
     expect(runtime.taskStates.value.has('initializing')).toBe(false);
   });
   it('synchronously cancels a deleted task and ignores its late source', async () => {
     const old = task('local');
     const other = task('local');
-    const source = deferred<ChapterDetail>();
-    vi.mocked(old.fetchChapter).mockReturnValueOnce(source.promise);
+    const source = deferred<PreparedUnit>();
+    vi.mocked(old.prepareUnit).mockReturnValueOnce(source.promise);
     const { runtime } = setupLifecycleRuntime({ old, other });
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(old.fetchChapter).toHaveBeenCalledOnce());
-    const signal = vi.mocked(old.fetchChapter).mock.calls[0][1]!.signal;
+    await vi.waitFor(() => expect(old.prepareUnit).toHaveBeenCalledOnce());
+    const signal = vi.mocked(old.prepareUnit).mock.calls[0][1]!.signal;
     runtime.deleteJob('old');
     expect(signal.aborted).toBe(true);
-    await vi.waitFor(() => expect(other.uploadChapter).toHaveBeenCalledOnce());
-    source.resolve({ paragraphs: ['迟到原文'], glossary: {}, glossaryId: '' });
+    await vi.waitFor(() => expect(other.chapterSave).toHaveBeenCalledOnce());
+    source.resolve({
+      lines: ['迟到原文'],
+      glossary: {},
+      save: old.chapterSave,
+    });
     await source.promise;
     await Promise.resolve();
-    expect(old.uploadChapter).not.toHaveBeenCalled();
+    expect(old.chapterSave).not.toHaveBeenCalled();
     expect(runtime.taskStates.value.has('old')).toBe(false);
   });
 
@@ -205,7 +244,7 @@ describe('workspace task version lifecycle', () => {
     await runtime.startWorker('trusted');
     await vi.waitFor(() => expect(mocks.submitted).toHaveLength(1));
     const oldWork = mocks.submitted[0];
-    const signal = vi.mocked(old.fetchChapter).mock.calls[0][1]!.signal;
+    const signal = vi.mocked(old.prepareUnit).mock.calls[0][1]!.signal;
     const oldState = runtime.taskStates.value.get('old');
     store.ref.value.jobs = [...store.ref.value.jobs].sort((a, b) =>
       b.task.localeCompare(a.task),
@@ -216,20 +255,20 @@ describe('workspace task version lifecycle', () => {
     };
     expect(signal.aborted).toBe(false);
     expect(runtime.taskStates.value.get('old')).toBe(oldState);
-    expect(old.fetchChapter).toHaveBeenCalledOnce();
+    expect(old.prepareUnit).toHaveBeenCalledOnce();
 
     mocks.tasks.set('old', replacement);
     mocks.blockRemote = false;
     store.ref.value.jobs.find((job) => job.task === 'old')!.createAt = 2;
     expect(signal.aborted).toBe(true);
     await vi.waitFor(() =>
-      expect(replacement.uploadChapter).toHaveBeenCalledOnce(),
+      expect(replacement.chapterSave).toHaveBeenCalledOnce(),
     );
-    await vi.waitFor(() => expect(other.uploadChapter).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(other.chapterSave).toHaveBeenCalledOnce());
     await expect(
       oldWork.onComplete({ lines: ['迟到译文'], failed: [] }),
     ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(old.uploadChapter).not.toHaveBeenCalled();
+    expect(old.chapterSave).not.toHaveBeenCalled();
     expect(runtime.taskStates.value.get('old')?.chapters[0].status).toBe(
       'done',
     );
@@ -251,11 +290,13 @@ describe('workspace task version lifecycle', () => {
         });
       } else {
         old.chapters.length = 0;
-        vi.mocked(old.prepareMetadata!).mockImplementation(async (context) => {
-          signal = context.signal;
-          await pending.promise;
-          return { lines: ['元数据'], glossary: {}, save: vi.fn() };
-        });
+        vi.mocked(old.prepareUnit).mockImplementation(
+          async (_unit, context) => {
+            signal = context.signal;
+            await pending.promise;
+            return { lines: ['元数据'], glossary: {}, save: vi.fn() };
+          },
+        );
       }
       const { runtime, store } = setupLifecycleRuntime({ old, other });
       await runtime.startWorker('trusted');
@@ -264,14 +305,12 @@ describe('workspace task version lifecycle', () => {
         (job) => job.task !== 'old',
       );
       expect(signal.aborted).toBe(true);
-      await vi.waitFor(() =>
-        expect(other.uploadChapter).toHaveBeenCalledOnce(),
-      );
+      await vi.waitFor(() => expect(other.chapterSave).toHaveBeenCalledOnce());
       pending.resolve();
       await pending.promise;
       await Promise.resolve();
       expect(runtime.taskStates.value.has('old')).toBe(false);
-      expect(old.uploadChapter).not.toHaveBeenCalled();
+      expect(old.chapterSave).not.toHaveBeenCalled();
     },
   );
 });
@@ -281,10 +320,10 @@ describe('workspace trusted worker scheduling', () => {
     const remote = task('wenku');
     const local = task('local');
     let reject!: (error: unknown) => void;
-    const pending = new Promise<ChapterDetail>((_, rej) => {
+    const pending = new Promise<PreparedUnit>((_, rej) => {
       reject = rej;
     });
-    vi.mocked(remote.fetchChapter).mockImplementationOnce(() => pending);
+    vi.mocked(remote.prepareUnit).mockImplementationOnce(() => pending);
     const { runtime } = setupLifecycleRuntime({ remote, local }, [
       { id: 'trusted', trusted: true },
       { id: 'untrusted', trusted: false },
@@ -292,25 +331,25 @@ describe('workspace trusted worker scheduling', () => {
 
     await runtime.startWorker('trusted');
     await runtime.startWorker('untrusted');
-    await vi.waitFor(() => expect(remote.fetchChapter).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(remote.prepareUnit).toHaveBeenCalledOnce());
     runtime.stopWorker('trusted');
     // The plugin promise is deliberately unresolved; local work must still finish.
-    await vi.waitFor(() => expect(local.uploadChapter).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(local.chapterSave).toHaveBeenCalledOnce());
     expect(runtime.taskStates.value.get('remote')?.chapters[0].status).toBe(
       'pending',
     );
-    expect(remote.uploadChapter).not.toHaveBeenCalled();
+    expect(remote.chapterSave).not.toHaveBeenCalled();
 
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(remote.uploadChapter).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(remote.chapterSave).toHaveBeenCalledOnce());
     reject(new Error('late plugin failure'));
     await pending.catch(() => undefined);
     await Promise.resolve();
     expect(runtime.taskStates.value.get('remote')?.chapters[0].status).toBe(
       'done',
     );
-    expect(remote.uploadChapter).toHaveBeenCalledOnce();
-    expect(remote.fetchChapter).toHaveBeenCalledTimes(2);
+    expect(remote.chapterSave).toHaveBeenCalledOnce();
+    expect(remote.prepareUnit).toHaveBeenCalledTimes(2);
     expect(mocks.submitted.map((work) => work.trustedOnly)).toEqual([
       false,
       true,
@@ -331,12 +370,12 @@ describe('workspace trusted worker scheduling', () => {
     expect(mocks.submitted[0].trustedOnly).toBe(true);
     runtime.stopWorker('trusted');
 
-    await vi.waitFor(() => expect(local.uploadChapter).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(local.chapterSave).toHaveBeenCalledOnce());
     expect(runtime.taskStates.value.get('remote')?.chapters[0].status).toBe(
       'pending',
     );
-    expect(remote.uploadChapter).not.toHaveBeenCalled();
-    expect(remote.fetchChapter).toHaveBeenCalledOnce();
+    expect(remote.chapterSave).not.toHaveBeenCalled();
+    expect(remote.prepareUnit).toHaveBeenCalledOnce();
     expect(mocks.submitted.map((work) => work.trustedOnly)).toEqual([
       true,
       false,
@@ -353,18 +392,18 @@ describe('workspace trusted worker scheduling', () => {
     ]);
 
     await runtime.startWorker('untrusted');
-    await vi.waitFor(() => expect(local.uploadChapter).toHaveBeenCalledOnce());
-    expect(web.fetchChapter).not.toHaveBeenCalled();
-    expect(wenku.fetchChapter).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(local.chapterSave).toHaveBeenCalledOnce());
+    expect(web.prepareUnit).not.toHaveBeenCalled();
+    expect(wenku.prepareUnit).not.toHaveBeenCalled();
     expect(web.initialize).not.toHaveBeenCalled();
-    expect(web.prepareMetadata).not.toHaveBeenCalled();
+    expect(metadataPreparations(web)).toHaveLength(0);
     expect(mocks.submitted.map((work) => work.trustedOnly)).toEqual([false]);
 
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(wenku.uploadChapter).toHaveBeenCalledOnce());
-    expect(web.uploadChapter).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(wenku.chapterSave).toHaveBeenCalledOnce());
+    expect(web.chapterSave).toHaveBeenCalledOnce();
     expect(web.initialize).toHaveBeenCalledOnce();
-    expect(web.prepareMetadata).toHaveBeenCalledOnce();
+    expect(metadataPreparations(web)).toHaveLength(1);
     expect(mocks.submitted.map((work) => work.trustedOnly)).toEqual([
       false,
       true,
@@ -392,9 +431,9 @@ describe('lazy task loading and metadata units', () => {
       }
 
       await runtime.startWorker('trusted');
-      await vi.waitFor(() => expect(next.uploadChapter).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(next.chapterSave).toHaveBeenCalledOnce());
       runtime.runProcessLoop();
-      expect(failed.uploadChapter).not.toHaveBeenCalled();
+      expect(failed.chapterSave).not.toHaveBeenCalled();
       expect(failed.initialize).toHaveBeenCalledTimes(
         phase === 'descriptor' ? 0 : 1,
       );
@@ -403,10 +442,8 @@ describe('lazy task loading and metadata units', () => {
 
       runtime.stopWorker('trusted');
       await runtime.startWorker('trusted');
-      await vi.waitFor(() =>
-        expect(failed.uploadChapter).toHaveBeenCalledOnce(),
-      );
-      expect(next.uploadChapter).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(failed.chapterSave).toHaveBeenCalledOnce());
+      expect(next.chapterSave).toHaveBeenCalledOnce();
     },
   );
 
@@ -442,13 +479,13 @@ describe('lazy task loading and metadata units', () => {
     mocks.tasks.set('remote', replacement);
     await runtime.startWorker('trusted');
     await vi.waitFor(() =>
-      expect(replacement.uploadChapter).toHaveBeenCalledOnce(),
+      expect(replacement.chapterSave).toHaveBeenCalledOnce(),
     );
     const state = runtime.taskStates.value.get('remote');
     pending.resolve();
     await pending.promise;
     await Promise.resolve();
-    expect(old.uploadChapter).not.toHaveBeenCalled();
+    expect(old.chapterSave).not.toHaveBeenCalled();
     expect(replacement.initialize).toHaveBeenCalledOnce();
     expect(runtime.taskStates.value.get('remote')).toBe(state);
     expect(state?.chapters[0].status).toBe('done');
@@ -460,8 +497,11 @@ describe('lazy task loading and metadata units', () => {
     mocks.failMetadata = true;
     const { runtime, store } = setupLifecycleRuntime({ web, next });
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(next.uploadChapter).toHaveBeenCalledOnce());
-    expect(web.uploadChapter).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(next.chapterSave).toHaveBeenCalledOnce());
+    expect(web.chapterSave).toHaveBeenCalledOnce();
+    expect(web.chapters[0].completed).toBe(false);
+    expect(web.chapters[0]).not.toHaveProperty('status');
+    expect(web.metadataUnit).toEqual({ kind: 'metadata', title: '小说信息' });
     expect(store.ref.value.jobs[0]).not.toHaveProperty('finishAt');
     const state = runtime.taskStates.value.get('web')!;
     expect(state.metadataUnit?.status).toBe('error');
@@ -471,8 +511,8 @@ describe('lazy task loading and metadata units', () => {
     await vi.waitFor(() =>
       expect(store.ref.value.jobs[0]).toHaveProperty('finishAt'),
     );
-    expect(web.prepareMetadata).toHaveBeenCalledTimes(2);
-    expect(web.uploadChapter).toHaveBeenCalledOnce();
+    expect(metadataPreparations(web)).toHaveLength(2);
+    expect(web.chapterSave).toHaveBeenCalledOnce();
   });
 });
 
@@ -480,7 +520,7 @@ it('returns cancelled metadata to pending and resumes it once without reloading 
   const web = task('web');
   web.chapters = [];
   const save = vi.fn();
-  vi.mocked(web.prepareMetadata!).mockResolvedValue({
+  vi.mocked(web.prepareUnit).mockResolvedValue({
     lines: ['元数据'],
     glossary: {},
     save,
@@ -500,10 +540,13 @@ it('returns cancelled metadata to pending and resumes it once without reloading 
   mocks.blockRemote = false;
   await runtime.startWorker('trusted');
   await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-  expect(web.prepareMetadata).toHaveBeenCalledTimes(2);
+  expect(metadataPreparations(web)).toHaveLength(2);
   expect(web.initialize).toHaveBeenCalledOnce();
-  expect(web.fetchChapter).not.toHaveBeenCalled();
-  expect(web.uploadChapter).not.toHaveBeenCalled();
+  expect(vi.mocked(web.prepareUnit).mock.calls.map(([unit]) => unit)).toEqual([
+    { kind: 'metadata' },
+    { kind: 'metadata' },
+  ]);
+  expect(web.chapterSave).not.toHaveBeenCalled();
   expect(store.ref.value.jobs[0]).toMatchObject({
     progress: { total: 0, finished: 0, error: 0 },
     finishAt: expect.any(Number),

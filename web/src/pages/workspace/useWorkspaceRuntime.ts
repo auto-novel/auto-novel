@@ -39,10 +39,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       warn ? 'warn' : 'info',
     );
 
+  const segmentCache = new IndexedDbSegmentCache(segCacheName);
+  const clearTranslationCache = (): Promise<void> => segmentCache.clear();
+
   /** 每类输入的队列水位跟随已注册翻译器总并发，预留一倍缓冲，独立背压。 */
   const pipeline = new TranslationPipeline({
     segmentLength: isSakura ? 500 : undefined,
-    cache: new IndexedDbSegmentCache(segCacheName),
+    cache: segmentCache,
   });
 
   // ========== 任务状态管理 ==========
@@ -482,7 +485,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       }
       const currentJob = findCurrentJob(job);
       if (!currentJob) return;
-      const state = reactive(new TaskState(job.task)) as TaskState;
+      const state = reactive(new TaskState()) as TaskState;
       state.initialize(task.chapters, task.metadataUnit);
       taskStates.value.set(job.task, state);
       currentJob.progress = state.progress;
@@ -543,7 +546,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     logs,
     clearLogs,
     jobs,
-    segCacheName,
+    clearTranslationCache,
     taskStates,
     workerStates,
     workerErrors,

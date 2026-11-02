@@ -1,42 +1,43 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { TaskExecutor } from '../src/domain/translator/TaskExecutor';
-import type { TranslationTask } from '../src/domain/translator/TranslationTask/types';
+import { buildChapterList } from '../src/domain/translator/TranslationTask/utils';
+import type {
+  TranslationTask,
+  TranslationMetadata,
+} from '../src/domain/translator/TranslationTask/types';
 import {
   ChapterSegmentState,
   TaskState,
-  type ChapterMeta,
   type ChapterStatus,
 } from '../src/domain/translator/TaskState';
 
 function createTask(type: TranslationTask['type']) {
+  const save = vi.fn().mockResolvedValue(undefined);
   return {
     type,
-    description: 'test',
-    level: 'normal' as const,
     initialized: true as boolean,
     chapters: [
       {
+        kind: 'chapter' as const,
         chapterId: '1',
         title: 'Chapter',
         order: 0,
-        status: 'pending' as const,
+        completed: false,
       },
     ],
-    glossary: {},
-    glossaryId: '',
     initialize: vi.fn(),
-    fetchChapter: vi.fn().mockResolvedValue({
-      paragraphs: ['原文'],
+    prepareUnit: vi.fn<TranslationTask['prepareUnit']>().mockResolvedValue({
+      lines: ['原文'],
       glossary: {},
-      glossaryId: 'glossary',
+      save,
     }),
-    uploadChapter: vi.fn(),
-  } satisfies TranslationTask;
+    save,
+  } satisfies TranslationTask & { save: typeof save };
 }
 
 function createTracker(task: TranslationTask) {
-  const state = new TaskState('test');
+  const state = new TaskState();
   state.initialize(task.chapters, task.metadataUnit);
   return {
     state,
@@ -48,18 +49,15 @@ function createTracker(task: TranslationTask) {
 }
 
 function createMetadataTask(lines = ['原文标题']) {
-  const metadataUnit: ChapterMeta = {
+  const metadataUnit: TranslationMetadata = {
     kind: 'metadata',
-    chapterId: '\u0000metadata',
     title: '小说信息',
-    order: -1,
-    status: 'pending',
   };
   const save = vi.fn().mockResolvedValue(undefined);
   return {
     ...createTask('web'),
     metadataUnit,
-    prepareMetadata: vi
+    prepareUnit: vi
       .fn()
       .mockResolvedValue({ lines, glossary: { 原文: '译文' }, save }),
     save,
@@ -71,32 +69,40 @@ describe('metadata translation units', () => {
     const task = createMetadataTask();
     const tracker = createTracker(task);
     const work = await new TaskExecutor(task).prepareUnit(
-      task.metadataUnit,
+      tracker.state.metadataUnit!,
       tracker,
+      new AbortController().signal,
     );
     expect(work).toMatchObject({
       lines: ['原文标题'],
       glossary: { 原文: '译文' },
       trustedOnly: true,
     });
-    expect(task.fetchChapter).not.toHaveBeenCalled();
-    expect(task.metadataUnit.status).toBe('translating');
+    expect(task.prepareUnit).toHaveBeenCalledWith(
+      { kind: 'metadata' },
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        onLog: tracker.onLog,
+      }),
+    );
+    expect(tracker.state.metadataUnit?.status).toBe('translating');
     await work!.onComplete({ lines: ['译文标题'], failed: [] });
     expect(task.save).toHaveBeenCalledWith(['译文标题']);
-    expect(task.metadataUnit.status).toBe('done');
-    expect(task.uploadChapter).not.toHaveBeenCalled();
+    expect(tracker.state.metadataUnit?.status).toBe('done');
     expect(tracker.state.progress).toEqual({ finished: 0, error: 0, total: 1 });
   });
 
   it('saves zero-line metadata directly without producing pipeline work', async () => {
     const task = createMetadataTask([]);
+    const tracker = createTracker(task);
     const work = await new TaskExecutor(task).prepareUnit(
-      task.metadataUnit,
-      createTracker(task),
+      tracker.state.metadataUnit!,
+      tracker,
+      new AbortController().signal,
     );
     expect(work).toBeUndefined();
     expect(task.save).toHaveBeenCalledWith([]);
-    expect(task.metadataUnit.status).toBe('done');
+    expect(tracker.state.metadataUnit?.status).toBe('done');
   });
 
   it('keeps failed metadata retryable and never saves original-text fallbacks', async () => {
@@ -104,18 +110,19 @@ describe('metadata translation units', () => {
     const tracker = createTracker(task);
     const state = tracker.state;
     const work = await new TaskExecutor(task).prepareUnit(
-      task.metadataUnit,
+      tracker.state.metadataUnit!,
       tracker,
+      new AbortController().signal,
     );
     await work!.onComplete({
       lines: ['原文标题'],
       failed: [{ order: 0, error: new Error('failed') }],
     });
     expect(task.save).not.toHaveBeenCalled();
-    expect(state.getStatus(task.metadataUnit.chapterId)).toBe('error');
-    expect(state.getChapterState(task.metadataUnit.chapterId)).toBeDefined();
+    expect(state.metadataUnit?.status).toBe('error');
+    expect(state.getChapterState(state.metadataUnit!.chapterId)).toBeDefined();
     expect(state.resetFailedChapters()).toBe(true);
-    expect(state.getStatus(task.metadataUnit.chapterId)).toBe('pending');
+    expect(state.metadataUnit?.status).toBe('pending');
     expect(state.chapters).toHaveLength(1);
     expect(state.units).toHaveLength(2);
   });
@@ -124,8 +131,12 @@ describe('metadata translation units', () => {
     const task = createMetadataTask([]);
     task.save.mockRejectedValue(new Error('upload failed'));
     const tracker = createTracker(task);
-    await new TaskExecutor(task).prepareUnit(task.metadataUnit, tracker);
-    expect(task.metadataUnit.status).toBe('error');
+    await new TaskExecutor(task).prepareUnit(
+      tracker.state.metadataUnit!,
+      tracker,
+      new AbortController().signal,
+    );
+    expect(tracker.state.metadataUnit?.status).toBe('error');
     expect(tracker.state.progress).toEqual({ finished: 0, error: 0, total: 1 });
   });
 });
@@ -137,8 +148,9 @@ describe('TaskExecutor trust requirements', () => {
       const task = createTask(type);
       const tracker = createTracker(task);
       const work = await new TaskExecutor(task).prepareUnit(
-        task.chapters[0],
+        tracker.state.chapters[0],
         tracker,
+        new AbortController().signal,
       );
       expect(work?.trustedOnly).toBe(type !== 'local');
     },
@@ -148,21 +160,20 @@ describe('TaskExecutor trust requirements', () => {
     const task = createTask('local');
     const tracker = createTracker(task);
     const controller = new AbortController();
-    task.uploadChapter.mockImplementation(async () => {
+    task.save.mockImplementation(async () => {
       controller.abort();
     });
     const work = await new TaskExecutor(task).prepareUnit(
-      task.chapters[0],
+      tracker.state.chapters[0],
       tracker,
       controller.signal,
     );
     await expect(
       work!.onComplete({ lines: ['译文'], failed: [] }),
     ).resolves.toBeUndefined();
-    expect(task.uploadChapter).toHaveBeenCalledWith(
-      '1',
-      'glossary',
-      ['译文'],
+    expect(task.save).toHaveBeenCalledWith(['译文']);
+    expect(task.prepareUnit).toHaveBeenCalledWith(
+      { kind: 'chapter', chapterId: '1' },
       expect.objectContaining({ signal: controller.signal }),
     );
     expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
@@ -170,19 +181,128 @@ describe('TaskExecutor trust requirements', () => {
   });
 });
 
+describe('TaskExecutor prepared units', () => {
+  it('saves empty chapters directly without submitting pipeline work', async () => {
+    const task = createTask('local');
+    task.prepareUnit.mockResolvedValue({
+      lines: [],
+      glossary: {},
+      save: task.save,
+    });
+    const tracker = createTracker(task);
+    const segmentTracker = new ChapterSegmentState('1');
+    const work = await new TaskExecutor(task).prepareUnit(
+      tracker.state.chapters[0],
+      { ...tracker, segmentTracker },
+      new AbortController().signal,
+    );
+    expect(work).toBeUndefined();
+    expect(task.save).toHaveBeenCalledWith([]);
+    expect(segmentTracker.ready).toBe(true);
+    expect(segmentTracker.segments).toEqual([]);
+    expect(tracker.state.progress.finished).toBe(1);
+  });
+
+  it('passes task-provided history through without rebuilding it', async () => {
+    const task = createTask('local');
+    const history = {
+      lines: ['原文'],
+      translatedLines: ['旧译文'],
+      glossary: {},
+    };
+    task.prepareUnit.mockResolvedValue({
+      lines: ['原文'],
+      glossary: {},
+      history,
+      save: task.save,
+    });
+    const tracker = createTracker(task);
+    const work = await new TaskExecutor(task).prepareUnit(
+      tracker.state.chapters[0],
+      tracker,
+      new AbortController().signal,
+    );
+    expect(work?.history).toBe(history);
+  });
+});
+
 describe('TaskExecutor preparation boundaries', () => {
+  it('keeps colliding UI keys independent and dispatches only clean identities', async () => {
+    const task = createMetadataTask();
+    task.chapters[0].chapterId = '\u0000metadata';
+    const tracker = createTracker(task);
+    expect(tracker.state.metadataUnit!.chapterId).not.toBe('\u0000metadata');
+    const executor = new TaskExecutor(task);
+    const signal = new AbortController().signal;
+    const chapterWork = await executor.prepareUnit(
+      tracker.state.chapters[0],
+      tracker,
+      signal,
+    );
+    const metadataWork = await executor.prepareUnit(
+      tracker.state.metadataUnit!,
+      tracker,
+      signal,
+    );
+    expect(task.prepareUnit.mock.calls.map(([unit]) => unit)).toEqual([
+      { kind: 'chapter', chapterId: '\u0000metadata' },
+      { kind: 'metadata' },
+    ]);
+    await chapterWork!.onComplete({ lines: ['章节译文'], failed: [] });
+    expect(tracker.state.metadataUnit?.status).toBe('translating');
+    expect(tracker.state.progress).toEqual({ finished: 1, error: 0, total: 1 });
+    await metadataWork!.onComplete({ lines: ['元数据译文'], failed: [] });
+    expect(tracker.state.metadataUnit?.status).toBe('done');
+    expect(tracker.state.progress).toEqual({ finished: 1, error: 0, total: 1 });
+  });
+
+  it('rejects an already-aborted execution before preparing input', async () => {
+    const task = createTask('local');
+    const tracker = createTracker(task);
+    const controller = new AbortController();
+    controller.abort();
+    const work = await new TaskExecutor(task).prepareUnit(
+      tracker.state.chapters[0],
+      tracker,
+      controller.signal,
+    );
+    expect(work).toBeUndefined();
+    expect(task.prepareUnit).not.toHaveBeenCalled();
+    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'pending');
+  });
+
+  it('uses the same required signal to prevent saving after cancellation', async () => {
+    const task = createTask('local');
+    const controller = new AbortController();
+    const tracker = createTracker(task);
+    const work = await new TaskExecutor(task).prepareUnit(
+      tracker.state.chapters[0],
+      tracker,
+      controller.signal,
+    );
+    controller.abort();
+    await expect(
+      work!.onComplete({ lines: ['译文'], failed: [] }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(task.save).not.toHaveBeenCalled();
+  });
+
   it.each(['chapter', 'metadata'] as const)(
     'rejects a missing %s unit before fetching',
     async (kind) => {
-      const task = createMetadataTask();
+      const source = createMetadataTask();
+      const task = {
+        ...source,
+        metadataUnit: kind === 'metadata' ? undefined : source.metadataUnit,
+      };
       const tracker = createTracker(task);
       const work = await new TaskExecutor(task).prepareUnit(
-        { ...task.chapters[0], kind, chapterId: 'missing' },
+        { ...tracker.state.chapters[0], kind, chapterId: 'missing' },
         tracker,
+        new AbortController().signal,
       );
       expect(work).toBeUndefined();
-      expect(task.fetchChapter).not.toHaveBeenCalled();
-      expect(task.prepareMetadata).not.toHaveBeenCalled();
+      expect(task.prepareUnit).not.toHaveBeenCalled();
       expect(tracker.onChapterStatus).toHaveBeenLastCalledWith(
         'missing',
         'error',
@@ -192,9 +312,76 @@ describe('TaskExecutor preparation boundaries', () => {
 });
 
 describe('TaskState ownership', () => {
+  it.each([
+    ['normal', [false]],
+    ['expire', [false, true, false]],
+    ['all', [false, false, false]],
+    ['sync', [false, false, false]],
+  ] as const)(
+    'maps %s chapter definitions to initial UI states',
+    (level, expected) => {
+      const items = [
+        { chapterId: 'new', done: false, expired: false },
+        { chapterId: 'current', done: true, expired: false },
+        { chapterId: 'expired', done: true, expired: true },
+      ];
+      const chapters = buildChapterList(
+        items,
+        3,
+        level,
+        (item) => item.done,
+        (item) => item.expired,
+        (item) => ({ chapterId: item.chapterId, title: item.chapterId }),
+      );
+      expect(chapters.map((chapter) => chapter.completed)).toEqual(expected);
+      expect(chapters.map((chapter) => chapter.order)).toEqual(
+        level === 'normal' ? [3] : [3, 4, 5],
+      );
+      expect(chapters.every((chapter) => chapter.kind === 'chapter')).toBe(
+        true,
+      );
+      const state = new TaskState();
+      state.initialize(chapters);
+      expect(state.chapters.map((chapter) => chapter.status)).toEqual(
+        expected.map((completed) => (completed ? 'done' : 'pending')),
+      );
+    },
+  );
+
+  it('owns UI objects without mutating task definitions or another state', () => {
+    const task = createMetadataTask();
+    task.chapters[0].completed = true;
+    Object.freeze(task.chapters[0]);
+    Object.freeze(task.metadataUnit);
+    const first = createTracker(task).state;
+    const second = createTracker(task).state;
+    expect(first.chapters[0]).not.toBe(task.chapters[0]);
+    expect(first.metadataUnit).not.toBe(task.metadataUnit);
+    expect(first.chapters[0].status).toBe('done');
+    first.updateStatus('1', 'error');
+    first.updateStatus(first.metadataUnit!.chapterId, 'done');
+    expect(second.chapters[0].status).toBe('done');
+    expect(second.metadataUnit?.status).toBe('pending');
+    expect(task.chapters[0]).toEqual({
+      kind: 'chapter',
+      chapterId: '1',
+      title: 'Chapter',
+      order: 0,
+      completed: true,
+    });
+    expect(task.metadataUnit).toEqual({ kind: 'metadata', title: '小说信息' });
+  });
+
   it('shows falsy segment errors and hides stale errors once retried', () => {
     const state = new ChapterSegmentState('1');
-    state.injectDoneTranslation(['原文'], ['译文']);
+    state.segments = [
+      {
+        status: 'done',
+        lines: ['原文'],
+        translatedLines: ['译文'],
+        error: null,
+      },
+    ];
     for (const error of [0, false, '', null, undefined, { message: '失败' }]) {
       state.onSegError(0, error);
       expect(state.getSegmentError(0)).toBe(
@@ -210,13 +397,16 @@ describe('TaskState ownership', () => {
 
   it('initializes chapters and metadata together and resets stale segment state', () => {
     const task = createMetadataTask();
-    const state = new TaskState('test');
+    const state = new TaskState();
     expect(state.initialized).toBe(false);
     state.initialize(task.chapters, task.metadataUnit);
     expect(state.initialized).toBe(true);
-    expect(state.units).toEqual([task.metadataUnit, ...task.chapters]);
-    state.getChapterState(task.metadataUnit.chapterId);
-    state.updateStatus(task.metadataUnit.chapterId, 'error');
+    expect(state.units.map((unit) => unit.kind)).toEqual([
+      'metadata',
+      'chapter',
+    ]);
+    state.getChapterState(state.metadataUnit!.chapterId);
+    state.updateStatus(state.metadataUnit!.chapterId, 'error');
     expect(state.progress).toEqual({ finished: 0, error: 0, total: 1 });
     state.updateStatus('1', 'error');
     expect(state.progress).toEqual({ finished: 0, error: 1, total: 1 });
@@ -229,30 +419,39 @@ describe('TaskState ownership', () => {
   it('requires initialized tasks and only reports status through the tracker', async () => {
     const task = createTask('local');
     task.initialized = false;
-    const tracker = { onChapterStatus: vi.fn(), onLog: vi.fn() };
+    const tracker = {
+      ...createTracker(task),
+      onChapterStatus: vi.fn(),
+      onLog: vi.fn(),
+    };
     const work = await new TaskExecutor(task).prepareUnit(
-      task.chapters[0],
+      tracker.state.chapters[0],
       tracker,
+      new AbortController().signal,
     );
     expect(work).toBeUndefined();
     expect(task.initialize).not.toHaveBeenCalled();
-    expect(task.fetchChapter).not.toHaveBeenCalled();
+    expect(task.prepareUnit).not.toHaveBeenCalled();
     expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'error');
-    expect(task.chapters[0].status).toBe('pending');
+    expect(task.chapters[0]).not.toHaveProperty('status');
+    expect(task.chapters[0].completed).toBe(false);
 
     task.initialized = true;
     const prepared = await new TaskExecutor(task).prepareUnit(
-      task.chapters[0],
+      tracker.state.chapters[0],
       tracker,
+      new AbortController().signal,
     );
     expect(tracker.onChapterStatus).toHaveBeenLastCalledWith(
       '1',
       'translating',
     );
-    expect(task.chapters[0].status).toBe('pending');
+    expect(task.chapters[0]).not.toHaveProperty('status');
+    expect(task.chapters[0].completed).toBe(false);
     await prepared!.onComplete({ lines: ['译文'], failed: [] });
     expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
-    expect(task.chapters[0].status).toBe('pending');
+    expect(task.chapters[0]).not.toHaveProperty('status');
+    expect(task.chapters[0].completed).toBe(false);
     expect(task.initialize).not.toHaveBeenCalled();
   });
 });

@@ -1,16 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LocalTranslationTask } from '../src/domain/translator/TranslationTask/LocalTranslationTask';
+import { WenkuTranslationTask } from '../src/domain/translator/TranslationTask/WenkuTranslationTask';
 import { WebTranslationTask } from '../src/domain/translator/TranslationTask/WebTranslationTask';
 
 const mocks = vi.hoisted(() => ({
   createApi: vi.fn(),
   getTranslateTask: vi.fn(),
+  getChapterTranslateTask: vi.fn(),
+  updateChapterTranslation: vi.fn(),
   updateMetadata: vi.fn(),
   getNovel: vi.fn(),
   updateWebNovel: vi.fn(),
   store: {
     updateTranslation: vi.fn(),
+    getVolume: vi.fn(),
+    getChapter: vi.fn(),
   },
 }));
 
@@ -21,9 +26,18 @@ vi.mock('@/api', () => ({
       mocks.createApi(...args);
       return {
         getTranslateTask: mocks.getTranslateTask,
+        getChapterTranslateTask: mocks.getChapterTranslateTask,
+        updateChapterTranslation: mocks.updateChapterTranslation,
         updateMetadataTranslation: mocks.updateMetadata,
       };
     },
+  },
+  WenkuNovelApi: {
+    createTranslationApi: () => ({
+      getTranslateTask: mocks.getTranslateTask,
+      getChapterTranslateTask: mocks.getChapterTranslateTask,
+      updateChapterTranslation: mocks.updateChapterTranslation,
+    }),
   },
   formatError: vi.fn(),
 }));
@@ -97,11 +111,11 @@ describe('web task initialization', () => {
     expect(mocks.updateWebNovel).toHaveBeenCalledOnce();
     expect(mocks.getTranslateTask).toHaveBeenCalledOnce();
     expect(task.initialized).toBe(true);
-    expect(task.metadataUnit).toMatchObject({
+    expect(task.metadataUnit).toEqual({
       kind: 'metadata',
-      status: 'pending',
+      title: '小说信息',
     });
-    const prepared = await task.prepareMetadata(execution);
+    const prepared = await task.prepareUnit({ kind: 'metadata' }, execution);
     expect(prepared.lines).toEqual(['新标题']);
   });
 
@@ -163,11 +177,11 @@ describe('web metadata units', () => {
       forceMetadata: true,
     });
     await forced.initialize(context());
-    expect(forced.metadataUnit).toMatchObject({
+    expect(forced.metadataUnit).toEqual({
       kind: 'metadata',
-      status: 'pending',
+      title: '小说信息',
     });
-    const prepared = await forced.prepareMetadata(context());
+    const prepared = await forced.prepareUnit({ kind: 'metadata' }, context());
     expect(prepared.lines).toEqual([]);
     await prepared.save([]);
     expect(mocks.updateMetadata).toHaveBeenCalledWith({
@@ -194,7 +208,7 @@ describe('web metadata units', () => {
     await task.initialize(initialization);
     const controller = new AbortController();
     const execution = context(controller.signal);
-    const prepared = await task.prepareMetadata(execution);
+    const prepared = await task.prepareUnit({ kind: 'metadata' }, execution);
     expect(prepared.lines).toEqual(['原文标题', '一行', '二行']);
     await expect(prepared.save(['不足'])).rejects.toThrow('数量不匹配');
     expect(mocks.updateMetadata).not.toHaveBeenCalled();
@@ -244,7 +258,6 @@ describe('translation task signal boundaries', () => {
     expect(oldTask.initialized).toBe(false);
     expect(oldTask.chapters).toEqual([]);
     expect(oldTask.metadataUnit).toBeUndefined();
-    expect(oldTask.glossaryId).toBe('');
   });
 
   it('checks cancellation at the actual local DAO write boundary', async () => {
@@ -267,10 +280,16 @@ describe('translation task signal boundaries', () => {
         write();
       },
     );
-    const running = task.uploadChapter('chapter', 'glossary', ['译文'], {
-      signal: controller.signal,
-      onLog: vi.fn(),
+    mocks.store.getVolume.mockResolvedValue({
+      toc: [{ chapterId: 'chapter' }],
     });
+    mocks.store.getChapter.mockResolvedValue({ paragraphs: ['原文'] });
+    await task.initialize(context());
+    const prepared = await task.prepareUnit(
+      { kind: 'chapter', chapterId: 'chapter' },
+      context(controller.signal),
+    );
+    const running = prepared.save(['译文']);
     await ready.promise;
     controller.abort();
     const rejected = expect(running).rejects.toMatchObject({
@@ -280,4 +299,114 @@ describe('translation task signal boundaries', () => {
     await rejected;
     expect(write).not.toHaveBeenCalled();
   });
+});
+
+describe('chapter preparation', () => {
+  it.each(['normal', 'all', 'sync'] as const)(
+    'normalizes web chapter lines and selects history for %s',
+    async (level) => {
+      mocks.getTranslateTask.mockResolvedValue(snapshot);
+      mocks.getChapterTranslateTask.mockResolvedValue({
+        paragraphJp: ['一\r\n行', '二\n行'],
+        glossary: { 新: '新译' },
+        glossaryId: 'prepared-version',
+        oldParagraphZh: ['旧一', '旧二'],
+        oldGlossary: { 旧: '旧译' },
+      });
+      const task = new WebTranslationTask('provider', 'novel', 'sakura', {
+        ...params,
+        level,
+      });
+      await task.initialize(context());
+      const execution = context();
+      const prepared = await task.prepareUnit(
+        { kind: 'chapter', chapterId: task.chapters[0].chapterId },
+        execution,
+      );
+      expect(prepared.lines).toEqual(['一行', '二行']);
+      expect(prepared.history).toEqual(
+        level === 'all'
+          ? undefined
+          : {
+              lines: ['一行', '二行'],
+              translatedLines: ['旧一', '旧二'],
+              glossary: { 旧: '旧译' },
+            },
+      );
+      const translated = Object.freeze(['译一', '译二']);
+      await prepared.save(translated);
+      expect(mocks.updateChapterTranslation).toHaveBeenCalledWith('1', {
+        glossaryId: 'prepared-version',
+        paragraphsZh: ['译一', '译二'],
+      });
+      expect(
+        mocks.updateChapterTranslation.mock.calls[0][1].paragraphsZh,
+      ).not.toBe(translated);
+      expect(mocks.createApi).toHaveBeenLastCalledWith(
+        'provider',
+        'novel',
+        'sakura',
+        level === 'sync',
+        execution.signal,
+      );
+    },
+  );
+
+  it('saves local glossary data and copies readonly translations at the DAO boundary', async () => {
+    const glossary = { 原文: '译文' };
+    mocks.store.getVolume.mockResolvedValue({
+      toc: [{ chapterId: '1' }],
+      glossary,
+      glossaryId: 'prepared-version',
+    });
+    mocks.store.getChapter.mockResolvedValue({
+      paragraphs: ['原\r\n文'],
+      sakura: { paragraphs: ['旧译'], glossary: { 原文: '旧译' } },
+    });
+    const task = new LocalTranslationTask('volume', 'sakura', params);
+    await task.initialize(context());
+    const prepared = await task.prepareUnit(
+      { kind: 'chapter', chapterId: task.chapters[0].chapterId },
+      context(),
+    );
+    expect(prepared.lines).toEqual(['原文']);
+    expect(prepared.history).toEqual({
+      lines: ['原文'],
+      translatedLines: ['旧译'],
+      glossary: { 原文: '旧译' },
+    });
+    const translated = Object.freeze(['新译']);
+    await prepared.save(translated);
+    expect(mocks.store.updateTranslation).toHaveBeenCalledWith(
+      'volume',
+      '1',
+      'sakura',
+      { glossaryId: 'prepared-version', glossary, paragraphs: ['新译'] },
+      expect.any(Function),
+    );
+    expect(mocks.store.updateTranslation.mock.calls[0][3].paragraphs).not.toBe(
+      translated,
+    );
+    expect(translated).toEqual(['新译']);
+  });
+
+  it.each(['local', 'wenku'] as const)(
+    'rejects metadata for %s tasks before reading a chapter',
+    async (type) => {
+      const task =
+        type === 'local'
+          ? new LocalTranslationTask('volume', 'sakura', params)
+          : new WenkuTranslationTask('novel', 'volume', 'sakura', params);
+      await expect(
+        task.prepareUnit(
+          {
+            kind: 'metadata',
+          },
+          context(),
+        ),
+      ).rejects.toThrow();
+      expect(mocks.store.getChapter).not.toHaveBeenCalled();
+      expect(mocks.getChapterTranslateTask).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,28 +1,55 @@
-import type { ChapterMeta, ChapterStatus } from '../TaskState';
+import type { Glossary } from '@auto-novel/translator';
+import type { TranslateTaskParams } from '@/model/Translator';
+import type { PreparedUnit, TranslationChapter } from './types';
 
-export function buildChapterMetaList<T>(
+/** 正文段落保持一一对应；元数据由自己的 coder 处理，不使用此转换。 */
+export function prepareChapterInput(
+  paragraphs: readonly string[],
+  glossary: Glossary,
+  level: TranslateTaskParams['level'],
+  oldParagraphZh?: readonly string[] | null,
+  oldGlossary?: Glossary,
+): Pick<PreparedUnit, 'lines' | 'glossary' | 'history'> {
+  const lines = paragraphs.map((line) => line.replace(/[\r\n]/g, ''));
+  return {
+    lines,
+    glossary,
+    history:
+      level !== 'all' && oldParagraphZh
+        ? {
+            lines,
+            translatedLines: oldParagraphZh,
+            glossary: oldGlossary ?? {},
+          }
+        : undefined,
+  };
+}
+
+export function buildChapterList<T>(
   items: T[],
   startIndex: number,
-  level: 'normal' | 'expire' | 'all' | 'sync',
+  level: TranslateTaskParams['level'],
   isDone: (item: T) => boolean,
   isExpired: (item: T) => boolean,
-  toMeta: (item: T, order: number) => { chapterId: string; title: string },
-): ChapterMeta[] {
-  const chapters: ChapterMeta[] = [];
+  toMeta: (item: T) => { chapterId: string; title: string },
+): TranslationChapter[] {
+  const chapters: TranslationChapter[] = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const order = startIndex + i;
     const done = isDone(item);
     if (level === 'normal' && done) continue;
-    const status: ChapterStatus =
-      level === 'all' || level === 'sync'
-        ? 'pending'
-        : level === 'expire' && done && isExpired(item)
-          ? 'pending'
-          : done
-            ? 'done'
-            : 'pending';
-    chapters.push({ ...toMeta(item, order), order, status });
+    const completed =
+      level !== 'all' &&
+      level !== 'sync' &&
+      done &&
+      !(level === 'expire' && isExpired(item));
+    chapters.push({
+      ...toMeta(item),
+      kind: 'chapter',
+      order,
+      completed,
+    });
   }
   return chapters;
 }

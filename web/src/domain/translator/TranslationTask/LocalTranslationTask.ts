@@ -1,23 +1,23 @@
 import type { Glossary } from '@auto-novel/translator';
-import type { ChapterMeta } from '../TaskState';
 import type { TranslateTaskParams, TranslatorId } from '@/model/Translator';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
 import type {
-  ChapterDetail,
+  PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
+  TranslationChapter,
+  TranslationUnitRef,
 } from './types';
 import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
 import { useLocalVolumeStore } from '@/stores';
-import { buildChapterMetaList } from './utils';
+import { buildChapterList, prepareChapterInput } from './utils';
 
 export class LocalTranslationTask implements TranslationTask {
   readonly type = 'local' as const;
-  readonly description: string;
-  readonly level: 'normal' | 'expire' | 'all' | 'sync';
-  chapters: ChapterMeta[] = [];
-  glossary: Glossary = {};
-  glossaryId = '';
+  private readonly level: TranslateTaskParams['level'];
+  chapters: readonly TranslationChapter[] = [];
+  private glossary: Glossary = {};
+  private glossaryId = '';
   initialized = false;
   private volumeStore!: LocalVolumeStore;
   private storeLoaded = false;
@@ -27,7 +27,6 @@ export class LocalTranslationTask implements TranslationTask {
     private translatorId: TranslatorId,
     private params: TranslateTaskParams,
   ) {
-    this.description = `local/${volumeId}`;
     this.level = params.level;
   }
 
@@ -56,15 +55,12 @@ export class LocalTranslationTask implements TranslationTask {
     const isExpired = (item: LocalVolumeMetadata['toc'][number]) =>
       item[this.translatorId] !== undefined &&
       item[this.translatorId] !== metadata.glossaryId;
-    const toMeta = (
-      item: LocalVolumeMetadata['toc'][number],
-      _order: number,
-    ) => ({
+    const toMeta = (item: LocalVolumeMetadata['toc'][number]) => ({
       chapterId: item.chapterId,
       title: item.chapterId,
     });
 
-    this.chapters = buildChapterMetaList(
+    this.chapters = buildChapterList(
       metadata.toc.slice(startIndex, endIndex),
       startIndex,
       level,
@@ -75,48 +71,40 @@ export class LocalTranslationTask implements TranslationTask {
     this.initialized = true;
   }
 
-  async fetchChapter(
-    chapterId: string,
-    context?: TaskExecutionContext,
-  ): Promise<ChapterDetail> {
-    context?.signal.throwIfAborted();
+  async prepareUnit(
+    unit: TranslationUnitRef,
+    context: TaskExecutionContext,
+  ): Promise<PreparedUnit> {
+    context.signal.throwIfAborted();
+    if (unit.kind === 'metadata') throw new Error('本地任务不支持元数据单元');
+    const chapterId = unit.chapterId;
     await this._ensureStore();
-    context?.signal.throwIfAborted();
+    context.signal.throwIfAborted();
     const chapter = await this.volumeStore.getChapter(this.volumeId, chapterId);
-    context?.signal.throwIfAborted();
+    context.signal.throwIfAborted();
     if (!chapter) throw new Error('章节不存在');
     const oldTranslation = chapter[this.translatorId];
+    const glossary = this.glossary;
+    const glossaryId = this.glossaryId;
     return {
-      paragraphs: chapter.paragraphs,
-      glossary: this.glossary,
-      glossaryId: this.glossaryId,
-      oldParagraphZh: oldTranslation?.paragraphs ?? null,
-      oldGlossary: oldTranslation?.glossary,
-    };
-  }
-
-  async uploadChapter(
-    chapterId: string,
-    glossaryId: string,
-    translatedParagraphs: string[],
-    context?: TaskExecutionContext,
-  ): Promise<void> {
-    const checkExecution = () => {
-      context?.signal.throwIfAborted();
-    };
-    checkExecution();
-    await this._ensureStore();
-    checkExecution();
-    await this.volumeStore.updateTranslation(
-      this.volumeId,
-      chapterId,
-      this.translatorId,
-      {
-        glossaryId,
-        glossary: this.glossary,
-        paragraphs: translatedParagraphs,
+      ...prepareChapterInput(
+        chapter.paragraphs,
+        glossary,
+        this.level,
+        oldTranslation?.paragraphs,
+        oldTranslation?.glossary,
+      ),
+      save: async (translated) => {
+        const checkExecution = () => context.signal.throwIfAborted();
+        checkExecution();
+        await this.volumeStore.updateTranslation(
+          this.volumeId,
+          chapterId,
+          this.translatorId,
+          { glossaryId, glossary, paragraphs: [...translated] },
+          checkExecution,
+        );
       },
-      checkExecution,
-    );
+    };
   }
 }

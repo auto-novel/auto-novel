@@ -1,29 +1,26 @@
-import type { Glossary } from '@auto-novel/translator';
-import type { ChapterMeta } from '../TaskState';
 import type {
   TranslateTaskParams,
   WebTranslateTask,
   TranslatorId,
 } from '@/model/Translator';
 import type {
-  ChapterDetail,
-  PreparedMetadata,
+  PreparedUnit,
   TaskExecutionContext,
   TranslationTask,
+  TranslationChapter,
+  TranslationMetadata,
+  TranslationUnitRef,
 } from './types';
 import { WebNovelApi, formatError } from '@/api';
 import { CrawlerService } from '@/domain/crawler';
 import { createWebMetadataCoder } from '../WebMetadataCoder';
-import { buildChapterMetaList } from './utils';
+import { buildChapterList, prepareChapterInput } from './utils';
 
 export class WebTranslationTask implements TranslationTask {
   readonly type = 'web' as const;
-  readonly description: string;
-  readonly level: 'normal' | 'expire' | 'all' | 'sync';
-  chapters: ChapterMeta[] = [];
-  metadataUnit?: ChapterMeta;
-  glossary: Glossary = {};
-  glossaryId = '';
+  private readonly level: TranslateTaskParams['level'];
+  chapters: readonly TranslationChapter[] = [];
+  metadataUnit?: TranslationMetadata;
   initialized = false;
 
   private params: TranslateTaskParams;
@@ -35,7 +32,6 @@ export class WebTranslationTask implements TranslationTask {
     private translatorId: TranslatorId,
     params: TranslateTaskParams,
   ) {
-    this.description = `web/${providerId}/${novelId}`;
     this.level = params.level;
     this.params = params;
   }
@@ -53,8 +49,6 @@ export class WebTranslationTask implements TranslationTask {
     const task = await api.getTranslateTask();
     signal.throwIfAborted();
     this.task = task;
-    this.glossary = task.glossary;
-    this.glossaryId = task.glossaryUuid;
 
     const { startIndex, endIndex, level } = this.params;
 
@@ -67,12 +61,12 @@ export class WebTranslationTask implements TranslationTask {
     const isExpired = (item: WebTranslateTask['toc'][number]) =>
       item.glossaryUuid !== undefined &&
       item.glossaryUuid !== task.glossaryUuid;
-    const toMeta = (item: WebTranslateTask['toc'][number], _order: number) => ({
+    const toMeta = (item: WebTranslateTask['toc'][number]) => ({
       chapterId: item.chapterId!,
       title: item.titleJp,
     });
 
-    this.chapters = buildChapterMetaList(
+    this.chapters = buildChapterList(
       validToc,
       startIndex,
       level,
@@ -84,12 +78,8 @@ export class WebTranslationTask implements TranslationTask {
       this.translatorId !== 'gpt' &&
       createWebMetadataCoder(task, this.params.forceMetadata).needUpload
         ? {
-            // NUL 不会出现在合法远程章节 ID 中；分派仍只检查 kind。
-            chapterId: '\u0000metadata',
             kind: 'metadata',
             title: '小说信息',
-            order: -1,
-            status: 'pending',
           }
         : undefined;
     this.initialized = true;
@@ -121,9 +111,9 @@ export class WebTranslationTask implements TranslationTask {
   }
 
   /** 编码与保存闭包绑定同一任务快照，上传使用本轮执行的取消信号。 */
-  async prepareMetadata(
+  private async prepareMetadata(
     context: TaskExecutionContext,
-  ): Promise<PreparedMetadata> {
+  ): Promise<PreparedUnit> {
     context.signal.throwIfAborted();
     if (!this.metadataUnit || !this.task) throw new Error('没有待翻译的元数据');
     const coder = createWebMetadataCoder(this.task, this.params.forceMetadata);
@@ -140,13 +130,15 @@ export class WebTranslationTask implements TranslationTask {
     };
   }
 
-  async fetchChapter(
-    chapterId: string,
-    context?: TaskExecutionContext,
-  ): Promise<ChapterDetail> {
-    context?.signal.throwIfAborted();
+  async prepareUnit(
+    unit: TranslationUnitRef,
+    context: TaskExecutionContext,
+  ): Promise<PreparedUnit> {
+    context.signal.throwIfAborted();
+    if (unit.kind === 'metadata') return this.prepareMetadata(context);
+    const chapterId = unit.chapterId;
     let syncFromProvider = this.level === 'sync';
-    if (context && this.params.useBrowserCrawler) {
+    if (this.params.useBrowserCrawler) {
       try {
         context.onLog('通过浏览器爬虫更新章节');
         const action = await CrawlerService.updateWebNovelChapter(
@@ -159,42 +151,38 @@ export class WebTranslationTask implements TranslationTask {
         context.onLog(action === 'created' ? '章节已创建' : '章节已更新');
         syncFromProvider = false;
       } catch (error) {
-        context?.signal.throwIfAborted();
+        context.signal.throwIfAborted();
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;
         context.onLog(`章节更新跳过：${await formatError(error)}`);
       }
     }
-    context?.signal.throwIfAborted();
-    const api = this.createApi(context?.signal);
+    context.signal.throwIfAborted();
+    const api = this.createApi(context.signal);
     const chapterTask = await api.getChapterTranslateTask(chapterId, {
       syncFromProvider,
     });
-    context?.signal.throwIfAborted();
+    context.signal.throwIfAborted();
+    const glossaryId = chapterTask.glossaryId;
     return {
-      paragraphs: chapterTask.paragraphJp,
-      glossary: chapterTask.glossary,
-      glossaryId: chapterTask.glossaryId,
-      oldParagraphZh: chapterTask.oldParagraphZh ?? null,
-      oldGlossary: chapterTask.oldGlossary,
+      ...prepareChapterInput(
+        chapterTask.paragraphJp,
+        chapterTask.glossary,
+        this.level,
+        chapterTask.oldParagraphZh,
+        chapterTask.oldGlossary,
+      ),
+      save: async (translated) => {
+        context.signal.throwIfAborted();
+        await api.updateChapterTranslation(chapterId, {
+          glossaryId,
+          paragraphsZh: [...translated],
+        });
+      },
     };
   }
 
-  async uploadChapter(
-    chapterId: string,
-    glossaryId: string,
-    translatedParagraphs: string[],
-    context?: TaskExecutionContext,
-  ): Promise<void> {
-    context?.signal.throwIfAborted();
-    const api = this.createApi(context?.signal);
-    await api.updateChapterTranslation(chapterId, {
-      glossaryId,
-      paragraphsZh: translatedParagraphs,
-    });
-  }
-
-  private createApi(signal?: AbortSignal) {
+  private createApi(signal: AbortSignal) {
     return WebNovelApi.createTranslationApi(
       this.providerId,
       this.novelId,

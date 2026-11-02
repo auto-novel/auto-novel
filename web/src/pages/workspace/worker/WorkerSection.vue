@@ -14,7 +14,6 @@ import {
   StopOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
-import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { useWorkspaceStore } from '@/stores';
 import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
@@ -29,7 +28,7 @@ const props = defineProps<{
     { running: boolean; currentConcurrency: number }
   >;
   workerErrors: ReadonlyMap<string, number>;
-  cacheName: ConstructorParameters<typeof IndexedDbSegmentCache>[0];
+  clearTranslationCache: () => Promise<void>;
 }>();
 
 const emit = defineEmits<{
@@ -58,7 +57,7 @@ const clearCache = async () => {
   clearingCache.value = true;
   try {
     const success = await Toast.promise(
-      new IndexedDbSegmentCache(props.cacheName).clear().then(() => true),
+      props.clearTranslationCache().then(() => true),
       {
         success: '缓存清除成功',
         error: '缓存清除失败',
