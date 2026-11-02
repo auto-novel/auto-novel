@@ -1,7 +1,7 @@
 import type { AmazonNovel, WenkuVolumeDto } from '@/model/WenkuNovel';
 import { AmazonCrawlerApi } from '@/external';
 import { parallelExec } from '@/util';
-import { Translator } from '../translate';
+import { translateLines } from '@/domain/translator';
 
 type Logger = (message: string) => void;
 
@@ -243,11 +243,12 @@ export const smartImport = async (
     novel.volumes = volumes;
 
     try {
-      const translator = await Translator.create({ id: 'youdao' });
-      const titleZh = await translator.translatePlain(novel.title);
-      const introductionZh = await translator.translatePlain(
-        novel.introduction,
-      );
+      const titleZh = (
+        await translateLines(novel.title.split('\n'), { id: 'youdao' })
+      ).join('\n');
+      const introductionZh = (
+        await translateLines(novel.introduction.split('\n'), { id: 'youdao' })
+      ).join('\n');
       novel.titleZh = titleZh;
       novel.introduction = introductionZh;
     } catch {}
