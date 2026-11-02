@@ -1,8 +1,5 @@
 import type { Segment, SegmentTracker } from '@auto-novel/translator';
-import type {
-  TranslationChapter,
-  TranslationMetadata,
-} from './TranslationTask/types';
+import type { TranslationChapter, TranslationMetadata } from './tasks/task';
 
 export type ChapterStatus = 'pending' | 'translating' | 'done' | 'error';
 export type SegmentStatus = 'pending' | 'translating' | 'done' | 'error';

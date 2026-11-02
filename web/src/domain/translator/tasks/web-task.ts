@@ -10,11 +10,11 @@ import type {
   TranslationChapter,
   TranslationMetadata,
   TranslationUnitRef,
-} from './types';
+} from './task';
 import { WebNovelApi, formatError } from '@/api';
 import { CrawlerService } from '@/domain/crawler';
-import { createWebMetadataCoder } from '../WebMetadataCoder';
-import { buildChapterList, prepareChapterInput } from './utils';
+import { createWebMetadataCoder } from './metadata-codec';
+import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 
 export class WebTranslationTask implements TranslationTask {
   readonly type = 'web' as const;

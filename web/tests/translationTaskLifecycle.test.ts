@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalTranslationTask } from '../src/domain/translator/TranslationTask/LocalTranslationTask';
-import { WenkuTranslationTask } from '../src/domain/translator/TranslationTask/WenkuTranslationTask';
-import { WebTranslationTask } from '../src/domain/translator/TranslationTask/WebTranslationTask';
+import { LocalTranslationTask } from '../src/domain/translator/tasks/local-task';
+import { WenkuTranslationTask } from '../src/domain/translator/tasks/wenku-task';
+import { WebTranslationTask } from '../src/domain/translator/tasks/web-task';
 
 const mocks = vi.hoisted(() => ({
   createApi: vi.fn(),

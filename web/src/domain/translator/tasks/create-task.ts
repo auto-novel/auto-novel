@@ -3,10 +3,10 @@ import type {
   TranslateTaskParams,
   TranslatorId,
 } from '@/model/Translator';
-import type { TranslationTask } from './types';
-import { LocalTranslationTask } from './LocalTranslationTask';
-import { WebTranslationTask } from './WebTranslationTask';
-import { WenkuTranslationTask } from './WenkuTranslationTask';
+import type { TranslationTask } from './task';
+import { LocalTranslationTask } from './local-task';
+import { WebTranslationTask } from './web-task';
+import { WenkuTranslationTask } from './wenku-task';
 
 export function createTranslationTask(
   desc: TranslateTaskDesc,

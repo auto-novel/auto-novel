@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { XDialog } from '@novelia/web-kit';
 
-import type { ChapterSegmentState } from '@/domain/translator/TaskState';
+import type { ChapterSegmentState } from '@/domain/translator';
 
 const props = defineProps<{
   show: boolean;

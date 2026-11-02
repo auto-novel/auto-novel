@@ -9,9 +9,9 @@ import type {
   TranslationTask,
   TranslationChapter,
   TranslationUnitRef,
-} from './types';
+} from './task';
 import { WenkuNovelApi } from '@/api';
-import { buildChapterList, prepareChapterInput } from './utils';
+import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 
 export class WenkuTranslationTask implements TranslationTask {
   readonly type = 'wenku' as const;

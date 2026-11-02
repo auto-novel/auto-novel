@@ -5,7 +5,7 @@ import type { EffectScope } from 'vue';
 import type {
   PreparedUnit,
   TranslationTask,
-} from '../src/domain/translator/TranslationTask/types';
+} from '../src/domain/translator/tasks/task';
 import type { TranslationWork } from '@auto-novel/translator';
 import { useWorkspaceRuntime } from '../src/pages/workspace/useWorkspaceRuntime';
 
@@ -26,7 +26,7 @@ vi.mock('vue', async (importOriginal) => {
 
 vi.mock('@/stores', () => ({ useWorkspaceStore: () => mocks.store }));
 vi.mock('@novelia/web-kit', () => ({ Toast: { error: vi.fn() } }));
-vi.mock('@/domain/translator/IndexedDbSegmentCache', () => ({
+vi.mock('@/domain/translator/segment-cache', () => ({
   IndexedDbSegmentCache: class {
     constructor(readonly storeName: string) {}
     clear() {
@@ -34,7 +34,7 @@ vi.mock('@/domain/translator/IndexedDbSegmentCache', () => ({
     }
   },
 }));
-vi.mock('@/domain/translator/TranslationTask/createTranslationTask', () => ({
+vi.mock('@/domain/translator/tasks/create-task', () => ({
   createTranslationTask: (desc: string) => mocks.tasks.get(desc),
 }));
 vi.mock('@/model/Translator', () => ({

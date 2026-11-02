@@ -11,7 +11,7 @@ import {
   MoreVertOutlined,
   RefreshOutlined,
 } from '@vicons/material';
-import type { TaskState } from '@/domain/translator/TaskState';
+import type { TaskState } from '@/domain/translator';
 import type { TranslateJob } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import TaskCard from './TaskCard.vue';

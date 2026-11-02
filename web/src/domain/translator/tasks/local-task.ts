@@ -7,10 +7,10 @@ import type {
   TranslationTask,
   TranslationChapter,
   TranslationUnitRef,
-} from './types';
+} from './task';
 import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
 import { useLocalVolumeStore } from '@/stores';
-import { buildChapterList, prepareChapterInput } from './utils';
+import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 
 export class LocalTranslationTask implements TranslationTask {
   readonly type = 'local' as const;

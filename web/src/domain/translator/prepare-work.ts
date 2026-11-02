@@ -3,11 +3,8 @@ import type {
   ChapterMeta,
   ChapterStatus,
   ChapterSegmentState,
-} from './TaskState';
-import type {
-  TranslationTask,
-  TranslationUnitRef,
-} from './TranslationTask/types';
+} from './task-state';
+import type { TranslationTask, TranslationUnitRef } from './tasks/task';
 
 export type ChapterTracker = {
   onChapterStatus: (chapterId: string, status: ChapterStatus) => void;

@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { TaskExecutor } from '../src/domain/translator/TaskExecutor';
-import { buildChapterList } from '../src/domain/translator/TranslationTask/utils';
+import { TaskExecutor } from '../src/domain/translator/prepare-work';
+import { buildChapterList } from '../src/domain/translator/tasks/chapter-preparation';
 import type {
   TranslationTask,
   TranslationMetadata,
-} from '../src/domain/translator/TranslationTask/types';
+} from '../src/domain/translator/tasks/task';
 import {
   ChapterSegmentState,
   TaskState,
   type ChapterStatus,
-} from '../src/domain/translator/TaskState';
+} from '../src/domain/translator/task-state';
 
 function createTask(type: TranslationTask['type']) {
   const save = vi.fn().mockResolvedValue(undefined);

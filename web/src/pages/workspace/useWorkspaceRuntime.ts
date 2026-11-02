@@ -4,14 +4,15 @@ import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
 import type { TranslationWork } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
-import { TaskExecutor } from '@/domain/translator/TaskExecutor';
-import { TaskLifecycle } from '@/domain/translator/TaskLifecycle';
+import {
+  TaskExecutor,
+  TaskLifecycle,
+  IndexedDbSegmentCache,
+  createTranslationTask,
+  TaskState,
+} from '@/domain/translator';
+import type { TranslationTask, ChapterStatus } from '@/domain/translator';
 import { toTranslatorConfig } from '@/model/Translator';
-import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
-import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type { TranslationTask } from '@/domain/translator/TranslationTask/types';
-import { TaskState } from '@/domain/translator/TaskState';
-import type { ChapterStatus } from '@/domain/translator/TaskState';
 import type {
   TranslateJob,
   TranslateJobRecord,

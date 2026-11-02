@@ -11,10 +11,7 @@ import {
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
-import type {
-  ChapterSegmentState,
-  TaskState,
-} from '@/domain/translator/TaskState';
+import type { ChapterSegmentState, TaskState } from '@/domain/translator';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 
 const props = defineProps<{

@@ -4,7 +4,7 @@ import type {
   ChapterSegmentState,
   ChapterStatus,
   TaskState,
-} from '@/domain/translator/TaskState';
+} from '@/domain/translator';
 
 const props = defineProps<{
   taskState?: TaskState;
