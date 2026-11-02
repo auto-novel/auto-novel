@@ -1,8 +1,10 @@
+import { TranslationPipeline } from '@auto-novel/translator';
 import {
-  createTranslator,
-  TranslationPipeline,
-  type SakuraTranslatorConfig,
-} from '@auto-novel/translator';
+  createSingleTaskTranslator,
+  type SingleTaskTranslatorConfig,
+} from './translate-lines';
+
+export type { SingleTaskTranslatorConfig } from './translate-lines';
 
 import type {
   TranslateTaskDesc,
@@ -13,11 +15,6 @@ import { IndexedDbSegmentCache } from './segment-cache';
 import { TaskState } from './task-state';
 import { createTranslationTask } from './tasks/create-task';
 import type { ChapterSaveResult } from './tasks/task';
-
-/** 保持独立入口的配置形状，与旧工作区调用兼容。 */
-export type SingleTaskTranslatorConfig =
-  | { id: 'youdao' }
-  | ({ id: 'sakura'; segLength?: number } & SakuraTranslatorConfig);
 
 interface TaskCallbacks {
   onProgressUpdated: (progress: {
@@ -42,12 +39,7 @@ export async function runTranslationTask(
     signal.throwIfAborted();
     const segmentLength =
       config.id === 'sakura' ? config.segLength ?? 500 : 3500;
-    // 有道沿用插件客户端；按需加载，避免其他入口提前初始化浏览器依赖。
-    const translator = await (config.id === 'youdao'
-      ? (await import('@/external/translator')).createYoudaoTranslator(
-          callbacks.log,
-        )
-      : createTranslator({ ...config, kind: 'sakura', log: callbacks.log }));
+    const translator = await createSingleTaskTranslator(config, callbacks.log);
     signal.throwIfAborted();
     if (desc.type !== 'local') {
       if (
