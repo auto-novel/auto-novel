@@ -1,4 +1,4 @@
-import { YoudaoTranslator as PackageYoudaoTranslator } from '@auto-novel/translator';
+import type { Translator } from '@auto-novel/translator';
 import type { Logger, SegmentContext, SegmentTranslator } from './Common';
 import { createLengthSegmentor } from './Common';
 import { createYoudaoTranslator } from '@/external';
@@ -7,21 +7,22 @@ export class YoudaoTranslator implements SegmentTranslator {
   id = <const>'youdao';
   log: Logger;
   segmentor = createLengthSegmentor(3500);
-  private translator: PackageYoudaoTranslator;
+  private translator: Translator;
 
-  constructor(log: Logger, translator: PackageYoudaoTranslator) {
+  constructor(log: Logger, translator: Translator) {
     this.log = log;
     this.translator = translator;
   }
 
-  translate(seg: string[], { glossary, signal }: SegmentContext) {
+  async translate(seg: string[], { glossary, signal }: SegmentContext) {
     // 术语保护、特殊行与行校验都由翻译包与流水线负责。
-    return this.translator.translate({
+    const lines = await this.translator.translate({
       lines: seg,
       context: { glossary },
       signal,
       attempt: 0,
     });
+    return [...lines];
   }
 }
 

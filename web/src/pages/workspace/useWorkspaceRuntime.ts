@@ -1,29 +1,27 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue';
 import { Toast } from '@novelia/web-kit';
-import { TranslationPipeline } from '@auto-novel/translator';
+import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
 import type { TranslationWork } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
-import {
-  createPipelineTranslator,
-  probeTranslator,
-} from '@/domain/translator/createPipelineTranslator';
+import { toTranslatorConfig } from '@/model/Translator';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
+import type { TranslationTask } from '@/domain/translator/TranslationTask/types';
 import { TaskState } from '@/domain/translator/TaskState';
 import type { ChapterStatus } from '@/domain/translator/TaskState';
-import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
+import type {
+  TranslateJob,
+  TranslateJobRecord,
+  WorkspaceTranslatorId,
+} from '@/model/Translator';
 import { TranslateTaskDescriptor } from '@/model/Translator';
 
 import { useWorkspaceLog } from './useWorkspaceLog';
 
 /** 每个工作区页面持有独立的执行状态，并在页面卸载时停止执行。 */
-export function useWorkspaceRuntime(translatorId: TranslatorId) {
+export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   const isSakura = translatorId === 'sakura';
   const segCacheName: ConstructorParameters<typeof IndexedDbSegmentCache>[0] =
     isSakura ? 'sakura-seg-cache' : 'gpt-seg-cache';
@@ -489,11 +487,14 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       const secrets = 'key' in w ? [w.key] : [];
       const log = (msg: string) => appendLog(w.id, msg, 'info', secrets);
       log('正在启动翻译器');
-      const t = await createPipelineTranslator(translatorId, w, log);
+      const t = await createTranslator({
+        ...toTranslatorConfig(translatorId, w),
+        log,
+      });
 
       if (workerStates.value.get(workerId) !== state) return;
 
-      const probe = await probeTranslator(t);
+      const probe = (await t.probe?.()) ?? { approved: true };
       if (workerStates.value.get(workerId) !== state) return;
       state.allowUpload = probe.approved;
 

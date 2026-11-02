@@ -48,5 +48,3 @@ export interface TranslationTask {
     context?: TaskExecutionContext,
   ): Promise<void>;
 }
-
-export type TranslatorId = 'gpt' | 'sakura';

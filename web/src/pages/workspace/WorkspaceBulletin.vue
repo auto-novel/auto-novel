@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { allowModels } from '@auto-novel/translator';
 import { forumPostUrls, siteUrls } from '@/config';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import type { WorkspaceTranslatorId } from '@/model/Translator';
 
-const props = defineProps<{ translatorId: TranslatorId }>();
+const props = defineProps<{ translatorId: WorkspaceTranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
 </script>
 

@@ -13,16 +13,16 @@ import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import GptWorkerDialog from './GptWorkerDialog.vue';
 import TrialTranslationDialog from './TrialTranslationDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
-import { TranslationPipeline } from '@auto-novel/translator';
-import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
-import {
-  createPipelineTranslator,
-  probeTranslator,
-} from '@/domain/translator/createPipelineTranslator';
+import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
+import type {
+  GptPipelineWorker,
+  SakuraWorker,
+  WorkspaceTranslatorId,
+} from '@/model/Translator';
+import { toTranslatorConfig } from '@/model/Translator';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
+  translatorId: WorkspaceTranslatorId;
   worker: GptPipelineWorker | SakuraWorker;
   running: boolean;
   currentConcurrency: number;
@@ -68,14 +68,13 @@ const testWorker = async () => {
     segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
   });
   try {
-    const translator = await createPipelineTranslator(
-      props.translatorId,
-      props.worker,
-      (msg) => {
+    const translator = await createTranslator({
+      ...toTranslatorConfig(props.translatorId, props.worker),
+      log: (msg) => {
         if (msg.startsWith('思考：')) reasoningLogs.push(msg);
       },
-    );
-    const probe = await probeTranslator(translator);
+    });
+    const probe = (await translator.probe?.()) ?? { approved: true };
     if (!probe.approved) {
       Toast.warning(`翻译器未通过检查：${probe.reason ?? '未知原因'}`);
       return;

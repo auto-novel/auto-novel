@@ -16,14 +16,14 @@ import {
 import { VueDraggable } from 'vue-draggable-plus';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { useWorkspaceStore } from '@/stores';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import GptWorkerDialog from './GptWorkerDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
 import WorkerCard from './WorkerCard.vue';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
+  translatorId: WorkspaceTranslatorId;
   workerStates: ReadonlyMap<
     string,
     { running: boolean; currentConcurrency: number }

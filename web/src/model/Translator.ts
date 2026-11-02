@@ -1,7 +1,13 @@
 import type { Glossary } from './Glossary';
-import type { OpenAiProfileSelection } from '@auto-novel/translator';
+import type {
+  OpenAiProfileSelection,
+  TranslatorConfig,
+} from '@auto-novel/translator';
 
 export type TranslatorId = 'sakura' | 'youdao' | 'gpt';
+
+/** 当前工作区支持的翻译器；有道仍使用独立入口。 */
+export type WorkspaceTranslatorId = Exclude<TranslatorId, 'youdao'>;
 
 export interface GptWorker {
   id: string;
@@ -22,6 +28,24 @@ export interface SakuraWorker {
   concurrency?: number;
   segLength?: number;
   prevSegLength?: number;
+}
+
+/** 将工作区配置转换为 package 配置，不负责创建或探测翻译器。 */
+export function toTranslatorConfig(
+  translatorId: WorkspaceTranslatorId,
+  worker: GptPipelineWorker | SakuraWorker,
+): TranslatorConfig {
+  if (translatorId === 'sakura') {
+    return { kind: 'sakura', endpoint: worker.endpoint, prevSegLength: 500 };
+  }
+  const gpt = worker as GptPipelineWorker;
+  return {
+    kind: 'openai',
+    endpoint: gpt.endpoint,
+    key: gpt.key,
+    model: gpt.model,
+    profile: gpt.profile,
+  };
 }
 
 export interface TranslateJob {

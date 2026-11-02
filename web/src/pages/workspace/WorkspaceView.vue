@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { BookOutlined } from '@vicons/material';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceActionButton from './WorkspaceActionButton.vue';
 import WorkspaceLog from './WorkspaceLog.vue';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
@@ -9,7 +9,7 @@ import { useWorkspaceRuntime } from './useWorkspaceRuntime';
 import WorkspaceBulletin from './WorkspaceBulletin.vue';
 import WorkerSection from './worker/WorkerSection.vue';
 
-const props = defineProps<{ translatorId: TranslatorId }>();
+const props = defineProps<{ translatorId: WorkspaceTranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
 const showLocalVolumeDrawer = ref(false);
 const {
