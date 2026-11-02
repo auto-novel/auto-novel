@@ -18,7 +18,6 @@ const {
   jobs,
   segCacheName,
   taskStates,
-  taskCache,
   workerStates,
   workerErrors,
   startWorker,
@@ -64,10 +63,8 @@ const {
     />
 
     <TaskSection
-      :translator-id="translatorId"
       :jobs="jobs"
       :task-states="taskStates"
-      :task-cache="taskCache"
       @delete="deleteJob"
       @retry="runProcessLoop"
       @top="topJob"

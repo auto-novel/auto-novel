@@ -668,7 +668,6 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     jobs,
     segCacheName,
     taskStates,
-    taskCache,
     workerStates,
     workerErrors,
     startWorker,

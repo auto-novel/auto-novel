@@ -16,16 +16,10 @@ import type {
   TaskState,
 } from '@/domain/translator/TaskState';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
 
 const props = defineProps<{
   job: TranslateJob;
-  translatorId: TranslatorId;
   taskState?: TaskState;
-  taskCacheEntry?: TranslationTask;
   canMoveTop: boolean;
   canMoveBottom: boolean;
 }>();

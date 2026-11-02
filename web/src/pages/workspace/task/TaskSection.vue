@@ -12,19 +12,13 @@ import {
   RefreshOutlined,
 } from '@vicons/material';
 import type { TaskState } from '@/domain/translator/TaskState';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
 import type { TranslateJob } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import TaskCard from './TaskCard.vue';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
   jobs: TranslateJob[];
   taskStates: ReadonlyMap<string, TaskState>;
-  taskCache: ReadonlyMap<string, TranslationTask>;
 }>();
 
 const emit = defineEmits<{
@@ -134,9 +128,7 @@ function retryFailedTasks() {
     >
       <TaskCard
         :job="job"
-        :translator-id="translatorId"
         :task-state="taskStates.get(job.task)"
-        :task-cache-entry="taskCache.get(job.task)"
         :can-move-top="index > 0"
         :can-move-bottom="index < jobs.length - 1"
         @delete="emit('delete', $event)"
