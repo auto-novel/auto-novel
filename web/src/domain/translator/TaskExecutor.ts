@@ -38,11 +38,7 @@ function awaitWithSignal<T>(
 }
 
 export class TaskExecutor {
-  constructor(
-    private task: TranslationTask,
-    /** 任务生命周期仍有效；翻译器资格由流水线按输入要求匹配。 */
-    private canCommit?: () => boolean,
-  ) {}
+  constructor(private task: TranslationTask) {}
 
   /** 获取章节；翻译和保存由流水线拉取后执行。 */
   async prepareChapter(
@@ -67,7 +63,6 @@ export class TaskExecutor {
     const onError = (error: unknown) => {
       if (
         signal?.aborted ||
-        this.canCommit?.() === false ||
         (error instanceof Error && error.name === 'AbortError')
       ) {
         markChapterPending();
@@ -81,13 +76,8 @@ export class TaskExecutor {
 
     if (tracker.segmentTracker) tracker.segmentTracker.errorMessage = undefined;
 
-    const checkExecution = () => {
-      signal?.throwIfAborted();
-      if (this.canCommit?.() === false)
-        throw new DOMException('任务已失效', 'AbortError');
-    };
     try {
-      checkExecution();
+      signal?.throwIfAborted();
       if (!this.task.initialized)
         await awaitWithSignal(this.task.initMeta(signal), signal);
       const chapter = this.task.chapters.find(
@@ -98,15 +88,14 @@ export class TaskExecutor {
       tracker.onLog(`[${title}] 开始获取原文`);
       const context = {
         signal: signal ?? new AbortController().signal,
-        canCommit: this.canCommit,
         onLog: tracker.onLog,
       };
-      checkExecution();
+      signal?.throwIfAborted();
       const detail = await awaitWithSignal(
         this.task.fetchChapter(chapterId, context),
         signal,
       );
-      checkExecution();
+      signal?.throwIfAborted();
 
       // 单个段落内的换行不是段落分隔符，拼接前清理，避免译文错位。
       const paragraphs = detail.paragraphs.map((line) =>
@@ -130,7 +119,7 @@ export class TaskExecutor {
         history,
         tracker: tracker.segmentTracker,
         onComplete: async (result) => {
-          checkExecution();
+          signal?.throwIfAborted();
           if (result.failed.length > 0) {
             markChapterError();
             tracker.onLog(

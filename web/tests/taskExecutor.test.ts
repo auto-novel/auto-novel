@@ -39,14 +39,15 @@ function createTracker() {
 
 describe('TaskExecutor trust requirements', () => {
   it.each(['local', 'web', 'wenku'] as const)(
-    'sets the input requirement for %s without gating successful saves on worker state',
+    'sets the trust requirement for %s inputs',
     async (type) => {
       const task = createTask(type);
       const tracker = createTracker();
-      const canCommit = vi.fn(() => true);
-      const work = await new TaskExecutor(task, canCommit).prepareChapter(
+      const controller = new AbortController();
+      const work = await new TaskExecutor(task).prepareChapter(
         '1',
         tracker,
+        controller.signal,
       );
 
       expect(work?.trustedOnly).toBe(type !== 'local');
@@ -55,24 +56,27 @@ describe('TaskExecutor trust requirements', () => {
         '1',
         'glossary',
         ['译文'],
-        expect.objectContaining({ canCommit }),
+        expect.objectContaining({ signal: controller.signal }),
       );
       expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
     },
   );
 
-  it('does not save when the task lifecycle becomes invalid', async () => {
-    const task = createTask('web');
-    let current = true;
-    const work = await new TaskExecutor(task, () => current).prepareChapter(
+  it('marks a successful save done even when stopped immediately after saving', async () => {
+    const task = createTask('local');
+    const tracker = createTracker();
+    const controller = new AbortController();
+    task.uploadChapter.mockImplementation(async () => {
+      controller.abort();
+    });
+    const work = await new TaskExecutor(task).prepareChapter(
       '1',
-      createTracker(),
+      tracker,
+      controller.signal,
     );
-    current = false;
-
     await expect(
       work!.onComplete({ lines: ['译文'], failed: [] }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(task.uploadChapter).not.toHaveBeenCalled();
+    ).resolves.toBeUndefined();
+    expect(tracker.onChapterStatus).toHaveBeenLastCalledWith('1', 'done');
   });
 });

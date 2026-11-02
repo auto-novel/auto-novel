@@ -48,6 +48,7 @@ export class WebTranslationTask implements TranslationTask {
   }
 
   private async loadMeta(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     const api = this.createApi(signal);
     const task = await api.getTranslateTask();
     signal?.throwIfAborted();
@@ -87,14 +88,15 @@ export class WebTranslationTask implements TranslationTask {
   }
 
   async prepareExecution(context: TaskExecutionContext): Promise<void> {
+    context.signal.throwIfAborted();
     if (!this.needsPreparation) return;
     // 预览可能正在初始化，先等待读取完成，再刷新目录和任务快照。
     if (this.initialization) await this.initialization;
-    this.checkExecution(context);
+    context.signal.throwIfAborted();
     try {
       context.onLog('获取小说信息');
       const novel = await WebNovelApi.getNovel(this.providerId, this.novelId);
-      this.checkExecution(context);
+      context.signal.throwIfAborted();
       context.onLog('通过浏览器爬虫更新目录');
       await CrawlerService.updateWebNovel(
         this.providerId,
@@ -103,30 +105,22 @@ export class WebTranslationTask implements TranslationTask {
         {
           safeUpdateToc: this.level !== 'sync',
           signal: context.signal,
-          canUpdate: context.canCommit,
         },
       );
       context.onLog('目录已更新');
     } catch (error) {
-      this.checkExecution(context);
+      context.signal.throwIfAborted();
       if (error instanceof DOMException && error.name === 'AbortError')
         throw error;
       context.onLog(`目录更新跳过：${await formatError(error)}`);
     }
-    this.checkExecution(context);
+    context.signal.throwIfAborted();
     // 抓取期间预览可能发起旧快照读取，不应该将其复用为更新后的目录。
     if (this.initialization) await this.initialization;
-    this.checkExecution(context);
+    context.signal.throwIfAborted();
     await this.initMeta(context.signal);
-    this.checkExecution(context);
+    context.signal.throwIfAborted();
     this.prepared = true;
-  }
-
-  private checkExecution(context?: TaskExecutionContext): void {
-    context?.signal.throwIfAborted();
-    if (context?.canCommit?.() === false) {
-      throw new DOMException('任务已停止或失效', 'AbortError');
-    }
   }
 
   get needsMetadata(): boolean {
@@ -142,20 +136,13 @@ export class WebTranslationTask implements TranslationTask {
   async translateMetadata(
     translate: (texts: string[]) => Promise<string[]>,
     signal?: AbortSignal,
-    canCommit?: () => boolean,
   ): Promise<void> {
     if (!this.needsMetadata || !this.task) return;
     const coder = createWebMetadataCoder(this.task, this.params.forceMetadata);
-    const checkUpload = () => {
-      signal?.throwIfAborted();
-      if (canCommit?.() === false) {
-        throw new Error('任务已停止或失效');
-      }
-    };
-    checkUpload();
+    signal?.throwIfAborted();
     const translated =
       coder.encoded.length === 0 ? [] : await translate(coder.encoded);
-    checkUpload();
+    signal?.throwIfAborted();
     if (translated.length !== coder.encoded.length) {
       throw new Error('元数据翻译结果数量不匹配');
     }
@@ -168,7 +155,7 @@ export class WebTranslationTask implements TranslationTask {
     chapterId: string,
     context?: TaskExecutionContext,
   ): Promise<ChapterDetail> {
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     let syncFromProvider = this.level === 'sync';
     if (context && this.params.useBrowserCrawler) {
       try {
@@ -178,23 +165,23 @@ export class WebTranslationTask implements TranslationTask {
           this.novelId,
           chapterId,
           syncFromProvider,
-          { signal: context.signal, canUpdate: context.canCommit },
+          { signal: context.signal },
         );
         context.onLog(action === 'created' ? '章节已创建' : '章节已更新');
         syncFromProvider = false;
       } catch (error) {
-        this.checkExecution(context);
+        context?.signal.throwIfAborted();
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;
         context.onLog(`章节更新跳过：${await formatError(error)}`);
       }
     }
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     const api = this.createApi(context?.signal);
     const chapterTask = await api.getChapterTranslateTask(chapterId, {
       syncFromProvider,
     });
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     return {
       paragraphs: chapterTask.paragraphJp,
       glossary: chapterTask.glossary,
@@ -210,7 +197,7 @@ export class WebTranslationTask implements TranslationTask {
     translatedParagraphs: string[],
     context?: TaskExecutionContext,
   ): Promise<void> {
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     const api = this.createApi(context?.signal);
     await api.updateChapterTranslation(chapterId, {
       glossaryId,

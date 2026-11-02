@@ -37,9 +37,12 @@ export class LocalTranslationTask implements TranslationTask {
     this.storeLoaded = true;
   }
 
-  async initMeta(_signal?: AbortSignal): Promise<void> {
+  async initMeta(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     await this._ensureStore();
+    signal?.throwIfAborted();
     const metadata = await this.volumeStore.getVolume(this.volumeId);
+    signal?.throwIfAborted();
     if (!metadata) throw new Error('小说不存在');
 
     this.glossary = metadata.glossary ?? {};
@@ -71,9 +74,15 @@ export class LocalTranslationTask implements TranslationTask {
     this.initialized = true;
   }
 
-  async fetchChapter(chapterId: string): Promise<ChapterDetail> {
+  async fetchChapter(
+    chapterId: string,
+    context?: TaskExecutionContext,
+  ): Promise<ChapterDetail> {
+    context?.signal.throwIfAborted();
     await this._ensureStore();
+    context?.signal.throwIfAborted();
     const chapter = await this.volumeStore.getChapter(this.volumeId, chapterId);
+    context?.signal.throwIfAborted();
     if (!chapter) throw new Error('章节不存在');
     const oldTranslation = chapter[this.translatorId];
     return {
@@ -93,9 +102,8 @@ export class LocalTranslationTask implements TranslationTask {
   ): Promise<void> {
     const checkExecution = () => {
       context?.signal.throwIfAborted();
-      if (context?.canCommit?.() === false)
-        throw new DOMException('任务已失效', 'AbortError');
     };
+    checkExecution();
     await this._ensureStore();
     checkExecution();
     await this.volumeStore.updateTranslation(

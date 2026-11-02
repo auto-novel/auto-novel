@@ -11,7 +11,6 @@ export interface ChapterDetail {
 
 export interface TaskExecutionContext {
   signal: AbortSignal;
-  canCommit?: () => boolean;
   onLog: (message: string) => void;
 }
 
@@ -35,7 +34,6 @@ export interface TranslationTask {
   translateMetadata?(
     translate: (texts: string[]) => Promise<string[]>,
     signal?: AbortSignal,
-    canCommit?: () => boolean,
   ): Promise<void>;
   fetchChapter(
     chapterId: string,

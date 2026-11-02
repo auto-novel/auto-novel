@@ -5,6 +5,7 @@ import type { TranslationWork } from '@auto-novel/translator';
 
 import { useWorkspaceStore } from '@/stores';
 import { TaskExecutor } from '@/domain/translator/TaskExecutor';
+import { TaskLifecycle } from '@/domain/translator/TaskLifecycle';
 import { toTranslatorConfig } from '@/model/Translator';
 import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
@@ -48,9 +49,9 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
   const taskStates = ref(new Map<string, TaskState>());
   const taskCache = new Map<string, TranslationTask>();
-  const taskVersions = ref(new Map<string, number>());
+  const taskLifecycles = new Map<string, TaskLifecycle>();
   /** 同一版本只初始化一次；跨标签页替换对象不能重建执行状态。 */
-  const initializingTasks = new Map<string, { createAt: number }>();
+  const initializingTasks = new Map<string, TaskLifecycle>();
 
   interface WorkerState {
     running: boolean;
@@ -75,8 +76,6 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     return errors;
   });
   interface MetadataState {
-    task: TranslationTask;
-    createAt: number;
     controller: AbortController;
     settled: boolean;
   }
@@ -94,6 +93,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
 
   onUnmounted(() => {
     disposed = true;
+    for (const lifecycle of taskLifecycles.values()) lifecycle.abort();
+    taskLifecycles.clear();
     initializingTasks.clear();
     abortMetadataTasks();
     abortPreparationTasks();
@@ -101,7 +102,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     pipeline.dispose();
     workerStates.value.clear();
   });
-  async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
+
+  function getOrCreateTask(taskDesc: string): TranslationTask {
     let task = taskCache.get(taskDesc);
     if (!task) {
       const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
@@ -148,6 +150,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   }
 
   function clearTaskRuntimeState(task: string): void {
+    taskLifecycles.get(task)?.abort();
+    taskLifecycles.delete(task);
     initializingTasks.delete(task);
     preparationTasks.get(task)?.controller.abort();
     preparationTasks.delete(task);
@@ -155,7 +159,6 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     metadataTasks.delete(task);
     taskStates.value.delete(task);
     taskCache.delete(task);
-    taskVersions.value.delete(task);
   }
 
   // ========== 全局处理循环 ==========
@@ -214,8 +217,10 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       return;
     const preparation = { controller: new AbortController(), settled: false };
     preparationTasks.set(job.task, preparation);
-    const signal = preparation.controller.signal;
-    const canPrepare = () =>
+    const signal = taskLifecycles
+      .get(job.task)!
+      .signalFor(preparation.controller.signal);
+    const isCurrentPreparation = () =>
       !signal.aborted &&
       preparationTasks.get(job.task) === preparation &&
       taskCache.get(job.task) === task &&
@@ -224,11 +229,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     task
       .prepareExecution({
         signal,
-        canCommit: canPrepare,
-        onLog: (message) => logTask(job.task, message),
+        onLog: (message) => {
+          if (isCurrentPreparation()) logTask(job.task, message);
+        },
       })
       .then(() => {
-        if (!canPrepare()) return;
+        if (!isCurrentPreparation()) return;
         state.initChapters(task.chapters);
         const currentJob = findCurrentJob(job)!;
         currentJob.progress = {
@@ -273,20 +279,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       return;
     if (metadataTasks.has(job.task)) return;
     const metadata: MetadataState = {
-      task,
-      createAt: job.createAt,
       controller: new AbortController(),
       settled: false,
     };
     metadataTasks.set(job.task, metadata);
-    const signal = metadata.controller.signal;
-    const canCommitMetadata = () =>
-      !signal.aborted &&
-      metadataTasks.get(job.task) === metadata &&
-      taskCache.get(job.task) === metadata.task &&
-      jobs.value.some(
-        (it) => it.task === job.task && it.createAt === metadata.createAt,
-      );
+    const signal = taskLifecycles
+      .get(job.task)!
+      .signalFor(metadata.controller.signal);
 
     // 简介可能含换行，按行翻译后再按原行数拼回
     const translateTexts = async (texts: string[]) => {
@@ -311,7 +310,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       return lineCounts.map((count) => lines.splice(0, count).join('\n'));
     };
     task
-      .translateMetadata(translateTexts, signal, canCommitMetadata)
+      .translateMetadata(translateTexts, signal)
       .then(() => {
         if (!signal.aborted && metadataTasks.get(job.task) === metadata) {
           logTask(job.task, '元数据翻译完成');
@@ -373,8 +372,9 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         const { job, chapter, state } = item;
         const { chapterId } = chapter;
         chapter.status = 'translating';
-        const task = await getOrCreateTask(job.task);
+        const task = getOrCreateTask(job.task);
         const isCurrentTask = () =>
+          !disposed &&
           taskCache.get(job.task) === task &&
           taskStates.value.get(job.task) === state &&
           !!findCurrentJob(job);
@@ -388,12 +388,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         if (task.type !== 'local' && trustedInputsController.signal.aborted) {
           trustedInputsController = new AbortController();
         }
-        const inputSignal =
-          task.type === 'local' ? signal : trustedInputsController.signal;
-        const executor = new TaskExecutor(
-          task,
-          () => !inputSignal.aborted && isCurrentTask(),
-        );
+        const inputSignal = taskLifecycles
+          .get(job.task)!
+          .signalFor(
+            task.type === 'local' ? signal : trustedInputsController.signal,
+          );
+        const executor = new TaskExecutor(task);
         const segmentTracker = state.getChapterState(chapterId);
         if (!segmentTracker) continue;
         const work = await executor.prepareChapter(
@@ -586,18 +586,62 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     clearTaskRuntimeState(task);
   };
 
+  async function initializeTask(
+    job: TranslateJob,
+    lifecycle: TaskLifecycle,
+  ): Promise<void> {
+    try {
+      const task = getOrCreateTask(job.task);
+      lifecycle.signal.throwIfAborted();
+      if (!task.initialized) await task.initMeta(lifecycle.signal);
+      if (
+        lifecycle.signal.aborted ||
+        initializingTasks.get(job.task) !== lifecycle ||
+        taskCache.get(job.task) !== task
+      ) {
+        return;
+      }
+      const currentJob = findCurrentJob(job);
+      if (!currentJob) return;
+      const chapters = task.chapters;
+      const state = reactive(new TaskState(job.task)) as TaskState;
+      state.initChapters(chapters);
+      taskStates.value.set(job.task, state);
+      const doneCount = chapters.filter((c) => c.status === 'done').length;
+      currentJob.progress = {
+        finished: doneCount,
+        error: 0,
+        total: chapters.length,
+      };
+      updateJobCompletion(job, task, state);
+    } catch (e) {
+      if (!lifecycle.signal.aborted) {
+        logTask(job.task, `任务初始化失败：${e}`, true);
+        console.warn('任务初始化失败', job.task, e);
+      }
+    } finally {
+      if (initializingTasks.get(job.task) === lifecycle) {
+        initializingTasks.delete(job.task);
+        // 单个任务初始化完成即可推进，不能被同批次的慢请求阻塞。
+        runProcessLoop();
+      }
+    }
+  }
+
   watch(
-    () => [...jobs.value],
-    async (workspaceJobs) => {
+    () => jobs.value.map((job) => [job.task, job.createAt] as const),
+    () => {
+      if (disposed) return;
+      const workspaceJobs = [...jobs.value];
       const uninitialized: {
         job: TranslateJob;
-        initialization: { createAt: number };
+        lifecycle: TaskLifecycle;
       }[] = [];
       const activeTasks = new Set(workspaceJobs.map((job) => job.task));
       const knownTasks = new Set([
         ...taskStates.value.keys(),
         ...taskCache.keys(),
-        ...taskVersions.value.keys(),
+        ...taskLifecycles.keys(),
         ...initializingTasks.keys(),
         ...metadataTasks.keys(),
         ...preparationTasks.keys(),
@@ -607,14 +651,14 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       }
 
       for (const job of workspaceJobs) {
-        if (taskVersions.value.get(job.task) !== job.createAt) {
+        let lifecycle = taskLifecycles.get(job.task);
+        if (!lifecycle || lifecycle.createAt !== job.createAt) {
           clearTaskRuntimeState(job.task);
+          lifecycle = new TaskLifecycle(job.createAt);
+          taskLifecycles.set(job.task, lifecycle);
         }
         const state = taskStates.value.get(job.task);
-        if (
-          taskVersions.value.get(job.task) === job.createAt &&
-          (state?.initialized || initializingTasks.has(job.task))
-        ) {
+        if (state?.initialized || initializingTasks.has(job.task)) {
           continue;
         }
         if (job.finishAt) {
@@ -622,54 +666,17 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             job.task,
             reactive(new TaskState(job.task)) as TaskState,
           );
-          taskVersions.value.set(job.task, job.createAt);
           continue;
         }
-        const initialization = { createAt: job.createAt };
-        taskVersions.value.set(job.task, job.createAt);
-        initializingTasks.set(job.task, initialization);
-        uninitialized.push({ job, initialization });
+        initializingTasks.set(job.task, lifecycle);
+        uninitialized.push({ job, lifecycle });
       }
-      await Promise.all(
-        uninitialized.map(async ({ job, initialization }) => {
-          try {
-            const task = await getOrCreateTask(job.task);
-            if (!task.initialized) await task.initMeta();
-            if (
-              initializingTasks.get(job.task) !== initialization ||
-              taskCache.get(job.task) !== task
-            ) {
-              return;
-            }
-            const currentJob = findCurrentJob(job);
-            if (!currentJob) return;
-            const chapters = task.chapters;
-            const state = reactive(new TaskState(job.task)) as TaskState;
-            state.initChapters(chapters);
-            taskStates.value.set(job.task, state);
-            taskVersions.value.set(job.task, job.createAt);
-            const doneCount = chapters.filter(
-              (c) => c.status === 'done',
-            ).length;
-            currentJob.progress = {
-              finished: doneCount,
-              error: 0,
-              total: chapters.length,
-            };
-            updateJobCompletion(job, task, state);
-          } catch (e) {
-            logTask(job.task, `任务初始化失败：${e}`, true);
-            console.warn('任务初始化失败', job.task, e);
-          } finally {
-            if (initializingTasks.get(job.task) === initialization) {
-              initializingTasks.delete(job.task);
-            }
-          }
-        }),
-      );
-      if (uninitialized.length > 0) runProcessLoop();
+      for (const { job, lifecycle } of uninitialized) {
+        void initializeTask(job, lifecycle);
+      }
     },
-    { immediate: true },
+    // 删除／替换同步终止旧版本，不能等下一次渲染才阻止保存。
+    { immediate: true, flush: 'sync' },
   );
 
   const topJob = (task: string) => {

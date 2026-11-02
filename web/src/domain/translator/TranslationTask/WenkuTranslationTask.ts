@@ -36,6 +36,7 @@ export class WenkuTranslationTask implements TranslationTask {
   }
 
   async initMeta(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     const task = await this.createApi(signal).getTranslateTask();
     signal?.throwIfAborted();
     this.glossary = {};
@@ -70,10 +71,10 @@ export class WenkuTranslationTask implements TranslationTask {
     chapterId: string,
     context?: TaskExecutionContext,
   ): Promise<ChapterDetail> {
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     const api = this.createApi(context?.signal);
     const chapterTask = await api.getChapterTranslateTask(chapterId);
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     return {
       paragraphs: chapterTask.paragraphJp,
       glossary: chapterTask.glossary,
@@ -89,19 +90,12 @@ export class WenkuTranslationTask implements TranslationTask {
     translatedParagraphs: string[],
     context?: TaskExecutionContext,
   ): Promise<void> {
-    this.checkExecution(context);
+    context?.signal.throwIfAborted();
     const api = this.createApi(context?.signal);
     await api.updateChapterTranslation(chapterId, {
       glossaryId,
       paragraphsZh: translatedParagraphs,
     });
-  }
-
-  private checkExecution(context?: TaskExecutionContext): void {
-    context?.signal.throwIfAborted();
-    if (context?.canCommit?.() === false) {
-      throw new DOMException('任务已停止或失效', 'AbortError');
-    }
   }
 
   private createApi(signal?: AbortSignal) {

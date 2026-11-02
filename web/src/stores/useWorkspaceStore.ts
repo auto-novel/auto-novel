@@ -47,12 +47,12 @@ const createWorkspaceStore = <W extends GptWorker | SakuraWorker>(
     ref.value.jobs = ref.value.jobs.filter((j) => j.task !== task);
   };
   const topJob = (job: TranslateJob) => {
-    ref.value.jobs.sort((a, b) => {
+    ref.value.jobs = [...ref.value.jobs].sort((a, b) => {
       return a.task == job.task ? -1 : b.task == job.task ? 1 : 0;
     });
   };
   const bottomJob = (job: TranslateJob) => {
-    ref.value.jobs.sort((a, b) => {
+    ref.value.jobs = [...ref.value.jobs].sort((a, b) => {
       return a.task == job.task ? 1 : b.task == job.task ? -1 : 0;
     });
   };
