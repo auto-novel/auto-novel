@@ -65,17 +65,6 @@ const streams = {
   'anthropic-messages': anthropicMessagesApi(),
 } as const;
 
-interface ResponsesUsage {
-  input_tokens: number;
-  output_tokens: number;
-  total_tokens: number;
-  input_tokens_details?: {
-    cached_tokens?: number;
-    cache_write_tokens?: number;
-  };
-  output_tokens_details?: { reasoning_tokens?: number };
-}
-
 export async function createPiAiCompletion(
   request: PiAiCompletionRequest,
 ): Promise<PiAiCompletionResult> {
@@ -121,7 +110,6 @@ export async function createPiAiCompletion(
   const context = normalizeContext({ messages });
   const fetch = createPiAiFetch(request);
   let status: number | undefined;
-  let failedUsage: Usage | undefined;
   const stream = streams[request.protocol].stream(model, context, {
     apiKey: request.key,
     fetch: async (input, init) => {
@@ -132,41 +120,6 @@ export async function createPiAiCompletion(
     signal: request.signal,
     maxRetries: 0,
     cacheRetention: 'none',
-    // pi-ai 在 response.failed 分支直接抛错，尚未解析其终态 usage。
-    onProviderStreamEvent:
-      request.protocol === 'openai-responses'
-        ? async (data) => {
-            const event = data as {
-              type: string;
-              response: { usage?: ResponsesUsage };
-            };
-            if (event.type !== 'response.failed' || !event.response.usage)
-              return;
-            const raw = event.response.usage;
-            const cacheRead = raw.input_tokens_details?.cached_tokens ?? 0;
-            const cacheWrite =
-              raw.input_tokens_details?.cache_write_tokens ?? 0;
-            failedUsage = {
-              input: raw.input_tokens - cacheRead - cacheWrite,
-              output: raw.output_tokens,
-              cacheRead,
-              cacheWrite,
-              reasoning: raw.output_tokens_details?.reasoning_tokens,
-              totalTokens: raw.total_tokens,
-              cost: {
-                input: 0,
-                output: 0,
-                cacheRead: 0,
-                cacheWrite: 0,
-                total: 0,
-              },
-            };
-            const { calculateCost } = await import(
-              '@earendil-works/pi-ai/models'
-            );
-            calculateCost(model, failedUsage);
-          }
-        : undefined,
     onPayload: (payload) => ({
       ...(payload as Record<string, unknown>),
       ...request.requestParams,
@@ -174,9 +127,8 @@ export async function createPiAiCompletion(
   });
 
   const result = await stream.result();
-  const usage = failedUsage ?? result.usage;
-  // 即使输出被截断、取消或随后校验失败，已发生的用量也需要保留。
-  request.onUsage?.(usage);
+  // 记录 pi-ai 正常返回的用量
+  request.onUsage?.(result.usage);
   if (result.stopReason === 'aborted') {
     throw new DOMException(
       result.errorMessage || 'Request aborted',
@@ -224,9 +176,9 @@ export async function createPiAiCompletion(
     text,
     reasoning: reasoning || undefined,
     finishReason: result.stopReason,
-    usage,
-    inputTokens: usage.input,
-    outputTokens: usage.output,
+    usage: result.usage,
+    inputTokens: result.usage.input,
+    outputTokens: result.usage.output,
   };
 }
 
