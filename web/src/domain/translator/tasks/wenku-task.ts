@@ -80,10 +80,11 @@ export class WenkuTranslationTask implements TranslationTask {
       ),
       save: async (translated) => {
         context.signal.throwIfAborted();
-        await api.updateChapterTranslation(chapterId, {
+        const zh = await api.updateChapterTranslation(chapterId, {
           glossaryId,
           paragraphsZh: [...translated],
         });
+        return { zh };
       },
     };
   }

@@ -97,13 +97,14 @@ export class LocalTranslationTask implements TranslationTask {
       save: async (translated) => {
         const checkExecution = () => context.signal.throwIfAborted();
         checkExecution();
-        await this.volumeStore.updateTranslation(
+        const zh = await this.volumeStore.updateTranslation(
           this.volumeId,
           chapterId,
           this.translatorId,
           { glossaryId, glossary, paragraphs: [...translated] },
           checkExecution,
         );
+        return { zh };
       },
     };
   }

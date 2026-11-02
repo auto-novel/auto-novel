@@ -334,7 +334,11 @@ describe('chapter preparation', () => {
             },
       );
       const translated = Object.freeze(['译一', '译二']);
-      await prepared.save(translated);
+      mocks.updateChapterTranslation.mockResolvedValue({ jp: 5, zh: 3 });
+      await expect(prepared.save(translated)).resolves.toEqual({
+        jp: 5,
+        zh: 3,
+      });
       expect(mocks.updateChapterTranslation).toHaveBeenCalledWith('1', {
         glossaryId: 'prepared-version',
         paragraphsZh: ['译一', '译二'],
@@ -376,7 +380,8 @@ describe('chapter preparation', () => {
       glossary: { 原文: '旧译' },
     });
     const translated = Object.freeze(['新译']);
-    await prepared.save(translated);
+    mocks.store.updateTranslation.mockResolvedValue(3);
+    await expect(prepared.save(translated)).resolves.toEqual({ zh: 3 });
     expect(mocks.store.updateTranslation).toHaveBeenCalledWith(
       'volume',
       '1',

@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
 
-import type { TranslatorConfig } from '@/domain/translate';
-import { translate } from '@/domain/translate';
+import {
+  runTranslationTask,
+  type SingleTaskTranslatorConfig,
+} from '@/domain/translator';
 import type {
   TranslateTaskDesc,
   TranslateTaskParams,
@@ -30,11 +32,13 @@ const percentage = computed(() => {
 
 const running = ref(false);
 const cardRef = ref<InstanceType<typeof CTaskCard>>();
+let taskController: AbortController | undefined;
+onUnmounted(() => taskController?.abort());
 
 const startTask = async (
   desc: TranslateTaskDesc,
   params: TranslateTaskParams,
-  translatorDesc: TranslatorConfig,
+  translatorDesc: SingleTaskTranslatorConfig,
   callback?: {
     onProgressUpdated: (progress: {
       finished: number;
@@ -83,62 +87,50 @@ const startTask = async (
   chapterFinished.value = 0;
   chapterError.value = 0;
 
-  const onProgressUpdated = () =>
-    callback?.onProgressUpdated({
-      finished: chapterFinished.value,
-      error: chapterError.value,
-      total: chapterTotal.value ?? 0,
-    });
+  const controller = new AbortController();
+  taskController = controller;
+  const onAbort = () => controller.abort(signal?.reason);
+  signal?.addEventListener('abort', onAbort, { once: true });
+  if (signal?.aborted) onAbort();
 
-  await requestKeepAlive();
-  const state = await translate(
-    desc,
-    params,
-    {
-      onStart: (total) => {
-        chapterTotal.value = total;
-        onProgressUpdated();
-      },
-      onChapterSuccess: ({ jp, zh }) => {
-        if (jp !== undefined) emit('update:jp', jp);
-        if (zh !== undefined) {
-          if (translatorDesc.id === 'youdao') {
-            emit('update:youdao', zh);
-          } else {
-            emit('update:sakura', zh);
+  try {
+    await requestKeepAlive();
+    return await runTranslationTask(
+      desc,
+      params,
+      translatorDesc,
+      {
+        onProgressUpdated: (progress) => {
+          chapterTotal.value = progress.total;
+          chapterFinished.value = progress.finished;
+          chapterError.value = progress.error;
+          callback?.onProgressUpdated(progress);
+        },
+        onChapterSaved: ({ jp, zh }) => {
+          if (jp !== undefined) emit('update:jp', jp);
+          if (zh !== undefined) {
+            if (translatorDesc.id === 'youdao') {
+              emit('update:youdao', zh);
+            } else {
+              emit('update:sakura', zh);
+            }
           }
-        }
-        chapterFinished.value += 1;
-        onProgressUpdated();
+        },
+        log: (message, detail) => {
+          cardRef.value?.pushLog({
+            message,
+            detail: detail === undefined ? undefined : [...detail],
+          });
+        },
       },
-      onChapterFailure: () => {
-        chapterError.value += 1;
-        onProgressUpdated();
-      },
-      log: (message: string, detail?: readonly string[]) => {
-        cardRef.value!.pushLog({
-          message,
-          detail: detail === undefined ? undefined : [...detail],
-        });
-      },
-    },
-    translatorDesc,
-    signal,
-  );
-
-  cardRef.value!.pushLog({ message: '\n结束' });
-  running.value = false;
-  releaseKeepAlive();
-
-  if (state === 'abort') {
-    return 'abort';
-  } else if (
-    chapterTotal.value ===
-    chapterFinished.value + chapterError.value
-  ) {
-    return 'complete';
-  } else {
-    return 'uncomplete';
+      controller.signal,
+    );
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+    taskController = undefined;
+    cardRef.value?.pushLog({ message: '\n结束' });
+    running.value = false;
+    releaseKeepAlive();
   }
 };
 

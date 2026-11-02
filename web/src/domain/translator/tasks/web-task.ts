@@ -174,7 +174,7 @@ export class WebTranslationTask implements TranslationTask {
       ),
       save: async (translated) => {
         context.signal.throwIfAborted();
-        await api.updateChapterTranslation(chapterId, {
+        return api.updateChapterTranslation(chapterId, {
           glossaryId,
           paragraphsZh: [...translated],
         });

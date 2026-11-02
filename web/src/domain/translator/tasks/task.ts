@@ -25,12 +25,18 @@ export interface TaskExecutionContext {
   onLog: (message: string) => void;
 }
 
+/** 保存后返回的小说章节统计，用于刷新独立翻译入口的数量显示。 */
+export interface ChapterSaveResult {
+  jp?: number;
+  zh?: number;
+}
+
 /** 本次执行的原文与保存快照；保存闭包绑定准备时的版本和取消信号。 */
 export interface PreparedUnit {
   readonly lines: readonly string[];
   readonly glossary: Glossary;
   readonly history?: TranslationInput['history'];
-  save(translated: readonly string[]): Promise<void>;
+  save(translated: readonly string[]): Promise<void | ChapterSaveResult>;
 }
 
 export interface TranslationTask {

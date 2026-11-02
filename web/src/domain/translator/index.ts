@@ -1,3 +1,5 @@
+export { runTranslationTask } from './run-task';
+export type { SingleTaskTranslatorConfig } from './run-task';
 export { WorkPreparer } from './prepare-work';
 export type { UnitTracker } from './prepare-work';
 export { IndexedDbSegmentCache } from './segment-cache';
