@@ -55,18 +55,16 @@ const clearingCache = ref(false);
 const clearCache = async () => {
   if (clearingCache.value) return;
   clearingCache.value = true;
-  try {
-    const success = await Toast.promise(
-      props.clearTranslationCache().then(() => true),
-      {
-        success: '缓存清除成功',
-        error: '缓存清除失败',
-      },
-    );
-    if (success) showClearCacheDialog.value = false;
-  } finally {
-    clearingCache.value = false;
-  }
+  await Toast.promise(
+    props.clearTranslationCache().then(() => {
+      showClearCacheDialog.value = false;
+    }),
+    {
+      success: '缓存清除成功',
+      error: '缓存清除失败',
+    },
+  );
+  clearingCache.value = false;
 };
 const hasStartedWorkers = computed(() =>
   workers.value.some((w) => props.workerStates.get(w.id)?.running),

@@ -292,22 +292,19 @@ const findSimilarNovels = async () => {
     return;
   }
   searching.value = true;
-  try {
-    // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
-    const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
-    await Toast.promise(
-      Promise.all(
-        levels.map((level) =>
-          WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
-        ),
-      ).then((results) => {
-        similarNovels.value = results.flatMap((it) => it.items);
-      }),
-      { error: '搜索相似小说失败' },
-    );
-  } finally {
-    searching.value = false;
-  }
+  // 「全部」不含非小说和成人向，需要分别搜索；成人向需要权限
+  const levels = whoami.value.hasNsfwAccess ? [0, 4, 5, 6] : [0, 4];
+  await Toast.promise(
+    Promise.all(
+      levels.map((level) =>
+        WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
+      ),
+    ).then((results) => {
+      similarNovels.value = results.flatMap((it) => it.items);
+    }),
+    { error: '搜索相似小说失败' },
+  );
+  searching.value = false;
 };
 const moveToPrevStep = () => {
   if (submitCurrentStep.value > 1) {

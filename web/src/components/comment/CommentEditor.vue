@@ -43,21 +43,18 @@ const reply = async () => {
   if (!canSubmit.value) return;
   submitting.value = true;
   const viewer = whoami.value.user?.id;
-  try {
-    await Toast.promise(
-      CommentRepo.createComment(props.site, {
-        content: content.value.trim(),
-        ...(props.parent === undefined ? {} : { rootId: props.parent }),
-      }).then(() => {
-        if (viewer !== whoami.value.user?.id) return;
-        content.value = '';
-        emit('replied');
-      }),
-      { success: '回复发布成功', error: '回复发布失败' },
-    );
-  } finally {
-    submitting.value = false;
-  }
+  await Toast.promise(
+    CommentRepo.createComment(props.site, {
+      content: content.value.trim(),
+      ...(props.parent === undefined ? {} : { rootId: props.parent }),
+    }).then(() => {
+      if (viewer !== whoami.value.user?.id) return;
+      content.value = '';
+      emit('replied');
+    }),
+    { success: '回复发布成功', error: '回复发布失败' },
+  );
+  submitting.value = false;
 };
 </script>
 

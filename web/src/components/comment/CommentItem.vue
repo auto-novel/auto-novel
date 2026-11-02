@@ -54,20 +54,17 @@ async function saveEdit() {
   }
   submitting.value = true;
   const viewer = whoami.value.user?.id;
-  try {
-    await Toast.promise(
-      CommentRepo.updateComment(
-        props.comment.id,
-        props.site,
-        content.value.trim(),
-      ).then(() => {
-        if (viewer === whoami.value.user?.id) editing.value = false;
-      }),
-      { success: '评论修改已保存', error: '更新评论失败' },
-    );
-  } finally {
-    submitting.value = false;
-  }
+  await Toast.promise(
+    CommentRepo.updateComment(
+      props.comment.id,
+      props.site,
+      content.value.trim(),
+    ).then(() => {
+      if (viewer === whoami.value.user?.id) editing.value = false;
+    }),
+    { success: '评论修改已保存', error: '更新评论失败' },
+  );
+  submitting.value = false;
 }
 watch(
   () => [

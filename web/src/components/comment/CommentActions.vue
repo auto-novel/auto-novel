@@ -96,14 +96,11 @@ watch(
 async function copyComment() {
   if (copying.value) return;
   copying.value = true;
-  try {
-    await Toast.promise(copyToClipboard(props.comment.content), {
-      success: '评论原文已复制',
-      error: '复制失败，请手动选择评论内容复制',
-    });
-  } finally {
-    copying.value = false;
-  }
+  await Toast.promise(copyToClipboard(props.comment.content), {
+    success: '评论原文已复制',
+    error: '复制失败，请手动选择评论内容复制',
+  });
+  copying.value = false;
 }
 async function confirmAction() {
   if (submitting.value) return;
@@ -118,39 +115,33 @@ async function confirmAction() {
     return;
   }
   submitting.value = true;
-  try {
-    await Toast.promise(
-      (action === 'delete'
-        ? CommentRepo.deleteComment(
-            props.comment.id,
-            props.site,
-            whoami.value.asAdmin,
-          )
-        : CommentRepo.hideComment(props.comment.id)
-      ).then(() => {
-        confirmationAction.value = undefined;
-      }),
-      {
-        success: action === 'delete' ? '评论已删除' : '评论已隐藏',
-        error: action === 'delete' ? '删除评论失败' : '隐藏评论失败',
-      },
-    );
-  } finally {
-    submitting.value = false;
-  }
+  await Toast.promise(
+    (action === 'delete'
+      ? CommentRepo.deleteComment(
+          props.comment.id,
+          props.site,
+          whoami.value.asAdmin,
+        )
+      : CommentRepo.hideComment(props.comment.id)
+    ).then(() => {
+      confirmationAction.value = undefined;
+    }),
+    {
+      success: action === 'delete' ? '评论已删除' : '评论已隐藏',
+      error: action === 'delete' ? '删除评论失败' : '隐藏评论失败',
+    },
+  );
+  submitting.value = false;
 }
 async function unhideComment() {
   if (submitting.value || !whoami.value.asAdmin || props.comment.status !== 1)
     return;
   submitting.value = true;
-  try {
-    await Toast.promise(CommentRepo.unhideComment(props.comment.id), {
-      success: '评论已取消隐藏',
-      error: '取消隐藏失败',
-    });
-  } finally {
-    submitting.value = false;
-  }
+  await Toast.promise(CommentRepo.unhideComment(props.comment.id), {
+    success: '评论已取消隐藏',
+    error: '取消隐藏失败',
+  });
+  submitting.value = false;
 }
 </script>
 
