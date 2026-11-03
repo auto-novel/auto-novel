@@ -135,59 +135,32 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         shouldTop,
         startIndex,
         endIndex,
-        taskNumber,
-        total,
       }: {
         level: 'expire' | 'all' | 'normal' | 'sync';
         type: 'gpt' | 'sakura';
         shouldTop: boolean;
         startIndex: number;
         endIndex: number;
-        taskNumber: number;
-        total: number;
       },
     ) {
       const workspace = useWorkspaceStore(type);
-      const tasks: string[] = [];
-      if (taskNumber > 1) {
-        const taskSize = (Math.min(endIndex, total) - startIndex) / taskNumber;
-        for (let i = 0; i < taskNumber; i++) {
-          const start = Math.round(startIndex + i * taskSize);
-          const end = Math.round(startIndex + (i + 1) * taskSize);
-          if (end > start) {
-            const task = TranslateTaskDescriptor.local(id, {
-              level,
-              forceMetadata: false,
-              useBrowserCrawler: false,
-              startIndex: start,
-              endIndex: end,
-            });
-            tasks.push(task);
-          }
-        }
-      } else {
-        const task = TranslateTaskDescriptor.local(id, {
-          level,
-          forceMetadata: false,
-          useBrowserCrawler: false,
-          startIndex,
-          endIndex,
-        });
-        tasks.push(task);
-      }
-      const results = tasks.map((task) => {
-        const job = {
-          task,
-          description: id,
-          createAt: Date.now(),
-        };
-        const success = workspace.addJob(job);
-        if (success && shouldTop) {
-          workspace.topJob(job);
-        }
-        return success;
+      const task = TranslateTaskDescriptor.local(id, {
+        level,
+        forceMetadata: false,
+        useBrowserCrawler: false,
+        startIndex,
+        endIndex,
       });
-      return results;
+      const job = {
+        task,
+        description: id,
+        createAt: Date.now(),
+      };
+      const success = workspace.addJob(job);
+      if (success && shouldTop) {
+        workspace.topJob(job);
+      }
+      return [success];
     },
     queueJobsToWorkspace(
       ids: string[],

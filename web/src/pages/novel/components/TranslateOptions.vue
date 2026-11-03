@@ -37,7 +37,6 @@ onUnmounted(() => {
 
 const startIndex = ref<number | null>(0);
 const endIndex = ref<number | null>(65536);
-const taskNumber = ref<number | null>(1);
 
 defineExpose({
   getTranslateTaskParams: (): TranslateTaskParams => ({
@@ -47,7 +46,6 @@ defineExpose({
     startIndex: startIndex.value ?? 0,
     endIndex: endIndex.value ?? 65536,
   }),
-  getTaskNumber: () => taskNumber.value ?? 1,
 });
 </script>
 
@@ -150,20 +148,6 @@ defineExpose({
             />
           </n-input-group>
         </div>
-        <div>
-          <n-input-group>
-            <n-input-group-label size="small">均分</n-input-group-label>
-            <n-input-number
-              size="small"
-              v-model:value="taskNumber"
-              :show-button="false"
-              :min="1"
-              :max="gnid.type === 'local' ? 65536 : 10"
-              style="width: 40px"
-            />
-            <n-input-group-label size="small">个任务</n-input-group-label>
-          </n-input-group>
-        </div>
 
         <XTooltip style="max-width: 200px">
           <template #trigger>
@@ -171,7 +155,7 @@ defineExpose({
               <n-icon depth="4" :component="InfoOutlined" />
             </n-button>
           </template>
-          章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。均分任务只对排队生效，最大为10。
+          章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。
         </XTooltip>
       </n-flex>
     </c-action-wrapper>

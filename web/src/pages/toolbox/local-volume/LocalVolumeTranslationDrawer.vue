@@ -66,18 +66,15 @@ const queueAllVolumes = (volumes: LocalVolumeMetadata[]) => {
 };
 
 const shouldTopJob = useShouldTopJob();
-const queueVolume = (volumeId: string, total: number = 65536) => {
-  const { startIndex, endIndex, level, forceMetadata } =
+const queueVolume = (volumeId: string) => {
+  const { startIndex, endIndex, level } =
     translateOptions.value!.getTranslateTaskParams();
-  const taskNumber = translateOptions.value!.getTaskNumber();
   const results = store.queueJobToWorkspace(volumeId, {
     level: level,
     type: props.type,
     shouldTop: shouldTopJob.value ?? false,
     startIndex: startIndex,
     endIndex: endIndex,
-    taskNumber: taskNumber,
-    total: total,
   });
   const { type, text } = summarizeQueueResults(results);
   Toast[type](text);
@@ -169,7 +166,7 @@ const progressFilterFunc = computed(() => {
             label="排队"
             size="tiny"
             secondary
-            @action="queueVolume(volume.id, volume.toc.length)"
+            @action="queueVolume(volume.id)"
           />
 
           <router-link

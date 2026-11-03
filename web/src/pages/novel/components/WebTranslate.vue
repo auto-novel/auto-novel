@@ -95,58 +95,30 @@ const shouldTopJob = useShouldTopJob();
 const submitJob = (id: 'gpt' | 'sakura') => {
   const { startIndex, endIndex, level, forceMetadata, useBrowserCrawler } =
     translateOptions.value!.getTranslateTaskParams();
-  const taskNumber = translateOptions.value!.getTaskNumber();
 
   if (endIndex <= startIndex || startIndex >= total) {
     Toast.error('排队失败：没有选中章节');
     return;
   }
 
-  const tasks: string[] = [];
-  if (taskNumber > 1) {
-    const taskSize = (Math.min(endIndex, total) - startIndex) / taskNumber;
-    for (let i = 0; i < taskNumber; i++) {
-      const start = Math.round(startIndex + i * taskSize);
-      const end = Math.round(startIndex + (i + 1) * taskSize);
-      if (end > start) {
-        const task = TranslateTaskDescriptor.web(providerId, novelId, {
-          level,
-          forceMetadata,
-          useBrowserCrawler,
-          startIndex: start,
-          endIndex: end,
-        });
-        tasks.push(task);
-      }
-    }
-  } else {
-    const task = TranslateTaskDescriptor.web(providerId, novelId, {
-      level,
-      forceMetadata,
-      useBrowserCrawler,
-      startIndex,
-      endIndex,
-    });
-    tasks.push(task);
-  }
-
-  const workspace = useWorkspaceStore(id);
-
-  const results = tasks.map((task) => {
-    const job = {
-      task,
-      description: titleZh ?? titleJp,
-      createAt: Date.now(),
-    };
-    const success = workspace.addJob(job);
-    if (success) {
-      if (setting.value.autoTopJobWhenAddTask || shouldTopJob.value) {
-        workspace.topJob(job);
-      }
-    }
-    return success;
+  const task = TranslateTaskDescriptor.web(providerId, novelId, {
+    level,
+    forceMetadata,
+    useBrowserCrawler,
+    startIndex,
+    endIndex,
   });
-  const { type, text } = summarizeQueueResults(results);
+  const workspace = useWorkspaceStore(id);
+  const job = {
+    task,
+    description: titleZh ?? titleJp,
+    createAt: Date.now(),
+  };
+  const success = workspace.addJob(job);
+  if (success && (setting.value.autoTopJobWhenAddTask || shouldTopJob.value)) {
+    workspace.topJob(job);
+  }
+  const { type, text } = summarizeQueueResults([success]);
   Toast[type](text);
 };
 </script>
