@@ -460,36 +460,50 @@ describe('lazy task loading and metadata units', () => {
     expect(second.initialize).not.toHaveBeenCalled();
   });
 
-  it('restarts with a new task after cancelled initialization and ignores the old result', async () => {
-    const old = task('wenku');
-    const replacement = task('wenku');
-    const pending = deferred<void>();
-    vi.mocked(old.initialize).mockImplementation(async () => {
-      await pending.promise;
-      old.initialized = true;
-    });
-    const { runtime } = setupLifecycleRuntime({ remote: old });
-    await runtime.startWorker('trusted');
-    runtime.runProcessLoop();
-    expect(old.initialize).toHaveBeenCalledOnce();
-    const signal = vi.mocked(old.initialize).mock.calls[0][0].signal;
-    runtime.stopWorker('trusted');
-    expect(signal.aborted).toBe(true);
+  it.each(['pending', 'completed'] as const)(
+    'ignores cancelled initialization when its replacement is %s',
+    async (phase) => {
+      const old = task('wenku');
+      const replacement = task('wenku');
+      const next = task('local');
+      const pending = deferred<void>();
+      vi.mocked(old.initialize).mockReturnValueOnce(pending.promise);
+      const { runtime } = setupLifecycleRuntime({ remote: old, next });
+      await runtime.startWorker('trusted');
+      runtime.runProcessLoop();
+      expect(old.initialize).toHaveBeenCalledOnce();
+      const signal = vi.mocked(old.initialize).mock.calls[0][0].signal;
+      runtime.stopWorker('trusted');
+      expect(signal.aborted).toBe(true);
 
-    mocks.tasks.set('remote', replacement);
-    await runtime.startWorker('trusted');
-    await vi.waitFor(() =>
-      expect(replacement.chapterSave).toHaveBeenCalledOnce(),
-    );
-    const state = runtime.taskStates.value.get('remote');
-    pending.resolve();
-    await pending.promise;
-    await Promise.resolve();
-    expect(old.chapterSave).not.toHaveBeenCalled();
-    expect(replacement.initialize).toHaveBeenCalledOnce();
-    expect(runtime.taskStates.value.get('remote')).toBe(state);
-    expect(state?.chapters[0].status).toBe('done');
-  });
+      const replacementPending = deferred<void>();
+      vi.mocked(replacement.initialize).mockImplementationOnce(async () => {
+        await replacementPending.promise;
+        replacement.initialized = true;
+      });
+      mocks.tasks.set('remote', replacement);
+      await runtime.startWorker('trusted');
+      if (phase === 'completed') {
+        replacementPending.resolve();
+        await vi.waitFor(() => expect(next.chapterSave).toHaveBeenCalledOnce());
+      }
+      const state = runtime.taskStates.value.get('remote');
+      pending.resolve();
+      await pending.promise;
+      await Promise.resolve();
+      runtime.runProcessLoop();
+      expect(replacement.initialize).toHaveBeenCalledOnce();
+      expect(runtime.taskStates.value.get('remote')).toBe(state);
+      if (phase === 'pending') {
+        expect(state).toBeUndefined();
+        expect(next.initialize).not.toHaveBeenCalled();
+        replacementPending.resolve();
+      }
+      await vi.waitFor(() => expect(next.chapterSave).toHaveBeenCalledOnce());
+      expect(replacement.chapterSave).toHaveBeenCalledOnce();
+      expect(old.chapterSave).not.toHaveBeenCalled();
+    },
+  );
 
   it('keeps metadata errors retryable while continuing chapters and later tasks', async () => {
     const web = task('web');
