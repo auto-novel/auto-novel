@@ -24,11 +24,12 @@ const regionClass: Record<GroupStatus, string> = {
 };
 const previewLimit = 6;
 
-const statusLabels: Record<UnitStatus, string> = {
+const statusLabels: Record<UnitStatus | 'paused', string> = {
   pending: '等待',
   translating: '处理中',
   done: '成功',
   error: '失败',
+  paused: '已暂停',
 };
 
 const phaseLabels = {
@@ -81,21 +82,20 @@ const chapters = computed(() =>
       else if (state?.ready && state.completedCount === state.segments.length)
         phase = 'saving';
     }
-    const paused = props.taskState?.isPausedUnit(ch) ?? false;
+    // 展示分区独立于原始任务状态；翻译单元需在分段准备好后显示。
+    let region: GroupStatus | undefined;
+    if (props.taskState?.isPausedUnit(ch)) region = 'paused';
+    else if (ch.status === 'error') region = 'error';
+    else if (ch.status === 'translating' && state?.ready)
+      region = 'translating';
     return {
-      phase,
-      paused,
-      compact:
-        phase === 'queued' &&
-        !paused &&
-        (!state || !startedChapters.value.has(state)),
       ...ch,
-      // 整章分段准备好后持续显示，包含排队、分段间隙和保存阶段。
-      // 完成、失败或中止仍以章节状态为准，不能仅凭 ready 判断。
-      status:
-        ch.status === 'translating' && !state?.ready
-          ? ('pending' as const)
-          : ch.status,
+      region,
+      phase,
+      compact:
+        region === 'translating' &&
+        phase === 'queued' &&
+        (!state || !startedChapters.value.has(state)),
       segmentProgress: state?.ready
         ? { completed: state.completedCount, total: state.segments.length }
         : ch.segmentProgress,
@@ -112,10 +112,7 @@ const groups = computed(() => {
     error: [],
   };
   for (const chapter of chapters.value) {
-    if (chapter.paused) byStatus.paused.push(chapter);
-    else if (chapter.status === 'translating' || chapter.status === 'error') {
-      byStatus[chapter.status].push(chapter);
-    }
+    if (chapter.region) byStatus[chapter.region].push(chapter);
   }
   return (['translating', 'paused', 'error'] as const).flatMap((status) => {
     const items = byStatus[status];
@@ -124,7 +121,7 @@ const groups = computed(() => {
     return {
       status,
       expanded,
-      label: status === 'paused' ? '已暂停' : statusLabels[status],
+      label: statusLabels[status],
       items,
       visible: expanded ? items : items.slice(0, previewLimit),
     };
@@ -141,11 +138,10 @@ function pct(sp: Chapter['segmentProgress']): number {
 
 function description(ch: Chapter): string {
   const progress = ch.segmentProgress;
-  const statusLabel = ch.paused
-    ? '已暂停'
-    : ch.status === 'translating'
+  const statusLabel =
+    ch.region === 'translating'
       ? phaseLabels[ch.phase]
-      : statusLabels[ch.status];
+      : statusLabels[ch.region ?? ch.status];
   return `${ch.kind === 'metadata' ? '小说信息' : `任务内编号 #${ch.order}`} · ${ch.title} · ${statusLabel}${
     progress ? ` · 已完成 ${progress.completed}/${progress.total} 段` : ''
   } · 点击查看预览`;
@@ -159,10 +155,7 @@ function chapterElement(chapterId: string): HTMLElement | undefined {
 
 // 章节移出或跨分区时仅恢复键盘焦点，不播放进出动画。
 watch(
-  () =>
-    chapters.value.map(
-      (ch) => [ch.chapterId, ch.paused ? 'paused' : ch.status] as const,
-    ),
+  () => chapters.value.map((ch) => [ch.chapterId, ch.region] as const),
   async (current, previous) => {
     if (!root.value || !previous) return;
     if (

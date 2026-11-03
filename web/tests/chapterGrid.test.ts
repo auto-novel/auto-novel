@@ -32,7 +32,28 @@ function prepare(state: TaskState, id: string) {
 const render = (taskState: TaskState) =>
   renderToString(createSSRApp(ChapterGrid, { taskState }));
 
-describe('paused unit previews', () => {
+describe('chapter display regions', () => {
+  it('shows translating units only when ready and preserves phase labels', async () => {
+    const state = createState();
+    state.updateStatus('0', 'translating');
+    expect(await render(state)).not.toContain('data-region=');
+
+    const detail = prepare(state, '0');
+    const queuedHtml = await render(state);
+    expect(queuedHtml).toContain('data-region="translating"');
+    expect(queuedHtml).toContain('排队中');
+    expect(state.chapters[0]!.status).toBe('translating');
+
+    detail.onSegStart(0, 'worker');
+    expect(await render(state)).toContain('翻译中');
+    detail.onSegComplete(0, ['译文']);
+    detail.onSegComplete(1, ['后续译文']);
+    expect(await render(state)).toContain('保存中');
+
+    state.updateStatus('0', 'done');
+    expect(await render(state)).not.toContain('data-region=');
+  });
+
   it('keeps completed translations visible after abort and leaves the paused group on resume', async () => {
     const state = createState();
     const unit = state.chapters[0]!;
@@ -52,7 +73,10 @@ describe('paused unit previews', () => {
 
     state.updateStatus(unit.chapterId, 'translating');
     expect(state.isPausedUnit(unit)).toBe(false);
-    expect(await render(state)).not.toContain('data-region="paused"');
+    const resumedHtml = await render(state);
+    expect(resumedHtml).not.toContain('data-region="paused"');
+    expect(resumedHtml).toContain('data-region="translating"');
+    expect(resumedHtml).toContain('已完成 1/2 段');
   });
 
   it('does not label untouched, queued or unready units as paused', async () => {
