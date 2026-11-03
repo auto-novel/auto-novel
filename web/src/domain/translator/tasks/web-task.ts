@@ -1,8 +1,5 @@
-import type {
-  TranslateTaskParams,
-  WebTranslateTask,
-  TranslatorId,
-} from '@/model/Translator';
+import type { WebTranslateTask, TranslatorId } from '@/model/Translator';
+import type { TranslateTaskParams } from './task-descriptor';
 import type {
   PreparedUnit,
   TaskExecutionContext,

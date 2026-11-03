@@ -1,8 +1,5 @@
-import type {
-  TranslateTaskDesc,
-  TranslateTaskParams,
-  TranslatorId,
-} from '@/model/Translator';
+import type { TranslatorId } from '@/model/Translator';
+import type { TranslateTaskDesc, TranslateTaskParams } from './task-descriptor';
 import type { TranslationTask } from './task';
 import { LocalTranslationTask } from './local-task';
 import { WebTranslationTask } from './web-task';

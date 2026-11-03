@@ -1,8 +1,5 @@
-import type {
-  TranslateTaskParams,
-  TranslatorId,
-  WenkuTranslateTask,
-} from '@/model/Translator';
+import type { TranslatorId, WenkuTranslateTask } from '@/model/Translator';
+import type { TranslateTaskParams } from './task-descriptor';
 import type {
   PreparedUnit,
   TaskExecutionContext,

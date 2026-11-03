@@ -1,5 +1,6 @@
 import type { Glossary } from '@auto-novel/translator';
-import type { TranslateTaskParams, TranslatorId } from '@/model/Translator';
+import type { TranslatorId } from '@/model/Translator';
+import type { TranslateTaskParams } from './task-descriptor';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
 import type {
   PreparedUnit,

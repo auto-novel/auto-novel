@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { Toast, XDialog } from '@novelia/web-kit';
 
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { FavoredRepo, useSettingStore, useWorkspaceStore } from '@/stores';
 import { useShouldTopJob } from '@/util';

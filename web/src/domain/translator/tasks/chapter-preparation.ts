@@ -1,5 +1,5 @@
 import type { Glossary } from '@auto-novel/translator';
-import type { TranslateTaskParams } from '@/model/Translator';
+import type { TranslateTaskParams } from './task-descriptor';
 import type { PreparedUnit, TaskChapter } from './task';
 
 /** 正文段落保持一一对应；元数据由自己的 coder 处理，不使用此转换。 */

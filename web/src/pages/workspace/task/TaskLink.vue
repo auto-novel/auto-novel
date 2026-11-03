@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 
 const props = defineProps<{
   task: string;

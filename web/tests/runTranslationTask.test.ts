@@ -11,7 +11,7 @@ import type {
 import type {
   TranslateTaskDesc,
   TranslateTaskParams,
-} from '../src/model/Translator';
+} from '../src/domain/translator/tasks/task-descriptor';
 
 const mocks = vi.hoisted(() => ({
   createTranslator: vi.fn(),

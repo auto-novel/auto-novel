@@ -9,7 +9,7 @@ export type { SingleTaskTranslatorConfig } from './translate-lines';
 import type {
   TranslateTaskDesc,
   TranslateTaskParams,
-} from '@/model/Translator';
+} from './tasks/task-descriptor';
 import { WorkPreparer } from './prepare-work';
 import { IndexedDbSegmentCache } from './segment-cache';
 import { TaskState } from './task-state';

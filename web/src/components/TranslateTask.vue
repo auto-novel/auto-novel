@@ -4,11 +4,9 @@ import { Toast } from '@novelia/web-kit';
 import {
   runTranslationTask,
   type SingleTaskTranslatorConfig,
+  type TranslateTaskDesc,
+  type TranslateTaskParams,
 } from '@/domain/translator';
-import type {
-  TranslateTaskDesc,
-  TranslateTaskParams,
-} from '@/model/Translator';
 import { releaseKeepAlive, requestKeepAlive } from '@/util';
 
 import CTaskCard from './CTaskCard.vue';

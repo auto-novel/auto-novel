@@ -17,6 +17,7 @@ import {
   IndexedDbSegmentCache,
   createTranslationTask,
   TaskState,
+  TranslateTaskDescriptor,
 } from '@/domain/translator';
 import type { TranslationTask, UnitStatus } from '@/domain/translator';
 import { toTranslatorConfig } from '@/model/Translator';
@@ -25,7 +26,6 @@ import type {
   TranslateJobRecord,
   WorkspaceTranslatorId,
 } from '@/model/Translator';
-import { TranslateTaskDescriptor } from '@/model/Translator';
 
 import { useWorkspaceLog } from './useWorkspaceLog';
 

@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import TaskLink from '../src/pages/workspace/task/TaskLink.vue';
+
+// 链接渲染只依赖任务编解码，不加载翻译执行器的浏览器依赖。
+vi.mock(
+  '@/domain/translator',
+  () => import('../src/domain/translator/tasks/task-descriptor'),
+);
 
 async function renderTaskLink(task: string) {
   const router = createRouter({

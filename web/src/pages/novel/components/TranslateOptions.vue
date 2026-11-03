@@ -4,7 +4,7 @@ import { InfoOutlined } from '@vicons/material';
 
 import { hasAddonInstalled } from '@/external/addon';
 import type { GenericNovelId } from '@/model/Common';
-import type { TranslateTaskParams } from '@/model/Translator';
+import type { TranslateTaskParams } from '@/domain/translator';
 import { useWhoamiStore } from '@/stores';
 
 const probs = defineProps<{

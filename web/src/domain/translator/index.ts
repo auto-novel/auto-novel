@@ -13,6 +13,14 @@ export type {
   SegmentStatus,
 } from './task-state';
 export { createTranslationTask } from './tasks/create-task';
+export { TranslateTaskDescriptor } from './tasks/task-descriptor';
+export type {
+  WebTranslateTaskDesc,
+  WenkuTranslateTaskDesc,
+  LocalTranslateTaskDesc,
+  TranslateTaskDesc,
+  TranslateTaskParams,
+} from './tasks/task-descriptor';
 export type {
   PreparedUnit,
   TaskExecutionContext,

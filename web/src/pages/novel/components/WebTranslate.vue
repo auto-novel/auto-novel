@@ -5,7 +5,7 @@ import ky from 'ky';
 
 import { WebNovelApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 import {
   summarizeQueueResults,
   useLocalVolumeStore,

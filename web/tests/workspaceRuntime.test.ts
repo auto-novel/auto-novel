@@ -41,6 +41,8 @@ vi.mock('@/domain/translator/tasks/create-task', () => ({
 }));
 vi.mock('@/model/Translator', () => ({
   toTranslatorConfig: (_id: string, worker: object) => worker,
+}));
+vi.mock('@/domain/translator/tasks/task-descriptor', () => ({
   TranslateTaskDescriptor: { parse: mocks.parseTask },
 }));
 vi.mock('@/pages/workspace/useWorkspaceLog', () => ({
