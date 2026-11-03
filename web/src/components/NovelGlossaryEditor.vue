@@ -71,9 +71,13 @@ const glossary = ref<Glossary>({});
 const originalGlossary = ref<Glossary>({});
 const termsToAdd = ref<[string, string]>(['', '']);
 
-const resetState = () => {
+const syncGlossary = () => {
   glossary.value = { ...props.value };
   originalGlossary.value = { ...props.value };
+};
+
+const resetState = () => {
+  syncGlossary();
   termsToAdd.value = ['', ''];
 };
 
@@ -81,13 +85,7 @@ onMounted(() => {
   resetState();
 });
 
-watch(
-  () => props.value,
-  () => {
-    resetState();
-  },
-  { deep: true },
-);
+watch(() => props.value, syncGlossary, { deep: true });
 
 const isGlossaryChanged = () => {
   if (termsToAdd.value.some((term) => term.trim() !== '')) return true;
