@@ -32,6 +32,7 @@ const toggleGlossaryModal = () => {
 };
 
 const isGlossaryChanged = () => {
+  if (termsToAdd.value.some((term) => term.trim() !== '')) return true;
   const cur = glossary.value;
   const orig = originalGlossary.value;
   const curKeys = Object.keys(cur);
