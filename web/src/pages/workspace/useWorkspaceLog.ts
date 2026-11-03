@@ -11,6 +11,11 @@ export interface WorkspaceLogEntry {
 const MAX_ENTRIES = 1000;
 const MAX_TEXT_LENGTH = 1000;
 
+const truncate = (text: string) =>
+  text.length > MAX_TEXT_LENGTH
+    ? text.slice(0, MAX_TEXT_LENGTH) + '…（已截断）'
+    : text;
+
 export function useWorkspaceLog() {
   const logs = shallowRef<WorkspaceLogEntry[]>([]);
   let pending: WorkspaceLogEntry[] = [];
@@ -42,14 +47,13 @@ export function useWorkspaceLog() {
           /((?:api[_-]?key|authorization|token)["']?\s*[:=]\s*["']?)[^\s"'&,}]+/gi,
           '$1[已隐藏]',
         );
-      return text.length > MAX_TEXT_LENGTH
-        ? text.slice(0, MAX_TEXT_LENGTH) + '…（已截断）'
-        : text;
+      return truncate(text);
     };
     pending.push({
       id: nextId++,
       time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-      source: sanitize(source),
+      // 来源只限制长度，不做脱敏，避免名称与 Key 重合时丢失日志归属。
+      source: truncate(source),
       message: sanitize(message),
       level,
     });

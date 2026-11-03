@@ -48,6 +48,7 @@ export class OpenAiTranslator implements Translator {
     this.reasoningEffort = profile.reasoningEffort;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
+    this.log(`请求思考强度：${this.reasoningEffort}`);
   }
 
   getCacheKey({ lines, context }: Pick<TranslateRequest, 'lines' | 'context'>) {
@@ -64,10 +65,8 @@ export class OpenAiTranslator implements Translator {
     lines,
     context,
     signal,
-    attempt,
   }: TranslateRequest): Promise<string[]> {
     if (lines.length === 0) return [];
-    if (attempt === 0) this.log(`请求思考强度：${this.reasoningEffort}`);
 
     const result = await this.translateLines(lines, context, signal);
     if (!detectChinese(result.join(' '))) {
