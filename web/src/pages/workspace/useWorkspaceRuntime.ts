@@ -100,6 +100,10 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   });
   let trustedInputsController = new AbortController();
 
+  // 目录窗口包含当前任务；原文槽位同时计入加载中和已就绪的输入。
+  const taskPrefetchWindow = 3;
+  const unitPrefetchLimit = 3;
+  let refillPrefetch: (() => void) | undefined;
   let processLoopAbortController: AbortController | null = null;
   let disposed = false;
 
@@ -162,10 +166,23 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     }
   }
 
-  /** 仅加载即将执行的任务；上一任务还有待处理/在途单元时不预取目录。 */
+  /** 串行加载目录，但允许当前任务之外保留两个待执行任务的快照。 */
   function initializeNextTask(): void {
     if ([...taskRuntimes.values()].some((runtime) => runtime.initializing))
       return;
+    // 先统计所有可执行快照，队列重排也不能不断额外加载目录。
+    const activeTasks = jobs.value.filter((job) => {
+      const runtime = taskRuntimes.get(job.task);
+      return (
+        !job.finishAt &&
+        runtime?.task &&
+        canRunTask(runtime.task) &&
+        runtime.state?.units.some(
+          (unit) => unit.status === 'pending' || unit.status === 'translating',
+        )
+      );
+    }).length;
+    if (activeTasks >= taskPrefetchWindow) return;
     for (const job of jobs.value) {
       const runtime = taskRuntimes.get(job.task);
       if (!runtime || job.finishAt || runtime.initializationFailed) continue;
@@ -177,17 +194,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         continue;
       }
       if (!canRunTask(task)) continue;
-      const { state } = runtime;
-      if (state?.initialized) {
-        if (
-          state.units.some(
-            (unit) =>
-              unit.status === 'pending' || unit.status === 'translating',
-          )
-        )
-          return;
-        continue;
-      }
+      if (runtime.state?.initialized) continue;
       const controller = new AbortController();
       runtime.initializing = controller;
       void initializeTask(job, runtime, controller);
@@ -243,7 +250,10 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     initializeNextTask();
 
     // 停止后也必须等旧 run 退出，防止重新启动时重复拉取或覆盖章节状态。
-    if (processLoopAbortController) return;
+    if (processLoopAbortController) {
+      refillPrefetch?.();
+      return;
+    }
     if (schedulableUnits().next().done) return;
     const controller = new AbortController();
     processLoopAbortController = controller;
@@ -330,23 +340,120 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       return undefined;
     };
 
+    type PrefetchedInput = Awaited<ReturnType<typeof nextWork>>;
+    type Preparation = Promise<
+      | { input: PrefetchedInput; error?: never }
+      | { input?: never; error: unknown }
+    >;
+    const prefetched = new Set<Preparation>();
+    const ready: { preparation: Preparation; result: Awaited<Preparation> }[] =
+      [];
+    let wakePrefetch: (() => void) | undefined;
+    const fillPrefetch = () => {
+      while (
+        !signal.aborted &&
+        hasRunningWorker() &&
+        prefetched.size < unitPrefetchLimit &&
+        !schedulableUnits().next().done
+      ) {
+        // nextWork 同步认领单元，避免并发加载同一章；提前接住异常防止悬空拒绝。
+        const preparation: Preparation = nextWork().then(
+          (input) => ({ input }),
+          (error: unknown) => ({ error }),
+        );
+        prefetched.add(preparation);
+        // 每次准备仅注册一个通知，慢请求不会积累其他章节的等待回调。
+        void preparation.then((result) => {
+          ready.push({ preparation, result });
+          wakePrefetch?.();
+        });
+        wakePrefetch?.();
+      }
+    };
+    const waitForPrefetch = () =>
+      new Promise<undefined>((resolve) => {
+        wakePrefetch = () => resolve(undefined);
+      });
+    refillPrefetch = fillPrefetch;
+    type Settlement = {
+      version: number;
+      result?: { error?: never } | { error: unknown };
+    };
+    let submissionVersion = 0;
+    let draining: Settlement | undefined;
+
     void (async () => {
       try {
-        // 推模型：投递一个翻译单元再取下一个，队列满时 submit 自己等待。
         for (;;) {
-          const input = await nextWork();
-          if (!input) break;
+          fillPrefetch();
+          if (signal.aborted) break;
+          if (draining?.result && 'error' in draining.result)
+            throw draining.result.error;
+          if (prefetched.size === 0) {
+            // 旧等待可能已检查空队列，但完成通知晚于新投递；此时必须重新结算。
+            if (draining?.result && draining.version !== submissionVersion)
+              draining = undefined;
+            // 同时只保留一个结算等待，避免慢保存积累重复 drain 监听。
+            if (!draining) {
+              const settlement: Settlement = {
+                version: submissionVersion,
+              };
+              draining = settlement;
+              void pipeline.drain().then(
+                () => {
+                  settlement.result = {};
+                  wakePrefetch?.();
+                },
+                (error: unknown) => {
+                  settlement.result = { error };
+                  wakePrefetch?.();
+                },
+              );
+            }
+            if (draining.result) break;
+            // 旧输入还在翻译/保存时，新加载的任务仍可唤醒消费者。
+            await waitForPrefetch();
+            wakePrefetch = undefined;
+            continue;
+          }
+          // 完成通知按就绪顺序入队，不等待队首慢请求。
+          const selected = ready.shift();
+          if (!selected) {
+            await waitForPrefetch();
+            wakePrefetch = undefined;
+            continue;
+          }
+          const { preparation, result } = selected;
           try {
-            await pipeline.submit(input.work, input.signal);
-          } catch (error) {
-            // 唯一可信翻译器停止只取消受限输入，不能连带中断本地章节。
-            if (!input.signal.aborted || signal.aborted) throw error;
+            if ('error' in result) throw result.error;
+            const input = result.input;
+            if (!input) continue;
+            if (input.signal.aborted) {
+              await input.work.onAbort();
+              continue;
+            }
+            try {
+              // 在投递前更新代际，不依赖旧 drain 的完成通知是否已经到达。
+              submissionVersion++;
+              // 投递仍串行，保留分段队列的背压；等待期间可准备其他槽位。
+              await pipeline.submit(input.work, input.signal);
+            } catch (error) {
+              // 唯一可信翻译器停止只取消受限输入，不能连带中断本地章节。
+              if (!input.signal.aborted || signal.aborted) throw error;
+            }
+          } finally {
+            prefetched.delete(preparation);
           }
         }
-        await pipeline.drain();
       } finally {
-        // 出错或取消时停掉在途输入，并等待结算回调收尾。
+        // 未投递的原文也必须结算取消，不能遗留 translating 状态。
         controller.abort();
+        await Promise.all(
+          [...prefetched].map(async (preparation) => {
+            const result = await preparation;
+            await result.input?.work.onAbort();
+          }),
+        );
         await pipeline.drain().catch(() => {});
       }
     })()
@@ -359,6 +466,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       .finally(() => {
         if (processLoopAbortController !== controller) return;
         processLoopAbortController = null;
+        refillPrefetch = undefined;
         // 本轮没有更多可做的章节，但任务可能新增或重试章节。
         runProcessLoop();
       });
@@ -517,7 +625,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     } finally {
       if (isCurrentInitialization()) {
         runtime.initializing = undefined;
-        // 当前任务加载完成后才推进队列，不在页面挂载时批量请求目录。
+        // 启动后按窗口补齐目录和原文；页面挂载时不批量请求。
         runProcessLoop();
       }
     }
