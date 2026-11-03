@@ -158,6 +158,18 @@ export class TaskState {
       : this.chapters;
   }
 
+  /** 仅用于展示：中止后回到等待，但仍有已完成或失败分段可供预览。 */
+  isPausedUnit(unit: UnitState): boolean {
+    if (unit.status !== 'pending') return false;
+    const detail = this.unitDetails.get(unit.chapterId);
+    return (
+      !!detail?.ready &&
+      detail.segments.some(
+        (segment) => segment.status === 'done' || segment.status === 'error',
+      )
+    );
+  }
+
   hasFailedUnits(): boolean {
     return this.units.some((chapter) => chapter.status === 'error');
   }

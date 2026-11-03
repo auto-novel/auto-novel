@@ -34,6 +34,7 @@ const hasVisibleChapters = computed(() =>
   (props.taskState?.units ?? []).some(
     (chapter) =>
       chapter.status === 'error' ||
+      props.taskState?.isPausedUnit(chapter) ||
       (chapter.status === 'translating' &&
         props.taskState?.unitDetails.get(chapter.chapterId)?.ready),
   ),
