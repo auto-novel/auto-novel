@@ -99,13 +99,6 @@ export type TranslateTaskParams = {
   endIndex: number;
 };
 
-export type TranslateTaskCallback = {
-  onStart: (total: number) => void;
-  onChapterSuccess: (state: { jp?: number; zh?: number }) => void;
-  onChapterFailure: () => void;
-  log: (message: string, detail?: readonly string[]) => void;
-};
-
 type TranslateTaskDescriptor = string;
 
 export namespace TranslateTaskDescriptor {

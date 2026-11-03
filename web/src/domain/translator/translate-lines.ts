@@ -5,7 +5,7 @@ import {
   type SakuraTranslatorConfig,
 } from '@auto-novel/translator';
 
-/** 保持独立入口的配置形状，与旧工作区调用兼容。 */
+/** 工具页与单任务翻译入口使用的配置。 */
 export type SingleTaskTranslatorConfig =
   | { id: 'youdao' }
   | ({ id: 'sakura'; segLength?: number } & SakuraTranslatorConfig);

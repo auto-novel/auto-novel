@@ -95,11 +95,6 @@ const navigationOptions = computed<WebKitMenuOption[]>(() => [
         label: 'Sakura工作区',
         to: '/workspace/sakura-pipeline',
       },
-      {
-        key: '/workspace/sakura',
-        label: 'Sakura工作区（待废弃）',
-        to: '/workspace/sakura',
-      },
     ],
   },
   {

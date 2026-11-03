@@ -190,8 +190,6 @@ export namespace RegexUtil {
     }
   }
 
-  export const getLeadingSpaces = (str: string) => str.match(/^\s*/)?.[0] ?? '';
-
   export const isSafari = (agent: string) =>
     /^((?!chrome|android).)*safari/i.test(agent);
 }

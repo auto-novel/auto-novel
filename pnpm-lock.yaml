@@ -269,9 +269,6 @@ importers:
       '@zip.js/zip.js':
         specifier: ^2.7.73
         version: 2.23.0
-      crypto-es:
-        specifier: ^2.1.0
-        version: 2.1.0
       idb:
         specifier: ^8.0.3
         version: 8.0.4
