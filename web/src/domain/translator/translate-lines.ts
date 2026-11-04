@@ -16,7 +16,7 @@ export async function createSingleTaskTranslator(
 ) {
   // 有道沿用插件客户端；按需加载，避免其他入口提前初始化浏览器依赖。
   return config.id === 'youdao'
-    ? (await import('@/external/translator')).createYoudaoTranslator(log)
+    ? (await import('@/external/youdao')).createYoudaoTranslator(log)
     : createTranslator({ ...config, kind: 'sakura', log });
 }
 

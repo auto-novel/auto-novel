@@ -3,7 +3,7 @@ import {
   AddonLoadTimeoutError,
   AddonNotFoundError,
   assertAddonVersion,
-} from '@/external/errors';
+} from './addon-errors';
 
 export type AddonCapabilityVersion = `${number}.${number}.${number}`;
 

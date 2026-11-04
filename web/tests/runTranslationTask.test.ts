@@ -22,7 +22,7 @@ vi.mock('@auto-novel/translator', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@auto-novel/translator')>()),
   createTranslator: mocks.createTranslator,
 }));
-vi.mock('@/external/translator', () => ({
+vi.mock('@/external/youdao', () => ({
   createYoudaoTranslator: mocks.createTranslator,
 }));
 vi.mock('@/domain/translator/tasks/create-task', () => ({
