@@ -139,8 +139,8 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         level: 'expire' | 'all' | 'normal' | 'sync';
         type: 'gpt' | 'sakura';
         shouldTop: boolean;
-        startIndex: number;
-        endIndex: number;
+        startIndex?: number;
+        endIndex?: number;
       },
     ) {
       const workspace = useWorkspaceStore(type);
@@ -181,8 +181,6 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
           level,
           forceMetadata: false,
           useBrowserCrawler: false,
-          startIndex: 0,
-          endIndex: 65535,
         });
         const job = {
           task,

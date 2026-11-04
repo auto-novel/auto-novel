@@ -5,7 +5,7 @@ import {
   runTranslationTask,
   type SingleTaskTranslatorConfig,
   type TranslateTaskDesc,
-  type TranslateTaskParams,
+  type TranslateTaskOptions,
 } from '@/domain/translator';
 import { releaseKeepAlive, requestKeepAlive } from '@/util';
 
@@ -35,7 +35,7 @@ onUnmounted(() => taskController?.abort());
 
 const startTask = async (
   desc: TranslateTaskDesc,
-  params: TranslateTaskParams,
+  params: TranslateTaskOptions,
   translatorDesc: SingleTaskTranslatorConfig,
   callback?: {
     onProgressUpdated: (progress: {

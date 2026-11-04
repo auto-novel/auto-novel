@@ -4,7 +4,7 @@ import { Toast } from '@novelia/web-kit';
 import { FileDownloadOutlined } from '@vicons/material';
 
 import { WenkuNovelApi } from '@/api';
-import type { TranslateTaskParams } from '@/domain/translator';
+import type { TranslateTaskOptions } from '@/domain/translator';
 import { TranslateTaskDescriptor } from '@/domain/translator';
 import type { VolumeJpDto } from '@/model/WenkuNovel';
 import { useSettingStore, useWhoamiStore, useWorkspaceStore } from '@/stores';
@@ -13,7 +13,7 @@ import { useShouldTopJob } from '@/util';
 const { novelId, volume, getParams } = defineProps<{
   novelId: string;
   volume: VolumeJpDto;
-  getParams: () => TranslateTaskParams;
+  getParams: () => TranslateTaskOptions;
 }>();
 
 const emit = defineEmits<{

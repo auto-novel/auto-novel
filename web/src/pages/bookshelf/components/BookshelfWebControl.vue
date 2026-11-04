@@ -112,7 +112,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
       forceMetadata: forceMetadata.value,
       useBrowserCrawler: false,
       startIndex: 0,
-      endIndex: first5.value ? 5 : 65535,
+      endIndex: first5.value ? 5 : undefined,
     });
     const job = {
       task,

@@ -93,10 +93,18 @@ const files = computed(() => {
 
 const shouldTopJob = useShouldTopJob();
 const submitJob = (id: 'gpt' | 'sakura') => {
-  const { startIndex, endIndex, level, forceMetadata, useBrowserCrawler } =
-    translateOptions.value!.getTranslateTaskParams();
+  const {
+    startIndex = 0,
+    endIndex,
+    level,
+    forceMetadata,
+    useBrowserCrawler,
+  } = translateOptions.value!.getTranslateTaskParams();
 
-  if (endIndex <= startIndex || startIndex >= total) {
+  if (
+    (endIndex !== undefined && endIndex <= startIndex) ||
+    startIndex >= total
+  ) {
     Toast.error('排队失败：没有选中章节');
     return;
   }

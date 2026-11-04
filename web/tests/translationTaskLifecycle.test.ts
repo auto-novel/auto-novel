@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalTranslationTask } from '../src/domain/translator/tasks/local-task';
 import { WenkuTranslationTask } from '../src/domain/translator/tasks/wenku-task';
 import { WebTranslationTask } from '../src/domain/translator/tasks/web-task';
+import { createTranslationTask } from '../src/domain/translator/tasks/create-task';
 
 const mocks = vi.hoisted(() => ({
   createApi: vi.fn(),
@@ -79,6 +80,18 @@ function deferred<T>() {
 beforeEach(() => vi.resetAllMocks());
 
 describe('web task initialization', () => {
+  it('fills omitted chapter ranges for the direct execution entry', async () => {
+    mocks.getTranslateTask.mockResolvedValue(snapshot);
+    const task = createTranslationTask(
+      { type: 'web', providerId: 'provider', novelId: 'novel' },
+      'sakura',
+      { level: 'normal', forceMetadata: false, useBrowserCrawler: false },
+    );
+    await task.initialize(context());
+    expect(task.chapters).toHaveLength(1);
+    expect(task.chapters[0].chapterId).toBe('1');
+  });
+
   it('finishes crawling before fetching a single task snapshot', async () => {
     const crawl = deferred<void>();
     const novel = { titleJp: '源站标题' };

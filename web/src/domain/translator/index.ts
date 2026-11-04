@@ -20,6 +20,7 @@ export type {
   LocalTranslateTaskDesc,
   TranslateTaskDesc,
   TranslateTaskParams,
+  TranslateTaskOptions,
 } from './tasks/task-descriptor';
 export type {
   PreparedUnit,

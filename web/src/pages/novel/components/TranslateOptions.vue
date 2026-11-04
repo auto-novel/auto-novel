@@ -4,7 +4,7 @@ import { InfoOutlined } from '@vicons/material';
 
 import { hasAddonInstalled } from '@/external/addon';
 import type { GenericNovelId } from '@/model/Common';
-import type { TranslateTaskParams } from '@/domain/translator';
+import type { TranslateTaskOptions } from '@/domain/translator';
 import { useWhoamiStore } from '@/stores';
 
 const probs = defineProps<{
@@ -14,7 +14,7 @@ const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 // 翻译设置
-const translateLevel = ref<'normal' | 'expire' | 'all' | 'sync'>(
+const translateLevel = ref<TranslateTaskOptions['level']>(
   probs.gnid.type === 'local' ? 'expire' : 'normal',
 );
 const forceMetadata = ref(false);
@@ -36,15 +36,15 @@ onUnmounted(() => {
 });
 
 const startIndex = ref<number | null>(0);
-const endIndex = ref<number | null>(65536);
+const endIndex = ref<number | null>(null);
 
 defineExpose({
-  getTranslateTaskParams: (): TranslateTaskParams => ({
+  getTranslateTaskParams: (): TranslateTaskOptions => ({
     level: translateLevel.value,
     forceMetadata: forceMetadata.value,
     useBrowserCrawler: probs.gnid.type === 'web' && useBrowserCrawler.value,
     startIndex: startIndex.value ?? 0,
-    endIndex: endIndex.value ?? 65536,
+    endIndex: endIndex.value ?? undefined,
   }),
 });
 </script>
@@ -142,6 +142,7 @@ defineExpose({
             <n-input-number
               size="small"
               v-model:value="endIndex"
+              placeholder="不限"
               :show-button="false"
               :min="0"
               style="width: 60px"

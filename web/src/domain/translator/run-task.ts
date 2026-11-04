@@ -8,7 +8,7 @@ export type { SingleTaskTranslatorConfig } from './translate-lines';
 
 import type {
   TranslateTaskDesc,
-  TranslateTaskParams,
+  TranslateTaskOptions,
 } from './tasks/task-descriptor';
 import { WorkPreparer } from './prepare-work';
 import { IndexedDbSegmentCache } from './segment-cache';
@@ -29,7 +29,7 @@ interface TaskCallbacks {
 /** 独立入口一次执行一个任务，逐单元结算，不引入工作区调度与持久状态。 */
 export async function runTranslationTask(
   desc: TranslateTaskDesc,
-  params: TranslateTaskParams,
+  params: TranslateTaskOptions,
   config: SingleTaskTranslatorConfig,
   callbacks: TaskCallbacks,
   signal = new AbortController().signal,

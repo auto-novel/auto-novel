@@ -5,7 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 
 import TaskLink from '../src/pages/workspace/task/TaskLink.vue';
 
-// 链接渲染只依赖任务编解码，不加载翻译执行器的浏览器依赖。
+// 保留真实编解码，隔离统一入口中与链接渲染无关的鉴权客户端。
 vi.mock(
   '@/domain/translator',
   () => import('../src/domain/translator/tasks/task-descriptor'),
@@ -33,6 +33,12 @@ describe('TaskLink', () => {
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain(text);
     expect(html).not.toContain('n-text');
+  });
+
+  it('renders malformed persisted tasks without breaking the queue', async () => {
+    const html = await renderTaskLink('web/provider');
+    expect(html).toContain('无效任务：web/provider');
+    expect(html).not.toContain('href=');
   });
 
   it('renders a local task as plain muted text', async () => {
