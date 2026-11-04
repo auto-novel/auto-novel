@@ -67,23 +67,24 @@ const testWorker = async () => {
   const pipeline = new TranslationPipeline({
     segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
   });
-  try {
-    const translator = await createTranslator({
+  const result = await Toast.promise(
+    createTranslator({
       ...toTranslatorConfig(props.translatorId, props.worker),
       log: (msg) => {
         if (msg.startsWith('思考：')) reasoningLogs.push(msg);
       },
-    });
-    pipeline.registerTranslator(translator, { concurrency: 1 });
-    const { lines } = await pipeline.translate({ lines: textJp });
-    const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];
-    if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
-    Toast.success(parts.join('\n'));
-  } catch (e: unknown) {
-    Toast.error(`翻译器错误：${e}`);
-  } finally {
-    pipeline.dispose();
-  }
+    }).then(async (translator) => {
+      pipeline.registerTranslator(translator, { concurrency: 1 });
+      const { lines, failed } = await pipeline.translate({ lines: textJp });
+      if (failed.length > 0) throw failed[0].error;
+      const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];
+      if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
+      return parts.join('\n');
+    }),
+    { loading: '正在测试翻译器…', error: '翻译器错误' },
+  );
+  pipeline.dispose();
+  if (result !== undefined) Toast.success(result);
 };
 </script>
 
