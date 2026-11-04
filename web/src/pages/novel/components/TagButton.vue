@@ -12,6 +12,7 @@ const emit = defineEmits<{
 
 <template>
   <n-tag
+    role="button"
     :type="checked ? type ?? 'success' : 'default'"
     @click="emit('update:checked', !checked)"
     style="border-radius: 0px; cursor: pointer"
