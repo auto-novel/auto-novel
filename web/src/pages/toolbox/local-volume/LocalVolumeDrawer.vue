@@ -15,7 +15,6 @@ import {
   BookshelfLocalUtil,
   useBookshelfLocalStore,
 } from '@/pages/bookshelf/BookshelfLocalStore';
-import { useIsWideScreen } from '@/pages/util';
 import { FavoredRepo, Setting, useSettingStore } from '@/stores';
 
 const props = defineProps<{
@@ -108,7 +107,6 @@ const sortedVolumes = computed(() => {
     order: setting.value.localVolumeOrder,
   });
 });
-const isWideScreen = useIsWideScreen();
 </script>
 
 <template>
@@ -118,7 +116,6 @@ const isWideScreen = useIsWideScreen();
     show-header
     side="right"
     size="clamp(280px, 80vw, 800px)"
-    :data-reka-swipe-ignore="isWideScreen ? '' : undefined"
     @open-auto-focus.prevent
   >
     <template #action>
