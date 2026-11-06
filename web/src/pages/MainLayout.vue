@@ -141,7 +141,7 @@ const menuKey = computed(() => {
             'Index',
             'BookshelfWeb',
             'BookshelfWenku',
-            'ReadHistoryList',
+            'ReadHistoryView',
             'WebNovelList',
             'WebNovelRank',
             'WenkuNovelList',

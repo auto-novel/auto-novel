@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
+import ReadHistoryTimeline from './ReadHistoryTimeline.vue';
 import {
   XButton,
   XConfirmDialog,
@@ -102,7 +103,15 @@ const clearHistory = async () => {
   }
 };
 
+const deletingHistoryKeys = ref(new Set<string>());
+
+const isDeletingHistory = (providerId: string, novelId: string) =>
+  deletingHistoryKeys.value.has(`${providerId}/${novelId}`);
+
 const deleteHistory = async (providerId: string, novelId: string) => {
+  const key = `${providerId}/${novelId}`;
+  if (deletingHistoryKeys.value.has(key)) return;
+  deletingHistoryKeys.value.add(key);
   // 删除当前页最后一条时回到上一页，避免停留在已超出总页数的空页。
   const isLastItemOfPage = page > 1 && novelPage.value?.items.length === 1;
   try {
@@ -112,6 +121,8 @@ const deleteHistory = async (providerId: string, novelId: string) => {
     });
   } catch {
     return;
+  } finally {
+    deletingHistoryKeys.value.delete(key);
   }
   if (isLastItemOfPage) onUpdatePage(page - 1);
 };
@@ -181,7 +192,9 @@ const deleteHistory = async (providerId: string, novelId: string) => {
       @update:page="onUpdatePage"
     />
 
-    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+    <XSeparator
+      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
+    />
 
     <NovelListSkeleton v-if="!novelPage && !error" simple />
     <XError
@@ -191,7 +204,6 @@ const deleteHistory = async (providerId: string, novelId: string) => {
     />
     <XEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
-      class="mt-3"
       title="暂无阅读历史"
       :description="
         readHistoryPaused
@@ -205,20 +217,21 @@ const deleteHistory = async (providerId: string, novelId: string) => {
       </XButton>
     </XEmpty>
     <template v-else-if="novelPage">
-      <NovelListWeb :items="novelPage.items" simple>
+      <ReadHistoryTimeline :items="novelPage.items">
         <template #action="item">
           <XButton
-            color="neutral"
-            variant="outline"
+            color="danger"
+            variant="ghost"
             size="tiny"
-            class="mt-0.5 rounded-full"
-            loading-auto
+            class="-my-1 h-auto rounded px-1 py-1 text-xs font-normal leading-4 text-error-text hover:bg-transparent hover:underline active:bg-transparent"
+            :aria-label="`删除《${item.titleZh || item.titleJp}》的阅读记录`"
+            :disabled="isDeletingHistory(item.providerId, item.novelId)"
             @click="deleteHistory(item.providerId, item.novelId)"
           >
             删除
           </XButton>
         </template>
-      </NovelListWeb>
+      </ReadHistoryTimeline>
     </template>
 
     <XPagination
