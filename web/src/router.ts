@@ -56,37 +56,18 @@ const router = createRouter({
         {
           path: '/favorite',
           redirect: '/favorite/local/default',
-          children: [
-            {
-              path: 'web/:favoredId?',
-              meta: { title: '我的收藏' },
-              component: () => import('./pages/bookshelf/BookshelfWeb.vue'),
-              props: (route) => ({
-                page: Number(route.query.page) || 1,
-                query: route.query.query || '',
-                selected: parseSelected(route.query),
-                favoredId: route.params.favoredId || 'default',
-              }),
-            },
-            {
-              path: 'wenku/:favoredId?',
-              meta: { title: '我的收藏' },
-              component: () => import('./pages/bookshelf/BookshelfWenku.vue'),
-              props: (route) => ({
-                page: Number(route.query.page) || 1,
-                selected: parseSelected(route.query),
-                favoredId: route.params.favoredId || 'default',
-              }),
-            },
-            {
-              path: 'local/:favoredId?',
-              meta: { title: '我的收藏' },
-              component: () => import('./pages/bookshelf/BookshelfLocal.vue'),
-              props: (route) => ({
-                favoredId: route.params.favoredId || 'default',
-              }),
-            },
-          ],
+        },
+        {
+          path: '/favorite/:type(web|wenku|local)/:favoredId?',
+          component: () => import('./pages/bookshelf/BookshelfView.vue'),
+          meta: { title: '我的收藏' },
+          props: (route) => ({
+            type: route.params.type,
+            favoredId: route.params.favoredId || 'default',
+            page: Number(route.query.page) || 1,
+            query: route.query.query || '',
+            selected: parseSelected(route.query),
+          }),
         },
 
         {

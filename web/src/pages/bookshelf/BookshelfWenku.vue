@@ -54,79 +54,74 @@ const novelListRef = useTemplateRef('novelList');
 </script>
 
 <template>
-  <bookshelf-layout :menu-key="`wenku/${favoredId}`">
-    <div role="region" aria-label="文库小说收藏列表">
-      <n-flex style="margin-bottom: 24px">
-        <c-button
-          label="选择"
-          :icon="ChecklistOutlined"
-          @action="showControlPanel = !showControlPanel"
-        />
-        <bookshelf-list-button
-          v-if="!isWideScreen"
-          :menu-key="`wenku/${favoredId}`"
-        />
-      </n-flex>
-
-      <n-collapse-transition
-        :show="showControlPanel"
-        style="margin-bottom: 16px"
-      >
-        <bookshelf-wenku-control
-          :selected-novels="novelListRef?.selectedNovels ?? []"
-          :favored-id="favoredId"
-          @select-all="novelListRef?.selectAll()"
-          @invert-selection="novelListRef?.invertSelection()"
-        />
-      </n-collapse-transition>
-
-      <ListFilter
-        :options="listOptions"
-        :value="listValue"
-        @update:value="onUpdateListValue(listOptions, $event)"
+  <div role="region" aria-label="文库小说收藏列表">
+    <n-flex style="margin-bottom: 24px">
+      <c-button
+        label="选择"
+        :icon="ChecklistOutlined"
+        @action="showControlPanel = !showControlPanel"
       />
+      <bookshelf-list-button
+        v-if="!isWideScreen"
+        :menu-key="`wenku/${favoredId}`"
+      />
+    </n-flex>
 
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-6"
-        :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
-        :page="page"
-        :total-pages="pageCount"
-        @update:page="onUpdatePage"
+    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+      <bookshelf-wenku-control
+        :selected-novels="novelListRef?.selectedNovels ?? []"
+        :favored-id="favoredId"
+        @select-all="novelListRef?.selectAll()"
+        @invert-selection="novelListRef?.invertSelection()"
       />
+    </n-collapse-transition>
 
-      <XSeparator
-        :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-      />
+    <ListFilter
+      :options="listOptions"
+      :value="listValue"
+      @update:value="onUpdateListValue(listOptions, $event)"
+    />
 
-      <NovelGridSkeleton v-if="!novelPage && !error" />
-      <XError
-        v-else-if="!novelPage && error"
-        title="加载错误"
-        :description="error.message"
-      />
-      <XEmpty
-        v-else-if="novelPage && novelPage.items.length === 0"
-        title="空列表"
-        size="compact"
-      />
-      <template v-else-if="novelPage">
-        <NovelListWenku
-          ref="novelList"
-          :items="novelPage.items"
-          :selectable="showControlPanel"
-          simple
-        />
-      </template>
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
 
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-3"
-        :page="page"
-        :total-pages="pageCount"
-        keyboard="window"
-        @update:page="onUpdatePage"
+    <XSeparator
+      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
+    />
+
+    <NovelGridSkeleton v-if="!novelPage && !error" />
+    <XError
+      v-else-if="!novelPage && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <XEmpty
+      v-else-if="novelPage && novelPage.items.length === 0"
+      title="空列表"
+      size="compact"
+    />
+    <template v-else-if="novelPage">
+      <NovelListWenku
+        ref="novelList"
+        :items="novelPage.items"
+        :selectable="showControlPanel"
+        simple
       />
-    </div>
-  </bookshelf-layout>
+    </template>
+
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-3"
+      :page="page"
+      :total-pages="pageCount"
+      keyboard="window"
+      @update:page="onUpdatePage"
+    />
+  </div>
 </template>

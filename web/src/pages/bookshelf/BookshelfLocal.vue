@@ -15,35 +15,33 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
 </script>
 
 <template>
-  <bookshelf-layout :menu-key="`local/${favoredId}`">
-    <n-flex style="margin-bottom: 24px">
-      <c-button
-        label="选择"
-        :icon="ChecklistOutlined"
-        @action="showControlPanel = !showControlPanel"
-      />
-      <bookshelf-list-button
-        v-if="!isWideScreen"
-        :menu-key="`local/${favoredId}`"
-      />
-      <div>
-        <bookshelf-local-add-button :favored-id="favoredId" />
-      </div>
-    </n-flex>
-
-    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
-      <bookshelf-local-control
-        :selected-ids="bookshelfListRef?.selectedIds ?? []"
-        :favored-id="favoredId"
-        @select-all="bookshelfListRef?.selectAll()"
-        @invert-selection="bookshelfListRef?.invertSelection()"
-      />
-    </n-collapse-transition>
-
-    <bookshelf-local-list
-      ref="bookshelfList"
-      :favored-id="favoredId"
-      :selectable="showControlPanel"
+  <n-flex style="margin-bottom: 24px">
+    <c-button
+      label="选择"
+      :icon="ChecklistOutlined"
+      @action="showControlPanel = !showControlPanel"
     />
-  </bookshelf-layout>
+    <bookshelf-list-button
+      v-if="!isWideScreen"
+      :menu-key="`local/${favoredId}`"
+    />
+    <div>
+      <bookshelf-local-add-button :favored-id="favoredId" />
+    </div>
+  </n-flex>
+
+  <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+    <bookshelf-local-control
+      :selected-ids="bookshelfListRef?.selectedIds ?? []"
+      :favored-id="favoredId"
+      @select-all="bookshelfListRef?.selectAll()"
+      @invert-selection="bookshelfListRef?.invertSelection()"
+    />
+  </n-collapse-transition>
+
+  <bookshelf-local-list
+    ref="bookshelfList"
+    :favored-id="favoredId"
+    :selectable="showControlPanel"
+  />
 </template>

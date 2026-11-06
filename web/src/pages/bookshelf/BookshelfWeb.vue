@@ -75,82 +75,75 @@ const novelListRef = useTemplateRef('novelList');
 </script>
 
 <template>
-  <bookshelf-layout :menu-key="`web/${favoredId}`">
-    <div role="region" aria-label="网络小说收藏列表">
-      <n-flex style="margin-bottom: 24px">
-        <c-button
-          label="选择"
-          :icon="ChecklistOutlined"
-          @action="showControlPanel = !showControlPanel"
-        />
-        <bookshelf-list-button
-          v-if="!isWideScreen"
-          :menu-key="`web/${favoredId}`"
-        />
-      </n-flex>
-
-      <n-collapse-transition
-        :show="showControlPanel"
-        style="margin-bottom: 16px"
-      >
-        <bookshelf-web-control
-          :selected-novels="novelListRef?.selectedNovels ?? []"
-          :favored-id="favoredId"
-          @select-all="novelListRef?.selectAll()"
-          @invert-selection="novelListRef?.invertSelection()"
-        />
-      </n-collapse-transition>
-
-      <ListFilter
-        :options="listOptions"
-        :value="listValue"
-        @update:value="onUpdateListValue(listOptions, $event)"
+  <div role="region" aria-label="网络小说收藏列表">
+    <n-flex style="margin-bottom: 24px">
+      <c-button
+        label="选择"
+        :icon="ChecklistOutlined"
+        @action="showControlPanel = !showControlPanel"
       />
-
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-6"
-        :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
-        :page="page"
-        :total-pages="pageCount"
-        @update:page="onUpdatePage"
+      <bookshelf-list-button
+        v-if="!isWideScreen"
+        :menu-key="`web/${favoredId}`"
       />
+    </n-flex>
 
-      <XSeparator
-        :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }"
+    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+      <bookshelf-web-control
+        :selected-novels="novelListRef?.selectedNovels ?? []"
+        :favored-id="favoredId"
+        @select-all="novelListRef?.selectAll()"
+        @invert-selection="novelListRef?.invertSelection()"
       />
+    </n-collapse-transition>
 
-      <NovelListSkeleton
-        v-if="!novelPage && !error"
+    <ListFilter
+      :options="listOptions"
+      :value="listValue"
+      @update:value="onUpdateListValue(listOptions, $event)"
+    />
+
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
+
+    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+
+    <NovelListSkeleton
+      v-if="!novelPage && !error"
+      :simple="!setting.showTagInWebFavored"
+    />
+    <XError
+      v-else-if="!novelPage && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <XEmpty
+      v-else-if="novelPage && novelPage.items.length === 0"
+      class="mt-3"
+      title="空列表"
+      size="compact"
+    />
+    <template v-else-if="novelPage">
+      <NovelListWeb
+        ref="novelList"
+        :items="novelPage.items"
+        :selectable="showControlPanel"
         :simple="!setting.showTagInWebFavored"
       />
-      <XError
-        v-else-if="!novelPage && error"
-        title="加载错误"
-        :description="error.message"
-      />
-      <XEmpty
-        v-else-if="novelPage && novelPage.items.length === 0"
-        class="mt-3"
-        title="空列表"
-        size="compact"
-      />
-      <template v-else-if="novelPage">
-        <NovelListWeb
-          ref="novelList"
-          :items="novelPage.items"
-          :selectable="showControlPanel"
-          :simple="!setting.showTagInWebFavored"
-        />
-      </template>
+    </template>
 
-      <XPagination
-        v-if="pageCount > 1"
-        :page="page"
-        :total-pages="pageCount"
-        keyboard="window"
-        @update:page="onUpdatePage"
-      />
-    </div>
-  </bookshelf-layout>
+    <XPagination
+      v-if="pageCount > 1"
+      :page="page"
+      :total-pages="pageCount"
+      keyboard="window"
+      @update:page="onUpdatePage"
+    />
+  </div>
 </template>
