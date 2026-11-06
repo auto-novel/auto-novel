@@ -92,7 +92,7 @@ const router = createRouter({
         {
           path: '/read-history',
           meta: { title: '阅读历史' },
-          component: () => import('./pages/list/ReadHistoryList.vue'),
+          component: () => import('./pages/history/ReadHistoryList.vue'),
           props: (route) => ({
             page: Number(route.query.page) || 1,
           }),

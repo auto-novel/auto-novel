@@ -165,4 +165,10 @@ export const WebNovelRepo = {
         exact: true,
       }),
   ),
+  deleteReadHistory: withOnSuccess(ReadHistoryApi.deleteReadHistoryWeb, () =>
+    useQueryCache().invalidateQueries({ key: [ListHistoryKey] }),
+  ),
+  clearReadHistory: withOnSuccess(ReadHistoryApi.clearReadHistoryWeb, () =>
+    useQueryCache().invalidateQueries({ key: [ListHistoryKey] }),
+  ),
 };
