@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import {
+  Toast,
+  getApiErrorMessage,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 import { DeleteOutlineOutlined, PlusOutlined } from '@vicons/material';
 import type { UploadCustomRequestOptions } from 'naive-ui';
 
@@ -49,8 +54,8 @@ const loadLocalFile = (volumeId: string) =>
         if (file === undefined) throw '小说不存在';
         return loadFile(file.file);
       }),
-    { error: '文件载入失败' },
-  );
+    { error: (reason) => getApiErrorMessage(reason, '文件载入失败') },
+  ).catch(() => {});
 
 const customRequest = ({
   file,
@@ -70,8 +75,8 @@ const showListModal = ref(false);
 </script>
 
 <template>
-  <div class="layout-content">
-    <n-h1>小说处理</n-h1>
+  <XPage>
+    <XPageHeader title="小说处理" />
 
     <n-flex>
       <div>
@@ -123,5 +128,5 @@ const showListModal = ref(false);
       v-model:show="showListModal"
       @volume-loaded="loadLocalFile"
     />
-  </div>
+  </XPage>
 </template>

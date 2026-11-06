@@ -3,12 +3,15 @@ import { MoreVertOutlined } from '@vicons/material';
 import type { Comment } from '@novelia/web-kit';
 import {
   copyToClipboard,
-  Toast,
+  UserBlacklistDialog,
+  UserModerationDialog,
   XButton,
   XConfirmDialog,
   XDropdownMenu,
   XDropdownMenuItem,
   XDropdownMenuSeparator,
+  getApiErrorMessage,
+  Toast,
 } from '@novelia/web-kit';
 
 import { CommentRepo } from '@/repos';
@@ -17,8 +20,6 @@ import {
   COMMENT_EDIT_WINDOW,
   getCommentPermissions,
 } from './commentPermissions';
-import UserBlacklistDialog from './UserBlacklistDialog.vue';
-import UserModerationDialog from './UserModerationDialog.vue';
 
 const props = defineProps<{
   site: string;
@@ -79,6 +80,9 @@ const evidence = computed(() => {
     props.comment.content,
   ].join('\n');
 });
+// 弹窗按评论重新挂载，回调在本次提交期间始终指向同一条评论。
+const deleteModeratedComment = () =>
+  CommentRepo.deleteComment(props.comment.id, props.site, true);
 watch(
   () => [
     props.comment.id,
@@ -98,8 +102,9 @@ async function copyComment() {
   copying.value = true;
   await Toast.promise(copyToClipboard(props.comment.content), {
     success: '评论原文已复制',
-    error: '复制失败，请手动选择评论内容复制',
-  });
+    error: (reason) =>
+      getApiErrorMessage(reason, '复制失败，请手动选择评论内容复制'),
+  }).catch(() => {});
   copying.value = false;
 }
 async function confirmAction() {
@@ -116,21 +121,26 @@ async function confirmAction() {
   }
   submitting.value = true;
   await Toast.promise(
-    (action === 'delete'
+    action === 'delete'
       ? CommentRepo.deleteComment(
           props.comment.id,
           props.site,
           whoami.value.asAdmin,
         )
-      : CommentRepo.hideComment(props.comment.id)
-    ).then(() => {
-      confirmationAction.value = undefined;
-    }),
+      : CommentRepo.hideComment(props.comment.id),
     {
       success: action === 'delete' ? '评论已删除' : '评论已隐藏',
-      error: action === 'delete' ? '删除评论失败' : '隐藏评论失败',
+      error: (reason) =>
+        getApiErrorMessage(
+          reason,
+          action === 'delete' ? '删除评论失败' : '隐藏评论失败',
+        ),
     },
-  );
+  )
+    .then(() => {
+      confirmationAction.value = undefined;
+    })
+    .catch(() => {});
   submitting.value = false;
 }
 async function unhideComment() {
@@ -139,8 +149,8 @@ async function unhideComment() {
   submitting.value = true;
   await Toast.promise(CommentRepo.unhideComment(props.comment.id), {
     success: '评论已取消隐藏',
-    error: '取消隐藏失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '取消隐藏失败'),
+  }).catch(() => {});
   submitting.value = false;
 }
 </script>
@@ -258,17 +268,22 @@ async function unhideComment() {
     :user-id="comment.authorId"
     :username="comment.authorUsername"
     :author-blocked="comment.authorBlocked"
+    :set-user-blocked="CommentRepo.setUserBlocked"
     @close="blacklistOpen = false"
   />
   <UserModerationDialog
     v-if="userModerationAction && permissions.canModerateAuthor"
-    :key="`${comment.authorId}:${userModerationAction}`"
+    :key="`${comment.id}:${comment.authorId}:${userModerationAction}`"
+    :open="true"
     :action="userModerationAction"
     :user-id="comment.authorId"
     :username="comment.authorUsername"
     :evidence="evidence"
-    :comment-id="comment.id"
-    :site="site"
-    @close="userModerationAction = undefined"
+    :delete-comment="deleteModeratedComment"
+    @update:open="
+      (open) => {
+        if (!open) userModerationAction = undefined;
+      }
+    "
   />
 </template>

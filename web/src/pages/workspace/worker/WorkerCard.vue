@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   DragIndicatorOutlined,
@@ -67,7 +67,7 @@ const testWorker = async () => {
   const pipeline = new TranslationPipeline({
     segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
   });
-  const result = await Toast.promise(
+  await Toast.promise(
     createTranslator({
       ...toTranslatorConfig(props.translatorId, props.worker),
       log: (msg) => {
@@ -81,10 +81,16 @@ const testWorker = async () => {
       if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
       return parts.join('\n');
     }),
-    { loading: '正在测试翻译器…', error: '翻译器错误' },
-  );
+    {
+      loading: '正在测试翻译器…',
+      error: (reason) => getApiErrorMessage(reason, '翻译器错误'),
+    },
+  )
+    .then((result) => {
+      Toast.success(result);
+    })
+    .catch(() => {});
   pipeline.dispose();
-  if (result !== undefined) Toast.success(result);
 };
 </script>
 

@@ -1,21 +1,22 @@
 <script lang="ts" setup>
+import { XPage, XPageHeader } from '@novelia/web-kit';
+
 import { useIsWideScreen } from '@/pages/util';
 
 defineProps<{ menuKey: string }>();
+
 const isWideScreen = useIsWideScreen();
 </script>
 
 <template>
-  <c-layout :sidebar="isWideScreen" :sidebar-width="320" class="layout-content">
-    <div style="flex: auto">
-      <n-h1>我的收藏</n-h1>
-      <slot />
-    </div>
-    <template #sidebar>
+  <XPage>
+    <XPageHeader title="我的收藏" />
+    <slot />
+    <template v-if="isWideScreen" #aside>
       <section-header title="收藏夹">
         <bookshelf-add-button />
       </section-header>
-      <bookshelf-menu :value="menuKey" />
+      <bookshelf-menu :value="menuKey" class="min-h-0" />
     </template>
-  </c-layout>
+  </XPage>
 </template>

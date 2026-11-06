@@ -1,11 +1,14 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import {
-  Toast,
   XEmpty,
   XError,
   XPagination,
   XSeparator,
+  getApiErrorMessage,
+  Toast,
+  XPage,
+  XPageHeader,
 } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
@@ -42,25 +45,29 @@ const pageCount = computed<number>(
 );
 
 const clearHistory = () =>
-  Toast.promise(
-    ReadHistoryApi.clearReadHistoryWeb().then(() => {
+  Toast.promise(ReadHistoryApi.clearReadHistoryWeb(), {
+    success: '清空成功',
+    error: (reason) => getApiErrorMessage(reason, '清空失败'),
+  })
+    .then(() => {
       window.location.reload();
-    }),
-    { success: '清空成功', error: '清空失败' },
-  );
+    })
+    .catch(() => {});
 
 const deleteHistory = (providerId: string, novelId: string) =>
-  Toast.promise(
-    ReadHistoryApi.deleteReadHistoryWeb(providerId, novelId).then(() => {
+  Toast.promise(ReadHistoryApi.deleteReadHistoryWeb(providerId, novelId), {
+    success: '删除成功',
+    error: (reason) => getApiErrorMessage(reason, '删除失败'),
+  })
+    .then(() => {
       window.location.reload();
-    }),
-    { success: '删除成功', error: '删除失败' },
-  );
+    })
+    .catch(() => {});
 </script>
 
 <template>
-  <div role="region" aria-label="阅读历史列表" class="layout-content">
-    <n-h1>阅读历史</n-h1>
+  <XPage role="region" aria-label="阅读历史列表">
+    <XPageHeader title="阅读历史" />
 
     <n-flex>
       <c-button-confirm
@@ -128,5 +135,5 @@ const deleteHistory = (providerId: string, novelId: string) =>
       keyboard="window"
       @update:page="onUpdatePage"
     />
-  </div>
+  </XPage>
 </template>

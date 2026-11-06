@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -28,8 +28,8 @@ const store = useBookshelfLocalStore();
 const deleteVolume = (volumeId: string) =>
   Toast.promise(store.deleteVolume(volumeId), {
     success: '删除成功',
-    error: '删除失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '删除失败'),
+  }).catch(() => {});
 
 const calculateFinished = (volume: LocalVolumeMetadata) =>
   volume.toc.filter((it) => {
@@ -85,18 +85,18 @@ const downloadVolume = async (volumeId: string) => {
   const repo = await useLocalVolumeStore();
 
   await Toast.promise(
-    repo
-      .getTranslationFile({
-        id: volumeId,
-        mode,
-        translationsMode: 'priority',
-        translations: [props.type],
-      })
-      .then(({ filename, blob }) => {
-        downloadFile(filename, blob);
-      }),
-    { error: '文件生成错误' },
-  );
+    repo.getTranslationFile({
+      id: volumeId,
+      mode,
+      translationsMode: 'priority',
+      translations: [props.type],
+    }),
+    { error: (reason) => getApiErrorMessage(reason, '文件生成错误') },
+  )
+    .then(({ filename, blob }) => {
+      downloadFile(filename, blob);
+    })
+    .catch(() => {});
 };
 
 const progressFilter = ref<'all' | 'finished' | 'unfinished'>('all');

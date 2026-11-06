@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import { copyToClipboard, Toast, XDialog } from '@novelia/web-kit';
+import {
+  copyToClipboard,
+  Toast,
+  XDialog,
+  getApiErrorMessage,
+} from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import type { ParsedFile } from '@/util/file';
@@ -93,8 +98,8 @@ const copyTranslationJson = async () => {
   const jsonString = Glossary.toText(obj);
   await Toast.promise(copyToClipboard(jsonString), {
     success: '已经将翻译结果复制到剪切板',
-    error: '复制失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '复制失败'),
+  }).catch(() => {});
 };
 
 const showSakuraSelectModal = ref(false);
@@ -125,17 +130,17 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     config = { id };
   }
   await Toast.promise(
-    translateLines(jpWords, config, translationController.signal).then(
-      (zhWords) => {
-        const jpToZh: { [key: string]: string } = {};
-        jpWords.forEach((jpWord, index) => {
-          jpToZh[jpWord] = zhWords[index];
-        });
-        katakanaTranslations.value = jpToZh;
-      },
-    ),
-    { error: '翻译器错误' },
-  );
+    translateLines(jpWords, config, translationController.signal),
+    { error: (reason) => getApiErrorMessage(reason, '翻译器错误') },
+  )
+    .then((zhWords) => {
+      const jpToZh: { [key: string]: string } = {};
+      jpWords.forEach((jpWord, index) => {
+        jpToZh[jpWord] = zhWords[index];
+      });
+      katakanaTranslations.value = jpToZh;
+    })
+    .catch(() => {});
 };
 </script>
 

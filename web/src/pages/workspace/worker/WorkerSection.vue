@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import {
-  Toast,
   XConfirmDialog,
   XDropdownMenu,
   XDropdownMenuItem,
   XEmpty,
+  getApiErrorMessage,
+  Toast,
 } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
@@ -55,15 +56,14 @@ const clearingCache = ref(false);
 const clearCache = async () => {
   if (clearingCache.value) return;
   clearingCache.value = true;
-  await Toast.promise(
-    props.clearTranslationCache().then(() => {
+  await Toast.promise(props.clearTranslationCache(), {
+    success: '缓存清除成功',
+    error: (reason) => getApiErrorMessage(reason, '缓存清除失败'),
+  })
+    .then(() => {
       showClearCacheDialog.value = false;
-    }),
-    {
-      success: '缓存清除成功',
-      error: '缓存清除失败',
-    },
-  );
+    })
+    .catch(() => {});
   clearingCache.value = false;
 };
 const hasStartedWorkers = computed(() =>

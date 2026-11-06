@@ -2,7 +2,12 @@
 import { useEventListener } from '@vueuse/core';
 import { onBeforeRouteLeave } from 'vue-router';
 import { DeleteOutlineOutlined } from '@vicons/material';
-import { copyToClipboard, Toast, XConfirmDialog } from '@novelia/web-kit';
+import {
+  copyToClipboard,
+  Toast,
+  XConfirmDialog,
+  getApiErrorMessage,
+} from '@novelia/web-kit';
 
 import { WebNovelApi, WenkuNovelApi } from '@/api';
 import { forumPostUrls } from '@/config';
@@ -126,8 +131,11 @@ const updateGlossary = async (glossaryValue: Glossary) => {
 
 const submitGlossary = () => {
   const submittedGlossary = { ...toRaw(glossary.value) };
-  return Toast.promise(
-    updateGlossary(submittedGlossary).then(() => {
+  return Toast.promise(updateGlossary(submittedGlossary), {
+    success: '术语表提交成功',
+    error: (reason) => getApiErrorMessage(reason, '术语表提交失败'),
+  })
+    .then(() => {
       for (const key in props.value) {
         delete props.value[key];
       }
@@ -135,9 +143,8 @@ const submitGlossary = () => {
         props.value[key] = submittedGlossary[key];
       }
       originalGlossary.value = { ...submittedGlossary };
-    }),
-    { success: '术语表提交成功', error: '术语表提交失败' },
-  );
+    })
+    .catch(() => {});
 };
 
 const importGlossaryRaw = ref('');
@@ -178,8 +185,8 @@ const addTerm = () => {
 const exportGlossary = () =>
   Toast.promise(copyToClipboard(Glossary.toText(glossary.value)), {
     success: '导出成功：已复制到剪贴板',
-    error: '导出失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '导出失败'),
+  }).catch(() => {});
 
 const importGlossary = () => {
   const importedGlossary = Glossary.fromText(importGlossaryRaw.value);

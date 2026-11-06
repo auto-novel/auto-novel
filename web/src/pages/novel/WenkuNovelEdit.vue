@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { Toast, XButton, XDialog } from '@novelia/web-kit';
+import {
+  Toast,
+  XButton,
+  XDialog,
+  getApiErrorMessage,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   KeyboardDoubleArrowDownOutlined,
@@ -158,48 +165,50 @@ const submit = async () => {
 
   submitting.value = true;
   try {
-    try {
-      await formRef.value?.validate();
-    } catch {
-      return;
-    }
-
-    const allPresetKeywords = presetKeywords.value.groups.flatMap(
-      (it) => it.presetKeywords,
-    );
-
-    const body = {
-      title: formValue.value.title,
-      titleZh: formValue.value.titleZh,
-      cover: formValue.value.cover,
-      authors: formValue.value.authors,
-      artists: formValue.value.artists,
-      level: formValue.value.level,
-      introduction: formValue.value.introduction,
-      keywords: formValue.value.keywords.filter((it) =>
-        allPresetKeywords.includes(it),
-      ),
-      volumes: formValue.value.volumes,
-    };
-
-    if (novelId === undefined) {
-      await Toast.promise(
-        WenkuNovelRepo.createNovel(body).then((id) => {
-          router.push({ path: `/wenku/${id}` });
-        }),
-        { success: '新建文库成功', error: '新建文库失败' },
-      );
-    } else {
-      await Toast.promise(
-        WenkuNovelRepo.updateNovel(novelId, body).then(() => {
-          router.push({ path: `/wenku/${novelId}` });
-        }),
-        { success: '编辑文库成功', error: '编辑文库失败' },
-      );
-    }
-  } finally {
+    await formRef.value?.validate();
+  } catch {
     submitting.value = false;
+    return;
   }
+
+  const allPresetKeywords = presetKeywords.value.groups.flatMap(
+    (it) => it.presetKeywords,
+  );
+
+  const body = {
+    title: formValue.value.title,
+    titleZh: formValue.value.titleZh,
+    cover: formValue.value.cover,
+    authors: formValue.value.authors,
+    artists: formValue.value.artists,
+    level: formValue.value.level,
+    introduction: formValue.value.introduction,
+    keywords: formValue.value.keywords.filter((it) =>
+      allPresetKeywords.includes(it),
+    ),
+    volumes: formValue.value.volumes,
+  };
+
+  if (novelId === undefined) {
+    await Toast.promise(WenkuNovelRepo.createNovel(body), {
+      success: '新建文库成功',
+      error: (reason) => getApiErrorMessage(reason, '新建文库失败'),
+    })
+      .then((id) => {
+        router.push({ path: `/wenku/${id}` });
+      })
+      .catch(() => {});
+  } else {
+    await Toast.promise(WenkuNovelRepo.updateNovel(novelId, body), {
+      success: '编辑文库成功',
+      error: (reason) => getApiErrorMessage(reason, '编辑文库失败'),
+    })
+      .then(() => {
+        router.push({ path: `/wenku/${novelId}` });
+      })
+      .catch(() => {});
+  }
+  submitting.value = false;
 };
 
 const populateNovelFromAmazon = async (
@@ -299,11 +308,13 @@ const findSimilarNovels = async () => {
       levels.map((level) =>
         WenkuNovelApi.listNovel({ page: 0, pageSize: 6, query, level }),
       ),
-    ).then((results) => {
+    ),
+    { error: (reason) => getApiErrorMessage(reason, '搜索相似小说失败') },
+  )
+    .then((results) => {
       similarNovels.value = results.flatMap((it) => it.items);
-    }),
-    { error: '搜索相似小说失败' },
-  );
+    })
+    .catch(() => {});
   searching.value = false;
 };
 const moveToPrevStep = () => {
@@ -376,8 +387,10 @@ const levelOptions = [
 </script>
 
 <template>
-  <div class="layout-content">
-    <n-h1>{{ novelId === undefined ? '新建' : '编辑' }}文库小说</n-h1>
+  <XPage>
+    <XPageHeader
+      :title="`${novelId === undefined ? '新建' : '编辑'}文库小说`"
+    />
 
     <n-card embedded :bordered="false" style="margin-bottom: 20px">
       <n-text type="error">
@@ -749,7 +762,7 @@ const levelOptions = [
         </div>
       </n-step>
     </n-steps>
-  </div>
+  </XPage>
 
   <XDialog title="使用说明" v-model:open="showKeywordsModal" class="w-[600px]">
     <n-p>

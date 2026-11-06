@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-import { Toast, XDialog, XError } from '@novelia/web-kit';
+import {
+  XDialog,
+  XError,
+  getApiErrorMessage,
+  Toast,
+  XPage,
+} from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -42,8 +48,8 @@ const translateOptions = useTemplateRef('translateOptions');
 const deleteVolume = (volumeId: string) =>
   Toast.promise(WenkuNovelRepo.deleteVolume(novelId, volumeId), {
     success: '删除成功',
-    error: '删除失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '删除失败'),
+  }).catch(() => {});
 
 const buildSearchLink = (tag: string) => `/wenku?query="${tag}"`;
 
@@ -103,7 +109,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       }"
       style="width: 100%; height: 100%; backdrop-filter: blur(8px)"
     >
-      <div class="layout-content">
+      <div class="mx-auto w-full max-w-5xl px-3 sm:px-8">
         <n-flex :wrap="false" style="padding-top: 20px; padding-bottom: 21px">
           <div style="flex: 0 0 160px">
             <n-image
@@ -144,7 +150,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
     </div>
   </div>
 
-  <div class="layout-content">
+  <XPage>
     <NovelDetailSkeleton wenku v-if="!novel && !error" />
     <XError
       v-else-if="!novel && error"
@@ -316,5 +322,5 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         </template>
       </NovelBottomTabs>
     </template>
-  </div>
+  </XPage>
 </template>

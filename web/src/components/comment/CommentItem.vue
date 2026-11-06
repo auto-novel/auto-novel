@@ -1,12 +1,17 @@
 <script lang="ts" setup>
 import type { Comment } from '@novelia/web-kit';
-import { Toast, XButton, XTime } from '@novelia/web-kit';
+import {
+  Toast,
+  XButton,
+  XMarkdownHelpDialog,
+  XTime,
+  getApiErrorMessage,
+} from '@novelia/web-kit';
 
 import { useWhoamiStore } from '@/stores';
 import { CommentRepo } from '@/repos';
 import CommentActions from './CommentActions.vue';
 import { getCommentPermissions } from './commentPermissions';
-import MarkdownHelpDialog from '../markdown/MarkdownHelpDialog.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -59,11 +64,16 @@ async function saveEdit() {
       props.comment.id,
       props.site,
       content.value.trim(),
-    ).then(() => {
+    ),
+    {
+      success: '评论修改已保存',
+      error: (reason) => getApiErrorMessage(reason, '更新评论失败'),
+    },
+  )
+    .then(() => {
       if (viewer === whoami.value.user?.id) editing.value = false;
-    }),
-    { success: '评论修改已保存', error: '更新评论失败' },
-  );
+    })
+    .catch(() => {});
   submitting.value = false;
 }
 watch(
@@ -137,7 +147,7 @@ watch(
         :ui="{ textarea: 'max-h-[19.5rem] overflow-y-auto' }"
       />
       <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <MarkdownHelpDialog />
+        <XMarkdownHelpDialog mode="comment" />
         <div class="flex gap-2">
           <XButton
             color="neutral"

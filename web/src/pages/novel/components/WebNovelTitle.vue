@@ -14,8 +14,8 @@ const displayTitle = computed(() => props.titleZh ?? props.titleJp);
 </script>
 
 <template>
-  <div style="margin: 18px 0">
-    <n-h3 prefix="bar" style="margin-bottom: 4px">
+  <div style="margin: 0 0 18px">
+    <n-h3 prefix="bar" style="margin: 0 0 4px">
       <n-a :href="WebUtil.buildNovelUrl(providerId, novelId)">
         {{ displayTitle }}
       </n-a>

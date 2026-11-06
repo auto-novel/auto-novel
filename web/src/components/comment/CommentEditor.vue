@@ -1,12 +1,16 @@
 <script lang="ts" setup>
 import type { Comment } from '@novelia/web-kit';
-import { Toast, XButton } from '@novelia/web-kit';
+import {
+  CommentRulesNotice,
+  XButton,
+  XMarkdownHelpDialog,
+  getApiErrorMessage,
+  Toast,
+} from '@novelia/web-kit';
 
+import { forumUrl } from '@/config';
 import { CommentRepo } from '@/repos';
 import { useWhoamiStore } from '@/stores';
-
-import MarkdownHelpDialog from '../markdown/MarkdownHelpDialog.vue';
-import CommentRulesNotice from './CommentRulesNotice.vue';
 
 const props = defineProps<{
   site: string;
@@ -47,20 +51,25 @@ const reply = async () => {
     CommentRepo.createComment(props.site, {
       content: content.value.trim(),
       ...(props.parent === undefined ? {} : { rootId: props.parent }),
-    }).then(() => {
+    }),
+    {
+      success: '回复发布成功',
+      error: (reason) => getApiErrorMessage(reason, '回复发布失败'),
+    },
+  )
+    .then(() => {
       if (viewer !== whoami.value.user?.id) return;
       content.value = '';
       emit('replied');
-    }),
-    { success: '回复发布成功', error: '回复发布失败' },
-  );
+    })
+    .catch(() => {});
   submitting.value = false;
 };
 </script>
 
 <template>
   <div>
-    <CommentRulesNotice class="mb-3" />
+    <CommentRulesNotice :href="`${forumUrl}/rules`" class="mb-3" />
     <MarkdownEditor
       :disabled="submitting || disabled"
       :draft-id="draftId"
@@ -71,7 +80,7 @@ const reply = async () => {
       :ui="{ textarea: 'max-h-[19.5rem] overflow-y-auto' }"
     />
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <MarkdownHelpDialog />
+      <XMarkdownHelpDialog mode="comment" />
       <div class="flex items-center gap-2">
         <XButton
           color="neutral"

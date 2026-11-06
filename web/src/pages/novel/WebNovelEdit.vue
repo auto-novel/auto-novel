@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import {
+  Toast,
+  getApiErrorMessage,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 import { UploadOutlined } from '@vicons/material';
 
 import { WebNovelRepo } from '@/repos';
@@ -75,17 +80,22 @@ const submit = async () => {
       WebNovelRepo.updateNovelWenkuId(providerId, novelId, {
         wenkuId,
       }),
-    ]).then(() => {
+    ]),
+    {
+      success: '编辑成功',
+      error: (reason) => getApiErrorMessage(reason, '编辑失败'),
+    },
+  )
+    .then(() => {
       router.push({ path: `/novel/${providerId}/${novelId}` });
-    }),
-    { success: '编辑成功', error: '编辑失败' },
-  );
+    })
+    .catch(() => {});
 };
 </script>
 
 <template>
-  <div class="layout-content">
-    <n-h1>编辑网络小说</n-h1>
+  <XPage>
+    <XPageHeader title="编辑网络小说" />
 
     <n-form
       :model="formValue"
@@ -167,5 +177,5 @@ const submit = async () => {
       class="float"
       @action="submit"
     />
-  </div>
+  </XPage>
 </template>

@@ -100,16 +100,15 @@ async function toggle(banner: Banner) {
   busy.value = banner.id;
   const isActive = !banner.isActive;
   const action = isActive ? '启用' : '停用';
-  await Toast.promise(
-    api.setActive(banner.id, isActive).then(() => {
+  await Toast.promise(api.setActive(banner.id, isActive), {
+    loading: { message: `正在${action} Banner…`, duration: 0 },
+    success: `Banner #${banner.id} 已${action}`,
+    error: (reason) => getApiErrorMessage(reason, `${action}失败`),
+  })
+    .then(() => {
       banner.isActive = isActive;
-    }),
-    {
-      loading: { message: `正在${action} Banner…`, duration: 0 },
-      success: `Banner #${banner.id} 已${action}`,
-      error: `${action}失败`,
-    },
-  );
+    })
+    .catch(() => {});
   busy.value = null;
 }
 
@@ -117,17 +116,16 @@ async function remove() {
   const banner = deleting.value;
   if (!banner || busy.value !== null) return;
   busy.value = banner.id;
-  await Toast.promise(
-    api.remove(banner.id).then(() => {
+  await Toast.promise(api.remove(banner.id), {
+    loading: { message: '正在删除 Banner…', duration: 0 },
+    success: `Banner #${banner.id} 已删除`,
+    error: (reason) => getApiErrorMessage(reason, '删除失败'),
+  })
+    .then(() => {
       items.value = items.value.filter((item) => item.id !== banner.id);
       deleting.value = null;
-    }),
-    {
-      loading: { message: '正在删除 Banner…', duration: 0 },
-      success: `Banner #${banner.id} 已删除`,
-      error: '删除失败',
-    },
-  );
+    })
+    .catch(() => {});
   busy.value = null;
 }
 
@@ -155,7 +153,7 @@ async function saveEdit() {
     validateBannerFocal(draftFocalX.value, draftFocalY.value);
   if (editError.value) return;
   saving.value = true;
-  const updated = await Toast.promise(
+  await Toast.promise(
     api.update(banner.id, {
       type: banner.type,
       key: banner.key,
@@ -167,13 +165,15 @@ async function saveEdit() {
     {
       loading: { message: '正在保存 Banner…', duration: 0 },
       success: 'Banner 已保存',
-      error: '保存失败',
+      error: (reason) => getApiErrorMessage(reason, '保存失败'),
     },
-  );
+  )
+    .then((updated) => {
+      Object.assign(banner, updated);
+      editing.value = false;
+    })
+    .catch(() => {});
   saving.value = false;
-  if (!updated) return;
-  Object.assign(banner, updated);
-  editing.value = false;
 }
 
 function formatDate(value: string) {

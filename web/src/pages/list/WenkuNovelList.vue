@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
-import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
+import {
+  XEmpty,
+  XError,
+  XPagination,
+  XSeparator,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
 
 import { WenkuNovelRepo } from '@/repos';
@@ -58,8 +65,8 @@ watch(novelPage, (novelPage) => {
 </script>
 
 <template>
-  <div role="region" aria-label="文库小说列表" class="layout-content">
-    <n-h1>文库小说</n-h1>
+  <XPage role="region" aria-label="文库小说列表">
+    <XPageHeader title="文库小说" />
 
     <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
       <c-button
@@ -111,7 +118,7 @@ watch(novelPage, (novelPage) => {
       keyboard="window"
       @update:page="onUpdatePage"
     />
-  </div>
+  </XPage>
 </template>
 
 <style scoped>

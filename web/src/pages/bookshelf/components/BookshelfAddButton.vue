@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { PlusOutlined } from '@vicons/material';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import { Toast, XDialog } from '@novelia/web-kit';
+import { XDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
 
 import { FavoredRepo } from '@/stores';
 
@@ -38,12 +38,14 @@ const addFavorite = async () => {
   }
 
   const { type, title } = formValue.value;
-  await Toast.promise(
-    FavoredRepo.createFavored(type, title).then(() => {
+  await Toast.promise(FavoredRepo.createFavored(type, title), {
+    success: '收藏夹创建成功',
+    error: (reason) => getApiErrorMessage(reason, '收藏夹创建失败'),
+  })
+    .then(() => {
       showAddModal.value = false;
-    }),
-    { success: '收藏夹创建成功', error: '收藏夹创建失败' },
-  );
+    })
+    .catch(() => {});
 };
 </script>
 

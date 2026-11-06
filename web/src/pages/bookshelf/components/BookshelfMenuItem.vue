@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
 import {
-  Toast,
   XButton,
   XDropdownMenu,
   XDropdownMenuItem,
   XDialog,
+  getApiErrorMessage,
+  Toast,
 } from '@novelia/web-kit';
 import { MoreVertOutlined } from '@vicons/material';
 
@@ -69,12 +70,14 @@ const updateFavored = async () => {
 
   const title = formValue.value.title;
 
-  await Toast.promise(
-    FavoredRepo.updateFavored(type, id, title).then(() => {
+  await Toast.promise(FavoredRepo.updateFavored(type, id, title), {
+    success: '收藏夹更新成功',
+    error: (reason) => getApiErrorMessage(reason, '收藏夹更新失败'),
+  })
+    .then(() => {
       showEditModal.value = false;
-    }),
-    { success: '收藏夹更新成功', error: '收藏夹更新失败' },
-  );
+    })
+    .catch(() => {});
 };
 
 const deleteFavoredNovels = async () => {
@@ -91,11 +94,16 @@ const deleteFavoredNovels = async () => {
 const showDeleteModal = ref(false);
 const deleteFavored = () =>
   Toast.promise(
-    deleteFavoredNovels()
-      .then(() => FavoredRepo.deleteFavored(type, id))
-      .then(() => (showDeleteModal.value = false)),
-    { success: '收藏夹删除成功', error: '收藏夹删除失败' },
-  );
+    deleteFavoredNovels().then(() => FavoredRepo.deleteFavored(type, id)),
+    {
+      success: '收藏夹删除成功',
+      error: (reason) => getApiErrorMessage(reason, '收藏夹删除失败'),
+    },
+  )
+    .then(() => {
+      showDeleteModal.value = false;
+    })
+    .catch(() => {});
 </script>
 
 <template>

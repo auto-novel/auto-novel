@@ -6,7 +6,7 @@ import {
   ReadMoreOutlined,
   StarBorderOutlined,
 } from '@vicons/material';
-import { XDialog } from '@novelia/web-kit';
+import { XDialog, XPage } from '@novelia/web-kit';
 
 import { FavoredApi } from '@/api';
 import { forumPostUrls, forumUrl, siteUrls } from '@/config';
@@ -84,7 +84,7 @@ const showQQModal = ref(false);
 <template>
   <HomeBanner />
 
-  <div class="layout-content min-[540px]:pt-4">
+  <XPage class="pb-0">
     <div class="my-2 grid grid-cols-4 min-[540px]:hidden">
       <router-link
         :to="whoami.isSignedIn ? '/favorite/web' : '/favorite/local'"
@@ -196,7 +196,7 @@ const showQQModal = ref(false);
       :error="latestUpdateWenkuError"
     />
     <hr class="my-6 border-divider" />
-  </div>
+  </XPage>
 
   <XDialog title="使用说明" v-model:open="showHowToUseModal" class="w-150">
     <p class="my-4 first:mt-0 last:mb-0">

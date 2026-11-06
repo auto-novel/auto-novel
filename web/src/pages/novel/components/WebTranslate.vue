@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage } from '@novelia/web-kit';
 
 import ky from 'ky';
 
@@ -59,8 +59,11 @@ const importToWorkspace = () =>
       await repo.createVolume(file, 'default');
       await repo.updateGlossary(file.name, toRaw(props.glossary));
     })(),
-    { success: '导入成功', error: '导入失败' },
-  );
+    {
+      success: '导入成功',
+      error: (reason) => getApiErrorMessage(reason, '导入失败'),
+    },
+  ).catch(() => {});
 
 const files = computed(() => {
   const title =

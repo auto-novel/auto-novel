@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XPage, XPageHeader } from '@novelia/web-kit';
 import { BookOutlined } from '@vicons/material';
 import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceActionButton from './WorkspaceActionButton.vue';
@@ -32,17 +33,16 @@ const {
 </script>
 
 <template>
-  <div class="layout-content">
-    <div class="my-6 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="m-0 text-[30px]/[1.6] font-medium text-ink">
-        {{ isSakura ? 'Sakura' : 'GPT' }}工作区
-      </h1>
-      <WorkspaceActionButton
-        label="本地书架"
-        :icon="BookOutlined"
-        @action="showLocalVolumeDrawer = true"
-      />
-    </div>
+  <XPage>
+    <XPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
+      <template #actions>
+        <WorkspaceActionButton
+          label="本地书架"
+          :icon="BookOutlined"
+          @action="showLocalVolumeDrawer = true"
+        />
+      </template>
+    </XPageHeader>
     <WorkspaceBulletin :translator-id="translatorId" />
 
     <WorkerSection
@@ -70,7 +70,7 @@ const {
       @top="topJob"
       @bottom="bottomJob"
     />
-  </div>
+  </XPage>
 
   <LocalVolumeTranslationDrawer
     v-model:show="showLocalVolumeDrawer"
