@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XDrawer, XPage } from '@novelia/web-kit';
+import { XDrawer, XPage, XPageHeader } from '@novelia/web-kit';
 import { ExpandMoreOutlined } from '@vicons/material';
 
 import { useIsWideScreen } from '@/pages/util';
@@ -39,15 +39,9 @@ watch([menuKey, isWideScreen], () => {
 
 <template>
   <XPage>
-    <header class="mb-6 min-w-0">
-      <h1
-        class="m-0 min-w-0 text-2xl leading-tight font-medium text-ink sm:text-3xl"
-      >
-        <span v-if="isWideScreen" class="block wrap-anywhere">
-          {{ favoredTitle }}
-        </span>
+    <XPageHeader :title="favoredTitle">
+      <template v-if="!isWideScreen" #title>
         <XDrawer
-          v-else
           v-model:open="showListDrawer"
           title="收藏夹"
           show-header
@@ -71,8 +65,8 @@ watch([menuKey, isWideScreen], () => {
             <BookshelfMenu :value="menuKey" />
           </n-scrollbar>
         </XDrawer>
-      </h1>
-    </header>
+      </template>
+    </XPageHeader>
     <BookshelfWeb
       v-if="type === 'web'"
       :favored-id="favoredId"
