@@ -54,6 +54,7 @@ const { theme } = useWebKit();
               GPT/Sakura排队按钮，按住 Ctrl（macOS 为
               Cmd）键点击，会将任务自动置顶。
             </n-li>
+            <n-li>小说/文库页面，可以用数字键或单指滑动切换分页。</n-li>
             <n-li>阅读页面，可以使用左右方向键跳转上/下一章。</n-li>
             <n-li>阅读页面，可以使用数字键1～3快速切换翻译。</n-li>
           </n-ul>
