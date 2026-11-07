@@ -5,6 +5,7 @@ import {
   getApiErrorMessage,
   Toast,
   XPage,
+  XScrollArea,
 } from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
@@ -213,7 +214,11 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       </n-flex>
 
       <template v-if="novel.volumes.length">
-        <c-x-scrollbar style="margin-top: 16px">
+        <XScrollArea
+          orientation="horizontal"
+          drag-scroll="inertia"
+          class="mt-4"
+        >
           <n-image-group show-toolbar-tooltip>
             <n-flex :size="4" :wrap="false" style="margin-bottom: 16px">
               <n-image
@@ -228,7 +233,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               />
             </n-flex>
           </n-image-group>
-        </c-x-scrollbar>
+        </XScrollArea>
       </template>
 
       <NovelBottomTabs

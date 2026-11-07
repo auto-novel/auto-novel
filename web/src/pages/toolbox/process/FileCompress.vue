@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast, XDialog, XScrollArea } from '@novelia/web-kit';
 import { ImgComparisonSlider } from '@img-comparison-slider/vue';
 
 import { Humanize } from '@/util';
@@ -180,7 +180,11 @@ const showPreview = (image: EpubImage) => {
           {{ Humanize.bytes(detail.sizeCompressed) }}]
           {{ detail.name }}
         </n-text>
-        <c-x-scrollbar style="margin-top: 16px">
+        <XScrollArea
+          orientation="horizontal"
+          drag-scroll="inertia"
+          class="mt-4"
+        >
           <n-image-group show-toolbar-tooltip>
             <n-flex :size="4" :wrap="false" style="margin-bottom: 16px">
               <n-image
@@ -195,7 +199,7 @@ const showPreview = (image: EpubImage) => {
               />
             </n-flex>
           </n-image-group>
-        </c-x-scrollbar>
+        </XScrollArea>
       </template>
     </template>
 
