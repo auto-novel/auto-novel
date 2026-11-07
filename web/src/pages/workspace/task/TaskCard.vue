@@ -17,6 +17,8 @@ import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
 const props = defineProps<{
   job: TranslateJob;
   taskState?: TaskState;
+  /** 初始化失败原因。 */
+  error?: string;
   canMoveTop: boolean;
   canMoveBottom: boolean;
 }>();
@@ -75,22 +77,22 @@ const taskProgress = computed(() => {
     pending: chapters.length - done - error - translating,
   };
 });
-const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
+const taskStatus = computed<'done' | 'executing' | 'pending' | 'error'>(() => {
+  if (props.error) return 'error';
   if (props.job.finishAt) return 'done';
   if (
     taskProgress.value.translating > 0 ||
     props.taskState?.metadataUnit?.status === 'translating'
   )
     return 'executing';
+  if (
+    taskProgress.value.pending === 0 &&
+    (taskProgress.value.error > 0 ||
+      props.taskState?.metadataUnit?.status === 'error')
+  )
+    return 'error';
   return 'pending';
 });
-
-function retryAllFailed() {
-  if (props.taskState?.resetFailedUnits()) {
-    delete props.job.finishAt;
-    emit('retry', props.job.task);
-  }
-}
 
 const showPreview = ref(false);
 const previewData = ref<{
@@ -164,13 +166,13 @@ const closePreview = () => {
                 @action="canMoveBottom && emit('bottom', job.task)"
               />
               <WorkspaceActionButton
-                v-if="taskState?.hasFailedUnits()"
-                label="重试失败"
-                tooltip="重试失败"
+                v-if="taskState?.hasFailedUnits() || error"
+                label="重试"
+                tooltip="重试失败的任务"
                 :icon="RefreshOutlined"
                 icon-only
                 color="warning"
-                @action="retryAllFailed"
+                @action="emit('retry', job.task)"
               />
               <WorkspaceActionButton
                 label="删除任务"
@@ -183,6 +185,9 @@ const closePreview = () => {
             </div>
           </n-flex>
           <task-link :task="job.task" />
+          <span v-if="error" class="text-xs text-error-text">
+            初始化失败：{{ error }}
+          </span>
           <span v-if="taskState?.metadataUnit" class="text-xs text-muted">
             小说信息：{{
               {

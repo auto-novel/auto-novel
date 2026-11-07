@@ -18,6 +18,7 @@ const {
   jobs,
   clearTranslationCache,
   taskStates,
+  taskErrors,
   workerStates,
   workerErrors,
   startWorker,
@@ -25,9 +26,9 @@ const {
   startAllWorkers,
   stopAllWorkers,
   deleteJob,
+  retryTask,
   topJob,
   bottomJob,
-  runProcessLoop,
 } = useWorkspaceRuntime(props.translatorId);
 </script>
 
@@ -68,8 +69,9 @@ const {
     <TaskSection
       :jobs="jobs"
       :task-states="taskStates"
+      :task-errors="taskErrors"
       @delete="deleteJob"
-      @retry="runProcessLoop"
+      @retry="retryTask"
       @top="topJob"
       @bottom="bottomJob"
     />

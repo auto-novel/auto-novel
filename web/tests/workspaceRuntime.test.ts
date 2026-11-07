@@ -10,6 +10,7 @@ import type { TranslationWork, Translator } from '@auto-novel/translator';
 import { useWorkspaceRuntime } from '../src/pages/workspace/useWorkspaceRuntime';
 
 const mocks = vi.hoisted(() => ({
+  appendLog: vi.fn(),
   store: null as unknown,
   tasks: new Map<string, TranslationTask>(),
   submitted: [] as TranslationWork[],
@@ -27,7 +28,9 @@ vi.mock('vue', async (importOriginal) => {
 });
 
 vi.mock('@/stores', () => ({ useWorkspaceStore: () => mocks.store }));
-vi.mock('@novelia/web-kit', () => ({ Toast: { error: vi.fn() } }));
+vi.mock('@novelia/web-kit', () => ({
+  Toast: { error: vi.fn(), info: vi.fn() },
+}));
 vi.mock('@/domain/translator/segment-cache', () => ({
   IndexedDbSegmentCache: class {
     constructor(readonly storeName: string) {}
@@ -46,7 +49,11 @@ vi.mock('@/domain/translator/tasks/task-descriptor', () => ({
   TranslateTaskDescriptor: { parse: mocks.parseTask },
 }));
 vi.mock('@/pages/workspace/useWorkspaceLog', () => ({
-  useWorkspaceLog: () => ({ logs: [], appendLog: vi.fn(), clearLogs: vi.fn() }),
+  useWorkspaceLog: () => ({
+    logs: [],
+    appendLog: mocks.appendLog,
+    clearLogs: vi.fn(),
+  }),
 }));
 vi.mock('@auto-novel/translator', async (importOriginal) => {
   const actual =
@@ -836,4 +843,125 @@ it('returns cancelled metadata to pending and resumes it once without reloading 
   runtime.runProcessLoop();
   await Promise.resolve();
   expect(save).toHaveBeenCalledOnce();
+});
+
+it.each(['first', undefined])(
+  'preserves failures when stopped and retries only the requested tasks (%s)',
+  async (target) => {
+    const first = task('web');
+    const second = task('web');
+    mocks.failMetadata = true;
+    const { runtime } = setupLifecycleRuntime({ first, second });
+    await runtime.startWorker('trusted');
+    await vi.waitFor(() => {
+      expect(first.chapterSave).toHaveBeenCalledOnce();
+      expect(second.chapterSave).toHaveBeenCalledOnce();
+    });
+    const state = runtime.taskStates.value.get('first')!;
+    const metadataId = state.metadataUnit!.chapterId;
+    const detail = state.unitDetails.get(metadataId);
+    runtime.stopAllWorkers();
+    runtime.retryTask(target);
+    expect(state.metadataUnit!.status).toBe('error');
+    expect(state.unitDetails.get(metadataId)).toBe(detail);
+
+    mocks.failMetadata = false;
+    await runtime.startWorker('trusted');
+    expect(state.metadataUnit!.status).toBe('error');
+    runtime.retryTask(target);
+    await vi.waitFor(() => expect(first.metadataSave).toHaveBeenCalledOnce());
+    if (target === undefined) {
+      await vi.waitFor(() =>
+        expect(second.metadataSave).toHaveBeenCalledOnce(),
+      );
+    } else {
+      expect(second.metadataSave).not.toHaveBeenCalled();
+      expect(runtime.taskStates.value.get('second')!.hasFailedUnits()).toBe(
+        true,
+      );
+    }
+    expect(first.chapterSave).toHaveBeenCalledOnce();
+    expect(second.chapterSave).toHaveBeenCalledOnce();
+  },
+);
+
+describe('task initialization failures', () => {
+  it('marks a timed-out task failed, logs the reason, and continues later tasks', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const blocked = task('local');
+      const later = task('local');
+      const directory = deferred<void>();
+      vi.mocked(blocked.initialize).mockReturnValueOnce(directory.promise);
+      const { runtime } = setupLifecycleRuntime({ blocked, later });
+      await runtime.startWorker('trusted');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(blocked.initialize).toHaveBeenCalledOnce();
+      expect(later.initialize).not.toHaveBeenCalled();
+
+      mocks.appendLog.mockClear();
+      await vi.advanceTimersByTimeAsync(120_000);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(runtime.taskErrors.value.get('blocked')).toContain('超时');
+      expect(
+        mocks.appendLog.mock.calls.some(([, message]) =>
+          String(message).includes('任务初始化超时'),
+        ),
+      ).toBe(true);
+      expect(later.chapterSave).toHaveBeenCalledOnce();
+      expect(blocked.chapterSave).not.toHaveBeenCalled();
+
+      directory.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(blocked.chapterSave).not.toHaveBeenCalled();
+      runtimeScopes.pop()!.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['目录加载失败', '目录加载失败'],
+    ['', '未知错误'],
+  ])(
+    'retries initialization after an error with message %j',
+    async (message, expected) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const failed = task('local');
+      vi.mocked(failed.initialize).mockRejectedValueOnce(new Error(message));
+      const { runtime } = setupLifecycleRuntime({ failed });
+      await runtime.startWorker('trusted');
+      await vi.waitFor(() =>
+        expect(runtime.taskErrors.value.get('failed')).toBe(expected),
+      );
+      expect(failed.chapterSave).not.toHaveBeenCalled();
+
+      runtime.retryTask('failed');
+      await vi.waitFor(() => expect(failed.chapterSave).toHaveBeenCalledOnce());
+      expect(runtime.taskErrors.value.has('failed')).toBe(false);
+    },
+  );
+
+  it.each([
+    [1, '翻译流水线失败'],
+    [2, '翻译流水线收尾失败'],
+  ])('logs a failure from drain call %i once', async (failureCall, label) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const first = task('local');
+    let calls = 0;
+    mocks.drain = vi.fn(async () => {
+      if (++calls === failureCall)
+        throw new Error('diagnostic pipeline failure');
+    });
+    mocks.appendLog.mockClear();
+    const { runtime } = setupLifecycleRuntime({ first });
+    await runtime.startWorker('trusted');
+    const failureLogs = () =>
+      mocks.appendLog.mock.calls.filter(([, message]) =>
+        String(message).includes('diagnostic pipeline failure'),
+      );
+    await vi.waitFor(() => expect(failureLogs()).toHaveLength(1));
+    expect(failureLogs()[0]![1]).toBe(`${label}：diagnostic pipeline failure`);
+  });
 });

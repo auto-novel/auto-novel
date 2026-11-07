@@ -4,7 +4,7 @@ import { computed, useId } from 'vue';
 const shimmerId = useId();
 
 const props = defineProps<{
-  status: 'done' | 'executing' | 'pending';
+  status: 'done' | 'executing' | 'pending' | 'error';
   progress: {
     total: number;
     done: number;
@@ -14,6 +14,16 @@ const props = defineProps<{
   };
 }>();
 
+const statusLabel = computed(
+  () =>
+    ({
+      done: '已完成',
+      executing: '处理中',
+      error: '失败',
+      pending: '等待中',
+    })[props.status],
+);
+
 const segmentClasses = {
   done: { fill: 'bg-success', ring: 'stroke-success' },
   translating: { fill: 'bg-info', ring: 'stroke-info' },
@@ -22,7 +32,8 @@ const segmentClasses = {
 
 const progressDescription = computed(() => {
   const { total, done, error, translating, pending } = props.progress;
-  return `共 ${total} 章，成功 ${done} 章，处理中 ${translating} 章，失败 ${error} 章，等待 ${pending} 章`;
+  const failure = props.status === 'error' ? '任务失败，' : '';
+  return `${failure}共 ${total} 章，成功 ${done} 章，处理中 ${translating} 章，失败 ${error} 章，等待 ${pending} 章`;
 });
 /** 空任务没有章节可分摊进度，已完成时整圈视为完成。 */
 const emptyFinished = computed(
@@ -63,15 +74,10 @@ const progressPercentage = computed(() => {
         :class="{
           'text-info': status === 'executing',
           'text-success': status === 'done',
+          'text-error-text': status === 'error',
         }"
       >
-        {{
-          status === 'executing'
-            ? '处理中'
-            : status === 'done'
-              ? '已完成'
-              : '等待中'
-        }}
+        {{ statusLabel }}
       </span>
       <span aria-hidden="true">·</span>
       <span>等待{{ progress.pending }}</span>

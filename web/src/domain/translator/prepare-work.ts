@@ -14,7 +14,7 @@ export type UnitTracker = {
 };
 
 /** 取消等待不支持 signal 的底层调用；仍接住其迟到结果。 */
-function awaitWithSignal<T>(
+export function awaitWithSignal<T>(
   promise: Promise<T>,
   signal: AbortSignal,
 ): Promise<T> {
