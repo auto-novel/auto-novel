@@ -14,9 +14,11 @@ const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
 const store = useBookshelfLocalStore();
-const { volumes } = storeToRefs(store);
+const { volumes, loading, loadError } = storeToRefs(store);
 
-store.loadVolumes();
+// 列表用状态展示错误；保留 store 的 rejection 供导入等调用方处理。
+const loadVolumes = () => store.loadVolumes().catch(() => {});
+void loadVolumes();
 
 const search = reactive({
   query: '',
@@ -32,6 +34,13 @@ const sortedVolumes = computed(() => {
 });
 
 const selectedIds = ref<string[]>([]);
+
+watch(
+  () => props.favoredId,
+  () => {
+    selectedIds.value = [];
+  },
+);
 
 watch(
   () => props.selectable,
@@ -83,7 +92,19 @@ defineExpose({
 
   <n-divider style="margin: 16px 0 8px" />
 
-  <n-spin v-if="sortedVolumes === undefined" style="margin-top: 20px" />
+  <n-spin v-if="loading" description="正在加载" style="margin-top: 20px" />
+
+  <n-alert
+    v-else-if="loadError !== null"
+    type="error"
+    title="加载失败"
+    style="margin-top: 20px"
+  >
+    <n-flex vertical>
+      <span>{{ loadError }}</span>
+      <c-button label="重试" @action="loadVolumes" />
+    </n-flex>
+  </n-alert>
 
   <n-empty
     v-else-if="sortedVolumes.length === 0"
@@ -93,7 +114,7 @@ defineExpose({
 
   <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
     <n-list style="padding-bottom: 48px; padding-right: 12px">
-      <n-list-item v-for="volume of sortedVolumes ?? []" :key="volume.id">
+      <n-list-item v-for="volume of sortedVolumes" :key="volume.id">
         <bookshelf-local-list-item :volume="volume" />
         <c-select-overlay
           v-if="selectable"

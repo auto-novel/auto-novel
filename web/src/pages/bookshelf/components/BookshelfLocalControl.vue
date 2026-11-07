@@ -62,6 +62,13 @@ const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
 const targetFavoredId = ref(props.favoredId);
+watch(
+  () => props.favoredId,
+  (favoredId) => {
+    targetFavoredId.value = favoredId;
+    showDeleteModal.value = false;
+  },
+);
 
 const moveToFavored = async () => {
   const novels = props.selectedIds;
@@ -75,15 +82,13 @@ const moveToFavored = async () => {
     return;
   }
 
+  const favoredId = targetFavoredId.value;
   const localVolumeRepository = await useLocalVolumeStore();
 
   let failed = 0;
   for (const volumeId of novels) {
     try {
-      await localVolumeRepository.updateFavoredId(
-        volumeId,
-        targetFavoredId.value,
-      );
+      await localVolumeRepository.updateFavoredId(volumeId, favoredId);
     } catch (e) {
       failed += 1;
     }

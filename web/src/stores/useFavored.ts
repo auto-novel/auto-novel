@@ -118,6 +118,36 @@ const favoriteNovel = async (
   }
 };
 
+const moveNovels = async (
+  favoredId: string,
+  novels: Parameters<typeof favoriteNovel>[1][],
+) => {
+  const queryCache = useQueryCache();
+  const changedTypes = new Set<'web' | 'wenku'>();
+  let failed = 0;
+  for (const novel of novels) {
+    try {
+      await favoriteNovel(favoredId, novel);
+      changedTypes.add(novel.type);
+    } catch {
+      failed += 1;
+    }
+  }
+  // 移动会影响源收藏夹、目标收藏夹及“全部”，每批仅刷新一次列表。
+  const refreshResults = await Promise.allSettled(
+    [...changedTypes].map((type) =>
+      queryCache.invalidateQueries({ key: [`${type}-novel-list-favored`] }),
+    ),
+  );
+  return {
+    success: novels.length - failed,
+    failed,
+    refreshFailed: refreshResults.some(
+      (result) => result.status === 'rejected',
+    ),
+  };
+};
+
 const unfavoriteNovel = async (
   favoredId: string,
   novel:
@@ -152,5 +182,6 @@ export const FavoredRepo = {
   updateFavored,
   deleteFavored,
   favoriteNovel,
+  moveNovels,
   unfavoriteNovel,
 };

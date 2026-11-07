@@ -10,18 +10,31 @@ import { downloadFile, querySearch } from '@/util';
 
 type BookshelfLocalStore = {
   volumes: LocalVolumeMetadata[];
+  loading: boolean;
+  loadError: string | null;
 };
 
 export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
   state: () =>
     <BookshelfLocalStore>{
       volumes: [],
+      loading: false,
+      loadError: null,
     },
   actions: {
     async loadVolumes() {
-      const repo = await useLocalVolumeStore();
-      this.volumes = await repo.listVolume();
-      return this.volumes;
+      this.loading = true;
+      this.loadError = null;
+      try {
+        const repo = await useLocalVolumeStore();
+        this.volumes = await repo.listVolume();
+        return this.volumes;
+      } catch (error) {
+        this.loadError = error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        this.loading = false;
+      }
     },
     async addVolume(
       file: File,
@@ -36,6 +49,17 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
       const repo = await useLocalVolumeStore();
       await repo.deleteVolume(id);
       this.volumes = this.volumes.filter((it) => it.id !== id);
+    },
+    async deleteFavoredVolumes(favoredId: string) {
+      const repo = await useLocalVolumeStore();
+      const volumes = await repo.listVolume();
+      const ids = volumes
+        .filter((volume) => volume.favoredId === favoredId)
+        .map((volume) => volume.id);
+      const { failed } = await this.deleteVolumes(ids);
+      if (failed > 0) {
+        throw new Error(`清空收藏夹失败，${failed}本未删除`);
+      }
     },
     async deleteVolumes(ids: string[]) {
       const repo = await useLocalVolumeStore();

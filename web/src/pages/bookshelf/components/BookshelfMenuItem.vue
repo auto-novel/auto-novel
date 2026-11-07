@@ -82,12 +82,7 @@ const updateFavored = async () => {
 
 const deleteFavoredNovels = async () => {
   if (type === 'local') {
-    const { failed } = await store.deleteVolumes(
-      store.volumes.filter((it) => it.favoredId === id).map(({ id }) => id),
-    );
-    if (failed > 0) {
-      throw new Error(`清空收藏夹失败，${failed}本未删除`);
-    }
+    await store.deleteFavoredVolumes(id);
   }
 };
 

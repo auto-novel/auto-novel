@@ -24,8 +24,8 @@ const isWideScreen = useIsWideScreen();
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-const listOptions = getWenkuFavoredListOptions(
-  setting.value.favoriteCreateTimeFirst,
+const listOptions = computed(() =>
+  getWenkuFavoredListOptions(setting.value.favoriteCreateTimeFirst),
 );
 
 const listValue = computed(
@@ -39,7 +39,10 @@ const { data: novelPage, error } = WenkuNovelRepo.useWenkuNovelFavoredList(
   () => props.page,
   () => props.favoredId,
   () => ({
-    sort: parseFavoredListValueSort(listOptions.排序, listValue.value.排序),
+    sort: parseFavoredListValueSort(
+      listOptions.value.排序,
+      listValue.value.排序,
+    ),
   }),
 );
 
