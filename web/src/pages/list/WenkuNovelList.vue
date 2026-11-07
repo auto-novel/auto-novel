@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import {
+  XButton,
   XEmpty,
   XError,
   XPagination,
@@ -66,15 +67,16 @@ watch(novelPage, (novelPage) => {
 
 <template>
   <XPage role="region" aria-label="文库小说列表">
-    <XPageHeader title="文库小说" />
-
-    <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
-      <c-button
-        label="新建小说"
-        :icon="PlusOutlined"
-        style="margin-bottom: 8px"
-      />
-    </router-link>
+    <XPageHeader title="文库小说">
+      <template #actions>
+        <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
+          <XButton color="neutral" variant="outline" size="sm">
+            <PlusOutlined class="size-4" aria-hidden="true" />
+            新建小说
+          </XButton>
+        </router-link>
+      </template>
+    </XPageHeader>
 
     <ListFilter
       :options="listOptions"

@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import { XPage, XPageHeader } from '@novelia/web-kit';
+import { XButton, XPage, XPageHeader } from '@novelia/web-kit';
 import { BookOutlined } from '@vicons/material';
 import type { WorkspaceTranslatorId } from '@/model/Translator';
-import WorkspaceActionButton from './WorkspaceActionButton.vue';
 import WorkspaceLog from './WorkspaceLog.vue';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
 import TaskSection from './task/TaskSection.vue';
@@ -36,11 +35,15 @@ const {
   <XPage>
     <XPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
       <template #actions>
-        <WorkspaceActionButton
-          label="本地书架"
-          :icon="BookOutlined"
-          @action="showLocalVolumeDrawer = true"
-        />
+        <XButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="showLocalVolumeDrawer = true"
+        >
+          <BookOutlined class="size-4" aria-hidden="true" />
+          本地书架
+        </XButton>
       </template>
     </XPageHeader>
     <WorkspaceBulletin :translator-id="translatorId" />
