@@ -232,6 +232,7 @@ export const lazy = <T>(factory: () => T) => {
   };
 };
 
+export * from './useHorizontalSwipe';
 export * from './useOpenCC';
 export * from './useShouldTopJob';
 export * from './useStorage';
