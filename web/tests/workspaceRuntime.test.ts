@@ -432,6 +432,49 @@ describe('workspace trusted worker scheduling', () => {
 });
 
 describe('bounded source prefetch', () => {
+  it('releases all timed-out source slots and continues a healthy later task', async () => {
+    vi.useFakeTimers();
+    try {
+      const blocked = task('local');
+      blocked.chapters = Array.from({ length: 3 }, (_, index) => ({
+        ...blocked.chapters[0],
+        chapterId: String(index + 1),
+        order: index,
+      }));
+      const source = deferred<PreparedUnit>();
+      vi.mocked(blocked.prepareUnit).mockReturnValue(source.promise);
+      const healthy = task('local');
+      const { runtime, store } = setupLifecycleRuntime({ blocked, healthy });
+      await runtime.startWorker('trusted');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(blocked.prepareUnit).toHaveBeenCalledTimes(3);
+      expect(healthy.prepareUnit).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(
+        runtime.taskStates.value.get('blocked')!.chapters.map((c) => c.status),
+      ).toEqual(['error', 'error', 'error']);
+      expect(blocked.prepareUnit).toHaveBeenCalledTimes(3);
+      expect(healthy.chapterSave).toHaveBeenCalledOnce();
+      expect(store.ref.value.jobs[1]).toHaveProperty('finishAt');
+      for (const [, context] of vi.mocked(blocked.prepareUnit).mock.calls) {
+        expect(context.signal.aborted).toBe(true);
+      }
+
+      source.resolve({
+        lines: ['迟到原文'],
+        glossary: {},
+        save: blocked.chapterSave,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(blocked.chapterSave).not.toHaveBeenCalled();
+      expect(mocks.submitted).toHaveLength(1);
+      runtimeScopes.pop()!.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each(['translation', 'save'] as const)(
     'does not reuse an old drain to cancel a later unit during %s',
     async (phase) => {
@@ -589,8 +632,11 @@ describe('bounded source prefetch', () => {
         'pending',
       ]),
     );
-    for (const [, context] of vi.mocked(local.prepareUnit).mock.calls) {
-      expect(context.signal.aborted).toBe(true);
+    for (const [unit, context] of vi.mocked(local.prepareUnit).mock.calls) {
+      // 已保存章节已释放父信号监听；其余准备/执行中的章节必须取消。
+      expect(context.signal.aborted).toBe(
+        unit.kind !== 'chapter' || unit.chapterId !== '2',
+      );
     }
     for (const source of sources) {
       source.resolve({

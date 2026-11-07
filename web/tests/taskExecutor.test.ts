@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkPreparer } from '../src/domain/translator/prepare-work';
 import { buildChapterList } from '../src/domain/translator/tasks/chapter-preparation';
@@ -82,7 +82,7 @@ describe('metadata translation units', () => {
       { kind: 'metadata' },
       expect.objectContaining({
         signal: expect.any(AbortSignal),
-        onLog: tracker.onLog,
+        onLog: expect.any(Function),
       }),
     );
     expect(tracker.state.metadataUnit?.status).toBe('translating');
@@ -174,8 +174,11 @@ describe('WorkPreparer trust requirements', () => {
     expect(task.save).toHaveBeenCalledWith(['译文']);
     expect(task.prepareUnit).toHaveBeenCalledWith(
       { kind: 'chapter', chapterId: '1' },
-      expect.objectContaining({ signal: controller.signal }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+    const childSignal = task.prepareUnit.mock.calls[0][1].signal;
+    expect(childSignal).not.toBe(controller.signal);
+    expect(childSignal.aborted).toBe(true);
     expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'done');
     expect(tracker.state.progress).toEqual({ finished: 1, error: 0, total: 1 });
   });
@@ -226,6 +229,123 @@ describe('WorkPreparer prepared units', () => {
   });
 });
 
+describe('WorkPreparer preparation timeout', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each(['resolve', 'reject'] as const)(
+    'times out only the child and ignores late %s and logs',
+    async (outcome) => {
+      vi.useFakeTimers();
+      const task = createTask('local');
+      let resolvePreparation!: (
+        value: Awaited<ReturnType<TranslationTask['prepareUnit']>>,
+      ) => void;
+      let rejectPreparation!: (error: unknown) => void;
+      task.prepareUnit.mockReturnValue(
+        new Promise((resolve, reject) => {
+          resolvePreparation = resolve;
+          rejectPreparation = reject;
+        }),
+      );
+      const controller = new AbortController();
+      const tracker = createTracker(task);
+      const segmentTracker = new UnitDetailState('1');
+      const preparing = new WorkPreparer(task).prepareUnit(
+        tracker.state.chapters[0],
+        { ...tracker, segmentTracker },
+        controller.signal,
+      );
+      const context = task.prepareUnit.mock.calls[0][1];
+      expect(context.signal).not.toBe(controller.signal);
+      await vi.advanceTimersByTimeAsync(119_999);
+      expect(context.signal.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(preparing).resolves.toBeUndefined();
+      expect(context.signal.aborted).toBe(true);
+      expect(controller.signal.aborted).toBe(false);
+      expect(tracker.state.chapters[0].status).toBe('error');
+      expect(segmentTracker.errorMessage).toContain('获取原文超时');
+      const logCount = tracker.onLog.mock.calls.length;
+      context.onLog('迟到日志');
+      if (outcome === 'resolve') {
+        resolvePreparation({ lines: [], glossary: {}, save: task.save });
+      } else {
+        rejectPreparation(new Error('迟到失败'));
+      }
+      await vi.runAllTimersAsync();
+      expect(task.save).not.toHaveBeenCalled();
+      expect(task.prepareUnit).toHaveBeenCalledTimes(1);
+      expect(tracker.onLog).toHaveBeenCalledTimes(logCount);
+      expect(tracker.state.chapters[0].status).toBe('error');
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it('clears the preparation deadline but forwards parent cancellation through saving', async () => {
+    vi.useFakeTimers();
+    const task = createTask('local');
+    task.save.mockImplementation(() => {
+      const { signal } = task.prepareUnit.mock.calls[0][1];
+      return new Promise<void>((_, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), {
+          once: true,
+        });
+      });
+    });
+    const controller = new AbortController();
+    const tracker = createTracker(task);
+    const work = await new WorkPreparer(task, {
+      preparationTimeoutMs: 50,
+    }).prepareUnit(tracker.state.chapters[0], tracker, controller.signal);
+    const childSignal = task.prepareUnit.mock.calls[0][1].signal;
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(childSignal.aborted).toBe(false);
+    expect(tracker.state.chapters[0].status).toBe('translating');
+    const saving = work!.onComplete({ lines: ['译文'], failed: [] });
+    expect(task.save).toHaveBeenCalledWith(['译文']);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(childSignal.aborted).toBe(false);
+    controller.abort();
+    expect(childSignal.aborted).toBe(true);
+    await expect(saving).rejects.toBe(controller.signal.reason);
+    // 流水线在保存因取消而失败时，通过 onAbort 结算。
+    await work!.onAbort();
+    expect(tracker.state.chapters[0].status).toBe('pending');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('returns cancelled preparation to pending without leaving a timeout', async () => {
+    vi.useFakeTimers();
+    const task = createTask('local');
+    task.prepareUnit.mockReturnValue(new Promise(() => {}));
+    const controller = new AbortController();
+    const tracker = createTracker(task);
+    const segmentTracker = new UnitDetailState('1');
+    const preparing = new WorkPreparer(task, {
+      preparationTimeoutMs: 50,
+    }).prepareUnit(
+      tracker.state.chapters[0],
+      { ...tracker, segmentTracker },
+      controller.signal,
+    );
+    const childSignal = task.prepareUnit.mock.calls[0][1].signal;
+    controller.abort();
+    await expect(preparing).resolves.toBeUndefined();
+    expect(childSignal.aborted).toBe(true);
+    expect(tracker.state.chapters[0].status).toBe('pending');
+    expect(segmentTracker.errorMessage).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+    const logCount = tracker.onLog.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tracker.onLog).toHaveBeenCalledTimes(logCount);
+    expect(tracker.state.chapters[0].status).toBe('pending');
+    expect(task.save).not.toHaveBeenCalled();
+  });
+});
+
 describe('WorkPreparer preparation boundaries', () => {
   it('keeps colliding UI keys independent and dispatches only clean identities', async () => {
     const task = createMetadataTask();
@@ -271,7 +391,7 @@ describe('WorkPreparer preparation boundaries', () => {
     expect(tracker.onUnitStatus).toHaveBeenLastCalledWith('1', 'pending');
   });
 
-  it('uses the same required signal to prevent saving after cancellation', async () => {
+  it('prevents saving after parent cancellation', async () => {
     const task = createTask('local');
     const controller = new AbortController();
     const tracker = createTracker(task);

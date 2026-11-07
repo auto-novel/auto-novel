@@ -40,7 +40,20 @@ function awaitWithSignal<T>(
 }
 
 export class WorkPreparer {
-  constructor(private task: TranslationTask) {}
+  private readonly preparationTimeoutMs: number;
+
+  constructor(
+    private task: TranslationTask,
+    options: { preparationTimeoutMs?: number } = {},
+  ) {
+    this.preparationTimeoutMs = options.preparationTimeoutMs ?? 120_000;
+    if (
+      !Number.isFinite(this.preparationTimeoutMs) ||
+      this.preparationTimeoutMs <= 0
+    ) {
+      throw new RangeError('原文准备超时必须为正数');
+    }
+  }
 
   /** 获取翻译单元；翻译与保存回调统一交给流水线。零行单元直接保存。 */
   async prepareUnit(
@@ -51,11 +64,18 @@ export class WorkPreparer {
     const isMetadata = unit.kind === 'metadata';
     const chapterId = unit.chapterId;
     const title = unit.title;
+    // 单元信号贯穿准备与保存，结算前持续转发父取消；仅准备阶段设置超时。
+    const unitController = new AbortController();
+    const unitSignal = unitController.signal;
+    const abortUnit = () => unitController.abort(signal.reason);
+    const releaseUnit = () => signal.removeEventListener('abort', abortUnit);
+    let handedOff = false;
     const setStatus = (status: UnitStatus) =>
       tracker.onUnitStatus(chapterId, status);
     const markError = () => setStatus('error');
     const markPending = () => setStatus('pending');
     const onError = (error: unknown) => {
+      releaseUnit();
       if (
         signal.aborted ||
         (error instanceof Error && error.name === 'AbortError')
@@ -74,8 +94,10 @@ export class WorkPreparer {
       signal.throwIfAborted();
       if (!this.task.initialized) throw new Error('翻译任务尚未初始化');
       const context = {
-        signal,
-        onLog: tracker.onLog,
+        signal: unitSignal,
+        onLog: (message: string) => {
+          if (!unitSignal.aborted) tracker.onLog(message);
+        },
       };
       const ref: TranslationUnitRef = isMetadata
         ? { kind: 'metadata' }
@@ -91,10 +113,27 @@ export class WorkPreparer {
         throw new Error(`章节 ${chapterId} 不存在或已失效`);
       }
       tracker.onLog(`[${title}] 开始获取原文`);
-      const prepared = await awaitWithSignal(
-        this.task.prepareUnit(ref, context),
-        signal,
-      );
+      signal.addEventListener('abort', abortUnit, { once: true });
+      if (signal.aborted) abortUnit();
+      const timer = setTimeout(() => {
+        unitController.abort(
+          new DOMException(
+            `获取原文超时（${this.preparationTimeoutMs / 1000} 秒），请重试`,
+            'TimeoutError',
+          ),
+        );
+      }, this.preparationTimeoutMs);
+      let prepared: Awaited<ReturnType<TranslationTask['prepareUnit']>>;
+      try {
+        prepared = await awaitWithSignal(
+          this.task.prepareUnit(ref, context),
+          unitSignal,
+        );
+        unitSignal.throwIfAborted();
+      } finally {
+        // 超时仅覆盖原文准备，不限制后续翻译和保存耗时。
+        clearTimeout(timer);
+      }
       signal.throwIfAborted();
       setStatus('translating');
       const save = async (lines: readonly string[]) => {
@@ -113,6 +152,7 @@ export class WorkPreparer {
         return undefined;
       }
       tracker.onLog(`[${title}] 开始翻译`);
+      handedOff = true;
       return {
         trustedOnly: this.task.type !== 'local',
         lines: prepared.lines,
@@ -120,22 +160,32 @@ export class WorkPreparer {
         history: prepared.history,
         tracker: tracker.segmentTracker,
         onComplete: async (result) => {
-          signal.throwIfAborted();
-          if (result.failed.length > 0) {
-            markError();
-            tracker.onLog(
-              `[${title}] ⚠️ ${result.failed.length} 个分段翻译失败，已回退为原文`,
-            );
-            return;
+          try {
+            signal.throwIfAborted();
+            if (result.failed.length > 0) {
+              markError();
+              tracker.onLog(
+                `[${title}] ⚠️ ${result.failed.length} 个分段翻译失败，已回退为原文`,
+              );
+              return;
+            }
+            await save(result.lines);
+          } finally {
+            releaseUnit();
           }
-          await save(result.lines);
         },
         onError,
-        onAbort: markPending,
+        onAbort: () => {
+          abortUnit();
+          releaseUnit();
+          markPending();
+        },
       };
     } catch (error) {
       onError(error);
       return undefined;
+    } finally {
+      if (!handedOff) releaseUnit();
     }
   }
 }
