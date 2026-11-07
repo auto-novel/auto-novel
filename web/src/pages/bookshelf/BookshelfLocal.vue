@@ -1,13 +1,9 @@
 <script lang="ts" setup>
 import { ChecklistOutlined } from '@vicons/material';
 
-import { useIsWideScreen } from '@/pages/util';
-
 defineProps<{
   favoredId: string;
 }>();
-
-const isWideScreen = useIsWideScreen();
 
 const showControlPanel = ref(false);
 
@@ -20,10 +16,6 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
       label="选择"
       :icon="ChecklistOutlined"
       @action="showControlPanel = !showControlPanel"
-    />
-    <bookshelf-list-button
-      v-if="!isWideScreen"
-      :menu-key="`local/${favoredId}`"
     />
     <div>
       <bookshelf-local-add-button :favored-id="favoredId" />

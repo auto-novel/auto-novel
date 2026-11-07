@@ -3,7 +3,6 @@ import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
 import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
 
-import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
 import { useSettingStore } from '@/stores';
 import { onUpdateListValue, onUpdatePage } from '../list/option';
@@ -18,8 +17,6 @@ const props = defineProps<{
   selected: number[];
   favoredId: string;
 }>();
-
-const isWideScreen = useIsWideScreen();
 
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
@@ -58,17 +55,13 @@ const novelListRef = useTemplateRef('novelList');
 
 <template>
   <div role="region" aria-label="文库小说收藏列表">
-    <n-flex style="margin-bottom: 24px">
+    <div class="mb-6">
       <c-button
         label="选择"
         :icon="ChecklistOutlined"
         @action="showControlPanel = !showControlPanel"
       />
-      <bookshelf-list-button
-        v-if="!isWideScreen"
-        :menu-key="`wenku/${favoredId}`"
-      />
-    </n-flex>
+    </div>
 
     <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
       <bookshelf-wenku-control
