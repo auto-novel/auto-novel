@@ -1,17 +1,11 @@
 <script lang="ts" setup>
-import { XTime } from '@novelia/web-kit';
+import { XTime, XTooltip } from '@novelia/web-kit';
 
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
-import { FavoredRepo } from '@/stores';
 
 const { items } = defineProps<{
   items: WebNovelOutlineDto[];
 }>();
-
-const favoredStore = FavoredRepo.useFavoredStore();
-const favoredTitleMap = computed(
-  () => new Map(favoredStore.favoreds.web.map((it) => [it.id, it.title])),
-);
 
 interface HistoryGroup {
   key: string;
@@ -59,6 +53,11 @@ const formatStats = (item: WebNovelOutlineDto) =>
   ]
     .filter(Boolean)
     .join(' / ');
+
+const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
+  item.updateAt !== undefined &&
+  item.lastReadAt !== undefined &&
+  item.updateAt > item.lastReadAt;
 </script>
 
 <template>
@@ -71,10 +70,17 @@ const formatStats = (item: WebNovelOutlineDto) =>
           :key="`${item.providerId}/${item.novelId}`"
           class="relative pb-5 pl-5 last:pb-0"
         >
-          <span
-            class="absolute top-[5px] -left-[5px] size-2.5 rounded-full bg-primary ring-4 ring-body sm:top-1.5"
-            aria-hidden="true"
-          />
+          <XTooltip>
+            <template #trigger>
+              <span
+                class="absolute top-1.25 -left-1.25 size-2.5 rounded-full ring-4 ring-body sm:top-1.5"
+                :class="hasUpdateSinceRead(item) ? 'bg-warning' : 'bg-primary'"
+                aria-hidden="true"
+              />
+            </template>
+            {{ hasUpdateSinceRead(item) ? '上次阅读后有更新' : '阅读记录' }}
+          </XTooltip>
+          <span v-if="hasUpdateSinceRead(item)" class="sr-only">有更新</span>
           <div
             class="grid min-w-0 gap-y-0.5 sm:grid-cols-[4rem_minmax(0,1fr)] sm:items-baseline sm:gap-x-2"
           >
@@ -108,22 +114,30 @@ const formatStats = (item: WebNovelOutlineDto) =>
                 {{ formatStats(item) }}
               </p>
               <p
-                v-if="item.favored || item.updateAt || $slots.action"
+                v-if="
+                  item.lastReadAt !== undefined ||
+                  item.updateAt !== undefined ||
+                  $slots.action
+                "
                 class="mt-1 mb-0 flex flex-wrap items-center gap-x-1 text-xs text-muted"
               >
-                <span v-if="item.favored">
-                  收藏于：{{
-                    favoredTitleMap.get(item.favored) || '未知收藏夹'
-                  }}
+                <span v-if="item.lastReadAt !== undefined">
+                  阅读于
+                  <XTime :time="item.lastReadAt * 1000" preset="relative" />
                 </span>
-                <span v-if="item.favored && item.updateAt" aria-hidden="true">
+                <span
+                  v-if="
+                    item.lastReadAt !== undefined && item.updateAt !== undefined
+                  "
+                  aria-hidden="true"
+                >
                   /
                 </span>
-                <span v-if="item.updateAt">
-                  本站更新于
+                <span v-if="item.updateAt !== undefined">
+                  更新于
                   <XTime :time="item.updateAt * 1000" preset="relative" />
                 </span>
-                <slot v-if="$slots.action" name="action" v-bind="item" />
+                <slot name="action" v-bind="item" />
               </p>
             </div>
           </div>
