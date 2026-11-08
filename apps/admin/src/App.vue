@@ -6,15 +6,14 @@ import {
   AdminSiteSwitcher,
   WebKitApp,
   WebKitLayout,
+  XPage,
   useWebKit,
-  getApiErrorMessage,
   type WebKitMenuOption,
 } from '@novelia/web-kit';
 
 const route = useRoute();
 const { whoami, checkSignedIn } = useWebKit();
 const checking = ref(true);
-const error = ref('');
 const menu: WebKitMenuOption[] = [
   {
     key: 'banners',
@@ -26,11 +25,8 @@ const menu: WebKitMenuOption[] = [
 
 async function checkSession() {
   checking.value = true;
-  error.value = '';
   try {
     await checkSignedIn();
-  } catch (cause) {
-    error.value = getApiErrorMessage(cause, '登录状态检查失败');
   } finally {
     checking.value = false;
   }
@@ -48,16 +44,11 @@ onMounted(checkSession);
       <template #header-actions>
         <AdminSiteSwitcher current="auto-novel" />
       </template>
-      <main class="admin-container">
+      <RouterView v-if="!checking && whoami.isAdmin" />
+      <XPage v-else>
         <div v-if="checking" class="empty-state" role="status">
           正在检查登录状态…
         </div>
-        <div v-else-if="error" class="empty-state" role="alert">
-          <h1>暂时无法检查登录状态</h1>
-          <p>{{ error }}</p>
-          <button class="btn" @click="checkSession">重试</button>
-        </div>
-        <RouterView v-else-if="whoami.isAdmin" />
         <div v-else class="empty-state">
           <h1>
             {{ whoami.isSignedIn ? '需要管理员权限' : '欢迎使用小说管理后台' }}
@@ -71,7 +62,7 @@ onMounted(checkSession);
           </p>
           <a class="btn" href="/">返回小说站点</a>
         </div>
-      </main>
+      </XPage>
     </WebKitLayout>
   </WebKitApp>
 </template>
