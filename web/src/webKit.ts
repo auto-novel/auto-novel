@@ -11,7 +11,7 @@ export const webKit = createWebKit({
   brand: '小说',
   repository: {
     url: siteUrls.repository,
-    buildTime: __BUILD_INFO__.buildTime,
-    commitSha: __BUILD_INFO__.gitCommit,
+    buildTime: __BUILD_TIME__,
+    commitSha: __COMMIT_SHA__,
   },
 });
