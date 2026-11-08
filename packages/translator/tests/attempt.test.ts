@@ -48,7 +48,7 @@ describe('attemptTranslation', () => {
     await expect(
       attemptTranslation({ trusted: false, translate, fallback }, request),
     ).rejects.toMatchObject({
-      message: '翻译失败：重试次数过多',
+      message: '翻译失败：重试次数过多；最后错误：请求超时',
       cause: error,
     });
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
