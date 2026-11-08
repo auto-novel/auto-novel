@@ -1,45 +1,41 @@
-export { TranslationPipeline } from './pipeline/translation_pipeline';
-export { DefaultSegmentQueue } from './segment';
-export { Semaphore } from './utils';
-
-export type { Translator } from './types';
-export { createOpenAiApi, OpenAiError } from './translator/openai-api';
-export type { OpenAiTranslatorConfig } from './translator/openai-translator';
-export { OpenAiTranslator } from './translator/openai-translator';
-export { SakuraTranslator } from './translator/sakura-translator';
+// 用户入口：流水线 + 工厂。
+export { TranslationPipeline } from './pipeline/pipeline';
+export { createTranslator } from './factory';
+export type { TranslatorConfig } from './factory';
+export {
+  openAiProfiles,
+  parseOpenAiProfileSelection,
+} from './translator/llm-profiles';
 export type {
-  SakuraVersion,
-  SakuraTranslatorConfig,
-} from './translator/sakura-translator';
-export { allowModels } from './translator/sakura-prompt';
-export type { ModelMeta } from './translator/sakura-prompt';
-export type { YoudaoTranslatorConfig } from './translator/youdao-translator';
-export { YoudaoTranslator } from './translator/youdao-translator';
+  openAiProfileId,
+  OpenAiProfileSelection,
+  ProfileValues,
+} from './translator/llm-profiles';
 
+// 约定：自定义翻译器只需实现 Translator。
 export type {
   Glossary,
-  Segment,
+  Logger,
   SegmentContext,
+  TranslateRequest,
+  Translator,
+} from './types';
+export { TranslationRejected, TranslationUnavailable } from './errors';
+
+// 流水线的输入输出、缓存与事件。
+export type {
+  Segment,
   SegmentCache,
   SegmentTracker,
-  TranslatorTracker,
-  LineRange,
+  TranslatorOptions,
+  TranslationInput,
+  TranslationResult,
+  TranslationWork,
 } from './types';
 
-export { openAiProfiles } from './translator/profiles/openai';
-
-export type { openAiProfileId } from './translator/profiles/openai';
-
-export type {
-  ProfileField,
-  ProfileValues,
-  TranslatorProfile,
-} from './translator/profiles/types';
-
-export { createPiAiCompletion, PiAiRequestError } from './translator/pi-ai-api';
-export type {
-  PiAiCompletionRequest,
-  PiAiCompletionResult,
-  PiAiMessage,
-  PiAiProtocol,
-} from './translator/pi-ai-api';
+// 内置翻译器：供旧的有道/Sakura 入口与模型公示使用。
+export { SakuraTranslator } from './translator/sakura';
+export type { SakuraTranslatorConfig } from './translator/sakura';
+export { allowModels } from './translator/sakura-prompt';
+export type { ModelMeta } from './translator/sakura-prompt';
+export { YoudaoTranslator } from './translator/youdao';

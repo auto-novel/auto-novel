@@ -1,62 +1,102 @@
-import { translateChapter } from '@auto-novel/translator/harness';
+import type {
+  Logger,
+  SegmentTracker,
+  TranslationInput,
+  TranslationResult,
+} from '@auto-novel/translator';
+import {
+  translateChapter,
+  type HarnessUsageRecord,
+  type HarnessReasoningRecord,
+} from '@auto-novel/translator/harness';
 import type { HarnessPreset } from '@auto-novel/translator/harness/presets';
-import type { ChapterTranslator } from '../TaskExecutor';
+
+export interface HarnessSegmentTracker extends SegmentTracker {
+  onHarnessStart?: () => void;
+  onHarnessUsage?: (record: HarnessUsageRecord) => void;
+  onHarnessReasoning?: (record: HarnessReasoningRecord) => void;
+}
+
+export type ChapterTranslator = (
+  input: TranslationInput & { tracker?: HarnessSegmentTracker },
+  signal: AbortSignal,
+) => Promise<TranslationResult>;
 
 const isAbortError = (error: unknown) =>
   (error as { name?: string } | undefined)?.name === 'AbortError';
 
 /**
- * 把所选模型预设包装成 TaskExecutor 可直接调用的“章节翻译函数”。
- *
- * 这里不经过 TranslationPipeline：章节并发由 Workspace 分配槽位控制。
- * 引擎按批串行请求，适配层把每个批次映射成一个分段进度项，
- * 让章节网格、预览和错误统计与 pipeline 模式共用同一套界面。
+ * 保留整章上下文，把 Harness 批次映射为上游的分段事件和结算结果。
  */
 export function createHarnessMode(
   preset: HarnessPreset,
   apiKey: string,
   translatorId = preset.model,
+  log?: Logger,
 ): ChapterTranslator {
-  return async (detail, tracker, signal) => {
-    const segmentTracker = tracker.segmentTracker;
+  return async (input, signal) => {
+    const tracker = input.tracker;
     let currentBatchIndex: number | undefined;
+    let tracking = true;
+    const onAbort = () => {
+      if (!tracking) return;
+      tracking = false;
+      tracker?.onAbort?.();
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) onAbort();
     try {
-      return await translateChapter({
-        source: detail.paragraphs,
-        glossary: detail.glossary,
+      signal.throwIfAborted();
+      const lines = await translateChapter({
+        source: [...input.lines],
+        glossary: input.glossary ?? {},
         preset,
         apiKey,
         signal,
-        onLog: tracker.onLog,
+        onLog: (...args) => {
+          if (tracking) log?.(...args);
+        },
         onUsage: (record) => {
-          segmentTracker?.harnessUsage.push(record);
+          if (tracking) tracker?.onHarnessUsage?.(record);
         },
         onBatchesReady: (batches) => {
-          if (!segmentTracker) return;
-          segmentTracker.harness = true;
-          segmentTracker.onSegmentsReady(detail.paragraphs, batches);
+          if (!tracking) return;
+          tracker?.onHarnessStart?.();
+          tracker?.onSegmentsReady?.(
+            batches.map((batch) => ({
+              id: String(batch.index),
+              order: batch.index,
+              lines: input.lines.slice(batch.start, batch.end),
+            })),
+          );
         },
         onBatchStart: (batch) => {
+          if (!tracking) return;
           currentBatchIndex = batch.index;
-          segmentTracker?.onSegStart(batch.index, translatorId);
+          tracker?.onSegStart?.(batch.index, translatorId);
         },
         onReasoning: (record) => {
-          segmentTracker?.reasoning.push(record);
+          if (tracking) tracker?.onHarnessReasoning?.(record);
         },
         onBatchComplete: (batch, translatedLines) => {
-          segmentTracker?.onSegComplete(batch.index, translatedLines);
+          if (!tracking) return;
+          tracker?.onSegComplete?.(batch.index, translatedLines);
           currentBatchIndex = undefined;
         },
       });
+      return { lines, failed: [] };
     } catch (error) {
-      if (isAbortError(error)) {
-        segmentTracker?.onAbort();
+      if (signal.aborted || isAbortError(error)) {
+        onAbort();
       } else {
         if (currentBatchIndex !== undefined) {
-          segmentTracker?.onSegError(currentBatchIndex, error);
+          tracker?.onSegError?.(currentBatchIndex, error);
         }
       }
       throw error;
+    } finally {
+      tracking = false;
+      signal.removeEventListener('abort', onAbort);
     }
   };
 }

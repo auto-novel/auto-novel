@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, useWebKit } from '@novelia/web-kit';
+import { Toast, useWebKit, XPage, XPageHeader } from '@novelia/web-kit';
 import SoundAllTaskCompleted from '@/sound/all_task_completed.mp3';
 import {
   Setting,
@@ -29,8 +29,8 @@ const { theme } = useWebKit();
 </script>
 
 <template>
-  <div class="layout-content">
-    <n-h1>设置</n-h1>
+  <XPage>
+    <XPageHeader title="设置" />
 
     <n-list bordered>
       <n-list-item>
@@ -53,6 +53,9 @@ const { theme } = useWebKit();
             <n-li>
               GPT/Sakura排队按钮，按住 Ctrl（macOS 为
               Cmd）键点击，会将任务自动置顶。
+            </n-li>
+            <n-li>
+              小说/文库页面，可以用数字键切换底部分页，也可在分页区域内单指左右滑动切换。
             </n-li>
             <n-li>阅读页面，可以使用左右方向键跳转上/下一章。</n-li>
             <n-li>阅读页面，可以使用数字键1～3快速切换翻译。</n-li>
@@ -181,5 +184,5 @@ const { theme } = useWebKit();
         </n-flex>
       </n-list-item>
     </n-list>
-  </div>
+  </XPage>
 </template>

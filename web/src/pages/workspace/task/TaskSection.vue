@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import {
-  Toast,
   XConfirmDialog,
   XDropdownMenu,
   XDropdownMenuItem,
@@ -11,25 +10,20 @@ import {
   MoreVertOutlined,
   RefreshOutlined,
 } from '@vicons/material';
-import type { TaskState } from '@/domain/translator/TaskState';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
+import type { TaskState } from '@/domain/translator';
 import type { TranslateJob } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import TaskCard from './TaskCard.vue';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
   jobs: TranslateJob[];
   taskStates: ReadonlyMap<string, TaskState>;
-  taskCache: ReadonlyMap<string, TranslationTask>;
+  taskErrors: ReadonlyMap<string, string>;
 }>();
 
 const emit = defineEmits<{
   delete: [task: string];
-  retry: [];
+  retry: [task?: string];
   top: [task: string];
   bottom: [task: string];
 }>();
@@ -70,18 +64,12 @@ function deleteJobs() {
 }
 
 const hasFailedTasks = computed(() =>
-  props.jobs.some((job) => props.taskStates.get(job.task)?.hasFailedChapters()),
+  props.jobs.some(
+    (job) =>
+      props.taskStates.get(job.task)?.hasFailedUnits() ||
+      props.taskErrors.has(job.task),
+  ),
 );
-function retryFailedTasks() {
-  let hasFailed = false;
-  for (const job of props.jobs) {
-    if (!props.taskStates.get(job.task)?.resetFailedChapters()) continue;
-    delete job.finishAt;
-    hasFailed = true;
-  }
-  if (hasFailed) emit('retry');
-  else Toast.info('没有需要重试的失败任务');
-}
 </script>
 
 <template>
@@ -98,7 +86,7 @@ function retryFailedTasks() {
         v-if="hasFailedTasks"
         label="重试失败"
         :icon="RefreshOutlined"
-        @action="retryFailedTasks"
+        @action="emit('retry')"
       />
       <WorkspaceActionButton
         v-if="jobs.length"
@@ -134,13 +122,12 @@ function retryFailedTasks() {
     >
       <TaskCard
         :job="job"
-        :translator-id="translatorId"
         :task-state="taskStates.get(job.task)"
-        :task-cache-entry="taskCache.get(job.task)"
+        :error="taskErrors.get(job.task)"
         :can-move-top="index > 0"
         :can-move-bottom="index < jobs.length - 1"
         @delete="emit('delete', $event)"
-        @retry="emit('retry')"
+        @retry="emit('retry', $event)"
         @top="moveTask($event, 'top')"
         @bottom="moveTask($event, 'bottom')"
       />

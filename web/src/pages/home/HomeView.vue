@@ -6,7 +6,7 @@ import {
   ReadMoreOutlined,
   StarBorderOutlined,
 } from '@vicons/material';
-import { XDialog } from '@novelia/web-kit';
+import { XDialog, XPage } from '@novelia/web-kit';
 
 import { FavoredApi } from '@/api';
 import { forumPostUrls, forumUrl, siteUrls } from '@/config';
@@ -84,7 +84,7 @@ const showQQModal = ref(false);
 <template>
   <HomeBanner />
 
-  <div class="layout-content min-[540px]:pt-4">
+  <XPage class="pb-0">
     <div class="my-2 grid grid-cols-4 min-[540px]:hidden">
       <router-link
         :to="whoami.isSignedIn ? '/favorite/web' : '/favorite/local'"
@@ -139,7 +139,19 @@ const showQQModal = ref(false);
         /
         <n-a :href="siteUrls.repository" target="_blank">GitHub</n-a>
       </div>
-      <p class="my-4 first:mt-0 last:mb-0">
+      <p class="my-4 text-warning first:mt-0 last:mb-0">
+        安卓 App 已上线，前往
+        <n-a
+          class="underline underline-offset-2"
+          :href="`${siteUrls.androidApp}/releases`"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          发布页
+        </n-a>
+        下载。
+      </p>
+      <p class="my-4 text-warning first:mt-0 last:mb-0">
         交互翻译已恢复，点击工作区翻译器上的「试译」按钮即可使用。
       </p>
       <p class="my-4 first:mt-0 last:mb-0">
@@ -184,7 +196,7 @@ const showQQModal = ref(false);
       :error="latestUpdateWenkuError"
     />
     <hr class="my-6 border-divider" />
-  </div>
+  </XPage>
 
   <XDialog title="使用说明" v-model:open="showHowToUseModal" class="w-150">
     <p class="my-4 first:mt-0 last:mb-0">

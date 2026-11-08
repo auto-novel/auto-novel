@@ -5,28 +5,24 @@ import {
   XDialog,
   useWebKitViewport,
 } from '@novelia/web-kit';
-import {
-  OpenAiTranslator,
-  SakuraTranslator,
-  TranslationPipeline,
-} from '@auto-novel/translator';
-import type { SegmentTracker } from '@auto-novel/translator';
+import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
+import type { Translator, SegmentTracker } from '@auto-novel/translator';
 
 import TrialGlossaryPanel from './TrialGlossaryPanel.vue';
 
 import { downloadFile } from '@/util';
 
 import type { Glossary } from '@/model/Glossary';
-import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
-import {
-  findHarnessPresetGroup,
-  getHarnessModelPreset,
-} from '@auto-novel/translator/harness/presets';
+import type {
+  GptPipelineWorker,
+  SakuraWorker,
+  WorkspaceTranslatorId,
+} from '@/model/Translator';
+import { toTranslatorConfig } from '@/model/Translator';
 
 const props = defineProps<{
   show: boolean;
-  translatorId: TranslatorId;
+  translatorId: WorkspaceTranslatorId;
   worker: GptPipelineWorker | SakuraWorker;
   running: boolean;
 }>();
@@ -174,7 +170,7 @@ const restoreDraft = () => {
   }
 };
 
-let translatorPromise: Promise<OpenAiTranslator | SakuraTranslator> | undefined;
+let translatorPromise: Promise<Translator> | undefined;
 let controller: AbortController | undefined;
 let generation = 0;
 let copiedTimer: number | undefined;
@@ -189,10 +185,8 @@ watch(
 const getTranslator = () => {
   // Sakura 初始化暂不支持 AbortSignal；保留同一个 Promise，避免停止后重试
   // 叠加模型探测请求。任务结果仍由 generation 隔离。
-  translatorPromise ??= (
-    isSakura.value
-      ? SakuraTranslator.create(props.worker as SakuraWorker)
-      : Promise.resolve(new OpenAiTranslator(props.worker as GptPipelineWorker))
+  translatorPromise ??= createTranslator(
+    toTranslatorConfig(props.translatorId, props.worker),
   ).catch((e: unknown) => {
     translatorPromise = undefined;
     throw e;
@@ -266,81 +260,52 @@ const translate = async () => {
   resetCopied();
 
   let pipeline: TranslationPipeline | undefined;
-  let segmentErrors = 0;
-  let firstSegmentError: string | undefined;
   const tracker: SegmentTracker = {
-    onSegmentsReady: (_lines, ranges) => {
-      progress.value = { done: 0, total: ranges.length };
+    onSegmentsReady: (segments) => {
+      progress.value = { done: 0, total: segments.length };
     },
     onSegComplete: () => {
       progress.value.done += 1;
     },
-    onSegError: (_order, reason) => {
-      segmentErrors += 1;
+    onSegError: () => {
       progress.value.done += 1;
-      firstSegmentError ??=
-        reason instanceof Error ? reason.message : String(reason);
     },
   };
 
   try {
-    phase.value = 'translating';
-    const worker = props.worker as GptPipelineWorker;
-    const harnessPreset = isSakura.value
-      ? undefined
-      : findHarnessPresetGroup(worker.preset);
-    let result: string;
-    if (harnessPreset) {
-      const { translateChapter } = await import(
-        '@auto-novel/translator/harness'
-      );
-      const translatedLines = await translateChapter({
-        source: source.split('\n'),
-        glossary: glossary.value,
-        preset: getHarnessModelPreset(harnessPreset, worker.model),
-        apiKey: worker.key,
-        signal: abortController.signal,
-        onBatchesReady: (batches) => {
-          progress.value = { done: 0, total: batches.length };
-        },
-        onBatchComplete: () => {
-          progress.value.done += 1;
-        },
-      });
-      result = translatedLines.join('\n');
-    } else {
-      const t = await getTranslator();
-      if (current !== generation) return;
-      pipeline = new TranslationPipeline(
-        100,
-        undefined,
-        undefined,
-        isSakura.value ? 'chapter' : 'segment',
-      );
-      pipeline.registerTranslator(t, 1);
-      result = await pipeline.translate(
-        source,
-        glossary.value,
-        undefined,
-        abortController.signal,
-        tracker,
-      );
-    }
+    const t = await getTranslator();
     if (current !== generation) return;
 
-    textZh.value = result;
+    phase.value = 'translating';
+    pipeline = new TranslationPipeline({
+      segmentLength: isSakura.value ? 500 : undefined,
+    });
+    pipeline.registerTranslator(t, { concurrency: 1 });
+
+    const { lines, failed } = await pipeline.translate(
+      { lines: source.split('\n'), glossary: glossary.value, tracker },
+      abortController.signal,
+    );
+    if (current !== generation) return;
+
+    textZh.value = lines.join('\n');
     translatedSource.value = sourceSnapshot;
 
     const issues: string[] = [];
-    if (segmentErrors > 0) {
-      const detail = `${segmentErrors} 个分段未成功，失败部分已保留原文。原因：${firstSegmentError}`;
-      if (segmentErrors === progress.value.total) {
+    if (failed.length > 0) {
+      const [first] = failed;
+      const reason =
+        first.error instanceof Error
+          ? first.error.message
+          : String(first.error);
+      const detail = `${failed.length} 个分段未成功，失败部分已保留原文。原因：${reason}`;
+      if (failed.length === progress.value.total) {
         error.value = detail;
       } else {
         issues.push(detail);
       }
     }
-    if (source.split('\n').length !== result.split('\n').length) {
+    if (source.split('\n').length !== lines.length) {
       issues.push('译文行数与原文不一致，请检查结果');
     }
     if (issues.length > 0) warning.value = issues.join('；') + '。';
@@ -351,8 +316,7 @@ const translate = async () => {
     error.value = e instanceof Error ? e.message : String(e);
     revealResult();
   } finally {
-    pipeline?.clearLoops();
-    pipeline?.queue.clear();
+    pipeline?.dispose();
     if (current === generation) {
       phase.value = 'idle';
       if (controller === abortController) controller = undefined;

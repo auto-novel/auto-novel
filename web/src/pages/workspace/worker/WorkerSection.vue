@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import {
-  Toast,
   XConfirmDialog,
   XDropdownMenu,
   XDropdownMenuItem,
   XEmpty,
+  getApiErrorMessage,
+  Toast,
 } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
@@ -14,22 +15,21 @@ import {
   StopOutlined,
 } from '@vicons/material';
 import { VueDraggable } from 'vue-draggable-plus';
-import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
 import { useWorkspaceStore } from '@/stores';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import GptWorkerDialog from './GptWorkerDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
 import WorkerCard from './WorkerCard.vue';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
+  translatorId: WorkspaceTranslatorId;
   workerStates: ReadonlyMap<
     string,
     { running: boolean; currentConcurrency: number }
   >;
   workerErrors: ReadonlyMap<string, number>;
-  cacheName: ConstructorParameters<typeof IndexedDbSegmentCache>[0];
+  clearTranslationCache: () => Promise<void>;
 }>();
 
 const emit = defineEmits<{
@@ -56,18 +56,15 @@ const clearingCache = ref(false);
 const clearCache = async () => {
   if (clearingCache.value) return;
   clearingCache.value = true;
-  try {
-    const success = await Toast.promise(
-      new IndexedDbSegmentCache(props.cacheName).clear().then(() => true),
-      {
-        success: '缓存清除成功',
-        error: '缓存清除失败',
-      },
-    );
-    if (success) showClearCacheDialog.value = false;
-  } finally {
-    clearingCache.value = false;
-  }
+  await Toast.promise(props.clearTranslationCache(), {
+    success: '缓存清除成功',
+    error: (reason) => getApiErrorMessage(reason, '缓存清除失败'),
+  })
+    .then(() => {
+      showClearCacheDialog.value = false;
+    })
+    .catch(() => {});
+  clearingCache.value = false;
 };
 const hasStartedWorkers = computed(() =>
   workers.value.some((w) => props.workerStates.get(w.id)?.running),

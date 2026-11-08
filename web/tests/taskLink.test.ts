@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import TaskLink from '../src/pages/workspace/task/TaskLink.vue';
+
+// 保留真实编解码，隔离统一入口中与链接渲染无关的鉴权客户端。
+vi.mock(
+  '@/domain/translator',
+  () => import('../src/domain/translator/tasks/task-descriptor'),
+);
 
 async function renderTaskLink(task: string) {
   const router = createRouter({
@@ -27,6 +33,12 @@ describe('TaskLink', () => {
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain(text);
     expect(html).not.toContain('n-text');
+  });
+
+  it('renders malformed persisted tasks without breaking the queue', async () => {
+    const html = await renderTaskLink('web/provider');
+    expect(html).toContain('无效任务：web/provider');
+    expect(html).not.toContain('href=');
   });
 
   it('renders a local task as plain muted text', async () => {

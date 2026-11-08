@@ -10,10 +10,9 @@
     "safari>=14"
   ],
   "scripts": {
-    "dev": "pnpm dev:remote",
-    "dev:remote": "cross-env VITE_API_MODE=remote vite",
-    "dev:local": "cross-env VITE_API_MODE=local vite",
-    "dev:native": "cross-env VITE_API_MODE=native vite",
+    "dev": "vite",
+    "dev:remote": "cross-env VITE_LOCAL_API=false vite",
+    "dev:local": "cross-env VITE_LOCAL_API=true vite",
     "build": "vite build && vue-tsc -b --noEmit",
     "preview": "vite preview",
     "lint": "eslint src",
@@ -53,7 +52,6 @@
     "@vue/tsconfig": "^0.8.1",
     "@vueuse/core": "^14.4.0",
     "@zip.js/zip.js": "^2.7.73",
-    "crypto-es": "^2.1.0",
     "idb": "^8.0.3",
     "ky": "^2.1.0",
     "lodash-es": "^4.18.1",
@@ -68,12 +66,11 @@
     "unplugin-vue-components": "^0.27.5",
     "uuid": "^10.0.0",
     "vite": "^8.0.8",
-    "vite-plugin-html": "^3.2.2",
     "vue": "^3.5.41",
     "vue-draggable-plus": "^0.5.6",
     "vue-router": "^5.2.0",
     "vue-tsc": "^2.2.12",
-    "@novelia/web-kit": "github:auto-novel/web-kit#9c479ae742335830fc4383f1fdb451809a4d56d0",
+    "@novelia/web-kit": "github:auto-novel/web-kit#ceaf9a42c4c74ac9a482dc8bfff246de4f382b96",
     "@tailwindcss/vite": "^4.3.3",
     "tailwindcss": "^4.3.3"
   }

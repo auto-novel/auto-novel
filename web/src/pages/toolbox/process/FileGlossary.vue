@@ -1,10 +1,17 @@
 <script lang="ts" setup>
-import { copyToClipboard, Toast, XDialog } from '@novelia/web-kit';
+import {
+  copyToClipboard,
+  Toast,
+  XDialog,
+  getApiErrorMessage,
+} from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import type { ParsedFile } from '@/util/file';
-import type { TranslatorConfig } from '@/domain/translate';
-import { Translator } from '@/domain/translate';
+import {
+  translateLines,
+  type SingleTaskTranslatorConfig,
+} from '@/domain/translator';
 import { Glossary } from '@/model/Glossary';
 import { useSakuraWorkspaceStore } from '@/stores';
 
@@ -91,17 +98,20 @@ const copyTranslationJson = async () => {
   const jsonString = Glossary.toText(obj);
   await Toast.promise(copyToClipboard(jsonString), {
     success: '已经将翻译结果复制到剪切板',
-    error: '复制失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '复制失败'),
+  }).catch(() => {});
 };
 
 const showSakuraSelectModal = ref(false);
 const selectedSakuraWorkerId = ref(sakuraWorkspace.value.workers[0]?.id);
 
 const katakanaTranslations = ref<{ [key: string]: string }>({});
+const translationController = new AbortController();
+onUnmounted(() => translationController.abort());
+
 const translateKatakanas = async (id: 'youdao' | 'sakura') => {
   const jpWords = [...katakanas.value.keys()];
-  let config: TranslatorConfig;
+  let config: SingleTaskTranslatorConfig;
   if (id === 'sakura') {
     const worker = sakuraWorkspace.value.workers.find(
       (it) => it.id === selectedSakuraWorkerId.value,
@@ -120,16 +130,17 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     config = { id };
   }
   await Toast.promise(
-    Translator.create(config, false).then(async (translator) => {
-      const zhWords = await translator.translate(jpWords, {});
+    translateLines(jpWords, config, translationController.signal),
+    { error: (reason) => getApiErrorMessage(reason, '翻译器错误') },
+  )
+    .then((zhWords) => {
       const jpToZh: { [key: string]: string } = {};
       jpWords.forEach((jpWord, index) => {
         jpToZh[jpWord] = zhWords[index];
       });
       katakanaTranslations.value = jpToZh;
-    }),
-    { error: '翻译器错误' },
-  );
+    })
+    .catch(() => {});
 };
 </script>
 

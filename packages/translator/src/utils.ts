@@ -1,3 +1,33 @@
+import type { Glossary } from '@/types';
+
+export const filterGlossaryForLines = (
+  glossary: Glossary,
+  lines: readonly string[],
+): Glossary => {
+  const filtered: Record<string, string> = {};
+  for (const word in glossary) {
+    if (lines.some((line) => line.includes(word))) {
+      filtered[word] = glossary[word];
+    }
+  }
+  return filtered;
+};
+
+/** 从当前位置向前截取有界原文；不包含当前行，也不依赖任何译文。 */
+export function getPreviousSource(
+  lines: readonly string[],
+  end: number,
+  maxLength = 500,
+): string {
+  if (maxLength <= 0) return '';
+  let source = '';
+  for (let i = end - 1; i >= 0; i--) {
+    source = lines[i] + (i < end - 1 ? '\n' : '') + source;
+    if (source.length >= maxLength) return source.slice(-maxLength);
+  }
+  return source;
+}
+
 export namespace RegexUtil {
   const englishChars = /[a-z]|[A-Z]/;
   export const hasEnglishChars = (str: string) => englishChars.test(str);
@@ -66,74 +96,33 @@ export const safeJson = <T extends object>(text: string) => {
   }
 };
 
-export const delay = (ms: number, signal?: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    let timeout: any = null;
-    const abortHandler = () => {
-      clearTimeout(timeout!);
-      reject(new DOMException('Aborted', 'AbortError'));
-    };
-    timeout = setTimeout(() => {
-      resolve();
-      signal?.removeEventListener('abort', abortHandler);
-    }, ms);
-    signal?.addEventListener('abort', abortHandler);
-  });
+/** 取消不是失败，重试逻辑一律直接放行。 */
+export const isAbortError = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'AbortError';
 
-export class Semaphore {
-  private _current = 0;
-  private queue: Array<() => void> = [];
-  constructor(private _max: number) {
-    if (_max <= 0)
-      throw new Error('Semaphore max capacity must be greater than 0');
-  }
+/**
+ * 合并多个取消信号；任一来源取消即取消。
+ * 优先用原生 `AbortSignal.any`，缺失时退化为手动转发。
+ */
+export function anySignal(
+  signals: ReadonlyArray<AbortSignal | undefined>,
+): AbortSignal | undefined {
+  const list = signals.filter((signal): signal is AbortSignal => !!signal);
+  if (list.length === 0) return undefined;
+  if (list.length === 1) return list[0];
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any(list);
 
-  get max(): number {
-    return this._max;
-  }
-
-  get current(): number {
-    return this._current;
-  }
-
-  async acquire(): Promise<void> {
-    if (this._current < this._max) {
-      this._current++;
-      return;
+  const controller = new AbortController();
+  for (const signal of list) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
     }
-    return new Promise<void>((resolve) => {
-      this.queue.push(resolve);
+    signal.addEventListener('abort', () => controller.abort(signal.reason), {
+      once: true,
     });
   }
-
-  release(): void {
-    if (this.queue.length > 0) {
-      const next = this.queue.shift()!;
-      next();
-    } else {
-      this._current--;
-    }
-  }
-
-  setMax(max: number): void {
-    if (max <= 0)
-      throw new Error('Semaphore max capacity must be greater than 0');
-    this._max = max;
-    while (this.queue.length > 0 && this._current < this._max) {
-      this._current++;
-      const next = this.queue.shift()!;
-      next();
-    }
-  }
-
-  async use<T>(fn: () => Promise<T> | T): Promise<T> {
-    await this.acquire();
-    try {
-      return await fn();
-    } finally {
-      this.release();
-    }
-  }
+  return controller.signal;
 }
 
 export function randomUUID(): string {

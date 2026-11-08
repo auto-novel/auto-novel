@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { Toast, XDialog } from '@novelia/web-kit';
 
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { FavoredRepo, useSettingStore, useWorkspaceStore } from '@/stores';
 import { useShouldTopJob } from '@/util';
@@ -54,6 +54,13 @@ const deleteSelected = async () => {
 
 // 移动小说
 const targetFavoredId = ref(props.favoredId);
+watch(
+  () => props.favoredId,
+  (favoredId) => {
+    targetFavoredId.value = favoredId;
+    showDeleteModal.value = false;
+  },
+);
 
 const moveToFavored = async () => {
   const novels = props.selectedNovels;
@@ -67,22 +74,19 @@ const moveToFavored = async () => {
     return;
   }
 
-  let failed = 0;
-  for (const { providerId, novelId } of novels) {
-    try {
-      await FavoredRepo.favoriteNovel(targetFavoredId.value, {
-        type: 'web',
-        providerId,
-        novelId,
-      });
-    } catch (e) {
-      failed += 1;
-    }
-  }
-  const success = novels.length - failed;
+  const { success, failed, refreshFailed } = await FavoredRepo.moveNovels(
+    targetFavoredId.value,
+    novels.map(({ providerId, novelId }) => ({
+      type: 'web',
+      providerId,
+      novelId,
+    })),
+  );
 
   Toast.info(`${success}本小说已移动，${failed}本失败`);
-  window.location.reload();
+  if (refreshFailed) {
+    Toast.warning('移动结果已保存，但列表刷新失败，请刷新页面');
+  }
 };
 
 // 生成翻译任务
@@ -112,7 +116,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
       forceMetadata: forceMetadata.value,
       useBrowserCrawler: false,
       startIndex: 0,
-      endIndex: first5.value ? 5 : 65535,
+      endIndex: first5.value ? 5 : undefined,
     });
     const job = {
       task,

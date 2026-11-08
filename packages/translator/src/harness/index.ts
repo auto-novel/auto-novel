@@ -12,7 +12,7 @@
  */
 import type { Glossary, Logger, LineRange } from '../types';
 import type { Usage } from '@earendil-works/pi-ai';
-import { createPiAiCompletion } from '../translator/pi-ai-api';
+import { createPiAiCompletion } from '../translator/llm-client';
 import type { HarnessPreset } from './presets';
 import {
   outputInstructions,

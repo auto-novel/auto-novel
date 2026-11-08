@@ -3,7 +3,6 @@ import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
 import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
 
-import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
 import { useSettingStore } from '@/stores';
 import { onUpdateListValue, onUpdatePage } from '../list/option';
@@ -19,13 +18,11 @@ const props = defineProps<{
   favoredId: string;
 }>();
 
-const isWideScreen = useIsWideScreen();
-
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-const listOptions = getWenkuFavoredListOptions(
-  setting.value.favoriteCreateTimeFirst,
+const listOptions = computed(() =>
+  getWenkuFavoredListOptions(setting.value.favoriteCreateTimeFirst),
 );
 
 const listValue = computed(
@@ -39,7 +36,10 @@ const { data: novelPage, error } = WenkuNovelRepo.useWenkuNovelFavoredList(
   () => props.page,
   () => props.favoredId,
   () => ({
-    sort: parseFavoredListValueSort(listOptions.排序, listValue.value.排序),
+    sort: parseFavoredListValueSort(
+      listOptions.value.排序,
+      listValue.value.排序,
+    ),
   }),
 );
 
@@ -54,79 +54,70 @@ const novelListRef = useTemplateRef('novelList');
 </script>
 
 <template>
-  <bookshelf-layout :menu-key="`wenku/${favoredId}`">
-    <div role="region" aria-label="文库小说收藏列表">
-      <n-flex style="margin-bottom: 24px">
-        <c-button
-          label="选择"
-          :icon="ChecklistOutlined"
-          @action="showControlPanel = !showControlPanel"
-        />
-        <bookshelf-list-button
-          v-if="!isWideScreen"
-          :menu-key="`wenku/${favoredId}`"
-        />
-      </n-flex>
-
-      <n-collapse-transition
-        :show="showControlPanel"
-        style="margin-bottom: 16px"
-      >
-        <bookshelf-wenku-control
-          :selected-novels="novelListRef?.selectedNovels ?? []"
-          :favored-id="favoredId"
-          @select-all="novelListRef?.selectAll()"
-          @invert-selection="novelListRef?.invertSelection()"
-        />
-      </n-collapse-transition>
-
-      <ListFilter
-        :options="listOptions"
-        :value="listValue"
-        @update:value="onUpdateListValue(listOptions, $event)"
-      />
-
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-6"
-        :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
-        :page="page"
-        :total-pages="pageCount"
-        @update:page="onUpdatePage"
-      />
-
-      <XSeparator
-        :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-      />
-
-      <NovelGridSkeleton v-if="!novelPage && !error" />
-      <XError
-        v-else-if="!novelPage && error"
-        title="加载错误"
-        :description="error.message"
-      />
-      <XEmpty
-        v-else-if="novelPage && novelPage.items.length === 0"
-        title="空列表"
-        size="compact"
-      />
-      <template v-else-if="novelPage">
-        <NovelListWenku
-          ref="novelList"
-          :items="novelPage.items"
-          :selectable="showControlPanel"
-          simple
-        />
-      </template>
-
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-3"
-        :page="page"
-        :total-pages="pageCount"
-        keyboard="window"
-        @update:page="onUpdatePage"
+  <div role="region" aria-label="文库小说收藏列表">
+    <div class="mb-6">
+      <c-button
+        label="选择"
+        :icon="ChecklistOutlined"
+        @action="showControlPanel = !showControlPanel"
       />
     </div>
-  </bookshelf-layout>
+
+    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+      <bookshelf-wenku-control
+        :selected-novels="novelListRef?.selectedNovels ?? []"
+        :favored-id="favoredId"
+        @select-all="novelListRef?.selectAll()"
+        @invert-selection="novelListRef?.invertSelection()"
+      />
+    </n-collapse-transition>
+
+    <ListFilter
+      :options="listOptions"
+      :value="listValue"
+      @update:value="onUpdateListValue(listOptions, $event)"
+    />
+
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
+
+    <XSeparator
+      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
+    />
+
+    <NovelGridSkeleton v-if="!novelPage && !error" />
+    <XError
+      v-else-if="!novelPage && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <XEmpty
+      v-else-if="novelPage && novelPage.items.length === 0"
+      title="空列表"
+      size="compact"
+    />
+    <template v-else-if="novelPage">
+      <NovelListWenku
+        ref="novelList"
+        :items="novelPage.items"
+        :selectable="showControlPanel"
+        simple
+      />
+    </template>
+
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-3"
+      :page="page"
+      :total-pages="pageCount"
+      keyboard="window"
+      @update:page="onUpdatePage"
+    />
+  </div>
 </template>

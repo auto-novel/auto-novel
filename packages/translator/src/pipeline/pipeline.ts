@@ -1,0 +1,399 @@
+import { createLineSegmenter, assembleSegments } from './segment';
+import { SegmentQueue, type SegmentTask } from './queue';
+import type {
+  LineSegmenter,
+  TranslationInput,
+  TranslationResult,
+  TranslationWork,
+  Translator,
+  SegmentCache,
+  TranslatorOptions,
+} from '@/types';
+import { anySignal, randomUUID } from '@/utils';
+import {
+  mergeTranslatedLines,
+  splitPassthroughLines,
+  postprocessTranslationLines,
+} from './lines';
+import { attemptTranslation } from './attempt';
+
+interface TranslationLoop {
+  id: string;
+  translator: Translator;
+  abortController: AbortController;
+  concurrency: number;
+  trusted: boolean;
+}
+
+/** 一个输入切分后的任务与整体结果。 */
+type PreparedInput = {
+  tasks: SegmentTask[];
+  result: Promise<TranslationResult>;
+};
+
+/** 已切分并入队的输入：`enqueued` 只代表投递完成，`result` 才是结算。 */
+type StartedInput = {
+  enqueued: Promise<void>;
+  result: Promise<TranslationResult>;
+  signal: AbortSignal;
+};
+
+export class TranslationPipeline {
+  private readonly queue: SegmentQueue;
+  private readonly translatorLoops: Map<string, TranslationLoop>;
+  private readonly segmenter: LineSegmenter;
+  private readonly cache?: SegmentCache;
+  /** 当前生命周期；dispose 时取消所有未完成输入，之后换成新的。 */
+  private lifecycle = new AbortController();
+  /** 已投递但尚未结算的输入；drain 等待它们并把回调错误上抛。 */
+  private readonly pendingSettlements = new Set<Promise<void>>();
+  private settlementError: unknown;
+
+  /**
+   * 每类输入的队列水位跟随已注册翻译器的总并发；构造时尚未注册翻译器，
+   * 因此从 1 开始，注册后由 _updateHighWaterMark 上调。
+   */
+  constructor(
+    options: {
+      segmenter?: LineSegmenter;
+      segmentLength?: number;
+      cache?: SegmentCache;
+    } = {},
+  ) {
+    this.translatorLoops = new Map();
+    this.queue = new SegmentQueue();
+    this.segmenter =
+      options.segmenter ??
+      createLineSegmenter(options.segmentLength ?? 1500, 30);
+    this.cache = options.cache;
+  }
+
+  /** 翻译一篇原文；返回回退后的译文行与失败分段，取消时抛 AbortError。 */
+  async translate(
+    input: TranslationInput,
+    signal?: AbortSignal,
+  ): Promise<TranslationResult> {
+    const { enqueued, result } = this.start(input, signal);
+    await enqueued;
+    return result;
+  }
+
+  /**
+   * 唯一投递路径：切分并入队。
+   * `translate` 等到结算返回；`submit` 只等投递完成。
+   */
+  private start(input: TranslationInput, signal?: AbortSignal): StartedInput {
+    // dispose 也要能取消未完成的输入，避免入队被背压卡住或结算悬空。
+    const inputSignal =
+      anySignal([signal, this.lifecycle.signal]) ?? this.lifecycle.signal;
+    // 同步准备错误也进入结果通道，由同一处负责结算回调。
+    const prepared = Promise.resolve().then(() =>
+      this.prepareInput(input, inputSignal),
+    );
+    const enqueued = prepared.then(({ tasks }) =>
+      this.queue.enqueueAll(tasks, inputSignal),
+    );
+    // 投递失败同样是输入失败，不能只等待分段结果而悬空。
+    const result = Promise.all([
+      enqueued,
+      prepared.then(({ result }) => result),
+    ]).then(([, result]) => result);
+    // translate 可能仍在等待入队，提前接住结果的拒绝。
+    void result.catch(() => {});
+    return { enqueued, result, signal: inputSignal };
+  }
+
+  /**
+   * 投递一个输入：切分并入队后立即返回（队列满时在这里等待）。
+   * 结算仍走 `work` 的 onComplete/onError/onAbort；收尾用 `drain()` 等待全部结算。
+   */
+  async submit(work: TranslationWork, signal?: AbortSignal): Promise<void> {
+    const { enqueued, result, signal: inputSignal } = this.start(work, signal);
+    const settled = result
+      .then((translated) => {
+        inputSignal.throwIfAborted();
+        return work.onComplete(translated);
+      })
+      .catch((error: unknown) =>
+        inputSignal.aborted ? work.onAbort() : work.onError(error),
+      );
+    this.track(settled, inputSignal);
+    try {
+      await enqueued;
+    } catch {
+      // 回调只走结算通道；投递路径只负责把取消继续上抛。
+      inputSignal.throwIfAborted();
+    }
+  }
+
+  /** 等待已投递输入全部结算；结算回调抛错时在这里上抛。 */
+  async drain(): Promise<void> {
+    while (this.pendingSettlements.size > 0) {
+      await Promise.all([...this.pendingSettlements]);
+    }
+    const error = this.settlementError;
+    this.settlementError = undefined;
+    if (error !== undefined) throw error;
+  }
+
+  private track(settled: Promise<void>, signal?: AbortSignal): void {
+    const entry = settled
+      .catch((error: unknown) => {
+        // 取消不算结算失败；其余错误留给 drain 上抛。
+        if (!signal?.aborted) this.settlementError = error;
+      })
+      .finally(() => this.pendingSettlements.delete(entry));
+    this.pendingSettlements.add(entry);
+  }
+
+  private prepareInput(
+    input: TranslationInput,
+    signal?: AbortSignal,
+  ): PreparedInput {
+    signal?.throwIfAborted();
+    const { lines, glossary, history, tracker } = input;
+    const ranges = this.segmenter.segment(lines);
+    const segments = assembleSegments(
+      randomUUID(),
+      lines,
+      ranges,
+      glossary ?? {},
+      history,
+    );
+    tracker?.onSegmentsReady?.(segments);
+    // 取消后不再向调用方转发分段事件，避免把取消记成分段失败。
+    const observer: SegmentTask['observer'] = {
+      start: (segment, translatorId) => {
+        if (!signal?.aborted)
+          tracker?.onSegStart?.(segment.order, translatorId);
+      },
+      complete: (segment, translatedLines) => {
+        if (!signal?.aborted)
+          tracker?.onSegComplete?.(segment.order, translatedLines);
+      },
+      error: (segment, error) => {
+        if (!signal?.aborted) tracker?.onSegError?.(segment.order, error);
+      },
+    };
+    const tasks: SegmentTask[] = [];
+    const promises = segments.map(
+      (segment) =>
+        new Promise<string[]>((resolve, reject) => {
+          tasks.push({
+            segment,
+            trustedOnly: input.trustedOnly,
+            observer,
+            signal,
+            resolve,
+            reject,
+          });
+        }),
+    );
+    const onAbort = () => {
+      this.queue.removeQueued(tasks);
+      for (const task of tasks) task.reject(signal?.reason);
+      tracker?.onAbort?.();
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    const result = Promise.allSettled(promises)
+      .then((results) => {
+        signal?.throwIfAborted();
+        const failed: TranslationResult['failed'] = [];
+        const mergedLines: string[] = [];
+        results.forEach((settled, index) => {
+          if (settled.status === 'fulfilled') {
+            mergedLines.push(...settled.value);
+            return;
+          }
+          failed.push({ order: segments[index].order, error: settled.reason });
+          mergedLines.push(...segments[index].lines);
+        });
+        return { lines: mergedLines, failed };
+      })
+      .finally(() => signal?.removeEventListener('abort', onAbort));
+    return { tasks, result };
+  }
+
+  /** 注册一个翻译器循环；同 id 的旧循环会被停止。 */
+  registerTranslator(
+    translator: Translator,
+    options: TranslatorOptions = {},
+  ): string {
+    const configuredConcurrency = options.concurrency ?? 1;
+    if (!Number.isInteger(configuredConcurrency) || configuredConcurrency < 1) {
+      throw new RangeError('Translator concurrency must be a positive integer');
+    }
+    const id = options.id ?? randomUUID();
+    this.translatorLoops.get(id)?.abortController.abort();
+    const loop: TranslationLoop = {
+      id,
+      translator,
+      abortController: new AbortController(),
+      concurrency: configuredConcurrency,
+      trusted: translator.trusted === true,
+    };
+    this.translatorLoops.set(id, loop);
+    this._updateHighWaterMark();
+    void this._startWorkers(loop, options.onActiveCountChange);
+    return id;
+  }
+
+  private async _startWorkers(
+    loop: TranslationLoop,
+    onActiveCountChange?: (activeCount: number) => void,
+  ): Promise<void> {
+    let activeCount = 0;
+    const updateActiveCount = (delta: number) => {
+      activeCount += delta;
+      onActiveCountChange?.(activeCount);
+    };
+
+    /** 返回 `'requeued'` 表示该分段只是换了翻译器，不算失败。 */
+    const processTask = async (
+      task: SegmentTask,
+    ): Promise<'done' | 'requeued'> => {
+      const { segment, observer, signal } = task;
+      // 缓存读取也属于本次派发；翻译器退休后不能再采用其缓存或开始请求。
+      const requestSignal =
+        anySignal([signal, loop.abortController.signal]) ??
+        loop.abortController.signal;
+      try {
+        requestSignal.throwIfAborted();
+        // 历史和缓存统一校验行数／行内结构，并按原文恢复缩进、空行和图片。
+        const reuse = (lines: readonly string[]) => {
+          let processed: string[];
+          try {
+            processed = postprocessTranslationLines(segment.lines, lines);
+          } catch {
+            return false;
+          }
+          task.resolve(processed);
+          observer.complete(segment, processed);
+          return true;
+        };
+        if (segment.context?.expired === false && segment.context?.history) {
+          if (reuse(segment.context.history.translatedLines)) return 'done';
+        }
+        const { indexes, content } = splitPassthroughLines(segment.lines);
+        if (content.length === 0) {
+          const original = [...segment.lines];
+          task.resolve(original);
+          observer.complete(segment, original);
+          return 'done';
+        }
+
+        // 每次派发只算一次键，读写共用；换翻译器重派时按新模型重新生成。
+        let cacheKey: string | undefined;
+        let cached: readonly string[] | undefined;
+        if (this.cache) {
+          try {
+            cacheKey = loop.translator.getCacheKey?.(segment);
+            if (cacheKey !== undefined) cached = await this.cache.get(cacheKey);
+          } catch (error) {
+            requestSignal.throwIfAborted();
+            loop.translator.log?.(`读取翻译缓存失败，已跳过：${String(error)}`);
+          }
+        }
+        requestSignal.throwIfAborted();
+        if (cached && reuse(cached)) return 'done';
+        observer.start(segment, loop.id);
+        const translatedLines = mergeTranslatedLines(
+          segment.lines,
+          indexes,
+          await attemptTranslation(loop.translator, {
+            lines: content,
+            context: segment.context,
+            signal: requestSignal,
+          }),
+        );
+        requestSignal.throwIfAborted();
+        if (this.cache && cacheKey !== undefined) {
+          try {
+            await this.cache.set(cacheKey, translatedLines);
+          } catch (error) {
+            requestSignal.throwIfAborted();
+            loop.translator.log?.(`写入翻译缓存失败，已跳过：${String(error)}`);
+          }
+        }
+        requestSignal.throwIfAborted();
+        task.resolve(translatedLines);
+        observer.complete(segment, translatedLines);
+        return 'done';
+      } catch (error) {
+        // 只是这个翻译器退休：分段退回队列，交给其他翻译器继续。
+        if (
+          loop.abortController.signal.aborted &&
+          !signal?.aborted &&
+          this.translatorLoops.size > 0
+        ) {
+          this.queue.requeue([task]);
+          return 'requeued';
+        }
+        throw error;
+      }
+    };
+
+    // 每个 worker 同时只处理一个任务，由 worker 数量直接保证并发上限。
+    const worker = async () => {
+      while (!loop.abortController.signal.aborted) {
+        try {
+          const task = await this.queue.dequeue(
+            loop.abortController.signal,
+            (task) => !task.trustedOnly || loop.trusted,
+          );
+          let requeued = false;
+          try {
+            updateActiveCount(1);
+            requeued = (await processTask(task)) === 'requeued';
+          } catch (error) {
+            task.reject(error);
+            task.observer.error(task.segment, error);
+          } finally {
+            // 退回队列的分段仍算在途，由下一个消费者 ack。
+            if (!requeued) this.queue.ack(task);
+            updateActiveCount(-1);
+          }
+        } catch {
+          // 退休时退出等待；单次任务或通知异常不应终止其他任务的消费。
+          if (loop.abortController.signal.aborted) break;
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: loop.concurrency }, () => worker()));
+  }
+
+  unregisterTranslator(translatorId: string): void {
+    const loop = this.translatorLoops.get(translatorId);
+    if (loop) {
+      loop.abortController.abort();
+      this.translatorLoops.delete(translatorId);
+      this._updateHighWaterMark();
+    }
+  }
+
+  /**
+   * 停止所有翻译器，取消未完成的输入并清空队列。
+   * 未完成的 `translate`/`submit` 会以 AbortError 结束；之后仍可重新注册翻译器继续使用。
+   */
+  dispose(): void {
+    // 先取消输入：在途分段由消费者退出，排队分段由队列清空结算。
+    this.lifecycle.abort(new DOMException('翻译流水线已关闭', 'AbortError'));
+    for (const [, loop] of this.translatorLoops) {
+      loop.abortController.abort();
+    }
+    this.translatorLoops.clear();
+    this._updateHighWaterMark();
+    this.queue.clear();
+    this.lifecycle = new AbortController();
+  }
+
+  private _updateHighWaterMark(): void {
+    let totalConcurrency = 0;
+    for (const loop of this.translatorLoops.values()) {
+      totalConcurrency += loop.concurrency;
+    }
+    // 每类输入独立使用配置容量；降低阈值不移除已在途的分段。
+    this.queue.setHighWaterMark(Math.max(1, totalConcurrency * 2));
+  }
+}

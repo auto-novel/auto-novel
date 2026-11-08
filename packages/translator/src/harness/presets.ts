@@ -1,4 +1,4 @@
-import type { PiAiProtocol } from '../translator/pi-ai-api';
+import type { PiAiProtocol } from '../translator/llm-client';
 import type { ModelCost } from '@earendil-works/pi-ai';
 import { deepseekPresets } from './presets/deepseek';
 

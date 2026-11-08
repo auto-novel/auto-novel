@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
+import {
+  XEmpty,
+  XError,
+  XPagination,
+  XSeparator,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 
 import { WebNovelRepo } from '@/repos';
 import { FavoredRepo, useWhoamiStore } from '@/stores';
@@ -24,7 +31,9 @@ const { whoami } = storeToRefs(whoamiStore);
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
 
-const listOptions = getWebListOptions(whoami.value.hasNsfwAccess);
+const listOptions = computed(() =>
+  getWebListOptions(whoami.value.hasNsfwAccess),
+);
 
 const listValue = computed(
   () =>
@@ -68,8 +77,8 @@ watch(novelPage, (novelPage) => {
 </script>
 
 <template>
-  <div role="region" aria-label="网络小说列表" class="layout-content">
-    <n-h1>网络小说</n-h1>
+  <XPage role="region" aria-label="网络小说列表">
+    <XPageHeader title="网络小说" />
 
     <ListFilter
       :options="listOptions"
@@ -111,5 +120,5 @@ watch(novelPage, (novelPage) => {
       keyboard="window"
       @update:page="onUpdatePage"
     />
-  </div>
+  </XPage>
 </template>

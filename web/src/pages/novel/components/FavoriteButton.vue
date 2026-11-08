@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { FavoriteBorderOutlined, FavoriteOutlined } from '@vicons/material';
-import { Toast, XDialog } from '@novelia/web-kit';
+import { XDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
 
 import { FavoredRepo } from '@/stores';
 
@@ -20,21 +20,25 @@ const favoredTitle = computed(
 );
 
 const favoriteNovel = (favoredId: string) =>
-  Toast.promise(
-    FavoredRepo.favoriteNovel(favoredId, props.novel).then(() => {
+  Toast.promise(FavoredRepo.favoriteNovel(favoredId, props.novel), {
+    success: '收藏成功',
+    error: (reason) => getApiErrorMessage(reason, '收藏失败'),
+  })
+    .then(() => {
       showFavoredModal.value = false;
-    }),
-    { success: '收藏成功', error: '收藏失败' },
-  );
+    })
+    .catch(() => {});
 
 const unfavoriteNovel = async () => {
   if (props.favored === undefined) return;
-  await Toast.promise(
-    FavoredRepo.unfavoriteNovel(props.favored, props.novel).then(() => {
+  await Toast.promise(FavoredRepo.unfavoriteNovel(props.favored, props.novel), {
+    success: '取消收藏成功',
+    error: (reason) => getApiErrorMessage(reason, '取消收藏失败'),
+  })
+    .then(() => {
       showFavoredModal.value = false;
-    }),
-    { success: '取消收藏成功', error: '取消收藏失败' },
-  );
+    })
+    .catch(() => {});
 };
 
 const showFavoredModal = ref(false);

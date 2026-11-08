@@ -1,12 +1,13 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 
-import type { SakuraVersion } from './sakura-translator';
+import type { SakuraVersion } from './sakura';
 
-export type ModelMeta = Record<string, number>;
+export type ModelMeta = Readonly<Record<string, number>>;
 
-export const allowModels: {
-  [key: string]: { repo: string; meta: ModelMeta };
-} = {
+/** 同时用于审批和公示；记录及嵌套元数据均不允许外部修改。 */
+export const allowModels: Readonly<
+  Record<string, { readonly repo: string; readonly meta: ModelMeta }>
+> = Object.freeze({
   'sakura-14b-qwen2.5-v1.0-iq4xs': {
     repo: 'SakuraLLM/Sakura-14B-Qwen2.5-v1.0-GGUF',
     meta: {
@@ -51,14 +52,20 @@ export const allowModels: {
       size: 17728790528,
     },
   },
-};
+});
+for (const model of Object.values(allowModels)) {
+  Object.freeze(model.meta);
+  Object.freeze(model);
+}
+
+export const cleanSakuraOutput = (text: string): string =>
+  text.replaceAll('<|im_end|>', '').replace(/\r\n?/g, '\n');
 
 export const createSakuraPromptBuilder = (
   version: SakuraVersion,
 ): PromptBuilder => {
-  const build = (lines: string[], context?: SegmentContext) => {
+  const build = (lines: readonly string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
-    const prevSegs = context?.prevSegs;
     const messages: Array<{
       role: 'system' | 'user' | 'assistant';
       content: string;
@@ -71,9 +78,7 @@ export const createSakuraPromptBuilder = (
       ),
     );
     const text = normalizedLines.join('\n');
-
-    const prevText =
-      prevSegs && prevSegs.length > 0 ? prevSegs.flat().join('\n') : '';
+    const prevText = context?.previousSource ?? '';
 
     if (version === '1.0') {
       messages.push({
@@ -82,7 +87,7 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
       if (Object.keys(glossary).length === 0) {
         messages.push({
@@ -90,8 +95,9 @@ export const createSakuraPromptBuilder = (
           content: `将下面的日文文本翻译成中文：${text}`,
         });
       } else {
-        const glossaryHint = Object.entries(glossary)
-          .map(([jp, zh]) => `${jp}->${zh}`)
+        const glossaryHint = Object.keys(glossary)
+          .sort()
+          .map((jp) => `${jp}->${glossary[jp]}`)
           .join('\n');
         messages.push({
           role: 'user',
@@ -105,10 +111,11 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地使用给定的术语表以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，注意不要混淆使役态和被动态的主语和宾语，不要擅自添加原文中没有的代词，也不要擅自增加或减少换行。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
-      const glossaryHint = Object.entries(glossary)
-        .map(([jp, zh]) => `${jp}->${zh}`)
+      const glossaryHint = Object.keys(glossary)
+        .sort()
+        .map((jp) => `${jp}->${glossary[jp]}`)
         .join('\n');
       messages.push({
         role: 'user',
@@ -122,7 +129,7 @@ export const createSakuraPromptBuilder = (
           '你是一个轻小说翻译模型，可以流畅通顺地以日本轻小说的风格将日文翻译成简体中文，并联系上下文正确使用人称代词，不擅自添加原文中没有的代词。',
       });
       if (prevText) {
-        messages.push({ role: 'assistant', content: prevText });
+        messages.push({ role: 'user', content: prevText });
       }
       // 对于术语表直接替换
       let replacedText = text;
@@ -140,8 +147,11 @@ export const createSakuraPromptBuilder = (
     return messages;
   };
 
-  const parseAnswer = (answer: string, _originalLines: string[]): string[] => {
-    const splitText = answer.replaceAll('<|im_end|>', '').split('\n');
+  const parseAnswer = (
+    answer: string,
+    _originalLines: readonly string[],
+  ): string[] => {
+    const splitText = cleanSakuraOutput(answer).split('\n');
     return splitText;
   };
 

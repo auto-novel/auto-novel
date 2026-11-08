@@ -1,5 +1,5 @@
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 import {
   useLocalVolumeStore,
   useSettingStore,
@@ -10,18 +10,31 @@ import { downloadFile, querySearch } from '@/util';
 
 type BookshelfLocalStore = {
   volumes: LocalVolumeMetadata[];
+  loading: boolean;
+  loadError: string | null;
 };
 
 export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
   state: () =>
     <BookshelfLocalStore>{
       volumes: [],
+      loading: false,
+      loadError: null,
     },
   actions: {
     async loadVolumes() {
-      const repo = await useLocalVolumeStore();
-      this.volumes = await repo.listVolume();
-      return this.volumes;
+      this.loading = true;
+      this.loadError = null;
+      try {
+        const repo = await useLocalVolumeStore();
+        this.volumes = await repo.listVolume();
+        return this.volumes;
+      } catch (error) {
+        this.loadError = error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        this.loading = false;
+      }
     },
     async addVolume(
       file: File,
@@ -36,6 +49,17 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
       const repo = await useLocalVolumeStore();
       await repo.deleteVolume(id);
       this.volumes = this.volumes.filter((it) => it.id !== id);
+    },
+    async deleteFavoredVolumes(favoredId: string) {
+      const repo = await useLocalVolumeStore();
+      const volumes = await repo.listVolume();
+      const ids = volumes
+        .filter((volume) => volume.favoredId === favoredId)
+        .map((volume) => volume.id);
+      const { failed } = await this.deleteVolumes(ids);
+      if (failed > 0) {
+        throw new Error(`清空收藏夹失败，${failed}本未删除`);
+      }
     },
     async deleteVolumes(ids: string[]) {
       const repo = await useLocalVolumeStore();
@@ -135,59 +159,32 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
         shouldTop,
         startIndex,
         endIndex,
-        taskNumber,
-        total,
       }: {
         level: 'expire' | 'all' | 'normal' | 'sync';
         type: 'gpt' | 'sakura';
         shouldTop: boolean;
-        startIndex: number;
-        endIndex: number;
-        taskNumber: number;
-        total: number;
+        startIndex?: number;
+        endIndex?: number;
       },
     ) {
       const workspace = useWorkspaceStore(type);
-      const tasks: string[] = [];
-      if (taskNumber > 1) {
-        const taskSize = (Math.min(endIndex, total) - startIndex) / taskNumber;
-        for (let i = 0; i < taskNumber; i++) {
-          const start = Math.round(startIndex + i * taskSize);
-          const end = Math.round(startIndex + (i + 1) * taskSize);
-          if (end > start) {
-            const task = TranslateTaskDescriptor.local(id, {
-              level,
-              forceMetadata: false,
-              useBrowserCrawler: false,
-              startIndex: start,
-              endIndex: end,
-            });
-            tasks.push(task);
-          }
-        }
-      } else {
-        const task = TranslateTaskDescriptor.local(id, {
-          level,
-          forceMetadata: false,
-          useBrowserCrawler: false,
-          startIndex,
-          endIndex,
-        });
-        tasks.push(task);
-      }
-      const results = tasks.map((task) => {
-        const job = {
-          task,
-          description: id,
-          createAt: Date.now(),
-        };
-        const success = workspace.addJob(job);
-        if (success && shouldTop) {
-          workspace.topJob(job);
-        }
-        return success;
+      const task = TranslateTaskDescriptor.local(id, {
+        level,
+        forceMetadata: false,
+        useBrowserCrawler: false,
+        startIndex,
+        endIndex,
       });
-      return results;
+      const job = {
+        task,
+        description: id,
+        createAt: Date.now(),
+      };
+      const success = workspace.addJob(job);
+      if (success && shouldTop) {
+        workspace.topJob(job);
+      }
+      return [success];
     },
     queueJobsToWorkspace(
       ids: string[],
@@ -208,8 +205,6 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
           level,
           forceMetadata: false,
           useBrowserCrawler: false,
-          startIndex: 0,
-          endIndex: 65535,
         });
         const job = {
           task,

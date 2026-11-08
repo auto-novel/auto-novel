@@ -4,7 +4,7 @@ import { InfoOutlined } from '@vicons/material';
 
 import { hasAddonInstalled } from '@/external/addon';
 import type { GenericNovelId } from '@/model/Common';
-import type { TranslateTaskParams } from '@/model/Translator';
+import type { TranslateTaskOptions } from '@/domain/translator';
 import { useWhoamiStore } from '@/stores';
 
 const probs = defineProps<{
@@ -14,7 +14,7 @@ const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 // 翻译设置
-const translateLevel = ref<'normal' | 'expire' | 'all' | 'sync'>(
+const translateLevel = ref<TranslateTaskOptions['level']>(
   probs.gnid.type === 'local' ? 'expire' : 'normal',
 );
 const forceMetadata = ref(false);
@@ -36,18 +36,16 @@ onUnmounted(() => {
 });
 
 const startIndex = ref<number | null>(0);
-const endIndex = ref<number | null>(65536);
-const taskNumber = ref<number | null>(1);
+const endIndex = ref<number | null>(null);
 
 defineExpose({
-  getTranslateTaskParams: (): TranslateTaskParams => ({
+  getTranslateTaskParams: (): TranslateTaskOptions => ({
     level: translateLevel.value,
     forceMetadata: forceMetadata.value,
     useBrowserCrawler: probs.gnid.type === 'web' && useBrowserCrawler.value,
     startIndex: startIndex.value ?? 0,
-    endIndex: endIndex.value ?? 65536,
+    endIndex: endIndex.value ?? undefined,
   }),
-  getTaskNumber: () => taskNumber.value ?? 1,
 });
 </script>
 
@@ -144,24 +142,11 @@ defineExpose({
             <n-input-number
               size="small"
               v-model:value="endIndex"
+              placeholder="不限"
               :show-button="false"
               :min="0"
               style="width: 60px"
             />
-          </n-input-group>
-        </div>
-        <div>
-          <n-input-group>
-            <n-input-group-label size="small">均分</n-input-group-label>
-            <n-input-number
-              size="small"
-              v-model:value="taskNumber"
-              :show-button="false"
-              :min="1"
-              :max="gnid.type === 'local' ? 65536 : 10"
-              style="width: 40px"
-            />
-            <n-input-group-label size="small">个任务</n-input-group-label>
           </n-input-group>
         </div>
 
@@ -171,7 +156,7 @@ defineExpose({
               <n-icon depth="4" :component="InfoOutlined" />
             </n-button>
           </template>
-          章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。均分任务只对排队生效，最大为10。
+          章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。
         </XTooltip>
       </n-flex>
     </c-action-wrapper>

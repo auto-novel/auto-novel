@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -16,8 +16,8 @@ const store = useBookshelfLocalStore();
 const deleteVolume = (volumeId: string) =>
   Toast.promise(store.deleteVolume(volumeId), {
     success: '删除成功',
-    error: '删除失败',
-  });
+    error: (reason) => getApiErrorMessage(reason, '删除失败'),
+  }).catch(() => {});
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   DragIndicatorOutlined,
@@ -13,16 +13,16 @@ import WorkspaceActionButton from '../WorkspaceActionButton.vue';
 import GptWorkerDialog from './GptWorkerDialog.vue';
 import TrialTranslationDialog from './TrialTranslationDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
-import { OpenAiTranslator, SakuraTranslator } from '@auto-novel/translator';
-import {
-  findHarnessPresetGroup,
-  getHarnessModelPreset,
-} from '@auto-novel/translator/harness/presets';
-import type { GptPipelineWorker, SakuraWorker } from '@/model/Translator';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
+import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
+import type {
+  GptPipelineWorker,
+  SakuraWorker,
+  WorkspaceTranslatorId,
+} from '@/model/Translator';
+import { toTranslatorConfig } from '@/model/Translator';
 
 const props = defineProps<{
-  translatorId: TranslatorId;
+  translatorId: WorkspaceTranslatorId;
   worker: GptPipelineWorker | SakuraWorker;
   running: boolean;
   currentConcurrency: number;
@@ -63,43 +63,34 @@ const testWorker = async () => {
     '国境の長いトンネルを抜けると雪国であった。夜の底が白くなった。信号所に汽車が止まった。',
   ];
   const reasoningLogs: string[] = [];
-  try {
-    const worker = props.worker as GptPipelineWorker;
-    const harnessPreset =
-      props.translatorId === 'gpt'
-        ? findHarnessPresetGroup(worker.preset)
-        : undefined;
-    const signal = new AbortController().signal;
-    let textZh: string[];
-    if (harnessPreset) {
-      const { translateChapter } = await import(
-        '@auto-novel/translator/harness'
-      );
-      textZh = await translateChapter({
-        source: textJp,
-        glossary: {},
-        preset: getHarnessModelPreset(harnessPreset, worker.model),
-        apiKey: worker.key,
-        signal,
-      });
-    } else {
-      const translator =
-        props.translatorId === 'sakura'
-          ? await SakuraTranslator.create(props.worker)
-          : new OpenAiTranslator({
-              ...worker,
-              log: (msg) => {
-                if (msg.startsWith('思考：')) reasoningLogs.push(msg);
-              },
-            });
-      textZh = await translator.translate(textJp, undefined, signal);
-    }
-    const parts = [`原文：${textJp[0]}`, `译文：${textZh.join('')}`];
-    if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
-    Toast.success(parts.join('\n'));
-  } catch (e: unknown) {
-    Toast.error(`翻译器错误：${e}`);
-  }
+  // 与工作区走同一条流水线，顺带验证重试、校验与降级。
+  const pipeline = new TranslationPipeline({
+    segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
+  });
+  await Toast.promise(
+    createTranslator({
+      ...toTranslatorConfig(props.translatorId, props.worker),
+      log: (msg) => {
+        if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+      },
+    }).then(async (translator) => {
+      pipeline.registerTranslator(translator, { concurrency: 1 });
+      const { lines, failed } = await pipeline.translate({ lines: textJp });
+      if (failed.length > 0) throw failed[0].error;
+      const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];
+      if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
+      return parts.join('\n');
+    }),
+    {
+      loading: '正在测试翻译器…',
+      error: (reason) => getApiErrorMessage(reason, '翻译器错误'),
+    },
+  )
+    .then((result) => {
+      Toast.success(result);
+    })
+    .catch(() => {});
+  pipeline.dispose();
 };
 </script>
 

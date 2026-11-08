@@ -1,21 +1,24 @@
 <script lang="ts" setup>
+import { XButton, XPage, XPageHeader } from '@novelia/web-kit';
 import { BookOutlined } from '@vicons/material';
-import type { TranslatorId } from '@/domain/translator/TranslationTask/types';
-import WorkspaceActionButton from './WorkspaceActionButton.vue';
+import type { WorkspaceTranslatorId } from '@/model/Translator';
+import WorkspaceLog from './WorkspaceLog.vue';
 import LocalVolumeTranslationDrawer from '../toolbox/local-volume/LocalVolumeTranslationDrawer.vue';
 import TaskSection from './task/TaskSection.vue';
 import { useWorkspaceRuntime } from './useWorkspaceRuntime';
 import WorkspaceBulletin from './WorkspaceBulletin.vue';
 import WorkerSection from './worker/WorkerSection.vue';
 
-const props = defineProps<{ translatorId: TranslatorId }>();
+const props = defineProps<{ translatorId: WorkspaceTranslatorId }>();
 const isSakura = computed(() => props.translatorId === 'sakura');
 const showLocalVolumeDrawer = ref(false);
 const {
+  logs,
+  clearLogs,
   jobs,
-  segCacheName,
+  clearTranslationCache,
   taskStates,
-  taskCache,
+  taskErrors,
   workerStates,
   workerErrors,
   startWorker,
@@ -23,48 +26,56 @@ const {
   startAllWorkers,
   stopAllWorkers,
   deleteJob,
+  retryTask,
   topJob,
   bottomJob,
-  runProcessLoop,
 } = useWorkspaceRuntime(props.translatorId);
 </script>
 
 <template>
-  <div class="layout-content">
-    <div class="my-6 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="m-0 text-[30px]/[1.6] font-medium text-ink">
-        {{ isSakura ? 'Sakura' : 'GPT' }}工作区
-      </h1>
-      <WorkspaceActionButton
-        label="本地书架"
-        :icon="BookOutlined"
-        @action="showLocalVolumeDrawer = true"
-      />
-    </div>
+  <XPage>
+    <XPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
+      <template #actions>
+        <XButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="showLocalVolumeDrawer = true"
+        >
+          <BookOutlined class="size-4" aria-hidden="true" />
+          本地书架
+        </XButton>
+      </template>
+    </XPageHeader>
     <WorkspaceBulletin :translator-id="translatorId" />
 
     <WorkerSection
       :translator-id="translatorId"
       :worker-states="workerStates"
       :worker-errors="workerErrors"
-      :cache-name="segCacheName"
+      :clear-translation-cache="clearTranslationCache"
       @start="startWorker"
       @stop="stopWorker"
       @start-all="startAllWorkers"
       @stop-all="stopAllWorkers"
     />
 
+    <WorkspaceLog
+      v-if="workerStates.size > 0"
+      :logs="logs"
+      @clear="clearLogs"
+    />
+
     <TaskSection
-      :translator-id="translatorId"
       :jobs="jobs"
       :task-states="taskStates"
-      :task-cache="taskCache"
+      :task-errors="taskErrors"
       @delete="deleteJob"
-      @retry="runProcessLoop"
+      @retry="retryTask"
       @top="topJob"
       @bottom="bottomJob"
     />
-  </div>
+  </XPage>
 
   <LocalVolumeTranslationDrawer
     v-model:show="showLocalVolumeDrawer"

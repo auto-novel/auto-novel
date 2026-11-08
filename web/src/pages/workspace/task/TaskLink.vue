@@ -1,13 +1,20 @@
 <script lang="ts" setup>
-import { TranslateTaskDescriptor } from '@/model/Translator';
+import { TranslateTaskDescriptor } from '@/domain/translator';
 
 const props = defineProps<{
   task: string;
 }>();
 
 const link = computed(() => {
-  const { desc, params } = TranslateTaskDescriptor.parse(props.task);
-  const { level, forceMetadata, startIndex, endIndex } = params;
+  let task: ReturnType<typeof TranslateTaskDescriptor.parse>;
+  try {
+    task = TranslateTaskDescriptor.parse(props.task);
+  } catch {
+    // 损坏的历史任务仍可显示和删除，不能阻断整个队列渲染。
+    return { text: `无效任务：${props.task}`, url: undefined };
+  }
+  const { desc, params } = task;
+  const { level, forceMetadata } = params;
 
   let text: string;
   let url: string | undefined;
@@ -22,10 +29,8 @@ const link = computed(() => {
     url = undefined;
   }
 
-  if (startIndex > 0 || endIndex < 65535) {
-    const endLabel = endIndex < 65535 ? endIndex : 'Inf';
-    text += ` [${startIndex},${endLabel})`;
-  }
+  const range = TranslateTaskDescriptor.formatRange(params);
+  if (range) text += ` ${range}`;
 
   const tags: string[] = [];
   if (level === 'expire') {

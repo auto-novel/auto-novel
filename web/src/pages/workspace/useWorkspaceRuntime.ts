@@ -1,41 +1,49 @@
-import { computed, onUnmounted, reactive, ref, watch } from 'vue';
-import { Toast } from '@novelia/web-kit';
 import {
-  Semaphore,
-  OpenAiTranslator,
-  SakuraTranslator,
-  TranslationPipeline,
-} from '@auto-novel/translator';
-import type { TranslatorTracker } from '@auto-novel/translator';
-
-import { useWorkspaceStore } from '@/stores';
-import { TaskExecutor } from '@/domain/translator/TaskExecutor';
-import type {
-  ChapterTranslator,
-  TaskTranslator,
-} from '@/domain/translator/TaskExecutor';
-import { IndexedDbSegmentCache } from '@/domain/translator/IndexedDbSegmentCache';
-import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
-import { TaskState } from '@/domain/translator/TaskState';
-import type { ChapterStatus } from '@/domain/translator/TaskState';
-import type {
-  GptPipelineWorker,
-  SakuraWorker,
-  TranslateJob,
-  TranslateJobRecord,
-} from '@/model/Translator';
-import { TranslateTaskDescriptor } from '@/model/Translator';
+  computed,
+  onUnmounted,
+  reactive,
+  ref,
+  shallowReactive,
+  watch,
+} from 'vue';
+import { Toast } from '@novelia/web-kit';
+import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
+import type { TranslationWork } from '@auto-novel/translator';
 import {
   findHarnessPresetGroup,
   getHarnessModelPreset,
 } from '@auto-novel/translator/harness/presets';
 
+import { useWorkspaceStore } from '@/stores';
+import {
+  WorkPreparer,
+  TaskLifecycle,
+  IndexedDbSegmentCache,
+  createTranslationTask,
+  TaskState,
+  TranslateTaskDescriptor,
+  awaitWithSignal,
+} from '@/domain/translator';
+import type { TranslationTask, UnitStatus } from '@/domain/translator';
+import { HarnessPool } from '@/domain/translator/harness/HarnessPool';
+import { toTranslatorConfig } from '@/model/Translator';
+import type {
+  TranslateJob,
+  TranslateJobRecord,
+  WorkspaceTranslatorId,
+  GptPipelineWorker,
+} from '@/model/Translator';
+
+import { useWorkspaceLog } from './useWorkspaceLog';
+
+/** 初始化超时；大于接口客户端的 60s 超时，让普通请求先报出自己的原因。 */
+const INITIALIZATION_TIMEOUT_MS = 120_000;
+
+const describeError = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error)).trim() || '未知错误';
+
 /** 每个工作区页面持有独立的执行状态，并在页面卸载时停止执行。 */
-export function useWorkspaceRuntime(translatorId: TranslatorId) {
+export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   const isSakura = translatorId === 'sakura';
   const segCacheName: ConstructorParameters<typeof IndexedDbSegmentCache>[0] =
     isSakura ? 'sakura-seg-cache' : 'gpt-seg-cache';
@@ -44,42 +52,64 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   const jobStore = useWorkspaceStore(translatorId);
 
   const jobs = computed(() => jobStore.ref.value.jobs);
+  const { logs, appendLog, clearLogs } = useWorkspaceLog();
+  const logTask = (task: string, message: string, warn = false) =>
+    appendLog(
+      jobs.value.find((job) => job.task === task)?.description || task,
+      message,
+      warn ? 'warn' : 'info',
+    );
 
-  /** 同时处理的章节数上限 */
-  const GLOBAL_WINDOW = 66;
-  /** 同时 fetch 的章节数上限 */
-  const FETCH_CONCURRENCY = 1;
-  const fetchSemaphore = new Semaphore(FETCH_CONCURRENCY);
-  /** 在途队列水位随已启动翻译器的总并发自动调整，预留一倍缓冲。 */
-  const pipeline = new TranslationPipeline(
-    'auto',
-    undefined,
-    new IndexedDbSegmentCache(segCacheName),
-    isSakura ? 'chapter' : 'segment',
-  );
+  const segmentCache = new IndexedDbSegmentCache(segCacheName);
+  const clearTranslationCache = (): Promise<void> => segmentCache.clear();
+
+  /** 每类输入的队列水位跟随已注册翻译器总并发，预留一倍缓冲，独立背压。 */
+  const pipeline = new TranslationPipeline({
+    segmentLength: isSakura ? 500 : undefined,
+    cache: segmentCache,
+  });
+  const harnessPool = new HarnessPool();
+  const drainTranslations = () =>
+    Promise.all([pipeline.drain(), harnessPool.drain()]).then(() => {});
 
   // ========== 任务状态管理 ==========
 
-  const taskStates = ref(new Map<string, TaskState>());
-  const taskCache = new Map<string, TranslationTask>();
-  const taskVersions = ref(new Map<string, number>());
-  /** 同一版本只初始化一次；跨标签页替换对象不能重建执行状态。 */
-  const initializingTasks = new Map<string, { createAt: number }>();
+  interface TaskRuntime {
+    lifecycle: TaskLifecycle;
+    task?: TranslationTask;
+    state?: TaskState;
+    initializing?: AbortController;
+    initializationError?: string;
+  }
+
+  /** 每个任务版本只有一个运行时；浅响应式保留任务和控制器的原始身份。 */
+  const taskRuntimes = shallowReactive(new Map<string, TaskRuntime>());
+  const taskStates = computed(() => {
+    const states = new Map<string, TaskState>();
+    for (const [key, runtime] of taskRuntimes) {
+      if (runtime.state) states.set(key, runtime.state);
+    }
+    return states;
+  });
+  const taskErrors = computed(() => {
+    const errors = new Map<string, string>();
+    for (const [key, runtime] of taskRuntimes) {
+      if (runtime.initializationError !== undefined)
+        errors.set(key, runtime.initializationError);
+    }
+    return errors;
+  });
 
   interface WorkerState {
     running: boolean;
     currentConcurrency: number;
-    maxConcurrency: number;
-    mode: 'pipeline' | 'harness';
-    allowUpload?: boolean;
-    translateChapter?: ChapterTranslator;
-    controller?: AbortController;
+    trusted?: boolean;
   }
   const workerStates = ref(new Map<string, WorkerState>());
   const workerErrors = computed(() => {
     const errors = new Map<string, number>();
     for (const [, state] of taskStates.value) {
-      for (const [, chapterState] of state.chapterStates) {
+      for (const [, chapterState] of state.unitDetails) {
         for (const seg of chapterState.segments) {
           if (seg.status === 'error' && seg.translatorId) {
             errors.set(
@@ -92,112 +122,117 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     }
     return errors;
   });
-  interface MetadataState {
-    task: TranslationTask;
-    createAt: number;
-    controller: AbortController;
-    settled: boolean;
-  }
-  /** 元数据独立于章节窗口；已结束的尝试保留到任务清除，避免重复上传。 */
-  const metadataTasks = new Map<string, MetadataState>();
-  const preparationTasks = new Map<
-    string,
-    { controller: AbortController; settled: boolean }
-  >();
+  let trustedInputsController = new AbortController();
 
+  // 目录窗口包含当前任务；原文槽位同时计入加载中和已就绪的输入。
+  const taskPrefetchWindow = 3;
+  const unitPrefetchLimit = 3;
+  let refillPrefetch: (() => void) | undefined;
   let processLoopAbortController: AbortController | null = null;
-  let activeProcessors = 0;
+  let disposed = false;
 
   onUnmounted(() => {
-    initializingTasks.clear();
-    abortMetadataTasks();
-    abortPreparationTasks();
-    pipeline.clearLoops();
-    pipeline.queue.clear();
-    for (const state of workerStates.value.values()) {
-      state.controller?.abort();
-    }
+    disposed = true;
+    for (const key of taskRuntimes.keys()) clearTaskRuntimeState(key);
     processLoopAbortController?.abort();
-    processLoopAbortController = null;
+    pipeline.dispose();
+    harnessPool.dispose();
     workerStates.value.clear();
   });
-  async function getOrCreateTask(taskDesc: string): Promise<TranslationTask> {
-    let task = taskCache.get(taskDesc);
-    if (!task) {
+
+  function getOrCreateTask(
+    taskDesc: string,
+    runtime: TaskRuntime,
+  ): TranslationTask {
+    if (!runtime.task) {
       const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-      task = createTranslationTask(desc, translatorId, params);
-      taskCache.set(taskDesc, task);
+      runtime.task = createTranslationTask(desc, translatorId, params);
     }
-    return task;
+    return runtime.task;
   }
 
-  function getNextJob(
-    jobs: TranslateJob[],
-    taskStatesMap: Map<string, TaskState>,
-  ): { job: TranslateJob; chapterId: string; state: TaskState } | null {
-    for (const job of jobs) {
+  /** 只枚举，不修改状态；取任务和判断是否还有任务共用同一筛选。 */
+  function* schedulableUnits() {
+    for (const job of jobs.value) {
       if (job.finishAt) continue;
-      if (taskCache.get(job.task)?.needsPreparation) continue;
-      const state = taskStatesMap.get(job.task);
-      if (!state) continue;
-      for (const ch of state.chapters) {
-        if (ch.status !== 'pending') continue;
-        ch.status = 'translating';
-        return { job, chapterId: ch.chapterId, state };
+      const runtime = taskRuntimes.get(job.task);
+      if (!runtime) continue;
+      const { task, state } = runtime;
+      if (!task?.initialized || !state || !canRunTask(task)) continue;
+      for (const unit of state.units) {
+        if (unit.status === 'pending')
+          yield { job, unit, state, task, runtime };
       }
     }
-    return null;
-  }
-
-  function countPendingChapters(
-    jobs: TranslateJob[],
-    taskStatesMap: Map<string, TaskState>,
-  ): number {
-    let count = 0;
-    for (const job of jobs) {
-      if (job.finishAt) continue;
-      if (taskCache.get(job.task)?.needsPreparation) continue;
-      const state = taskStatesMap.get(job.task);
-      if (!state) continue;
-      for (const ch of state.chapters) {
-        if (ch.status === 'pending') count++;
-      }
-    }
-    return count;
   }
 
   function hasRunningWorker(): boolean {
     return [...workerStates.value.values()].some(
-      (s) => s.running && s.allowUpload !== undefined,
+      (s) => s.running && s.trusted !== undefined,
     );
   }
 
-  function canUpload(): boolean {
-    return (
-      hasRunningWorker() &&
-      [...workerStates.value.values()].every(
-        (s) => !s.running || s.allowUpload !== false,
-      )
-    );
+  function canRunTask(task: TranslationTask): boolean {
+    return task.type === 'local'
+      ? hasRunningWorker()
+      : [...workerStates.value.values()].some(
+          (state) => state.running && state.trusted === true,
+        );
   }
 
-  function abortMetadataTasks(): void {
-    for (const [key, state] of metadataTasks) {
-      if (state.settled) continue;
-      state.controller.abort();
-      metadataTasks.delete(key);
+  function abortInitializations(remoteOnly = false): void {
+    for (const runtime of taskRuntimes.values()) {
+      if (!runtime.initializing) continue;
+      if (remoteOnly && runtime.task?.type === 'local') continue;
+      runtime.initializing.abort();
+      runtime.initializing = undefined;
+      // 不复用可能仍在等待插件返回的旧初始化快照。
+      runtime.task = undefined;
+    }
+  }
+
+  /** 串行加载目录，但允许当前任务之外保留两个待执行任务的快照。 */
+  function initializeNextTask(): void {
+    if ([...taskRuntimes.values()].some((runtime) => runtime.initializing))
+      return;
+    // 先统计所有可执行快照，队列重排也不能不断额外加载目录。
+    const activeTasks = jobs.value.filter((job) => {
+      const runtime = taskRuntimes.get(job.task);
+      return (
+        !job.finishAt &&
+        runtime?.task &&
+        canRunTask(runtime.task) &&
+        runtime.state?.units.some(
+          (unit) => unit.status === 'pending' || unit.status === 'translating',
+        )
+      );
+    }).length;
+    if (activeTasks >= taskPrefetchWindow) return;
+    for (const job of jobs.value) {
+      const runtime = taskRuntimes.get(job.task);
+      if (!runtime || job.finishAt || runtime.initializationError !== undefined)
+        continue;
+      let task: TranslationTask;
+      try {
+        task = getOrCreateTask(job.task, runtime);
+      } catch (error) {
+        reportInitializationError(job, runtime, error);
+        continue;
+      }
+      if (!canRunTask(task)) continue;
+      if (runtime.state?.initialized) continue;
+      const controller = new AbortController();
+      runtime.initializing = controller;
+      void initializeTask(job, runtime, controller);
+      return;
     }
   }
 
   function clearTaskRuntimeState(task: string): void {
-    initializingTasks.delete(task);
-    preparationTasks.get(task)?.controller.abort();
-    preparationTasks.delete(task);
-    metadataTasks.get(task)?.controller.abort();
-    metadataTasks.delete(task);
-    taskStates.value.delete(task);
-    taskCache.delete(task);
-    taskVersions.value.delete(task);
+    const runtime = taskRuntimes.get(task);
+    runtime?.lifecycle.abort();
+    runtime?.initializing?.abort();
+    taskRuntimes.delete(task);
   }
 
   // ========== 全局处理循环 ==========
@@ -214,277 +249,267 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
   function updateJobCompletion(
     job: TranslateJob,
-    task: TranslationTask,
+    runtime: TaskRuntime,
     state: TaskState,
   ): void {
     const currentJob = findCurrentJob(job);
     if (
+      disposed ||
       !currentJob ||
-      task.needsPreparation ||
-      taskCache.get(job.task) !== task ||
-      taskStates.value.get(job.task) !== state
+      taskRuntimes.get(job.task) !== runtime ||
+      runtime.state !== state
     ) {
       return;
     }
-    const metadata = metadataTasks.get(job.task);
     if (
-      state.chapters.every((chapter) => chapter.status === 'done') &&
-      (!isSakura || !task.needsMetadata || metadata?.settled)
+      state.initialized &&
+      state.units.every((unit) => unit.status === 'done')
     ) {
       currentJob.finishAt = Date.now();
     }
-  }
-
-  function abortPreparationTasks(): void {
-    for (const [key, preparation] of preparationTasks) {
-      preparation.controller.abort();
-      // 等待插件返回后再释放占位
-      if (preparation.settled) preparationTasks.delete(key);
-    }
-  }
-
-  function prepareTaskOnce(
-    job: TranslateJob,
-    task: TranslationTask,
-    state: TaskState,
-  ): void {
-    if (
-      !task.prepareExecution ||
-      !canUpload() ||
-      preparationTasks.has(job.task)
-    ) {
-      return;
-    }
-    const preparation = { controller: new AbortController(), settled: false };
-    preparationTasks.set(job.task, preparation);
-    const signal = preparation.controller.signal;
-    const canPrepare = () =>
-      !signal.aborted &&
-      preparationTasks.get(job.task) === preparation &&
-      taskCache.get(job.task) === task &&
-      taskStates.value.get(job.task) === state &&
-      !!findCurrentJob(job) &&
-      canUpload();
-    task
-      .prepareExecution({
-        signal,
-        canUpload: canPrepare,
-        onLog: (message) => console.log(`[${job.task}] ${message}`),
-      })
-      .then(() => {
-        if (!canPrepare()) return;
-        state.initChapters(task.chapters);
-        const currentJob = findCurrentJob(job)!;
-        currentJob.progress = {
-          finished: task.chapters.filter((chapter) => chapter.status === 'done')
-            .length,
-          error: 0,
-          total: task.chapters.length,
-        };
-        updateJobCompletion(job, task, state);
-      })
-      .catch((error) => {
-        if (!signal.aborted) console.warn(`[${job.task}] 任务准备失败`, error);
-      })
-      .finally(() => {
-        if (preparationTasks.get(job.task) !== preparation) return;
-        preparation.settled = true;
-        if (signal.aborted || !task.needsPreparation) {
-          preparationTasks.delete(job.task);
-          runProcessLoop();
-        }
-      });
-  }
-
-  /**
-   * 翻译标题、简介和目录。与旧版工作区一致，GPT 不翻译元数据。
-   * 不阻塞章节翻译，失败只记录日志。
-   */
-  function translateMetadataOnce(
-    job: TranslateJob,
-    task: TranslationTask,
-    state: TaskState,
-  ): void {
-    if (!isSakura || !task.needsMetadata || !task.translateMetadata) return;
-    if (!canUpload() || metadataTasks.has(job.task)) return;
-    const metadata: MetadataState = {
-      task,
-      createAt: job.createAt,
-      controller: new AbortController(),
-      settled: false,
-    };
-    metadataTasks.set(job.task, metadata);
-    const signal = metadata.controller.signal;
-    const canUploadMetadata = () =>
-      !signal.aborted &&
-      metadataTasks.get(job.task) === metadata &&
-      taskCache.get(job.task) === metadata.task &&
-      jobs.value.some(
-        (it) => it.task === job.task && it.createAt === metadata.createAt,
-      ) &&
-      canUpload();
-
-    // 简介可能含换行，按行翻译后再按原行数拼回
-    const translateTexts = async (texts: string[]) => {
-      signal.throwIfAborted();
-      const lineCounts = texts.map((text) => text.split('\n').length);
-      // 分段失败时 pipeline 会回退为原文，不能把原文当译文上传
-      let failed = false;
-      const lines = (
-        await pipeline.translate(
-          texts.join('\n'),
-          task.glossary,
-          undefined,
-          signal,
-          { onSegError: () => (failed = true) },
-        )
-      ).split('\n');
-      signal.throwIfAborted();
-      if (failed) throw new Error('分段翻译失败');
-      if (
-        lines.length !== lineCounts.reduce((total, count) => total + count, 0)
-      ) {
-        throw new Error('元数据译文行数不匹配');
-      }
-      return lineCounts.map((count) => lines.splice(0, count).join('\n'));
-    };
-    task
-      .translateMetadata(translateTexts, signal, canUploadMetadata)
-      .then(() => {
-        if (!signal.aborted && metadataTasks.get(job.task) === metadata) {
-          console.log(`[${job.task}] 元数据翻译完成`);
-        }
-      })
-      .catch((e) => {
-        if (!signal.aborted) console.warn(`[${job.task}] 元数据翻译失败`, e);
-      })
-      .finally(() => {
-        if (metadataTasks.get(job.task) !== metadata) return;
-        metadata.settled = true;
-        updateJobCompletion(job, task, state);
-      });
+    runProcessLoop();
   }
 
   function runProcessLoop(): void {
-    if (!hasRunningWorker()) return;
+    if (disposed || !hasRunningWorker()) return;
 
-    for (const job of jobs.value) {
-      if (job.finishAt) continue;
-      const task = taskCache.get(job.task);
-      const state = taskStates.value.get(job.task);
-      if (task?.initialized && state?.initialized) {
-        if (task.needsPreparation) {
-          prepareTaskOnce(job, task, state);
+    initializeNextTask();
+
+    // 停止后也必须等旧 run 退出，防止重新启动时重复拉取或覆盖章节状态。
+    if (processLoopAbortController) {
+      refillPrefetch?.();
+      return;
+    }
+    if (schedulableUnits().next().done) return;
+    const controller = new AbortController();
+    processLoopAbortController = controller;
+    const signal = controller.signal;
+    // 每轮只转发一次取消；可信翻译器恢复时可在本轮内创建新的可信任务组。
+    signal.addEventListener('abort', () => trustedInputsController.abort(), {
+      once: true,
+    });
+
+    /** 取下一个翻译单元；没有可交给当前翻译器的单元时返回 undefined。 */
+    const nextWork = async (): Promise<
+      | {
+          work: TranslationWork;
+          signal: AbortSignal;
+        }
+      | undefined
+    > => {
+      // 跳过缺少可信翻译器的远程任务，仍可继续处理本地任务。
+      while (!signal.aborted && hasRunningWorker()) {
+        const item = schedulableUnits().next().value;
+        if (!item) return undefined;
+
+        const { job, unit, state, task, runtime } = item;
+        const { chapterId } = unit;
+        state.updateStatus(chapterId, 'translating');
+        const isCurrentTask = () =>
+          !disposed &&
+          taskRuntimes.get(job.task) === runtime &&
+          !!findCurrentJob(job);
+        if (!isCurrentTask()) continue;
+        if (signal.aborted || !canRunTask(task)) {
+          state.updateStatus(chapterId, 'pending');
+          if (signal.aborted) return undefined;
           continue;
         }
-        translateMetadataOnce(job, task, state);
-      }
-    }
 
-    const pendingCount = countPendingChapters(jobs.value, taskStates.value);
-    if (pendingCount === 0) return;
-    processLoopAbortController ??= new AbortController();
-    const controller = processLoopAbortController;
-    const signal = controller.signal;
-
-    const processOne = async (worker?: WorkerState) => {
-      const workerSignal = worker?.controller?.signal ?? signal;
-      while (
-        !workerSignal.aborted &&
-        (worker ? worker.running : hasRunningWorker())
-      ) {
-        const item = getNextJob(jobs.value, taskStates.value);
-        if (!item) break;
-
-        const { job, chapterId, state } = item;
-        const task = await getOrCreateTask(job.task);
-        const isCurrentTask = () =>
-          taskCache.get(job.task) === task &&
-          taskStates.value.get(job.task) === state &&
-          !!findCurrentJob(job);
-        if (signal.aborted || !isCurrentTask()) continue;
-
-        const executor = new TaskExecutor(
-          task,
-          (worker?.translateChapter
-            ? {
-                mode: 'harness',
-                translateChapter: worker.translateChapter,
-              }
-            : { mode: 'pipeline', pipeline }) satisfies TaskTranslator,
-          fetchSemaphore,
-          () =>
-            !workerSignal.aborted &&
-            isCurrentTask() &&
-            (task.type === 'local' || canUpload()),
+        if (task.type !== 'local' && trustedInputsController.signal.aborted) {
+          trustedInputsController = new AbortController();
+        }
+        const inputSignal = runtime.lifecycle.signalFor(
+          task.type === 'local' ? signal : trustedInputsController.signal,
         );
-
-        const segmentTracker = state.getChapterState(chapterId);
+        const preparer = new WorkPreparer(task);
+        const segmentTracker = state.getUnitDetails(chapterId);
         if (!segmentTracker) continue;
-        await executor
-          .executeChapter(
-            chapterId,
-            {
-              onChapterStatus: (cid: string, st: ChapterStatus) => {
-                if (isCurrentTask()) state.updateStatus(cid, st);
-              },
-              onProgress: (finished: number, error: number, total: number) => {
-                const currentJob = isCurrentTask()
-                  ? findCurrentJob(job)
-                  : undefined;
-                if (currentJob) {
-                  currentJob.progress = { finished, error, total };
-                }
-              },
-              onLog: (msg: string) => console.log(`[${job.task}] ${msg}`),
-              segmentTracker,
+        const work = await preparer.prepareUnit(
+          unit,
+          {
+            onUnitStatus: (cid: string, st: UnitStatus) => {
+              if (!isCurrentTask()) return;
+              state.updateStatus(cid, st);
+              findCurrentJob(job)!.progress = state.progress;
             },
-            workerSignal,
-          )
-          .then(() => {
-            if (isCurrentTask()) updateJobCompletion(job, task, state);
-          });
+            onLog: (msg: string) => {
+              if (isCurrentTask()) logTask(job.task, msg);
+            },
+            segmentTracker,
+          },
+          inputSignal,
+        );
+        if (!work) {
+          if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+          continue;
+        }
+        return {
+          signal: inputSignal,
+          work: {
+            ...work,
+            onComplete: async (result) => {
+              await work.onComplete(result);
+              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+            },
+            onError: async (error) => {
+              await work.onError(error);
+              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+            },
+            onAbort: async () => {
+              await work.onAbort();
+              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+            },
+          },
+        };
       }
+      return undefined;
     };
 
-    // 运行中新增的待翻章节（新任务、重试、任务延迟初始化）也要补满窗口，
-    // 否则章节并发会一直被卡在循环启动时的待翻章节数。
-    const startProcessor = (worker?: WorkerState) => {
-      activeProcessors++;
-      if (worker) worker.currentConcurrency++;
-      processOne(worker).finally(() => {
-        activeProcessors--;
-        if (worker) worker.currentConcurrency--;
-        if (activeProcessors === 0) {
-          if (processLoopAbortController === controller) {
-            processLoopAbortController = null;
+    type PrefetchedInput = Awaited<ReturnType<typeof nextWork>>;
+    type Preparation = Promise<
+      | { input: PrefetchedInput; error?: never }
+      | { input?: never; error: unknown }
+    >;
+    const prefetched = new Set<Preparation>();
+    const ready: { preparation: Preparation; result: Awaited<Preparation> }[] =
+      [];
+    let wakePrefetch: (() => void) | undefined;
+    const fillPrefetch = () => {
+      while (
+        !signal.aborted &&
+        hasRunningWorker() &&
+        prefetched.size < unitPrefetchLimit &&
+        !schedulableUnits().next().done
+      ) {
+        // nextWork 同步认领单元，避免并发加载同一章；提前接住异常防止悬空拒绝。
+        const preparation: Preparation = nextWork().then(
+          (input) => ({ input }),
+          (error: unknown) => ({ error }),
+        );
+        prefetched.add(preparation);
+        // 每次准备仅注册一个通知，慢请求不会积累其他章节的等待回调。
+        void preparation.then((result) => {
+          ready.push({ preparation, result });
+          wakePrefetch?.();
+        });
+        wakePrefetch?.();
+      }
+    };
+    const waitForPrefetch = () =>
+      new Promise<undefined>((resolve) => {
+        wakePrefetch = () => resolve(undefined);
+      });
+    refillPrefetch = fillPrefetch;
+    type Settlement = {
+      version: number;
+      result?: { error?: never } | { error: unknown };
+    };
+    let submissionVersion = 0;
+    let draining: Settlement | undefined;
+
+    void (async () => {
+      try {
+        for (;;) {
+          fillPrefetch();
+          if (signal.aborted) break;
+          if (draining?.result && 'error' in draining.result)
+            throw draining.result.error;
+          if (prefetched.size === 0) {
+            // 旧等待可能已检查空队列，但完成通知晚于新投递；此时必须重新结算。
+            if (draining?.result && draining.version !== submissionVersion)
+              draining = undefined;
+            // 同时只保留一个结算等待，避免慢保存积累重复 drain 监听。
+            if (!draining) {
+              const settlement: Settlement = {
+                version: submissionVersion,
+              };
+              draining = settlement;
+              void drainTranslations().then(
+                () => {
+                  settlement.result = {};
+                  wakePrefetch?.();
+                },
+                (error: unknown) => {
+                  settlement.result = { error };
+                  wakePrefetch?.();
+                },
+              );
+            }
+            if (draining.result) break;
+            // 旧输入还在翻译/保存时，新加载的任务仍可唤醒消费者。
+            await waitForPrefetch();
+            wakePrefetch = undefined;
+            continue;
+          }
+          // 完成通知按就绪顺序入队，不等待队首慢请求。
+          const selected = ready.shift();
+          if (!selected) {
+            await waitForPrefetch();
+            wakePrefetch = undefined;
+            continue;
+          }
+          const { preparation, result } = selected;
+          try {
+            if ('error' in result) throw result.error;
+            const input = result.input;
+            if (!input) continue;
+            if (input.signal.aborted) {
+              await input.work.onAbort();
+              continue;
+            }
+            try {
+              // 在投递前更新代际，不依赖旧 drain 的完成通知是否已经到达。
+              submissionVersion++;
+              // 投递仍串行，保留分段队列的背压；等待期间可准备其他槽位。
+              if (!(await harnessPool.submit(input.work, input.signal))) {
+                await pipeline.submit(input.work, input.signal);
+              }
+            } catch (error) {
+              // 唯一可信翻译器停止只取消受限输入，不能连带中断本地章节。
+              if (!input.signal.aborted || signal.aborted) throw error;
+            }
+          } finally {
+            prefetched.delete(preparation);
           }
         }
-        if (countPendingChapters(jobs.value, taskStates.value) > 0) {
-          runProcessLoop();
+      } catch (error) {
+        // 此刻 finally 尚未 abort：signal 只反映外部停止，主动停止不记错误。
+        if (!signal.aborted) {
+          appendLog(
+            '工作区',
+            `翻译流水线失败：${describeError(error)}`,
+            'warn',
+          );
+          console.warn('翻译流水线失败', error);
         }
-      });
-    };
-
-    const chapterWorkers = [...workerStates.value.values()].filter(
-      (state) => state.running && state.translateChapter,
-    );
-    if (chapterWorkers.length > 0) {
-      for (const worker of chapterWorkers) {
-        const slots = Math.min(
-          worker.maxConcurrency - worker.currentConcurrency,
-          GLOBAL_WINDOW - activeProcessors,
-          pendingCount,
+      } finally {
+        // 未投递的原文也必须结算取消，不能遗留 translating 状态。
+        controller.abort();
+        await Promise.all(
+          [...prefetched].map(async (preparation) => {
+            const result = await preparation;
+            await result.input?.work.onAbort();
+          }),
         );
-        for (let i = 0; i < slots; i++) startProcessor(worker);
+        await drainTranslations();
       }
-    } else {
-      const spawnCount = Math.min(
-        GLOBAL_WINDOW - activeProcessors,
-        pendingCount,
-      );
-      for (let i = 0; i < spawnCount; i++) startProcessor();
-    }
+    })()
+      .catch((error: unknown) => {
+        appendLog(
+          '工作区',
+          `翻译流水线收尾失败：${describeError(error)}`,
+          'warn',
+        );
+        console.warn('翻译流水线收尾失败', error);
+      })
+      .finally(() => {
+        if (processLoopAbortController !== controller) return;
+        processLoopAbortController = null;
+        refillPrefetch = undefined;
+        // 本轮没有更多可做的章节，但任务可能新增或重试章节。
+        runProcessLoop();
+      });
   }
 
   // ========== Worker 生命周期管理 ==========
@@ -498,86 +523,103 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
       return;
     }
 
-    const harnessPreset = isSakura
-      ? undefined
-      : findHarnessPresetGroup((w as GptPipelineWorker).preset);
-    const mode = harnessPreset?.mode ?? 'pipeline';
-    if (
-      [...workerStates.value.values()].some(
-        (state) => state.running && state.mode !== mode,
-      )
-    ) {
-      Toast.warning('请先停止正在运行的另一种预设，再切换翻译方式');
-      return;
-    }
-
     const state = reactive<WorkerState>({
       running: true,
       currentConcurrency: 0,
-      maxConcurrency: w.concurrency ?? 1,
-      mode,
-      controller: mode === 'harness' ? new AbortController() : undefined,
     });
     workerStates.value.set(workerId, state);
+    for (const runtime of taskRuntimes.values()) {
+      runtime.initializationError = undefined;
+    }
 
     try {
-      if (harnessPreset) {
-        const preset = getHarnessModelPreset(
-          harnessPreset,
-          (w as GptPipelineWorker).model,
-        );
+      const secrets = 'key' in w ? [w.key] : [];
+      const log = (msg: string) => appendLog(w.id, msg, 'info', secrets);
+      log('正在启动翻译器');
+      const gpt = w as GptPipelineWorker;
+      const preset = isSakura ? undefined : findHarnessPresetGroup(gpt.preset);
+      if (preset) {
         const { createHarnessMode } = await import(
           '@/domain/translator/harness/HarnessMode'
         );
         if (workerStates.value.get(workerId) !== state) return;
-        state.translateChapter = createHarnessMode(
-          preset,
-          (w as GptPipelineWorker).key,
-          w.id,
+        const translate = createHarnessMode(
+          getHarnessModelPreset(preset, gpt.model),
+          gpt.key,
+          gpt.id,
+          log,
         );
-        state.allowUpload = true;
+        harnessPool.register(workerId, translate, {
+          concurrency: w.concurrency,
+          onActiveCountChange: (activeCount) => {
+            state.currentConcurrency = activeCount;
+          },
+        });
+        state.trusted = true;
       } else {
-        const log = (msg: string) => console.log(`[${w.id}] ${msg}`);
-        const t = isSakura
-          ? await SakuraTranslator.create({ ...(w as SakuraWorker), log })
-          : new OpenAiTranslator({ ...(w as GptPipelineWorker), log });
+        const t = await createTranslator({
+          ...toTranslatorConfig(translatorId, w),
+          log,
+        });
 
         if (workerStates.value.get(workerId) !== state) return;
 
-        state.allowUpload = !(t instanceof SakuraTranslator) || t.allowUpload();
+        state.trusted = t.trusted === true;
+        if (!t.trusted)
+          log(
+            `翻译器仅可用于本地翻译：${t.untrustedReason ?? '未通过可信检查'}`,
+          );
 
-        const workerTracker: TranslatorTracker = {
-          onConcurrencyChange: (current: number) => {
-            state.currentConcurrency = current;
+        pipeline.registerTranslator(t, {
+          concurrency: w.concurrency,
+          onActiveCountChange: (activeCount) => {
+            state.currentConcurrency = activeCount;
           },
-        };
-        pipeline.registerTranslator(t, w.concurrency, workerTracker, w.id);
+          id: w.id,
+        });
       }
+      log('翻译器已启动');
 
       runProcessLoop();
     } catch (e) {
       if (workerStates.value.get(workerId) !== state) return;
-      stopWorker(workerId);
+      stopWorker(workerId, '启动失败');
+      appendLog(
+        w.id,
+        `翻译器启动失败：${e}`,
+        'warn',
+        'key' in w ? [w.key] : [],
+      );
       Toast.error(`翻译器启动失败：${e}`);
     }
   };
 
-  const stopWorker = (workerId: string) => {
+  const stopWorker = (workerId: string, reason = '手动停止') => {
     const state = workerStates.value.get(workerId);
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
-    state.controller?.abort();
+    harnessPool.unregister(workerId);
+    appendLog(workerId, `翻译器已停止（${reason}）`);
 
     workerStates.value.set(workerId, { ...state, running: false });
 
-    if ([...workerStates.value.values()].every((s) => !s.running)) {
-      abortMetadataTasks();
-      abortPreparationTasks();
-      processLoopAbortController?.abort();
-      processLoopAbortController = null;
-      pipeline.queue.clear();
+    if (
+      ![...workerStates.value.values()].some(
+        (s) => s.running && s.trusted === true,
+      )
+    ) {
+      trustedInputsController.abort();
+      abortInitializations(true);
     }
+
+    if ([...workerStates.value.values()].every((s) => !s.running)) {
+      abortInitializations();
+      processLoopAbortController?.abort();
+      pipeline.dispose();
+      harnessPool.dispose();
+    }
+    runProcessLoop();
   };
 
   const startAllWorkers = () => {
@@ -590,14 +632,14 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
 
   const deleteJob = (task: string) => {
     const state = taskStates.value.get(task);
-    const metadata = metadataTasks.get(task);
+
     // 原文获取阶段可删除；分段准备好后直到保存结束，仍视为执行中。
-    const inPipeline = state?.chapters.some(
+    const inPipeline = state?.units.some(
       (chapter) =>
         chapter.status === 'translating' &&
-        state.chapterStates.get(chapter.chapterId)?.ready,
+        state.unitDetails.get(chapter.chapterId)?.ready,
     );
-    if (inPipeline || (metadata && !metadata.settled)) {
+    if (inPipeline) {
       Toast.error('任务正在翻译或保存中，请先停止翻译器');
       return;
     }
@@ -605,89 +647,119 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     clearTaskRuntimeState(task);
   };
 
+  /** 不传 task 时重试所有失败任务。 */
+  const retryTask = (task?: string) => {
+    if (!hasRunningWorker()) {
+      Toast.info('请先启动翻译器后再重试');
+      return;
+    }
+    for (const job of jobs.value) {
+      if (task !== undefined && job.task !== task) continue;
+      const runtime = taskRuntimes.get(job.task);
+      if (!runtime) continue;
+      const state = runtime.state;
+      if (state?.resetFailedUnits()) {
+        delete job.finishAt;
+        (job as TranslateJobRecord).progress = state.progress;
+      }
+      runtime.initializationError = undefined;
+    }
+    runProcessLoop();
+  };
+
+  function reportInitializationError(
+    job: TranslateJob,
+    runtime: TaskRuntime,
+    error: unknown,
+  ): void {
+    runtime.initializationError = describeError(error);
+    // 丢弃可能只初始化了一半的实例，重试时重新创建。
+    runtime.task = undefined;
+    logTask(job.task, `任务初始化失败：${runtime.initializationError}`, true);
+    console.warn('任务初始化失败', job.task, error);
+  }
+
+  async function initializeTask(
+    job: TranslateJob,
+    runtime: TaskRuntime,
+    controller: AbortController,
+  ): Promise<void> {
+    const signal = runtime.lifecycle.signalFor(controller.signal);
+    const isCurrentInitialization = () =>
+      !disposed &&
+      taskRuntimes.get(job.task) === runtime &&
+      runtime.initializing === controller;
+    // 底层 Promise 可能不响应 abort，超时必须能结束这里的 await。
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new DOMException(
+            `任务初始化超时（${INITIALIZATION_TIMEOUT_MS / 1000} 秒）`,
+            'TimeoutError',
+          ),
+        ),
+      INITIALIZATION_TIMEOUT_MS,
+    );
+    try {
+      const task = getOrCreateTask(job.task, runtime);
+      signal.throwIfAborted();
+      await awaitWithSignal(
+        task.initialize({
+          signal,
+          onLog: (message) => {
+            if (!signal.aborted) logTask(job.task, message);
+          },
+        }),
+        signal,
+      );
+      if (signal.aborted || !isCurrentInitialization()) return;
+      const currentJob = findCurrentJob(job);
+      if (!currentJob) return;
+      const state = reactive(new TaskState()) as TaskState;
+      state.initialize(task.chapters, task.metadataUnit);
+      runtime.state = state;
+      runtime.initializationError = undefined;
+      currentJob.progress = state.progress;
+      updateJobCompletion(job, runtime, state);
+    } catch (e) {
+      // 停止、删除、卸载会先清掉 initializing；剩下的失败必须上报。
+      if (isCurrentInitialization()) reportInitializationError(job, runtime, e);
+    } finally {
+      clearTimeout(timer);
+      if (isCurrentInitialization()) {
+        runtime.initializing = undefined;
+        // 启动后按窗口补齐目录和原文；页面挂载时不批量请求。
+        runProcessLoop();
+      }
+    }
+  }
+
   watch(
-    () => [...jobs.value],
-    async (workspaceJobs) => {
-      const uninitialized: {
-        job: TranslateJob;
-        initialization: { createAt: number };
-      }[] = [];
+    () => jobs.value.map((job) => [job.task, job.createAt] as const),
+    () => {
+      if (disposed) return;
+      const workspaceJobs = [...jobs.value];
       const activeTasks = new Set(workspaceJobs.map((job) => job.task));
-      const knownTasks = new Set([
-        ...taskStates.value.keys(),
-        ...taskCache.keys(),
-        ...taskVersions.value.keys(),
-        ...initializingTasks.keys(),
-        ...metadataTasks.keys(),
-        ...preparationTasks.keys(),
-      ]);
-      for (const task of knownTasks) {
+      for (const task of taskRuntimes.keys()) {
         if (!activeTasks.has(task)) clearTaskRuntimeState(task);
       }
 
       for (const job of workspaceJobs) {
-        if (taskVersions.value.get(job.task) !== job.createAt) {
+        const runtime = taskRuntimes.get(job.task);
+        if (!runtime || runtime.lifecycle.createAt !== job.createAt) {
           clearTaskRuntimeState(job.task);
-        }
-        const state = taskStates.value.get(job.task);
-        if (
-          taskVersions.value.get(job.task) === job.createAt &&
-          (state?.initialized || initializingTasks.has(job.task))
-        ) {
-          continue;
-        }
-        if (job.finishAt) {
-          taskStates.value.set(
+          taskRuntimes.set(
             job.task,
-            reactive(new TaskState(job.task)) as TaskState,
+            shallowReactive<TaskRuntime>({
+              lifecycle: new TaskLifecycle(job.createAt),
+            }),
           );
-          taskVersions.value.set(job.task, job.createAt);
-          continue;
         }
-        const initialization = { createAt: job.createAt };
-        taskVersions.value.set(job.task, job.createAt);
-        initializingTasks.set(job.task, initialization);
-        uninitialized.push({ job, initialization });
       }
-      await Promise.all(
-        uninitialized.map(async ({ job, initialization }) => {
-          try {
-            const task = await getOrCreateTask(job.task);
-            if (!task.initialized) await task.initMeta();
-            if (
-              initializingTasks.get(job.task) !== initialization ||
-              taskCache.get(job.task) !== task
-            ) {
-              return;
-            }
-            const currentJob = findCurrentJob(job);
-            if (!currentJob) return;
-            const chapters = task.chapters;
-            const state = reactive(new TaskState(job.task)) as TaskState;
-            state.initChapters(chapters);
-            taskStates.value.set(job.task, state);
-            taskVersions.value.set(job.task, job.createAt);
-            const doneCount = chapters.filter(
-              (c) => c.status === 'done',
-            ).length;
-            currentJob.progress = {
-              finished: doneCount,
-              error: 0,
-              total: chapters.length,
-            };
-            updateJobCompletion(job, task, state);
-          } catch (e) {
-            console.warn('任务初始化失败', job.task, e);
-          } finally {
-            if (initializingTasks.get(job.task) === initialization) {
-              initializingTasks.delete(job.task);
-            }
-          }
-        }),
-      );
-      if (uninitialized.length > 0) runProcessLoop();
+      runProcessLoop();
     },
-    { immediate: true },
+    // 删除／替换同步终止旧版本，不能等下一次渲染才阻止保存。
+    { immediate: true, flush: 'sync' },
   );
 
   const topJob = (task: string) => {
@@ -701,10 +773,12 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
   };
 
   return {
+    logs,
+    clearLogs,
     jobs,
-    segCacheName,
+    clearTranslationCache,
     taskStates,
-    taskCache,
+    taskErrors,
     workerStates,
     workerErrors,
     startWorker,
@@ -712,6 +786,7 @@ export function useWorkspaceRuntime(translatorId: TranslatorId) {
     startAllWorkers,
     stopAllWorkers,
     deleteJob,
+    retryTask,
     topJob,
     bottomJob,
     runProcessLoop,

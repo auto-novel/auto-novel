@@ -11,21 +11,14 @@ import {
   RefreshOutlined,
   DeleteOutlineOutlined,
 } from '@vicons/material';
-import type { ChapterMeta, TaskState } from '@/domain/translator/TaskState';
-import { ChapterSegmentState } from '@/domain/translator/TaskState';
+import type { UnitDetailState, TaskState } from '@/domain/translator';
 import type { TranslateJob, TranslateJobRecord } from '@/model/Translator';
-import { TranslateTaskDescriptor } from '@/model/Translator';
-import { createTranslationTask } from '@/domain/translator/TranslationTask/createTranslationTask';
-import type {
-  TranslationTask,
-  TranslatorId,
-} from '@/domain/translator/TranslationTask/types';
 
 const props = defineProps<{
   job: TranslateJob;
-  translatorId: TranslatorId;
   taskState?: TaskState;
-  taskCacheEntry?: TranslationTask;
+  /** 初始化失败原因。 */
+  error?: string;
   canMoveTop: boolean;
   canMoveBottom: boolean;
 }>();
@@ -40,11 +33,12 @@ const emit = defineEmits<{
 const jobRecord = computed(() => props.job as TranslateJobRecord);
 const chapterMetas = computed(() => props.taskState?.chapters ?? []);
 const hasVisibleChapters = computed(() =>
-  chapterMetas.value.some(
+  (props.taskState?.units ?? []).some(
     (chapter) =>
       chapter.status === 'error' ||
+      props.taskState?.isPausedUnit(chapter) ||
       (chapter.status === 'translating' &&
-        props.taskState?.chapterStates.get(chapter.chapterId)?.ready),
+        props.taskState?.unitDetails.get(chapter.chapterId)?.ready),
   ),
 );
 const taskProgress = computed(() => {
@@ -71,7 +65,7 @@ const taskProgress = computed(() => {
     if (chapter.status === 'done') done++;
     else if (chapter.status === 'error') error++;
     else if (chapter.status === 'translating') {
-      const state = props.taskState?.chapterStates.get(chapter.chapterId);
+      const state = props.taskState?.unitDetails.get(chapter.chapterId);
       if (state?.ready) translating++;
     }
   }
@@ -83,89 +77,38 @@ const taskProgress = computed(() => {
     pending: chapters.length - done - error - translating,
   };
 });
-async function getChapterMetas(): Promise<ChapterMeta[]> {
-  if (props.taskState?.initialized) return chapterMetas.value;
-
-  let task = props.taskCacheEntry;
-  if (!task) {
-    task = createTask(props.job.task);
-  }
-  if (!task.initialized) {
-    await task.initMeta();
-  }
-  return task.chapters;
-}
-
-const taskStatus = computed<'done' | 'executing' | 'pending'>(() => {
+const taskStatus = computed<'done' | 'executing' | 'pending' | 'error'>(() => {
+  if (props.error) return 'error';
   if (props.job.finishAt) return 'done';
-  if (!chapterMetas.value.length)
-    return props.taskCacheEntry?.needsPreparation ||
-      props.taskCacheEntry?.needsMetadata
-      ? 'pending'
-      : 'done';
-  if (taskProgress.value.translating > 0) return 'executing';
+  if (
+    taskProgress.value.translating > 0 ||
+    props.taskState?.metadataUnit?.status === 'translating'
+  )
+    return 'executing';
+  if (
+    taskProgress.value.pending === 0 &&
+    (taskProgress.value.error > 0 ||
+      props.taskState?.metadataUnit?.status === 'error')
+  )
+    return 'error';
   return 'pending';
 });
-
-function retryAllFailed() {
-  if (props.taskState?.resetFailedChapters()) {
-    delete props.job.finishAt;
-    emit('retry', props.job.task);
-  }
-}
-
-function createTask(taskDesc: string): TranslationTask {
-  const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-  return createTranslationTask(desc, props.translatorId, params);
-}
 
 const showPreview = ref(false);
 const previewData = ref<{
   title: string;
-  chapterState: ChapterSegmentState | null;
+  chapterState: UnitDetailState | null;
 } | null>(null);
-const openPreview = async (chapterId: string) => {
-  try {
-    const chapters = await getChapterMetas();
-    const meta = chapters.find((c) => c.chapterId === chapterId);
-    const title = meta?.title ?? chapterId;
-
-    const chapterState = props.taskState?.chapterStates.get(chapterId);
-
-    let chapterStateForPreview: ChapterSegmentState | null = null;
-    if (chapterState?.ready || chapterState?.errorMessage) {
-      // 获取失败时也可直接展示已记录的原因，不再重新请求原文。
-      chapterStateForPreview = chapterState;
-    } else {
-      let previewTask = props.taskCacheEntry;
-      if (!previewTask) {
-        previewTask = createTask(props.job.task);
-      }
-      if (!previewTask.initialized) {
-        await previewTask.initMeta();
-      }
-      const detail = await previewTask.fetchChapter(chapterId);
-
-      if (chapterState?.ready) {
-        chapterStateForPreview = chapterState;
-      } else if (props.taskState?.getStatus(chapterId) === 'done') {
-        const tlParagraphs = detail.oldParagraphZh;
-        if (tlParagraphs?.length) {
-          const loadedState = new ChapterSegmentState(chapterId);
-          loadedState.injectDoneTranslation(detail.paragraphs, tlParagraphs);
-          chapterStateForPreview = loadedState;
-        }
-      } else {
-        chapterStateForPreview = chapterState ?? null;
-      }
-    }
-
-    previewData.value = { title, chapterState: chapterStateForPreview };
-    showPreview.value = true;
-  } catch (e) {
-    console.error('加载预览失败', e);
-    Toast.error('加载预览失败');
+const openPreview = (chapterId: string) => {
+  const chapterState = props.taskState?.unitDetails.get(chapterId);
+  if (!chapterState || (!chapterState.ready && !chapterState.errorMessage)) {
+    Toast.info('章节已完成或预览已失效');
+    return;
   }
+
+  const meta = props.taskState?.units.find((c) => c.chapterId === chapterId);
+  previewData.value = { title: meta?.title ?? chapterId, chapterState };
+  showPreview.value = true;
 };
 
 const closePreview = () => {
@@ -223,13 +166,13 @@ const closePreview = () => {
                 @action="canMoveBottom && emit('bottom', job.task)"
               />
               <WorkspaceActionButton
-                v-if="taskState?.hasFailedChapters()"
-                label="重试失败"
-                tooltip="重试失败"
+                v-if="taskState?.hasFailedUnits() || error"
+                label="重试"
+                tooltip="重试失败的任务"
                 :icon="RefreshOutlined"
                 icon-only
                 color="warning"
-                @action="retryAllFailed"
+                @action="emit('retry', job.task)"
               />
               <WorkspaceActionButton
                 label="删除任务"
@@ -242,6 +185,19 @@ const closePreview = () => {
             </div>
           </n-flex>
           <task-link :task="job.task" />
+          <span v-if="error" class="text-xs text-error-text">
+            初始化失败：{{ error }}
+          </span>
+          <span v-if="taskState?.metadataUnit" class="text-xs text-muted">
+            小说信息：{{
+              {
+                pending: '等待',
+                translating: '处理中',
+                done: '已完成',
+                error: '失败，可重试',
+              }[taskState.metadataUnit.status]
+            }}
+          </span>
         </div>
         <task-progress :status="taskStatus" :progress="taskProgress" />
       </div>

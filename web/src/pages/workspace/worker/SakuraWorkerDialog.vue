@@ -16,11 +16,8 @@ const emit = defineEmits<{
 const workspace = useSakuraWorkspaceStore();
 const workspaceRef = workspace.ref;
 const initFormValue = () => ({
-  id: '',
-  endpoint: '',
-  segLength: 500,
-  prevSegLength: 500,
-  ...props.worker,
+  id: props.worker?.id ?? '',
+  endpoint: props.worker?.endpoint ?? '',
   concurrency: props.worker?.concurrency ?? 1,
 });
 
@@ -153,34 +150,10 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
         />
       </n-form-item-row>
 
-      <n-form-item-row path="segLength" label="分段长度">
-        <n-input-number
-          v-model:value="formValue.segLength"
-          :show-button="false"
-          :min="100"
-        />
-      </n-form-item-row>
-
-      <n-form-item-row path="prevSegLength" label="前文长度">
-        <n-input-number
-          v-model:value="formValue.prevSegLength"
-          :show-button="false"
-          :min="0"
-        />
-      </n-form-item-row>
-
-      <n-text type="error" class="text-[12px]!">
-        # 前文长度是临时功能，非默认500无法上传
-      </n-text>
-      <br />
       <n-text depth="3" class="text-[12px]!">
-        # 分段长度还在测试中，非默认500无法上传
+        # 分段长度与前文长度固定为500字符，不支持配置
         <br />
         # API端点例子：http://127.0.0.1:8080
-      </n-text>
-      <br />
-      <n-text depth="3" class="text-[12px]!">
-        # 并发数仅beta工作区生效，是章节级别的并发。
       </n-text>
     </n-form>
 

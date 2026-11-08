@@ -1,6 +1,13 @@
 <script lang="ts" setup>
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
+import {
+  XEmpty,
+  XError,
+  XPagination,
+  XSeparator,
+  XPage,
+  XPageHeader,
+} from '@novelia/web-kit';
 
 import type { ListOptions, ListValue } from '@/components/list/types';
 import { WebNovelRepo } from '@/repos';
@@ -53,8 +60,8 @@ const pageCount = computed<number>(
 </script>
 
 <template>
-  <div role="region" aria-label="小说排行榜" class="layout-content">
-    <n-h1>{{ title }}</n-h1>
+  <XPage role="region" aria-label="小说排行榜">
+    <XPageHeader :title="title" />
 
     <ListFilter
       :options="listOptions"
@@ -96,5 +103,5 @@ const pageCount = computed<number>(
       keyboard="window"
       @update:page="onUpdatePage"
     />
-  </div>
+  </XPage>
 </template>

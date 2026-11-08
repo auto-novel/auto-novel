@@ -26,12 +26,7 @@ input:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
-.admin-container {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 36px 32px;
-}
-h1 {
+.empty-state h1 {
   margin: 0;
   font-size: 26px;
   font-weight: 650;
@@ -155,10 +150,7 @@ h2 {
   margin-top: 22px;
 }
 @media (max-width: 767px) {
-  .admin-container {
-    padding: 24px 16px;
-  }
-  h1 {
+  .empty-state h1 {
     font-size: 24px;
   }
 }

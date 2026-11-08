@@ -3,7 +3,6 @@ import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
 import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
 
-import { useIsWideScreen } from '@/pages/util';
 import { WebNovelRepo } from '@/repos';
 import { useSettingStore, useWhoamiStore } from '@/stores';
 import {
@@ -21,17 +20,17 @@ const props = defineProps<{
   favoredId: string;
 }>();
 
-const isWideScreen = useIsWideScreen();
-
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-const listOptions = getWebFavoredListOptions(
-  whoami.value.hasNsfwAccess,
-  setting.value.favoriteCreateTimeFirst,
+const listOptions = computed(() =>
+  getWebFavoredListOptions(
+    whoami.value.hasNsfwAccess,
+    setting.value.favoriteCreateTimeFirst,
+  ),
 );
 
 const listValue = computed(
@@ -55,7 +54,10 @@ const { data: novelPage, error } = WebNovelRepo.useWebNovelFavoredList(
     type: listValue.value.类型,
     level: listValue.value.分级,
     translate: listValue.value.翻译,
-    sort: parseFavoredListValueSort(listOptions.排序, listValue.value.排序),
+    sort: parseFavoredListValueSort(
+      listOptions.value.排序,
+      listValue.value.排序,
+    ),
   }),
 );
 
@@ -70,82 +72,71 @@ const novelListRef = useTemplateRef('novelList');
 </script>
 
 <template>
-  <bookshelf-layout :menu-key="`web/${favoredId}`">
-    <div role="region" aria-label="网络小说收藏列表">
-      <n-flex style="margin-bottom: 24px">
-        <c-button
-          label="选择"
-          :icon="ChecklistOutlined"
-          @action="showControlPanel = !showControlPanel"
-        />
-        <bookshelf-list-button
-          v-if="!isWideScreen"
-          :menu-key="`web/${favoredId}`"
-        />
-      </n-flex>
-
-      <n-collapse-transition
-        :show="showControlPanel"
-        style="margin-bottom: 16px"
-      >
-        <bookshelf-web-control
-          :selected-novels="novelListRef?.selectedNovels ?? []"
-          :favored-id="favoredId"
-          @select-all="novelListRef?.selectAll()"
-          @invert-selection="novelListRef?.invertSelection()"
-        />
-      </n-collapse-transition>
-
-      <ListFilter
-        :options="listOptions"
-        :value="listValue"
-        @update:value="onUpdateListValue(listOptions, $event)"
-      />
-
-      <XPagination
-        v-if="pageCount > 1"
-        class="mt-6"
-        :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
-        :page="page"
-        :total-pages="pageCount"
-        @update:page="onUpdatePage"
-      />
-
-      <XSeparator
-        :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }"
-      />
-
-      <NovelListSkeleton
-        v-if="!novelPage && !error"
-        :simple="!setting.showTagInWebFavored"
-      />
-      <XError
-        v-else-if="!novelPage && error"
-        title="加载错误"
-        :description="error.message"
-      />
-      <XEmpty
-        v-else-if="novelPage && novelPage.items.length === 0"
-        class="mt-3"
-        title="空列表"
-        size="compact"
-      />
-      <template v-else-if="novelPage">
-        <NovelListWeb
-          ref="novelList"
-          :items="novelPage.items"
-          :selectable="showControlPanel"
-          :simple="!setting.showTagInWebFavored"
-        />
-      </template>
-
-      <XPagination
-        v-if="pageCount > 1"
-        :page="page"
-        :total-pages="pageCount"
-        keyboard="window"
-        @update:page="onUpdatePage"
+  <div role="region" aria-label="网络小说收藏列表">
+    <div class="mb-6">
+      <c-button
+        label="选择"
+        :icon="ChecklistOutlined"
+        @action="showControlPanel = !showControlPanel"
       />
     </div>
-  </bookshelf-layout>
+
+    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+      <bookshelf-web-control
+        :selected-novels="novelListRef?.selectedNovels ?? []"
+        :favored-id="favoredId"
+        @select-all="novelListRef?.selectAll()"
+        @invert-selection="novelListRef?.invertSelection()"
+      />
+    </n-collapse-transition>
+
+    <ListFilter
+      :options="listOptions"
+      :value="listValue"
+      @update:value="onUpdateListValue(listOptions, $event)"
+    />
+
+    <XPagination
+      v-if="pageCount > 1"
+      class="mt-6"
+      :ui="{ root: 'border-t-0 p-0 sm:px-0' }"
+      :page="page"
+      :total-pages="pageCount"
+      @update:page="onUpdatePage"
+    />
+
+    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+
+    <NovelListSkeleton
+      v-if="!novelPage && !error"
+      :simple="!setting.showTagInWebFavored"
+    />
+    <XError
+      v-else-if="!novelPage && error"
+      title="加载错误"
+      :description="error.message"
+    />
+    <XEmpty
+      v-else-if="novelPage && novelPage.items.length === 0"
+      class="mt-3"
+      title="空列表"
+      size="compact"
+    />
+    <template v-else-if="novelPage">
+      <NovelListWeb
+        ref="novelList"
+        :items="novelPage.items"
+        :selectable="showControlPanel"
+        :simple="!setting.showTagInWebFavored"
+      />
+    </template>
+
+    <XPagination
+      v-if="pageCount > 1"
+      :page="page"
+      :total-pages="pageCount"
+      keyboard="window"
+      @update:page="onUpdatePage"
+    />
+  </div>
 </template>

@@ -51,7 +51,7 @@ const query = (url: string) => {
     />
     <div class="relative z-10 h-full bg-black/10">
       <div
-        class="layout-content max-w-200! pt-5 pb-12.5 max-[600px]:pt-2.5 max-[600px]:pb-8.75"
+        class="mx-auto w-full max-w-200! px-3 pt-5 pb-12.5 sm:px-8 max-[600px]:pt-2.5 max-[600px]:pb-8.75"
       >
         <h1
           class="banner-title mt-7 mb-5 text-center text-[clamp(1.5rem,7vw,3em)] font-semibold text-white"
