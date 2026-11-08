@@ -13,45 +13,14 @@
     <meta name="renderer" content="webkit" />
     <meta name="force-rendering" content="webkit" />
     <meta name="theme-color" content="white" />
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-QD8MZ90XFJ"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-      gtag('config', 'G-QD8MZ90XFJ');
-    </script>
-    <script>
-      // vite bug, see https://github.com/vitejs/vite/discussions/15794
-      if (!('hasOwn' in Object)) {
-        Object.hasOwn = Object.call.bind(Object.hasOwnProperty);
-      }
-    </script>
   </head>
   <body>
     <div id="app">
-      <div id="fallback-error"></div>
+      <pre
+        id="fallback-error"
+        style="white-space: pre-wrap; overflow-wrap: anywhere"
+      ></pre>
     </div>
-    <script>
-      window.onerror = function (msg, url, line, col) {
-        if (String(msg).includes('ResizeObserver loop')) {
-          return true;
-        }
-
-        // Vue 挂载后会替换 #app 的内容，只在挂载前显示错误。
-        var fallback = document.getElementById('fallback-error');
-        if (fallback) {
-          var div = document.createElement('div');
-          div.innerText = `Error: ${line}:${col} ${msg} ${url}`;
-          fallback.appendChild(div);
-        }
-        return false;
-      };
-    </script>
     <script type="module" src="/src/main.ts"></script>
     <noscript>本页面需要浏览器启用JavaScript</noscript>
   </body>

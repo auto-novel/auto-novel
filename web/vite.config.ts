@@ -1,5 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
-import { themeBootstrapPlugin } from '@novelia/web-kit/vite';
+import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
 import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';
 import path from 'path';
@@ -185,7 +185,7 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       vue(),
       tailwindcss(),
-      themeBootstrapPlugin(),
+      htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),
       createHtmlPlugin({
         minify: { minifyJS: true },
       }),
