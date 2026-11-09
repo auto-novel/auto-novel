@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { WebUtil } from '@/util/web';
+import { formatSearchTag } from '@/util/search-query';
 
 const props = defineProps<{
   providerId: string;
@@ -23,7 +24,10 @@ const pointTag = computed(() => {
   return `${pointText} PT`;
 });
 
-const buildTagQuery = (tag: string) => `/novel?query=${tag}\$`;
+const buildTagQuery = (tag: string) => ({
+  path: '/novel',
+  query: { query: formatSearchTag(tag) },
+});
 </script>
 
 <template>

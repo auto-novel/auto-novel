@@ -11,6 +11,7 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import util.parseSearchQuery
 import util.serialName
 
 class WebNovelEsDataSource(
@@ -100,12 +101,13 @@ class WebNovelEsDataSource(
                 val allAttentions = WebNovelAttention.entries.map { it.serialName() }
                 val queryWords = mutableListOf<String>()
                 userQuery
-                    ?.split(" ")
+                    ?.let(::parseSearchQuery)
                     ?.forEach { token ->
-                        if (token.startsWith('>') || token.startsWith('<')) {
-                            token.substring(1).toUIntOrNull()?.toInt()?.let { number ->
+                        val rawToken = token.raw
+                        if (rawToken.startsWith('>') || rawToken.startsWith('<')) {
+                            rawToken.substring(1).toUIntOrNull()?.toInt()?.let { number ->
                                 mustQueries.add(range(WebNovelMetadataEsModel::tocSize) {
-                                    if (token.startsWith('>')) {
+                                    if (rawToken.startsWith('>')) {
                                         gt = number
                                     } else {
                                         lt = number
@@ -115,17 +117,16 @@ class WebNovelEsDataSource(
                             }
                         }
 
-                        if (token.endsWith('$')) {
-                            val rawToken = token.removePrefix("-").removeSuffix("$")
+                        if (token.tag != null) {
                             val queries =
-                                if (token.startsWith("-")) mustNotQueries
+                                if (token.excluded) mustNotQueries
                                 else mustQueries
                             val field =
-                                if (allAttentions.contains(rawToken)) WebNovelMetadataEsModel::attentions
+                                if (allAttentions.contains(token.tag)) WebNovelMetadataEsModel::attentions
                                 else WebNovelMetadataEsModel::keywords
-                            queries.add(term(field, rawToken))
+                            queries.add(term(field, token.tag))
                         } else {
-                            queryWords.add(token)
+                            queryWords.add(rawToken)
                         }
                     }
 

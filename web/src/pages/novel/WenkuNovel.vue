@@ -18,6 +18,7 @@ import NovelBottomTabs from '@/pages/novel/components/NovelBottomTabs.vue';
 import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
 import { useSettingStore, useWhoamiStore } from '@/stores';
+import { formatSearchTag } from '@/util/search-query';
 import NovelDetailSkeleton from './components/NovelDetailSkeleton.vue';
 
 const { novelId } = defineProps<{ novelId: string }>();
@@ -52,7 +53,10 @@ const deleteVolume = (volumeId: string) =>
     error: (reason) => getApiErrorMessage(reason, '删除失败'),
   }).catch(() => {});
 
-const buildSearchLink = (tag: string) => `/wenku?query="${tag}"`;
+const buildSearchLink = (tag: string) => ({
+  path: '/wenku',
+  query: { query: `"${tag}"` },
+});
 
 const showWebNovelsModal = ref(false);
 
@@ -207,7 +211,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         <router-link
           v-for="keyword of novel.keywords"
           :key="keyword"
-          :to="`/wenku?query=${keyword}\$`"
+          :to="{ path: '/wenku', query: { query: formatSearchTag(keyword) } }"
         >
           <novel-tag :tag="keyword" />
         </router-link>

@@ -5,6 +5,7 @@ import { createReusableTemplate } from '@vueuse/core';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 import { FavoredRepo } from '@/stores';
 import { WebUtil } from '@/util/web';
+import { formatSearchTag } from '@/util/search-query';
 
 const favoredStore = FavoredRepo.useFavoredStore();
 const { favoreds } = storeToRefs(favoredStore);
@@ -77,7 +78,9 @@ defineExpose({
 
 <template>
   <DefineTag v-slot="{ tag, isAttention }">
-    <router-link :to="`/novel?query=${tag}\$`">
+    <router-link
+      :to="{ path: '/novel', query: { query: formatSearchTag(tag) } }"
+    >
       <n-text depth="3">
         <component :is="isAttention ? 'b' : 'span'">
           {{ isAttention ? tag : WebUtil.tryTranslateKeyword(tag) }}

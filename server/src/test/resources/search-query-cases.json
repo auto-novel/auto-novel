@@ -1,0 +1,88 @@
+[
+  {
+    "name": "unquoted full-width tags",
+    "input": "西洋$ ＥＳＮ大賞６受賞作$",
+    "tokens": [
+      ["西洋$", "西洋", false],
+      ["ＥＳＮ大賞６受賞作$", "ＥＳＮ大賞６受賞作", false]
+    ]
+  },
+  {
+    "name": "mixed quoted and unquoted tags",
+    "input": "\"西洋\"$ \"ＥＳＮ大賞６受賞作\"$ 女主人公$",
+    "tokens": [
+      ["\"西洋\"$", "西洋", false],
+      ["\"ＥＳＮ大賞６受賞作\"$", "ＥＳＮ大賞６受賞作", false],
+      ["女主人公$", "女主人公", false]
+    ]
+  },
+  {
+    "name": "spaces and exclusion",
+    "input": "\"AA BB\"$ -\"CC DD\"$ \"-女主人公\"$",
+    "tokens": [
+      ["\"AA BB\"$", "AA BB", false],
+      ["-\"CC DD\"$", "CC DD", true],
+      ["\"-女主人公\"$", "-女主人公", false]
+    ]
+  },
+  {
+    "name": "full-text syntax stays opaque",
+    "input": "author:\"AA BB\" \"AA BB\" (foo|bar) +baz -qux >100 <200",
+    "tokens": [
+      ["author:\"AA BB\"", null, false],
+      ["\"AA BB\"", null, false],
+      ["(foo|bar)", null, false],
+      ["+baz", null, false],
+      ["-qux", null, false],
+      [">100", null, false],
+      ["<200", null, false]
+    ]
+  },
+  {
+    "name": "punctuation and quoted dollars are literal",
+    "input": "为什么?$ \"为什么？ A+B|C(Ｄ)&x=#%\"$ \"价格$上涨\"$ \"AA$ BB\"",
+    "tokens": [
+      ["为什么?$", "为什么?", false],
+      ["\"为什么？ A+B|C(Ｄ)&x=#%\"$", "为什么？ A+B|C(Ｄ)&x=#%", false],
+      ["\"价格$上涨\"$", "价格$上涨", false],
+      ["\"AA$ BB\"", null, false]
+    ]
+  },
+  {
+    "name": "quotes backslashes and unknown escapes",
+    "input": "\"A \\\"B\\\" C\\\\D\"$ \"C:\\books\\?\"$ AA\\\" BB$",
+    "tokens": [
+      ["\"A \\\"B\\\" C\\\\D\"$", "A \"B\" C\\D", false],
+      ["\"C:\\books\\?\"$", "C:\\books\\?", false],
+      ["AA\\\"", null, false],
+      ["BB$", "BB", false]
+    ]
+  },
+  {
+    "name": "only whitespace outside quotes separates tokens",
+    "input": " \t西洋$　\n\"A　B\tC\nD\"$\r 女主人公$  ",
+    "tokens": [
+      ["西洋$", "西洋", false],
+      ["\"A　B\tC\nD\"$", "A　B\tC\nD", false],
+      ["女主人公$", "女主人公", false]
+    ]
+  },
+  {
+    "name": "empty query",
+    "input": "",
+    "tokens": []
+  },
+  {
+    "name": "whitespace-only query",
+    "input": " \t\n　",
+    "tokens": []
+  },
+  {
+    "name": "unclosed quote consumes the remaining input",
+    "input": "西洋$ author:\"AA BB 女主人公$",
+    "tokens": [
+      ["西洋$", "西洋", false],
+      ["author:\"AA BB 女主人公$", null, false]
+    ]
+  }
+]

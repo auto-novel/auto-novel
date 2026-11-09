@@ -1,4 +1,5 @@
 import { useLocalStorage } from '@/util';
+import { parseSearchQuery } from '@/util/search-query';
 import { LSKey } from './key';
 
 interface SearchHistory {
@@ -15,13 +16,13 @@ const useSearchHistoryStore = (key: string) => {
 
     const addHistory = (query: string) => {
       query = query.trim();
-      const parts = query.split(' ');
+      const parts = parseSearchQuery(query);
 
       if (query === '' || parts.length === 0) {
         return;
       }
 
-      const tags = parts.filter((it) => it.endsWith('$'));
+      const tags = parts.filter((it) => it.tag !== null).map((it) => it.raw);
       tags.forEach((part) => {
         const inHistory = ref.value.tags.find((it) => it.tag === part);
         if (inHistory === undefined) {
