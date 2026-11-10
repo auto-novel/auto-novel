@@ -40,7 +40,7 @@ const cache = {
   invalidateQueries: vi.fn(async () => {}),
   remove: vi.fn((entry: Entry) => entries.splice(entries.indexOf(entry), 1)),
 };
-vi.mock('../src/repos/cache', () => ({ cache }));
+vi.mock('../src/repos/cache', () => ({ getQueryCache: () => cache }));
 const { CommentRepo: repo } = await import('../src/repos/useComment');
 const comment = (id: number, authorId = 7): Comment => ({
   id,
