@@ -27,7 +27,7 @@ const buildTagQuery = (tag: string) => `/novel?query=${tag}\$`;
 </script>
 
 <template>
-  <n-flex :size="[4, 4]">
+  <div class="flex flex-wrap justify-start gap-1">
     <NovelTag v-if="pointTag" type="success" :tag="pointTag" strong />
 
     <router-link
@@ -45,5 +45,5 @@ const buildTagQuery = (tag: string) => `/novel?query=${tag}\$`;
     >
       <NovelTag :tag="WebUtil.tryTranslateKeyword(keyword)" />
     </router-link>
-  </n-flex>
+  </div>
 </template>

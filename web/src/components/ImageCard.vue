@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <n-flex :size="0" vertical>
+  <div class="flex flex-col flex-nowrap justify-start gap-0">
     <img
       :src="src ? src : externalImageUrls.wenkuCoverPlaceholder"
       alt="cover"
@@ -31,5 +31,5 @@ defineProps<{
         {{ title }}
       </n-text>
     </div>
-  </n-flex>
+  </div>
 </template>

@@ -142,7 +142,9 @@ const closePreview = () => {
         <div
           class="flex min-w-0 flex-1 flex-col gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-1"
         >
-          <n-flex align="center" :wrap="false">
+          <div
+            class="flex flex-nowrap justify-start items-center gap-x-3 gap-y-2"
+          >
             <div class="min-w-0 flex-1 truncate text-[14px]">
               {{ job.description }}
             </div>
@@ -183,7 +185,7 @@ const closePreview = () => {
                 @action="emit('delete', job.task)"
               />
             </div>
-          </n-flex>
+          </div>
           <task-link :task="job.task" />
           <span v-if="error" class="text-xs text-error-text">
             初始化失败：{{ error }}

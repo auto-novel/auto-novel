@@ -219,8 +219,10 @@ defineExpose({
 
 <template>
   <div class="novel-glossary-editor">
-    <n-flex vertical size="large" style="max-width: 500px; margin-bottom: 16px">
-      <n-h3 prefix="bar">编辑术语表</n-h3>
+    <div
+      class="mb-4 flex max-w-125 flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
+    >
+      <h3 class="heading-bar">编辑术语表</h3>
       <template v-if="gnidHint">
         <n-text style="font-size: 12px">{{ gnidHint }}</n-text>
 
@@ -258,7 +260,7 @@ defineExpose({
         :rows="1"
       />
 
-      <n-flex align="center" :wrap="false">
+      <div class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2">
         <c-button
           label="导出"
           :round="false"
@@ -286,9 +288,9 @@ defineExpose({
           size="small"
           @action="clearTerm"
         />
-      </n-flex>
+      </div>
 
-      <n-flex align="center" :wrap="false">
+      <div class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2">
         <c-button
           :disabled="deletedTerms.length === 0"
           label="撤销删除"
@@ -303,8 +305,8 @@ defineExpose({
         >
           {{ lastDeletedTerm }}
         </n-text>
-      </n-flex>
-    </n-flex>
+      </div>
+    </div>
 
     <n-scrollbar
       v-if="Object.keys(glossary).length !== 0"
@@ -338,9 +340,9 @@ defineExpose({
       </n-table>
     </n-scrollbar>
 
-    <n-flex justify="end" style="max-width: 500px">
+    <div class="flex max-w-125 flex-wrap justify-end gap-x-3 gap-y-2">
       <c-button label="提交" type="primary" @action="submitGlossary()" />
-    </n-flex>
+    </div>
 
     <XConfirmDialog
       :open="showConfirmModal"

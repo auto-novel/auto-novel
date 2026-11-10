@@ -205,17 +205,17 @@ const onRuleModalCloseAutoFocus = async () => {
     title="上传须知"
     v-model:open="showRuleModal"
     @close-auto-focus="onRuleModalCloseAutoFocus"
-    class="w-[600px]"
+    class="w-150"
   >
     <n-p>在上传小说之前，请务必遵守以下规则。</n-p>
-    <n-ul>
-      <n-li>
+    <ul class="content-list">
+      <li>
         日文章节上传前请确定里面有文本，单卷书压缩包超40MB里面大概率只有扫图无文本，这种是无法翻译的。
-      </n-li>
-      <n-li>EPUB文件大小超过40MB无法上传，请压缩里面的图片。</n-li>
-      <n-li>不要上传已存在的分卷，现存的分卷有问题请联系管理员。</n-li>
-      <n-li>分卷文件名应当只包含日文标题、卷数、分卷日文标题。</n-li>
-    </n-ul>
+      </li>
+      <li>EPUB文件大小超过40MB无法上传，请压缩里面的图片。</li>
+      <li>不要上传已存在的分卷，现存的分卷有问题请联系管理员。</li>
+      <li>分卷文件名应当只包含日文标题、卷数、分卷日文标题。</li>
+    </ul>
     <n-p>由于文库小说还在开发中，规则也会变化，务必留意。</n-p>
 
     <template #footer>

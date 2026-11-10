@@ -23,9 +23,9 @@ const convertAll = () =>
 </script>
 
 <template>
-  <n-flex vertical>
-    <n-flex>
+  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+    <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
       <c-button label="转换" size="small" @action="convertAll" />
-    </n-flex>
-  </n-flex>
+    </div>
+  </div>
 </template>

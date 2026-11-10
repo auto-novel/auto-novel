@@ -92,7 +92,7 @@ defineExpose({
       v-for="item of items"
       :key="`${item.providerId}/${item.novelId}`"
     >
-      <n-flex vertical :size="0">
+      <div class="flex flex-col flex-nowrap justify-start gap-0">
         <c-a :to="`/novel/${item.providerId}/${item.novelId}`">
           {{ item.titleJp }}
         </c-a>
@@ -150,7 +150,7 @@ defineExpose({
             看过 /
           </template>
         </n-text>
-      </n-flex>
+      </div>
 
       <slot name="action" v-bind="item" />
 

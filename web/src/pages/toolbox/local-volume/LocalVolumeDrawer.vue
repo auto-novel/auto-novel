@@ -7,6 +7,8 @@ import {
   XDrawer,
   XSelect,
   XDialog,
+  XEmpty,
+  XSeparator,
 } from '@novelia/web-kit';
 import { FileDownloadOutlined, MoreVertOutlined } from '@vicons/material';
 
@@ -152,7 +154,7 @@ const sortedVolumes = computed(() => {
 
     <n-scrollbar trigger="none" class="min-h-0 flex-1">
       <div style="padding: 24px 16px">
-        <n-flex vertical>
+        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
           <c-action-wrapper title="搜索">
             <search-input
               v-model:value="search"
@@ -177,15 +179,17 @@ const sortedVolumes = computed(() => {
             />
           </c-action-wrapper>
           <slot name="extra" />
-        </n-flex>
+        </div>
 
-        <n-divider style="margin: 16px 0 8px" />
+        <XSeparator style="margin: 16px 0 8px" />
 
         <n-spin v-if="sortedVolumes === undefined" style="margin-top: 20px" />
 
-        <n-empty
+        <XEmpty
+          size="compact"
+          class="min-h-0 p-0"
           v-else-if="sortedVolumes.length === 0"
-          description="没有文件"
+          title="没有文件"
           style="margin-top: 20px"
         />
 

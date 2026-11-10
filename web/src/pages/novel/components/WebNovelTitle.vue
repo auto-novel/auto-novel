@@ -15,11 +15,11 @@ const displayTitle = computed(() => props.titleZh ?? props.titleJp);
 
 <template>
   <div style="margin: 0 0 18px">
-    <n-h3 prefix="bar" style="margin: 0 0 4px">
+    <h3 class="heading-bar" style="margin: 0 0 4px">
       <n-a :href="WebUtil.buildNovelUrl(providerId, novelId)">
         {{ displayTitle }}
       </n-a>
-    </n-h3>
+    </h3>
     <n-text
       v-if="titleZh"
       depth="3"

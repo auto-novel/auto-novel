@@ -10,7 +10,7 @@ const isSakura = computed(() => props.translatorId === 'sakura');
 <template>
   <bulletin>
     <template v-if="isSakura">
-      <n-flex>
+      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
         <n-a
           :href="forumPostUrls.sakuraDeployGuide"
           target="_blank"
@@ -44,10 +44,10 @@ const isSakura = computed(() => props.translatorId === 'sakura');
         >
           共享 Sakura 当前负载
         </n-a>
-      </n-flex>
+      </div>
       <n-p>允许上传的模型如下，禁止一切试图突破上传检查的操作。</n-p>
-      <n-ul>
-        <n-li v-for="({ repo }, model) in allowModels" :key="model">
+      <ul class="content-list">
+        <li v-for="({ repo }, model) in allowModels" :key="model">
           [
           <n-a
             :href="`https://huggingface.co/${repo}/blob/main/${model}.gguf`"
@@ -66,11 +66,11 @@ const isSakura = computed(() => props.translatorId === 'sakura');
           </n-a>
           ]
           {{ model }}
-        </n-li>
-      </n-ul>
+        </li>
+      </ul>
     </template>
     <template v-else>
-      <n-flex>
+      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
         <n-a
           :href="forumPostUrls.usageGuide"
           target="_blank"
@@ -94,7 +94,7 @@ const isSakura = computed(() => props.translatorId === 'sakura');
         >
           DeepSeek API
         </n-a>
-      </n-flex>
+      </div>
       <n-p>本地小说支持韩语等其他语种，网络小说/文库小说暂时只允许日语。</n-p>
     </template>
   </bulletin>

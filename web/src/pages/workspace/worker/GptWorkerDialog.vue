@@ -642,10 +642,13 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
     </n-form>
 
     <template #footer>
-      <n-flex v-if="props.worker === undefined" :size="12">
+      <div
+        class="flex flex-wrap justify-start gap-3"
+        v-if="props.worker === undefined"
+      >
         <c-button label="添加并继续" @action="submitAndContinue" />
         <c-button label="添加" type="primary" @action="submit" />
-      </n-flex>
+      </div>
       <c-button v-else label="更新" type="primary" @action="submit" />
     </template>
   </XDialog>

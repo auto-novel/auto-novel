@@ -1,5 +1,7 @@
 <template>
-  <n-layout style="width: 100%; min-height: 100vh">
+  <div
+    class="relative min-h-screen w-full flex-auto overflow-hidden bg-body text-ink"
+  >
     <router-view name="reader" />
-  </n-layout>
+  </div>
 </template>

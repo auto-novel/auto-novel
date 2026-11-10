@@ -78,7 +78,7 @@ const showListModal = ref(false);
   <XPage>
     <XPageHeader title="小说处理" />
 
-    <n-flex>
+    <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
       <div>
         <n-upload
           :show-file-list="false"
@@ -101,13 +101,13 @@ const showListModal = ref(false);
         :icon="DeleteOutlineOutlined"
         @action="clearFile"
       />
-    </n-flex>
+    </div>
 
-    <n-flex vertical style="margin-top: 16px">
+    <div class="mt-4 flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
       <n-text v-for="file of files" :key="file.name">
         <file-card :file="file" @delete="removeFile(file.name)" />
       </n-text>
-    </n-flex>
+    </div>
 
     <n-tabs type="segment" animated style="margin-top: 48px">
       <n-tab-pane name="0" tab="术语表">

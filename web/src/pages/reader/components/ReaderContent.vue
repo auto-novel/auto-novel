@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XSeparator } from '@novelia/web-kit';
 import { useOsTheme } from 'naive-ui';
 
 import type { GenericNovelId } from '@/model/Common';
@@ -71,13 +72,13 @@ const chapterHref = computed(() => {
 
 <template>
   <div class="chapter" data-chapter :data-id="chapterId">
-    <n-h4 class="chapter-title">
+    <h4 class="chapter-title">
       <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
       <br />
       <n-text depth="3">{{ chapter.titleZh }}</n-text>
       <br />
-    </n-h4>
-    <n-divider />
+    </h4>
+    <XSeparator class="my-6" />
 
     <n-alert v-if="emptyHint" type="info" :show-icon="false">
       {{ emptyHint }}详见
@@ -138,6 +139,9 @@ const chapterHref = computed(() => {
   font-weight: v-bind('readerSetting.fontWeight');
 }
 .chapter-title {
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 500;
   display: inline-block;
   padding: 24px 0 0 0;
   margin: 0;

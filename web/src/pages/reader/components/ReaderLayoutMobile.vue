@@ -85,14 +85,8 @@ const onGlobalClick = (event: MouseEvent) => {
     side="bottom"
     @open-auto-focus.prevent
   >
-    <n-flex
-      :size="0"
-      style="
-        width: 100%;
-        margin-top: 4px;
-        margin-bottom: 4px;
-        padding-bottom: env(safe-area-inset-bottom);
-      "
+    <div
+      class="my-1 flex w-full flex-wrap justify-start gap-0 pb-[env(safe-area-inset-bottom)]"
     >
       <div style="flex: 1 1 0px">
         <side-button
@@ -140,6 +134,6 @@ const onGlobalClick = (event: MouseEvent) => {
           style="width: 100%"
         />
       </div>
-    </n-flex>
+    </div>
   </XDrawer>
 </template>

@@ -11,7 +11,7 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
 </script>
 
 <template>
-  <n-flex style="margin-bottom: 24px">
+  <div class="mb-6 flex flex-wrap justify-start gap-x-3 gap-y-2">
     <c-button
       label="选择"
       :icon="ChecklistOutlined"
@@ -20,7 +20,7 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
     <div>
       <bookshelf-local-add-button :favored-id="favoredId" />
     </div>
-  </n-flex>
+  </div>
 
   <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
     <bookshelf-local-control

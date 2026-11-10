@@ -6,6 +6,7 @@ import {
   getApiErrorMessage,
   XPage,
   XPageHeader,
+  XSeparator,
 } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
@@ -396,23 +397,23 @@ const levelOptions = [
       <n-text type="error">
         <b>创建文库小说注意事项：</b>
       </n-text>
-      <n-ul>
-        <n-li>
+      <ul class="content-list">
+        <li>
           请先安装机翻站扩展以启用智能导入功能，另外自动机翻简介功能要求你能使用有道机翻。
-        </n-li>
-        <n-li>
+        </li>
+        <li>
           文库小说只允许已经发行单行本的日语小说，原则上以亚马逊上可以买到为准，系列小说不要分开导入。
-        </n-li>
-        <n-li>
+        </li>
+        <li>
           在导入栏输入亚马逊系列/单本链接直接导入，或是输入小说日文主标题搜索导入。
-        </n-li>
-        <n-li>
+        </li>
+        <li>
           导入R18书需要注册机翻站满一个月、使用日本IP，并在亚马逊上点过“已满18岁”。
-        </n-li>
-      </n-ul>
+        </li>
+      </ul>
     </n-card>
 
-    <n-flex style="margin-bottom: 48px; width: 100%">
+    <div class="mb-12 flex w-full flex-wrap justify-start gap-x-3 gap-y-2">
       <div v-if="isWideScreen">
         <n-image
           width="160"
@@ -425,7 +426,9 @@ const levelOptions = [
         />
       </div>
 
-      <n-flex size="large" vertical style="flex: auto">
+      <div
+        class="flex flex-auto flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
+      >
         <n-input-group>
           <n-input
             v-model:value="amazonUrl"
@@ -439,7 +442,7 @@ const levelOptions = [
             @action="populateNovelFromAmazon(amazonUrl, false)"
           />
         </n-input-group>
-        <n-flex>
+        <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
           <c-button
             label="在亚马逊搜索"
             secondary
@@ -461,9 +464,9 @@ const levelOptions = [
             label="标记重复"
             @action="markAsDuplicate"
           />
-        </n-flex>
-      </n-flex>
-    </n-flex>
+        </div>
+      </div>
+    </div>
 
     <n-form
       ref="form"
@@ -493,7 +496,7 @@ const levelOptions = [
       </n-form-item-row>
 
       <n-form-item-row path="cover" label="封面链接">
-        <n-space vertical :size="6" style="width: 100%">
+        <div class="flex w-full flex-col gap-1.5">
           <n-input
             v-model:value="formValue.cover"
             placeholder="请输入封面链接"
@@ -502,7 +505,7 @@ const levelOptions = [
           <n-text depth="3" type="warning">
             <b>* 如果已经有封面就不要修改，其他人会认不出来</b>
           </n-text>
-        </n-space>
+        </div>
       </n-form-item-row>
 
       <n-form-item-row path="authors" label="作者">
@@ -551,7 +554,7 @@ const levelOptions = [
             v-for="group of presetKeywords.groups"
             :key="group.title"
           >
-            <n-flex size="small">
+            <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
               <n-tag :bordered="false" size="small">
                 <b>{{ group.title }}</b>
               </n-tag>
@@ -567,7 +570,7 @@ const levelOptions = [
               >
                 {{ keyword }}
               </n-tag>
-            </n-flex>
+            </div>
           </n-list-item>
         </n-list>
       </n-form-item-row>
@@ -607,7 +610,7 @@ const levelOptions = [
                 </template>
 
                 <template #header-extra>
-                  <n-flex :size="6" :wrap="false">
+                  <div class="flex flex-nowrap justify-start gap-1.5">
                     <c-icon-button
                       tooltip="置顶"
                       :icon="KeyboardDoubleArrowUpOutlined"
@@ -626,11 +629,13 @@ const levelOptions = [
                       type="error"
                       @action="deleteVolume(volume.asin)"
                     />
-                  </n-flex>
+                  </div>
                 </template>
 
                 <template #description>
-                  <n-flex align="center" :size="0" :wrap="false">
+                  <div
+                    class="flex flex-nowrap justify-start items-center gap-0"
+                  >
                     <n-text style="word-break: keep-all; font-size: 12px">
                       标题：
                     </n-text>
@@ -641,7 +646,7 @@ const levelOptions = [
                       size="small"
                       style="font-size: 12px"
                     />
-                  </n-flex>
+                  </div>
                   <n-text style="font-size: 12px">
                     缩略：{{ volume.cover }}
                     <br />
@@ -666,7 +671,7 @@ const levelOptions = [
       </n-form-item-row>
     </n-form>
 
-    <n-divider />
+    <XSeparator class="my-6" />
 
     <div v-if="novelId" class="submit-action">
       <XButton
@@ -693,19 +698,21 @@ const levelOptions = [
           自动搜索关键词：
           <b>{{ similarQuery }}</b>
         </p>
-        <p v-if="similarNovels !== null">
+        <div v-if="similarNovels !== null" class="my-[1em]">
           <template v-if="similarNovels.length === 0">没有相似的小说</template>
-          <n-grid v-else :x-gap="12" :y-gap="12" cols="3 600:6">
-            <n-grid-item v-for="item in similarNovels" :key="item.id">
-              <router-link :to="`/wenku/${item.id}`">
-                <ImageCard
-                  :src="item.cover"
-                  :title="item.titleZh ? item.titleZh : item.title"
-                />
-              </router-link>
-            </n-grid-item>
-          </n-grid>
-        </p>
+          <div v-else class="@container w-full">
+            <div class="grid grid-cols-3 gap-3 @[600px]:grid-cols-6">
+              <div v-for="item in similarNovels" :key="item.id" class="min-w-0">
+                <router-link :to="`/wenku/${item.id}`">
+                  <ImageCard
+                    :src="item.cover"
+                    :title="item.titleZh ? item.titleZh : item.title"
+                  />
+                </router-link>
+              </div>
+            </div>
+          </div>
+        </div>
         <div v-if="submitCurrentStep === 1" class="flex flex-wrap gap-3">
           <XButton
             color="warning"
@@ -771,7 +778,7 @@ const levelOptions = [
     <n-p>
       下面是一些标签的具体解释。注意，同一个标签在一般向和R18下可能存在区别。
     </n-p>
-    <n-divider />
+    <XSeparator class="my-6" />
     <n-p v-for="row of presetKeywords.explanations" :key="row.word">
       <b>{{ row.word }}</b>
       <br />

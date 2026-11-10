@@ -16,7 +16,7 @@ const showPreviewModal = ref(false);
 </script>
 
 <template>
-  <n-flex :size="4" aign="center" style="font-size: 12px" :wrap="false">
+  <div class="flex flex-nowrap items-center justify-start gap-1 text-[12px]">
     <c-icon-button
       tooltip="预览"
       :icon="RemoveRedEyeOutlined"
@@ -34,7 +34,7 @@ const showPreviewModal = ref(false);
       @action="emit('delete')"
     />
     <n-text>{{ file.name }}</n-text>
-  </n-flex>
+  </div>
 
   <XDialog
     title="预览（前100行）"

@@ -23,13 +23,15 @@ const router = useRouter();
 </script>
 
 <template>
-  <n-flex :wrap="false">
+  <div class="flex flex-nowrap justify-start gap-x-3 gap-y-2">
     <div style="flex: auto">
       <slot />
     </div>
 
     <div style="flex: 0 0 0">
-      <n-flex size="large" vertical style="position: fixed; bottom: 20px">
+      <div
+        class="fixed bottom-5 flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
+      >
         <side-button
           :disabled="!chapter.prevId"
           text="上一章"
@@ -58,7 +60,7 @@ const router = useRouter();
           :icon="TuneOutlined"
           @click="emit('requireSettingModal')"
         />
-      </n-flex>
+      </div>
     </div>
-  </n-flex>
+  </div>
 </template>

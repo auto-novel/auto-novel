@@ -135,7 +135,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex vertical style="margin-top: 8px">
+  <div class="mt-2 flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <n-text>
       总计 {{ total }} / 有道 {{ youdao }} / GPT {{ gpt }} / Sakura
       {{ sakura }}
@@ -164,7 +164,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         :show-filename-type="true"
       />
     </n-button-group>
-  </n-flex>
+  </div>
 
   <div style="margin: 28px" />
 
@@ -178,9 +178,9 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     :gnid="GenericNovelId.web(providerId, novelId)"
   />
 
-  <n-flex
+  <div
+    class="mt-4 flex flex-wrap justify-start gap-x-3 gap-y-2"
     v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0"
-    style="margin-top: 16px"
   >
     <c-button label="导入工作区" :round="false" @action="importToWorkspace" />
 
@@ -204,7 +204,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         @action="submitJob('sakura')"
       />
     </n-button-group>
-  </n-flex>
+  </div>
 
   <TranslateTask
     ref="translateTask"

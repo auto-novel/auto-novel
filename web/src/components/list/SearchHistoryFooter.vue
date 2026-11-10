@@ -8,7 +8,7 @@ const emits = defineEmits<{
 </script>
 
 <template>
-  <n-flex :size="[4, 4]" align="center" style="width: 100%; padding: 8px 12px">
+  <div class="flex w-full flex-wrap items-center justify-start gap-1 px-3 py-2">
     <n-tag
       v-for="tag in tags"
       :key="tag"
@@ -19,5 +19,5 @@ const emits = defineEmits<{
     >
       {{ tag }}
     </n-tag>
-  </n-flex>
+  </div>
 </template>

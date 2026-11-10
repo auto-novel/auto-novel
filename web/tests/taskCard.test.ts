@@ -15,12 +15,6 @@ vi.mock('naive-ui', async () => {
         () =>
           h('section', [slots.header?.(), slots.default?.()]),
     }),
-    NFlex: defineComponent({
-      setup:
-        (_, { slots }) =>
-        () =>
-          h('div', slots.default?.()),
-    }),
   };
 });
 vi.mock('@/pages/workspace/task/ChapterGrid.vue', () => ({

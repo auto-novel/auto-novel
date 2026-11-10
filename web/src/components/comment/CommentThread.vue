@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XButton, XError, XSkeleton } from '@novelia/web-kit';
+import { XButton, XError, XPagination, XSkeleton } from '@novelia/web-kit';
 
 import type { Comment } from '@novelia/web-kit';
 import { CommentRepo } from '@/repos';
@@ -83,11 +83,10 @@ const pageCount = computed(() =>
         >
           <slot v-if="replyToId === reply.id" />
         </CommentItem>
-        <n-pagination
+        <XPagination
           v-if="pageCount > 1"
           v-model:page="page"
-          :page-count="pageCount"
-          :page-slot="7"
+          :total-pages="pageCount"
         />
       </template>
     </div>

@@ -10,6 +10,53 @@
   --color-spoiler-ink: #ffffff;
 }
 
+/* 原生内容排版使用 web-kit 语义色，不依赖 Naive UI 的主题变量。 */
+@layer components {
+  .content-list {
+    margin: 0;
+    padding: 0 0 0 2em;
+    list-style-type: disc;
+    color: var(--color-ink);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .content-list > li {
+    margin: 0.25em 0 0;
+  }
+
+  .heading-bar {
+    position: relative;
+    margin: 28px 0 20px;
+    color: var(--color-ink);
+    font-weight: 500;
+  }
+
+  h2.heading-bar {
+    padding-left: 16px;
+    font-size: 22px;
+  }
+
+  h3.heading-bar {
+    padding-left: 12px;
+    font-size: 18px;
+  }
+
+  .heading-bar::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    border-radius: 1.5px;
+    background-color: var(--color-primary);
+    content: '';
+  }
+
+  h2.heading-bar::before {
+    width: 4px;
+    border-radius: 2px;
+  }
+}
+
 @layer base {
   :root[data-theme='dark'] {
     --color-spoiler: rgb(255 255 255 / 20%);

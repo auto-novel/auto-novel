@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog, XScrollArea } from '@novelia/web-kit';
+import { Toast, XDialog, XScrollArea, XEmpty } from '@novelia/web-kit';
 import { ImgComparisonSlider } from '@img-comparison-slider/vue';
 
 import { Humanize } from '@/util';
@@ -132,7 +132,7 @@ const showPreview = (image: EpubImage) => {
 </script>
 
 <template>
-  <n-flex vertical>
+  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <c-action-wrapper title="格式">
       <c-radio-group
         v-model:value="imageFormat"
@@ -172,7 +172,12 @@ const showPreview = (image: EpubImage) => {
 
     <template v-if="showDetail">
       <n-text>点击图片预览压缩效果</n-text>
-      <n-empty v-if="detailList.length === 0" description="未载入文件" />
+      <XEmpty
+        size="compact"
+        class="min-h-0 p-0"
+        v-if="detailList.length === 0"
+        title="未载入文件"
+      />
       <template v-for="detail of detailList" :key="detail.name">
         <n-text>
           [{{ Humanize.bytes(detail.size) }}
@@ -186,7 +191,7 @@ const showPreview = (image: EpubImage) => {
           class="mt-4"
         >
           <n-image-group show-toolbar-tooltip>
-            <n-flex :size="4" :wrap="false" style="margin-bottom: 16px">
+            <div class="mb-4 flex flex-nowrap justify-start gap-1">
               <n-image
                 v-for="image of detail.images"
                 :key="image.id"
@@ -197,7 +202,7 @@ const showPreview = (image: EpubImage) => {
                 style="border-radius: 2px"
                 @click="showPreview(image)"
               />
-            </n-flex>
+            </div>
           </n-image-group>
         </XScrollArea>
       </template>
@@ -223,5 +228,5 @@ const showPreview = (image: EpubImage) => {
         <!-- eslint-enable -->
       </img-comparison-slider>
     </XDialog>
-  </n-flex>
+  </div>
 </template>

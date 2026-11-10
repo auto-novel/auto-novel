@@ -197,9 +197,4 @@ const canReply = computed(() => {
 .comment-list :deep(.comment-body) {
   background-color: var(--color-embedded);
 }
-
-.comment-list :deep(.n-pagination) {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--color-divider);
-}
 </style>

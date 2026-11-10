@@ -117,7 +117,7 @@ const confirm = (key: string) => {
 </script>
 
 <template>
-  <CActionWrapper :title="label" size="large">
+  <CActionWrapper :title="label" size="medium">
     <n-dropdown
       :disabled="searchHistoryOptions.length === 0"
       :show="showSuggestions"

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, getApiErrorMessage } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XSeparator } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -132,7 +132,7 @@ const progressFilterFunc = computed(() => {
         :gnid="GenericNovelId.local('')"
         :glossary="{}"
       />
-      <n-divider style="margin: 12px 0" />
+      <XSeparator style="margin: 12px 0" />
       <c-action-wrapper title="状态">
         <c-radio-group
           v-model:value="progressFilter"
@@ -151,7 +151,7 @@ const progressFilterFunc = computed(() => {
     </template>
 
     <template #volume="volume">
-      <n-flex :size="4" vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-1">
         <n-text>{{ volume.id }}</n-text>
 
         <n-text depth="3">
@@ -161,7 +161,7 @@ const progressFilterFunc = computed(() => {
           {{ calculateExpired(volume) }}
         </n-text>
 
-        <n-flex :size="8">
+        <div class="flex flex-wrap justify-start gap-2">
           <c-button
             label="排队"
             size="tiny"
@@ -202,8 +202,8 @@ const progressFilterFunc = computed(() => {
             type="error"
             @action="deleteVolume(volume.id)"
           />
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
     </template>
   </local-volume-drawer>
 </template>

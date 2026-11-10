@@ -31,8 +31,8 @@ function invertSelection() {
 </script>
 
 <template>
-  <CActionWrapper :title="label" align="baseline" size="large">
-    <n-flex :size="[16, 4]">
+  <CActionWrapper :title="label" size="medium">
+    <div class="flex flex-wrap justify-start gap-x-4 gap-y-1">
       <n-text
         v-for="(tag, index) in option.tags"
         :key="tag"
@@ -51,6 +51,6 @@ function invertSelection() {
         text
         @click="invertSelection()"
       />
-    </n-flex>
+    </div>
   </CActionWrapper>
 </template>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XDialog } from '@novelia/web-kit';
+import { XDialog, XSeparator } from '@novelia/web-kit';
 
 import type { UnitDetailState } from '@/domain/translator';
 
@@ -118,7 +118,7 @@ const onUpdateShow = (val: boolean) => {
           ✕ {{ previewState.previewProgressStatus.failed }}
         </n-tag>
       </div>
-      <n-divider class="mx-0! my-1!" />
+      <XSeparator class="my-1" />
     </div>
 
     <div

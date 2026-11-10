@@ -191,10 +191,8 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
     style="max-width: 600px"
   >
     <n-scrollbar style="max-height: calc(80dvh - 140px)">
-      <n-flex
-        vertical
-        size="large"
-        style="max-width: 400px; margin-bottom: 16px"
+      <div
+        class="mb-4 flex max-w-100 flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
       >
         <template v-if="gnidHint">
           <n-text style="font-size: 12px">{{ gnidHint }}</n-text>
@@ -238,7 +236,9 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           :rows="1"
         />
 
-        <n-flex align="center" :wrap="false">
+        <div
+          class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2"
+        >
           <c-button
             label="导出"
             :round="false"
@@ -266,8 +266,10 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
             size="small"
             @action="clearTerm"
           />
-        </n-flex>
-        <n-flex align="center" :wrap="false">
+        </div>
+        <div
+          class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2"
+        >
           <c-button
             :disabled="deletedTerms.length === 0"
             label="撤销删除"
@@ -282,8 +284,8 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           >
             {{ lastDeletedTerm }}
           </n-text>
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
 
       <n-table
         v-if="Object.keys(glossary).length !== 0"
@@ -318,9 +320,9 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
       </n-table>
     </n-scrollbar>
 
-    <n-flex justify="end" style="margin-top: 16px">
+    <div class="mt-4 flex flex-wrap justify-end gap-x-3 gap-y-2">
       <c-button label="提交" type="primary" @action="submitGlossary()" />
-    </n-flex>
+    </div>
 
     <XDialog
       v-model:open="showConfirmModal"
@@ -328,7 +330,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
       style="max-width: 420px"
     >
       <n-text>检测到未保存的修改，确认关闭吗？</n-text>
-      <n-flex justify="end" style="margin-top: 16px">
+      <div class="mt-4 flex flex-wrap justify-end gap-x-3 gap-y-2">
         <c-button
           label="确认"
           type="warning"
@@ -341,7 +343,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           size="small"
           @action="handleConfirmCancel"
         />
-      </n-flex>
+      </div>
     </XDialog>
   </XDialog>
 </template>

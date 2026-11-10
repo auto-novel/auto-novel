@@ -50,12 +50,12 @@ defineExpose({
 </script>
 
 <template>
-  <n-flex vertical>
+  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <c-action-wrapper title="选项">
-      <n-flex size="small">
+      <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
         <XTooltip style="max-width: 200px">
           <template #trigger>
-            <n-flex :size="0" :wrap="false">
+            <div class="flex flex-nowrap justify-start gap-0">
               <tag-button
                 label="常规"
                 :checked="translateLevel === 'normal'"
@@ -79,7 +79,7 @@ defineExpose({
                 :checked="translateLevel === 'sync'"
                 @update:checked="translateLevel = 'sync'"
               />
-            </n-flex>
+            </div>
           </template>
           常规：只翻译未翻译的章节
           <br />
@@ -119,14 +119,14 @@ defineExpose({
         >
           <b>* 浏览器爬虫还处于测试阶段，翻译后务必检查结果</b>
         </n-text>
-      </n-flex>
+      </div>
     </c-action-wrapper>
 
     <c-action-wrapper
       v-if="gnid.type === 'web' || gnid.type === 'local'"
       title="范围"
     >
-      <n-flex style="text-align: center">
+      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2 text-center">
         <div>
           <n-input-group>
             <n-input-group-label size="small">从</n-input-group-label>
@@ -158,7 +158,7 @@ defineExpose({
           </template>
           章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。
         </XTooltip>
-      </n-flex>
+      </div>
     </c-action-wrapper>
-  </n-flex>
+  </div>
 </template>

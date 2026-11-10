@@ -145,13 +145,13 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex vertical size="large">
+  <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
     <bulletin>
       <n-p>术语表辅助制作工具正在开发中，当前方案分为识别和翻译两步。</n-p>
-      <n-ul>
-        <n-li>识别阶段：根据片假名词汇出现频率判断可能是术语的词汇。</n-li>
-        <n-li>翻译阶段：直接翻译日语词汇。</n-li>
-      </n-ul>
+      <ul class="content-list">
+        <li>识别阶段：根据片假名词汇出现频率判断可能是术语的词汇。</li>
+        <li>翻译阶段：直接翻译日语词汇。</li>
+      </ul>
       <n-p><b>注意，这是辅助制作，不是全自动生成，使用前务必检查结果。</b></n-p>
     </bulletin>
 
@@ -166,7 +166,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     </c-action-wrapper>
 
     <c-action-wrapper title="操作">
-      <n-flex vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
         <n-button-group size="small">
           <c-button
             label="复制术语表"
@@ -193,7 +193,9 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           />
         </n-button-group>
 
-        <n-flex align="center" :wrap="false">
+        <div
+          class="flex flex-nowrap justify-start items-center gap-x-3 gap-y-2"
+        >
           <c-button
             :disabled="katakanaDeleted.length === 0"
             label="撤销删除"
@@ -208,8 +210,8 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           >
             {{ lastDeletedHint }}
           </n-text>
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
     </c-action-wrapper>
 
     <n-scrollbar
@@ -251,7 +253,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
         </tr>
       </n-table>
     </n-scrollbar>
-  </n-flex>
+  </div>
 
   <XDialog
     title="选择Sakura翻译器"
@@ -259,7 +261,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     class="w-[600px]"
   >
     <n-radio-group v-model:value="selectedSakuraWorkerId">
-      <n-flex vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
         <n-radio
           v-for="worker of sakuraWorkspace.workers"
           :key="worker.id"
@@ -270,7 +272,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
             {{ worker.endpoint }}
           </n-text>
         </n-radio>
-      </n-flex>
+      </div>
     </n-radio-group>
   </XDialog>
 </template>

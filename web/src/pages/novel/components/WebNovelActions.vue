@@ -32,7 +32,7 @@ const startReadChapter = computed(() => {
 </script>
 
 <template>
-  <n-flex>
+  <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
     <router-link
       v-if="startReadChapter !== undefined"
       :to="`/novel/${providerId}/${novelId}/${startReadChapter.chapter.chapterId}`"
@@ -61,5 +61,5 @@ const startReadChapter = computed(() => {
     <router-link v-if="novel.wenkuId" :to="`/wenku/${novel.wenkuId}`">
       <c-button label="文库" :round="false" :icon="BookOutlined" />
     </router-link>
-  </n-flex>
+  </div>
 </template>

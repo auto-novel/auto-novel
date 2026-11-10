@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
-import { XError } from '@novelia/web-kit';
+import { XError, XSeparator } from '@novelia/web-kit';
 
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
@@ -323,11 +323,13 @@ onKeyDown(['Enter'], (e) => {
           :chapter-id="currentChapter.chapterId"
           :chapter="currentChapter"
         />
-        <n-divider />
-        <n-flex align="center" justify="space-between" style="width: 100%">
+        <XSeparator class="my-6" />
+        <div
+          class="flex w-full flex-wrap justify-between items-center gap-x-3 gap-y-2"
+        >
           <ReuseChapterLink :id="currentChapter.prevId" label="上一章" />
           <ReuseChapterLink :id="currentChapter.nextId" label="下一章" />
-        </n-flex>
+        </div>
       </template>
       <template
         v-else
@@ -346,7 +348,10 @@ onKeyDown(['Enter'], (e) => {
           :description="item.result.error.message"
         />
         <template v-else-if="item.chapter">
-          <n-divider v-if="idx > 0 && loadedChapters.length > 0" />
+          <XSeparator
+            v-if="idx > 0 && loadedChapters.length > 0"
+            class="my-6"
+          />
           <reader-content
             :gnid="gnid"
             :chapter-id="item.chapter.chapterId"

@@ -137,13 +137,15 @@ defineExpose({ startTask });
 
 <template>
   <c-task-card ref="cardRef" :title="title" :running="running">
-    <n-flex align="center" vertical size="large" style="flex: none">
+    <div
+      class="flex flex-none flex-col flex-nowrap items-center justify-start gap-x-4 gap-y-3"
+    >
       <n-progress type="circle" :percentage="percentage" />
       <n-text>
         成功 {{ chapterFinished }}/{{ chapterTotal ?? '-' }}
         <br />
         失败 {{ chapterError }}/{{ chapterTotal ?? '-' }}
       </n-text>
-    </n-flex>
+    </div>
   </c-task-card>
 </template>

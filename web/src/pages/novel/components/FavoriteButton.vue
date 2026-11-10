@@ -77,7 +77,7 @@ const selectedFavoredId = ref(props.favored ?? 'default');
 
   <XDialog v-model:open="showFavoredModal" title="收藏到..." class="w-[600px]">
     <n-radio-group v-model:value="selectedFavoredId">
-      <n-flex vertical size="large">
+      <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
         <n-radio
           v-for="favoredItem in favoreds"
           :key="favoredItem.id"
@@ -86,7 +86,7 @@ const selectedFavoredId = ref(props.favored ?? 'default');
           {{ favoredItem.title }}
         </n-radio>
         <n-radio key="deleted" value="deleted">取消收藏</n-radio>
-      </n-flex>
+      </div>
     </n-radio-group>
     <template #footer>
       <c-button

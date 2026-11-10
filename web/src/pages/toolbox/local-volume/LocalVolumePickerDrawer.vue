@@ -23,7 +23,7 @@ const deleteVolume = (volumeId: string) =>
 <template>
   <local-volume-drawer>
     <template #volume="volume">
-      <n-flex :size="4" vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-1">
         <n-text>{{ volume.id }}</n-text>
 
         <n-text depth="3">
@@ -32,7 +32,7 @@ const deleteVolume = (volumeId: string) =>
           {{ volume.toc.length }}
         </n-text>
 
-        <n-flex :size="8">
+        <div class="flex flex-wrap justify-start gap-2">
           <c-button
             label="载入"
             size="tiny"
@@ -58,8 +58,8 @@ const deleteVolume = (volumeId: string) =>
             type="error"
             @action="deleteVolume(volume.id)"
           />
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
     </template>
   </local-volume-drawer>
 </template>

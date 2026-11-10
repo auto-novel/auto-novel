@@ -79,8 +79,8 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex align="center" justify="space-between" :wrap="false">
-    <n-flex :size="4" vertical>
+  <div class="flex flex-nowrap justify-between items-center gap-x-3 gap-y-2">
+    <div class="flex flex-col flex-nowrap justify-start gap-1">
       <n-text>{{ volume.volumeId }}</n-text>
 
       <n-text depth="3">
@@ -88,7 +88,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         {{ volume.gpt }} / Sakura {{ volume.sakura }}
       </n-text>
 
-      <n-flex :size="8">
+      <div class="flex flex-wrap justify-start gap-2">
         <c-button
           v-if="setting.enabledTranslator.includes('youdao')"
           label="更新有道"
@@ -120,8 +120,8 @@ const submitJob = (id: 'gpt' | 'sakura') => {
           secondary
           @action="emit('delete')"
         />
-      </n-flex>
-    </n-flex>
+      </div>
+    </div>
 
     <c-button
       label="下载"
@@ -131,7 +131,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
       :download="file.filename"
       target="_blank"
     />
-  </n-flex>
+  </div>
 
   <TranslateTask
     ref="translateTask"

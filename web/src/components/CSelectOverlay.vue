@@ -3,8 +3,7 @@ const checked = defineModel<boolean>('checked', { default: false });
 </script>
 
 <template>
-  <n-el
-    tag="div"
+  <div
     :class="{
       overlay: true,
       'overlay-unselected': !checked,
@@ -24,9 +23,9 @@ const checked = defineModel<boolean>('checked', { default: false });
   border-radius: 2px;
 }
 .overlay-unselected:hover {
-  border: 1px dashed var(--text-color-3);
+  border: 1px dashed var(--color-muted);
 }
 .overlay-selected {
-  border: 2px solid var(--primary-color);
+  border: 2px solid var(--color-primary);
 }
 </style>

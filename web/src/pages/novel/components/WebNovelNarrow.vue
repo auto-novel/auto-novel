@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XDrawer } from '@novelia/web-kit';
+import { XDrawer, XSeparator } from '@novelia/web-kit';
 import {
   KeyboardArrowDownRound,
   KeyboardArrowUpRound,
@@ -54,7 +54,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     :novel="novel"
   />
 
-  <n-divider />
+  <XSeparator class="my-6" />
 
   <web-translate
     :provider-id="providerId"
@@ -69,7 +69,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     :glossary="novel.glossary"
   />
 
-  <n-divider />
+  <XSeparator class="my-6" />
 
   <template v-if="setting.tocCollapseInNarrowScreen">
     <ChapterTocItem

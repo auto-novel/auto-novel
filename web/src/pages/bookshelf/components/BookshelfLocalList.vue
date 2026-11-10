@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XEmpty, XSeparator } from '@novelia/web-kit';
 import { Setting, useSettingStore } from '@/stores';
 import {
   BookshelfLocalUtil,
@@ -73,7 +74,7 @@ defineExpose({
 </script>
 
 <template>
-  <n-flex vertical>
+  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <c-action-wrapper title="搜索">
       <search-input
         v-model:value="search"
@@ -88,9 +89,9 @@ defineExpose({
         :options="Setting.localVolumeOrderOptions"
       />
     </c-action-wrapper>
-  </n-flex>
+  </div>
 
-  <n-divider style="margin: 16px 0 8px" />
+  <XSeparator style="margin: 16px 0 8px" />
 
   <n-spin v-if="loading" description="正在加载" style="margin-top: 20px" />
 
@@ -100,15 +101,17 @@ defineExpose({
     title="加载失败"
     style="margin-top: 20px"
   >
-    <n-flex vertical>
+    <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
       <span>{{ loadError }}</span>
       <c-button label="重试" @action="loadVolumes" />
-    </n-flex>
+    </div>
   </n-alert>
 
-  <n-empty
+  <XEmpty
+    size="compact"
+    class="min-h-0 p-0"
     v-else-if="sortedVolumes.length === 0"
-    description="没有文件"
+    title="没有文件"
     style="margin-top: 20px"
   />
 

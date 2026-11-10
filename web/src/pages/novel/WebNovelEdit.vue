@@ -4,6 +4,7 @@ import {
   getApiErrorMessage,
   XPage,
   XPageHeader,
+  XSeparator,
 } from '@novelia/web-kit';
 import { UploadOutlined } from '@vicons/material';
 
@@ -138,7 +139,7 @@ const submit = async () => {
       </n-form-item>
     </n-form>
 
-    <n-h2 prefix="bar">目录</n-h2>
+    <h2 class="heading-bar">目录</h2>
     <n-p>
       <n-text type="error">
         注意，手动编辑目录可能会被其他人覆盖。如果你不满意目录的翻译，可以先用翻译器重翻试试。
@@ -166,7 +167,7 @@ const submit = async () => {
       </tr>
     </n-table>
 
-    <n-divider />
+    <XSeparator class="my-6" />
 
     <c-button
       label="提交"

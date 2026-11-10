@@ -32,7 +32,7 @@ const startTranslateTask = (translatorId: 'youdao') =>
 </script>
 
 <template>
-  <n-flex :size="4" vertical>
+  <div class="flex flex-col flex-nowrap justify-start gap-1">
     <c-a
       v-if="!volume.id.endsWith('.epub')"
       :to="`/workspace/reader/${encodeURIComponent(volume.id)}/0`"
@@ -46,7 +46,7 @@ const startTranslateTask = (translatorId: 'youdao') =>
       {{ sakura }}
     </n-text>
 
-    <n-flex :size="8">
+    <div class="flex flex-wrap justify-start gap-2">
       <c-button
         v-if="setting.enabledTranslator.includes('youdao')"
         label="更新有道"
@@ -60,8 +60,8 @@ const startTranslateTask = (translatorId: 'youdao') =>
         size="tiny"
         secondary
       />
-    </n-flex>
-  </n-flex>
+    </div>
+  </div>
   <TranslateTask
     ref="translateTask"
     style="margin-top: 20px"

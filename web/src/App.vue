@@ -117,9 +117,6 @@ li {
   overflow-wrap: break-word;
   word-break: break-word;
 }
-.n-h:first-child {
-  margin: var(--n-margin);
-}
 .text-2line {
   display: -webkit-box;
   -webkit-line-clamp: 2;

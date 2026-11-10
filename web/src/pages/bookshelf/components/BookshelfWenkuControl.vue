@@ -83,8 +83,10 @@ const moveToFavored = async () => {
 <template>
   <n-list bordered>
     <n-list-item>
-      <n-flex vertical>
-        <n-flex align="baseline">
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div
+          class="flex flex-wrap justify-start items-baseline gap-x-3 gap-y-2"
+        >
           <n-button-group size="small">
             <c-button
               label="全选"
@@ -119,17 +121,19 @@ const moveToFavored = async () => {
               <c-button label="确定" type="primary" @action="deleteSelected" />
             </template>
           </XDialog>
-        </n-flex>
+        </div>
         <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
-      </n-flex>
+      </div>
     </n-list-item>
 
     <n-list-item v-if="favoreds.wenku.length > 1">
-      <n-flex vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
-          <n-flex align="center">
+          <div
+            class="flex flex-wrap justify-start items-center gap-x-3 gap-y-2"
+          >
             <c-button
               label="移动"
               size="small"
@@ -144,9 +148,9 @@ const moveToFavored = async () => {
             >
               {{ favored.title }}
             </n-radio>
-          </n-flex>
+          </div>
         </n-radio-group>
-      </n-flex>
+      </div>
     </n-list-item>
   </n-list>
 </template>

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XSeparator } from '@novelia/web-kit';
 import { subjectKeys } from '@/api/commentSubject';
 import { GenericNovelId } from '@/model/Common';
 import type { WebNovelDto, WebNovelTocItemDto } from '@/model/WebNovel';
@@ -22,7 +23,7 @@ const { setting } = storeToRefs(settingStore);
     :novel="novel"
   />
 
-  <n-divider />
+  <XSeparator class="my-6" />
 
   <web-translate
     :provider-id="providerId"

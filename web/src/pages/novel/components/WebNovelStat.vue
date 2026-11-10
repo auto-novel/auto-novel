@@ -38,7 +38,7 @@ const exactVisited = computed(() =>
 </script>
 
 <template>
-  <n-flex class="metadata-stat" :size="[8, 8]" align="center">
+  <div class="metadata-stat flex flex-wrap justify-start items-center gap-2">
     <n-text>
       {{ type }}
     </n-text>
@@ -78,7 +78,7 @@ const exactVisited = computed(() =>
       </template>
       {{ exactVisited }}
     </n-tooltip>
-  </n-flex>
+  </div>
 </template>
 
 <style scoped>

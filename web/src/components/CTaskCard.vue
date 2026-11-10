@@ -69,7 +69,7 @@ defineExpose({
     :bordered="false"
   >
     <template #header-extra>
-      <n-flex align="center">
+      <div class="flex flex-wrap items-center justify-start gap-x-3 gap-y-2">
         <c-button
           :label="enableAutoScroll ? '暂停滚动' : '自动滚动'"
           size="small"
@@ -80,9 +80,9 @@ defineExpose({
           size="small"
           @action="expandLog = !expandLog"
         />
-      </n-flex>
+      </div>
     </template>
-    <n-flex :wrap="false">
+    <div class="flex flex-nowrap justify-start gap-x-3 gap-y-2">
       <n-scrollbar
         ref="logRef"
         style="flex: auto; white-space: pre-wrap"
@@ -96,7 +96,7 @@ defineExpose({
         </div>
       </n-scrollbar>
       <slot />
-    </n-flex>
+    </div>
 
     <XDialog
       v-model:open="showLogDetailModal"

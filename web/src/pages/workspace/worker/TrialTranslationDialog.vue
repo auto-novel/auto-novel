@@ -625,11 +625,9 @@ const handleOpenChange = (open: boolean) => {
             草稿自动保存
           </span>
         </div>
-        <n-flex
-          align="center"
-          :size="8"
-          :wrap="true"
-          :justify="isMobile ? 'start' : 'end'"
+        <div
+          class="flex flex-wrap items-center gap-2"
+          :class="isMobile ? 'justify-start' : 'justify-end'"
         >
           <c-button
             label="清空文本"
@@ -647,7 +645,7 @@ const handleOpenChange = (open: boolean) => {
             :disabled="!isBusy && !canTranslate"
             @action="onTranslateClick"
           />
-        </n-flex>
+        </div>
       </div>
     </template>
   </XDialog>

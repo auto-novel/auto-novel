@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast, XDialog, XTooltip } from '@novelia/web-kit';
 
 import { TranslateTaskDescriptor } from '@/domain/translator';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
@@ -139,8 +139,10 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
 <template>
   <n-list bordered>
     <n-list-item>
-      <n-flex vertical>
-        <n-flex align="baseline">
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div
+          class="flex flex-wrap justify-start items-baseline gap-x-3 gap-y-2"
+        >
           <n-button-group size="small">
             <c-button
               label="全选"
@@ -175,18 +177,20 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
               <c-button label="确定" type="primary" @action="deleteSelected" />
             </template>
           </XDialog>
-        </n-flex>
+        </div>
 
         <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
-      </n-flex>
+      </div>
     </n-list-item>
 
     <n-list-item v-if="favoreds.web.length > 1">
-      <n-flex vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
-          <n-flex align="center">
+          <div
+            class="flex flex-wrap justify-start items-center gap-x-3 gap-y-2"
+          >
             <c-button
               label="移动"
               size="small"
@@ -201,9 +205,9 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             >
               {{ favored.title }}
             </n-radio>
-          </n-flex>
+          </div>
         </n-radio-group>
-      </n-flex>
+      </div>
     </n-list-item>
 
     <n-list-item
@@ -212,13 +216,13 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
         setting.enabledTranslator.includes('sakura')
       "
     >
-      <n-flex vertical>
+      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
         <b>生成翻译任务</b>
 
-        <n-flex size="small">
-          <n-tooltip trigger="hover">
+        <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
+          <XTooltip>
             <template #trigger>
-              <n-flex :size="0" :wrap="false">
+              <div class="flex flex-nowrap justify-start gap-0">
                 <tag-button
                   label="常规"
                   :checked="translateLevel === 'normal'"
@@ -235,7 +239,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
                   :checked="translateLevel === 'all'"
                   @update:checked="translateLevel = 'all'"
                 />
-              </n-flex>
+              </div>
             </template>
             常规：只翻译未翻译的章节
             <br />
@@ -243,7 +247,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             <br />
             重翻：重翻全部章节
             <br />
-          </n-tooltip>
+          </XTooltip>
 
           <tag-button label="重翻目录" v-model:checked="forceMetadata" />
           <tag-button label="前5话" v-model:checked="first5" />
@@ -256,7 +260,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           >
             <b>* 请确保你知道自己在干啥，不要随便使用危险功能</b>
           </n-text>
-        </n-flex>
+        </div>
 
         <n-button-group size="small">
           <c-button
@@ -272,7 +276,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             @action="queueJobs('sakura')"
           />
         </n-button-group>
-      </n-flex>
+      </div>
     </n-list-item>
   </n-list>
 </template>
