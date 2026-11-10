@@ -33,26 +33,37 @@ export default defineConfig(({ command, mode }) => {
     build: {
       cssCodeSplit: false,
       rolldownOptions: {
+        preserveEntrySignatures: false,
         output: {
-          // 应用代码自动分包，保留 web-kit 和现有大依赖的独立分包规则。
-          manualChunks(id) {
-            const normalizedId = id.replaceAll('\\', '/');
-            if (normalizedId.includes('/node_modules/@novelia/web-kit/')) {
-              return 'web-kit';
-            }
-            if (normalizedId.includes('/node_modules/')) {
-              if (normalizedId.includes('/node_modules/@zip.js/')) {
-                return 'dep-zip';
-              }
-              if (normalizedId.includes('/node_modules/opencc-js/')) {
-                return 'dep-opencc';
-              }
-              if (normalizedId.includes('/node_modules/naive-ui/')) {
-                return 'dep-naive';
-              }
-              return 'vendor';
-            }
-            return undefined;
+          strictExecutionOrder: true,
+          codeSplitting: {
+            includeDependenciesRecursively: false,
+            groups: [
+              {
+                name: 'web-kit',
+                test: /\/node_modules\/@novelia\/web-kit\//,
+              },
+              {
+                name: 'dep-pi',
+                test: /\/node_modules\/(?:@earendil-works\/pi-ai|@anthropic-ai\/sdk|openai)\//,
+              },
+              {
+                name: 'dep-zip',
+                test: /\/node_modules\/@zip\.js\//,
+              },
+              {
+                name: 'dep-opencc',
+                test: /\/node_modules\/opencc-js\//,
+              },
+              {
+                name: 'dep-naive',
+                test: /\/node_modules\/naive-ui\//,
+              },
+              {
+                name: 'vendor',
+                test: /node_modules/,
+              },
+            ],
           },
         },
       },
