@@ -6,6 +6,7 @@ import {
   XMarkdownHelpDialog,
   getApiErrorMessage,
   Toast,
+  useMarkdownDraft,
 } from '@novelia/web-kit';
 
 import { forumUrl } from '@/config';
@@ -14,7 +15,6 @@ import { useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
   site: string;
-  draftId: string;
   parent?: number;
   placeholder?: string;
   replyTo?: Comment;
@@ -27,12 +27,30 @@ const emit = defineEmits<{
 }>();
 
 const { whoami } = storeToRefs(useWhoamiStore());
-const content = ref(
-  props.replyTo?.rootId != null &&
+const {
+  text: content,
+  restored,
+  clear: clearDraft,
+  prepareSubmission,
+} = useMarkdownDraft({
+  key: () => {
+    const userId = whoami.value.user?.id;
+    if (userId === undefined) return undefined;
+    return JSON.stringify([
+      'auto-novel',
+      'comment',
+      userId,
+      props.site,
+      props.replyTo?.id ?? props.parent ?? null,
+    ]);
+  },
+  initialValue: () =>
+    props.replyTo?.rootId != null &&
     props.replyTo.authorId !== whoami.value.user?.id
-    ? `@${props.replyTo.authorUsername} `
-    : '',
-);
+      ? `@${props.replyTo.authorUsername} `
+      : '',
+  maxAge: 3 * 24 * 60 * 60 * 1000,
+});
 const submitting = ref(false);
 const canSubmit = computed(
   () =>
@@ -47,6 +65,7 @@ const reply = async () => {
   if (!canSubmit.value) return;
   submitting.value = true;
   const viewer = whoami.value.user?.id;
+  const finishSubmission = prepareSubmission();
   await Toast.promise(
     CommentRepo.createComment(props.site, {
       content: content.value.trim(),
@@ -58,8 +77,8 @@ const reply = async () => {
     },
   )
     .then(() => {
-      if (viewer !== whoami.value.user?.id) return;
-      content.value = '';
+      const cleared = finishSubmission();
+      if (viewer !== whoami.value.user?.id || !cleared) return;
       emit('replied');
     })
     .catch(() => {});
@@ -70,9 +89,23 @@ const reply = async () => {
 <template>
   <div>
     <CommentRulesNotice :href="`${forumUrl}/rules`" class="mb-3" />
+    <div
+      v-if="restored"
+      class="mb-2 flex items-center gap-2 text-xs text-muted"
+    >
+      <span>已恢复草稿</span>
+      <XButton
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        :disabled="submitting || disabled"
+        @click="clearDraft()"
+      >
+        丢弃草稿
+      </XButton>
+    </div>
     <MarkdownEditor
       :disabled="submitting || disabled"
-      :draft-id="draftId"
       v-model:value="content"
       :placeholder="placeholder"
       :rows="4"

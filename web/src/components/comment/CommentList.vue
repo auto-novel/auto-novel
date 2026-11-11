@@ -10,7 +10,7 @@ import {
 
 import { CommentRepo } from '@/repos';
 import type { Comment } from '@novelia/web-kit';
-import { useDraftStore, useWhoamiStore } from '@/stores';
+import { useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
   site: string;
@@ -35,9 +35,6 @@ const pageCount = computed<number>((previous) => {
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
-const draftStore = useDraftStore();
-const draftId = `comment-${props.site}`;
-
 const showInput = ref(false);
 const replyTo = ref<Comment>();
 
@@ -52,8 +49,6 @@ watch(page, () => {
 function onReplied() {
   showInput.value = false;
   replyTo.value = undefined;
-  draftStore.cancelAddDraft();
-  draftStore.removeDraft(draftId);
 }
 
 function toggleInput() {
@@ -111,7 +106,6 @@ const canReply = computed(() => {
       :disabled="!canReply"
       class="border-b border-divider py-4"
       :site="site"
-      :draft-id="draftId"
       placeholder="发表评论"
       @replied="onReplied()"
       @cancel="cancelInput()"
@@ -165,7 +159,6 @@ const canReply = computed(() => {
             :key="replyTo.id"
             class="mt-3 pb-4"
             :site="site"
-            :draft-id="draftId"
             :parent="comment.id"
             :reply-to="replyTo"
             :disabled="!canReply"
