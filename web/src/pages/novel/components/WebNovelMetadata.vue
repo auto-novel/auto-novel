@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { XSeparator } from '@novelia/web-kit';
 import type { WebNovelDto } from '@/model/WebNovel';
 
 const props = defineProps<{
@@ -55,7 +54,7 @@ const latestChapterCreateAt = computed(() => {
     style="margin-top: 20px"
   />
 
-  <XSeparator class="my-6" />
+  <USeparator class="my-6" />
 
   <WebNovelStat
     :type="novel.type"

@@ -1,12 +1,6 @@
 <script lang="ts" setup>
-import {
-  XConfirmDialog,
-  XDropdownMenu,
-  XDropdownMenuItem,
-  XEmpty,
-  getApiErrorMessage,
-  Toast,
-} from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+import { XConfirmDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   MoreVertOutlined,
@@ -103,27 +97,30 @@ const hasStoppedWorkers = computed(() =>
         :icon="PlusOutlined"
         @action="showWorkerDialog = true"
       />
-      <XDropdownMenu v-if="workers.length" align="end">
-        <template #trigger>
-          <WorkspaceActionButton
-            label="更多翻译器操作"
-            :icon="MoreVertOutlined"
-            icon-only
-            title="更多翻译器操作"
-          />
-        </template>
-        <XDropdownMenuItem
-          :disabled="clearingCache"
-          @select="showClearCacheDialog = true"
-        >
-          <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
-          清空翻译缓存
-        </XDropdownMenuItem>
-      </XDropdownMenu>
+      <UDropdownMenu
+        v-if="workers.length"
+        :content="{ align: 'end' }"
+        :items="[
+          {
+            label: '清空翻译缓存',
+            disabled: clearingCache,
+            onSelect: () => {
+              showClearCacheDialog = true;
+            },
+          },
+        ]"
+      >
+        <WorkspaceActionButton
+          label="更多翻译器操作"
+          :icon="MoreVertOutlined"
+          icon-only
+          title="更多翻译器操作"
+        />
+      </UDropdownMenu>
     </div>
   </div>
 
-  <XEmpty v-if="workers.length === 0" title="没有翻译器" size="compact" />
+  <CEmpty v-if="workers.length === 0" title="没有翻译器" />
   <VueDraggable
     v-else
     v-model="workers"

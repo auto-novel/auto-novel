@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { XDrawer, XScrollArea, XSeparator } from '@novelia/web-kit';
 import {
   KeyboardArrowDownRound,
   KeyboardArrowUpRound,
@@ -53,7 +52,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     :novel="novel"
   />
 
-  <XSeparator class="my-6" />
+  <USeparator class="my-6" />
 
   <web-translate
     :provider-id="providerId"
@@ -68,7 +67,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     :glossary="novel.glossary"
   />
 
-  <XSeparator class="my-6" />
+  <USeparator class="my-6" />
 
   <template v-if="setting.tocCollapseInNarrowScreen">
     <ChapterTocItem
@@ -80,13 +79,16 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
       :is-separator="false"
       :is-special-chapter="true"
     />
-    <c-button
+    <UButton
+      color="neutral"
       v-if="novel.toc.length > 1"
-      secondary
-      label="展开目录"
-      @action="showCatalogDrawer = true"
       style="width: 100%"
-    />
+      variant="soft"
+      class="rounded-full"
+      @click="showCatalogDrawer = true"
+    >
+      展开目录
+    </UButton>
   </template>
   <template v-else>
     <div
@@ -98,24 +100,36 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
       "
     >
       <div style="flex: 1"></div>
-      <c-button
+      <UButton
+        color="neutral"
         v-if="hasSeparators"
-        :label="isAnyExpanded ? '折叠' : '展开'"
-        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-        quaternary
-        size="small"
-        :round="false"
-        @action="toggleAll"
+        size="sm"
         style="margin-right: 8px"
-      />
-      <c-button
-        :label="setting.tocSortReverse ? '倒序' : '正序'"
-        :icon="SortOutlined"
-        quaternary
-        size="small"
-        :round="false"
-        @action="setting.tocSortReverse = !setting.tocSortReverse"
-      />
+        variant="ghost"
+        class="text-sm/4"
+        @click="toggleAll"
+      >
+        <component
+          :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
+          class="size-4 shrink-0"
+          aria-hidden="true"
+        />
+        {{ isAnyExpanded ? '折叠' : '展开' }}
+      </UButton>
+      <UButton
+        color="neutral"
+        size="sm"
+        variant="ghost"
+        class="text-sm/4"
+        @click="setting.tocSortReverse = !setting.tocSortReverse"
+      >
+        <component
+          :is="SortOutlined"
+          class="size-4 shrink-0"
+          aria-hidden="true"
+        />
+        {{ setting.tocSortReverse ? '倒序' : '正序' }}
+      </UButton>
     </div>
     <n-card
       v-if="lastReadChapter !== undefined"
@@ -134,7 +148,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         :is-special-chapter="true"
       />
     </n-card>
-    <XScrollArea>
+    <UScrollArea>
       <ChapterTocList
         :toc-sections="tocSections"
         v-model:expanded-names="expandedNames"
@@ -149,57 +163,74 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
           collapse: false,
         }"
       />
-    </XScrollArea>
+    </UScrollArea>
   </template>
 
-  <XDrawer
+  <USlideover
     v-if="setting.tocCollapseInNarrowScreen && novel.toc.length > 1"
     v-model:open="showCatalogDrawer"
-    :size="320"
     title="目录"
-    show-header
+    :close="false"
     side="right"
-    @open-auto-focus.prevent
+    :content="{ onOpenAutoFocus: (event: Event) => event.preventDefault() }"
+    :ui="{
+      content: 'w-80 max-w-[calc(100vw-3rem)]',
+      body: 'flex min-h-0 flex-1 flex-col overflow-hidden p-0 sm:p-0',
+    }"
   >
-    <template #action>
-      <c-button
+    <template #actions>
+      <UButton
+        color="neutral"
         v-if="hasSeparators"
-        :label="isAnyExpanded ? '折叠' : '展开'"
-        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-        quaternary
-        size="small"
-        :round="false"
-        @action="toggleAll"
+        size="sm"
         style="margin-right: 8px"
-      />
-      <c-button
-        :label="setting.tocSortReverse ? '倒序' : '正序'"
-        :icon="SortOutlined"
-        quaternary
-        size="small"
-        :round="false"
-        @action="setting.tocSortReverse = !setting.tocSortReverse"
-      />
+        variant="ghost"
+        class="text-sm/4"
+        @click="toggleAll"
+      >
+        <component
+          :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
+          class="size-4 shrink-0"
+          aria-hidden="true"
+        />
+        {{ isAnyExpanded ? '折叠' : '展开' }}
+      </UButton>
+      <UButton
+        color="neutral"
+        size="sm"
+        variant="ghost"
+        class="text-sm/4"
+        @click="setting.tocSortReverse = !setting.tocSortReverse"
+      >
+        <component
+          :is="SortOutlined"
+          class="size-4 shrink-0"
+          aria-hidden="true"
+        />
+        {{ setting.tocSortReverse ? '倒序' : '正序' }}
+      </UButton>
     </template>
 
-    <div style="flex: 1; min-height: 0; padding: 16px 16px 16px 8px">
-      <ChapterTocList
-        :toc-sections="tocSections"
-        v-model:expanded-names="expandedNames"
-        :last-read-chapter-id="novel.lastReadChapterId"
-        :default-scroll-key="lastReadChapter?.key"
-        :provider-id="providerId"
-        :novel-id="novelId"
-        :sort-reverse="sortReverse"
-        :mode="{
-          narrow: true,
-          modal: false,
-          collapse: true,
-        }"
-        style="height: 100%"
-      />
-    </div>
-  </XDrawer>
+    <template #body>
+      <div style="flex: 1; min-height: 0; padding: 16px 16px 16px 8px">
+        <ChapterTocList
+          :toc-sections="tocSections"
+          v-model:expanded-names="expandedNames"
+          :last-read-chapter-id="novel.lastReadChapterId"
+          :default-scroll-key="lastReadChapter?.key"
+          :provider-id="providerId"
+          :novel-id="novelId"
+          :sort-reverse="sortReverse"
+          :mode="{
+            narrow: true,
+            modal: false,
+            collapse: true,
+          }"
+          style="height: 100%"
+        />
+      </div>
+    </template>
+  </USlideover>
 
   <NovelBottomTabs
     :gnid="GenericNovelId.web(providerId, novelId)"

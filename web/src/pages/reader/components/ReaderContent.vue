@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { XSeparator } from '@novelia/web-kit';
 import { useOsTheme } from 'naive-ui';
 
 import type { GenericNovelId } from '@/model/Common';
@@ -78,7 +77,7 @@ const chapterHref = computed(() => {
       <n-text depth="3">{{ chapter.titleZh }}</n-text>
       <br />
     </h4>
-    <XSeparator class="my-6" />
+    <USeparator class="my-6" />
 
     <n-alert v-if="emptyHint" type="info" :show-icon="false">
       {{ emptyHint }}详见

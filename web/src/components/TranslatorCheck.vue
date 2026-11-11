@@ -38,22 +38,25 @@ const calculateTranslatorOrderLabel = (id: TranslatorId) => {
 </script>
 
 <template>
-  <n-button-group>
-    <n-button
+  <UFieldGroup>
+    <UButton
       v-for="option in translationOptions"
       :key="option.value"
-      :focusable="false"
-      ghost
-      :type="value.includes(option.value) ? 'primary' : 'default'"
+      :tabindex="-1"
+      variant="outline"
+      :color="value.includes(option.value) ? 'primary' : 'neutral'"
+      :aria-pressed="value.includes(option.value)"
       :value="option.value"
       @click="toggleTranslator(option.value)"
       :style="twoLine ? { height: '48px' } : {}"
     >
-      {{ option.label }}
-      <template v-if="showOrder === true">
-        <br v-if="twoLine" />
-        {{ calculateTranslatorOrderLabel(option.value) }}
-      </template>
-    </n-button>
-  </n-button-group>
+      <span>
+        {{ option.label }}
+        <template v-if="showOrder === true">
+          <br v-if="twoLine" />
+          {{ calculateTranslatorOrderLabel(option.value) }}
+        </template>
+      </span>
+    </UButton>
+  </UFieldGroup>
 </template>

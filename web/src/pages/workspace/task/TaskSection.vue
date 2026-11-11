@@ -1,10 +1,6 @@
 <script lang="ts" setup>
-import {
-  XConfirmDialog,
-  XDropdownMenu,
-  XDropdownMenuItem,
-  XEmpty,
-} from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+import { XConfirmDialog } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   MoreVertOutlined,
@@ -95,24 +91,29 @@ const hasFailedTasks = computed(() =>
         :disabled="!completedJobs.length"
         @action="deleteMode = 'completed'"
       />
-      <XDropdownMenu v-if="jobs.length" align="end">
-        <template #trigger>
-          <WorkspaceActionButton
-            label="更多任务操作"
-            :icon="MoreVertOutlined"
-            icon-only
-            title="更多任务操作"
-          />
-        </template>
-        <XDropdownMenuItem @select="deleteMode = 'all'">
-          <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
-          清空队列
-        </XDropdownMenuItem>
-      </XDropdownMenu>
+      <UDropdownMenu
+        v-if="jobs.length"
+        :content="{ align: 'end' }"
+        :items="[
+          {
+            label: '清空队列',
+            onSelect: () => {
+              deleteMode = 'all';
+            },
+          },
+        ]"
+      >
+        <WorkspaceActionButton
+          label="更多任务操作"
+          :icon="MoreVertOutlined"
+          icon-only
+          title="更多任务操作"
+        />
+      </UDropdownMenu>
     </div>
   </div>
 
-  <XEmpty v-if="jobs.length === 0" title="没有任务" size="compact" />
+  <CEmpty v-if="jobs.length === 0" title="没有任务" />
   <TransitionGroup v-else name="task-reorder" tag="div" class="flex flex-col">
     <div
       v-for="(job, index) of jobs"

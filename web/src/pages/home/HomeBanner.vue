@@ -67,9 +67,14 @@ const query = (url: string) => {
             @keyup.enter="query(url)"
             class="bg-body!"
           />
-          <n-button size="large" type="primary" @click="query(url)">
+          <UButton
+            size="xl"
+            color="primary"
+            class="rounded-l-none"
+            @click="query(url)"
+          >
             搜索
-          </n-button>
+          </UButton>
         </n-input-group>
       </div>
       <button
@@ -82,9 +87,8 @@ const query = (url: string) => {
         aria-label="切换下一张背景"
         @click="nextBanner"
       >
-        <n-icon
-          :component="RefreshOutlined"
-          :size="18"
+        <RefreshOutlined
+          class="size-4.5 shrink-0"
           :class="{ 'animate-spin motion-reduce:animate-none': switching }"
           aria-hidden="true"
         />

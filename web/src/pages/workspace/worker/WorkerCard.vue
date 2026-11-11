@@ -178,7 +178,7 @@ const testWorker = async () => {
           :tooltip="running ? '请先停止翻译器后再删除' : '删除'"
           :icon="DeleteOutlineOutlined"
           :disabled="running"
-          color="danger"
+          color="error"
           icon-only
           @action="emit('delete', worker.id)"
         />

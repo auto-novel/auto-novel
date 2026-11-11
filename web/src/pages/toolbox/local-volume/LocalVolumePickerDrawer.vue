@@ -33,30 +33,34 @@ const deleteVolume = (volumeId: string) =>
         </n-text>
 
         <div class="flex flex-wrap justify-start gap-2">
-          <c-button
-            label="载入"
-            size="tiny"
-            secondary
-            @action="$emit('volumeLoaded', volume.id)"
-          />
+          <UButton
+            color="neutral"
+            size="xs"
+            variant="soft"
+            class="rounded-full"
+            @click="$emit('volumeLoaded', volume.id)"
+          >
+            载入
+          </UButton>
 
           <glossary-button
             :gnid="GenericNovelId.local(volume.id)"
             :value="volume.glossary"
-            size="tiny"
-            secondary
+            size="xs"
+            variant="soft"
           />
 
           <div style="flex: 1" />
 
-          <c-button-confirm
+          <ConfirmActionButton
+            aria-label="删除"
             :hint="`真的要删除《${volume.id}》吗？`"
+            size="xs"
+            color="error"
+            variant="soft"
             :icon="DeleteOutlineOutlined"
-            size="tiny"
-            secondary
-            circle
-            type="error"
-            @action="deleteVolume(volume.id)"
+            square
+            :action="() => deleteVolume(volume.id)"
           />
         </div>
       </div>

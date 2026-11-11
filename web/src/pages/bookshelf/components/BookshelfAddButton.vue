@@ -1,7 +1,8 @@
 <script lang="ts" setup>
+import { useRequireLogin } from '@/util/useRequireLogin';
 import { PlusOutlined } from '@vicons/material';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import { XDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
+import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 
 import { FavoredRepo } from '@/stores';
 
@@ -47,46 +48,66 @@ const addFavorite = async () => {
     })
     .catch(() => {});
 };
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
-  <c-button label="新建" :icon="PlusOutlined" @action="showAddModal = true" />
+  <UButton
+    color="neutral"
+    variant="outline"
+    class="rounded-full"
+    @click="showAddModal = true"
+  >
+    <component
+      :is="PlusOutlined"
+      class="size-4.5 shrink-0"
+      aria-hidden="true"
+    />
+    新建
+  </UButton>
 
-  <XDialog title="新建收藏夹" v-model:open="showAddModal" class="w-[600px]">
-    <n-form
-      ref="form"
-      :model="formValue"
-      :rules="formRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row label="标题" path="title">
-        <n-input
-          v-model:value="formValue.title"
-          placeholder="收藏夹标题"
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
+  <UModal
+    title="新建收藏夹"
+    v-model:open="showAddModal"
+    class="w-[600px]"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+  >
+    <template #body>
+      <n-form
+        ref="form"
+        :model="formValue"
+        :rules="formRules"
+        label-placement="left"
+        label-width="auto"
+      >
+        <n-form-item-row label="标题" path="title">
+          <n-input
+            v-model:value="formValue.title"
+            placeholder="收藏夹标题"
+            :input-props="{ spellcheck: false }"
+          />
+        </n-form-item-row>
 
-      <n-form-item-row label="类型">
-        <c-radio-group
-          v-model:value="formValue.type"
-          :options="[
-            { label: '网页小说', value: 'web' },
-            { label: '文库小说', value: 'wenku' },
-            { label: '本地小说', value: 'local' },
-          ]"
-        />
-      </n-form-item-row>
-    </n-form>
-
-    <template #footer>
-      <c-button
-        label="确定"
-        require-login
-        type="primary"
-        @action="addFavorite"
-      />
+        <n-form-item-row label="类型">
+          <c-radio-group
+            v-model:value="formValue.type"
+            :options="[
+              { label: '网页小说', value: 'web' },
+              { label: '文库小说', value: 'wenku' },
+              { label: '本地小说', value: 'local' },
+            ]"
+          />
+        </n-form-item-row>
+      </n-form>
     </template>
-  </XDialog>
+    <template #footer>
+      <ActionButton
+        color="primary"
+        :action="requireLogin(addFavorite)"
+        variant="solid"
+      >
+        确定
+      </ActionButton>
+    </template>
+  </UModal>
 </template>

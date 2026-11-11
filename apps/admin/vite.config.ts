@@ -1,5 +1,7 @@
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
-import tailwindcss from '@tailwindcss/vite';
+// Bundle this TypeScript preset instead of externalizing it for Node to load.
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/nuxt-ui/index.ts';
+import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, URL } from 'node:url';
@@ -88,7 +90,7 @@ export default defineConfig(({ command, mode }) => {
       __BUILD_TIME__: JSON.stringify(buildTime),
       __COMMIT_SHA__: JSON.stringify(commitSha),
     },
-    plugins: [htmlBootstrapPlugin(), vue(), tailwindcss()],
+    plugins: [htmlBootstrapPlugin(), vue(), ui(webKitNuxtUiOptions)],
     build: { cssCodeSplit: false },
     optimizeDeps: {
       exclude: ['@novelia/web-kit'],

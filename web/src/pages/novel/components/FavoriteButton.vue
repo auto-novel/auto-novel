@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+import { useRequireLogin } from '@/util/useRequireLogin';
 import { FavoriteBorderOutlined, FavoriteOutlined } from '@vicons/material';
-import { XDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
+import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 
 import { FavoredRepo } from '@/stores';
 
@@ -43,62 +44,86 @@ const unfavoriteNovel = async () => {
 
 const showFavoredModal = ref(false);
 const selectedFavoredId = ref(props.favored ?? 'default');
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
   <template v-if="favoreds.length <= 1">
-    <c-button
+    <ActionButton
       v-if="favored && favoredTitle"
-      label="已收藏"
-      :round="false"
-      :icon="FavoriteOutlined"
-      require-login
-      @action="unfavoriteNovel"
-    />
-    <c-button
+      class="rounded-md"
+      :action="requireLogin(unfavoriteNovel)"
+    >
+      <component
+        :is="FavoriteOutlined"
+        class="size-4.5 shrink-0 group-aria-busy:hidden"
+        aria-hidden="true"
+      />
+      已收藏
+    </ActionButton>
+    <ActionButton
       v-else
-      label="收藏"
-      :round="false"
-      :icon="FavoriteBorderOutlined"
-      require-login
-      @action="favoriteNovel(favoreds[0].id)"
-    />
+      class="rounded-md"
+      :action="requireLogin(() => favoriteNovel(favoreds[0].id))"
+    >
+      <component
+        :is="FavoriteBorderOutlined"
+        class="size-4.5 shrink-0 group-aria-busy:hidden"
+        aria-hidden="true"
+      />
+      收藏
+    </ActionButton>
   </template>
 
   <template v-else>
-    <c-button
-      :label="favored && favoredTitle ? '已收藏:' + favoredTitle : '收藏'"
-      :round="false"
-      :icon="favored ? FavoriteOutlined : FavoriteBorderOutlined"
-      require-login
-      @action="showFavoredModal = true"
-    />
+    <UButton
+      color="neutral"
+      variant="outline"
+      @click="requireLogin(() => (showFavoredModal = true))()"
+    >
+      <component
+        :is="favored ? FavoriteOutlined : FavoriteBorderOutlined"
+        class="size-4.5 shrink-0"
+        aria-hidden="true"
+      />
+      {{ favored && favoredTitle ? '已收藏:' + favoredTitle : '收藏' }}
+    </UButton>
   </template>
 
-  <XDialog v-model:open="showFavoredModal" title="收藏到..." class="w-[600px]">
-    <n-radio-group v-model:value="selectedFavoredId">
-      <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
-        <n-radio
-          v-for="favoredItem in favoreds"
-          :key="favoredItem.id"
-          :value="favoredItem.id"
-        >
-          {{ favoredItem.title }}
-        </n-radio>
-        <n-radio key="deleted" value="deleted">取消收藏</n-radio>
-      </div>
-    </n-radio-group>
-    <template #footer>
-      <c-button
-        label="确定"
-        require-login
-        type="primary"
-        @action="
-          selectedFavoredId === 'deleted'
-            ? unfavoriteNovel()
-            : favoriteNovel(selectedFavoredId)
-        "
-      />
+  <UModal
+    v-model:open="showFavoredModal"
+    title="收藏到..."
+    class="w-[600px]"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+  >
+    <template #body>
+      <n-radio-group v-model:value="selectedFavoredId">
+        <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
+          <n-radio
+            v-for="favoredItem in favoreds"
+            :key="favoredItem.id"
+            :value="favoredItem.id"
+          >
+            {{ favoredItem.title }}
+          </n-radio>
+          <n-radio key="deleted" value="deleted">取消收藏</n-radio>
+        </div>
+      </n-radio-group>
     </template>
-  </XDialog>
+    <template #footer>
+      <ActionButton
+        color="primary"
+        :action="
+          requireLogin(() =>
+            selectedFavoredId === 'deleted'
+              ? unfavoriteNovel()
+              : favoriteNovel(selectedFavoredId),
+          )
+        "
+        variant="solid"
+      >
+        确定
+      </ActionButton>
+    </template>
+  </UModal>
 </template>

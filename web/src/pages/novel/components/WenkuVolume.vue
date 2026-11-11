@@ -89,48 +89,57 @@ const submitJob = (id: 'gpt' | 'sakura') => {
       </n-text>
 
       <div class="flex flex-wrap justify-start gap-2">
-        <c-button
+        <ActionButton
           v-if="setting.enabledTranslator.includes('youdao')"
-          label="更新有道"
-          size="tiny"
-          secondary
-          @action="startTranslateTask('youdao')"
-        />
+          size="xs"
+          variant="soft"
+          :action="() => startTranslateTask('youdao')"
+        >
+          更新有道
+        </ActionButton>
 
-        <c-button
+        <ActionButton
           v-if="setting.enabledTranslator.includes('gpt')"
-          label="排队GPT"
-          size="tiny"
-          secondary
-          @action="submitJob('gpt')"
-        />
-        <c-button
+          size="xs"
+          variant="soft"
+          :action="() => submitJob('gpt')"
+        >
+          排队GPT
+        </ActionButton>
+        <ActionButton
           v-if="setting.enabledTranslator.includes('sakura')"
-          label="排队Sakura"
-          size="tiny"
-          secondary
-          @action="submitJob('sakura')"
-        />
-        <c-button-confirm
+          size="xs"
+          variant="soft"
+          :action="() => submitJob('sakura')"
+        >
+          排队Sakura
+        </ActionButton>
+        <ConfirmActionButton
           v-if="whoami.asAdmin"
           :hint="`真的要删除《${volume.volumeId}》吗？`"
+          color="error"
+          size="xs"
+          variant="soft"
           label="删除"
-          type="error"
-          size="tiny"
-          secondary
-          @action="emit('delete')"
+          :action="() => emit('delete')"
         />
       </div>
     </div>
 
-    <c-button
-      label="下载"
-      :icon="FileDownloadOutlined"
-      tag="a"
+    <UButton
+      color="neutral"
+      variant="outline"
       :href="hasTranslation ? file.url : undefined"
       :download="file.filename"
       target="_blank"
-    />
+    >
+      <component
+        :is="FileDownloadOutlined"
+        class="size-4.5 shrink-0"
+        aria-hidden="true"
+      />
+      下载
+    </UButton>
   </div>
 
   <TranslateTask

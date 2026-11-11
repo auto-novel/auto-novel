@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { XButton, XTooltip } from '@novelia/web-kit';
-import type { XColor } from '@novelia/web-kit';
+import type { ButtonProps } from '@nuxt/ui';
 import type { Component } from 'vue';
 
 withDefaults(
@@ -9,7 +8,7 @@ withDefaults(
     icon: Component;
     tooltip?: string;
     iconOnly?: boolean;
-    color?: XColor;
+    color?: ButtonProps['color'];
     disabled?: boolean;
     onAction?: () => unknown;
   }>(),
@@ -22,42 +21,40 @@ withDefaults(
 </script>
 
 <template>
-  <XTooltip v-if="tooltip">
-    <template #trigger>
-      <span class="inline-flex shrink-0">
-        <XButton
-          :color="color"
-          variant="soft"
-          class="group shrink-0 whitespace-nowrap rounded-full"
-          :class="iconOnly ? 'size-5.5 p-0 text-xs' : 'px-2.5'"
-          :size="iconOnly ? 'icon-xs' : 'tiny'"
-          :aria-label="label"
-          :disabled="disabled"
-          loading-auto
-          @click="onAction?.()"
-        >
-          <component
-            :is="icon"
-            class="size-3.5 shrink-0 group-aria-busy:hidden"
-            aria-hidden="true"
-          />
-          <template v-if="!iconOnly">{{ label }}</template>
-        </XButton>
-      </span>
-    </template>
-    {{ tooltip }}
-  </XTooltip>
-  <XButton
+  <UTooltip v-if="tooltip">
+    <span class="inline-flex shrink-0">
+      <ActionButton
+        :color="color"
+        variant="soft"
+        class="shrink-0 whitespace-nowrap"
+        :class="iconOnly ? 'size-5.5 p-0' : 'px-2.5'"
+        size="xs"
+        :square="iconOnly"
+        :aria-label="label"
+        :disabled="disabled"
+        :action="() => onAction?.()"
+      >
+        <component
+          :is="icon"
+          class="size-3.5 shrink-0 group-aria-busy:hidden"
+          aria-hidden="true"
+        />
+        <template v-if="!iconOnly">{{ label }}</template>
+      </ActionButton>
+    </span>
+    <template #content>{{ tooltip }}</template>
+  </UTooltip>
+  <ActionButton
     v-else
     :color="color"
     variant="soft"
-    class="group shrink-0 whitespace-nowrap rounded-full"
-    :class="iconOnly ? 'size-5.5 p-0 text-xs' : 'px-2.5'"
-    :size="iconOnly ? 'icon-xs' : 'tiny'"
+    class="shrink-0 whitespace-nowrap"
+    :class="iconOnly ? 'size-5.5 p-0' : 'px-2.5'"
+    size="xs"
+    :square="iconOnly"
     :aria-label="label"
     :disabled="disabled"
-    loading-auto
-    @click="onAction?.()"
+    :action="() => onAction?.()"
   >
     <component
       :is="icon"
@@ -65,5 +62,5 @@ withDefaults(
       aria-hidden="true"
     />
     <template v-if="!iconOnly">{{ label }}</template>
-  </XButton>
+  </ActionButton>
 </template>

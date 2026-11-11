@@ -1,15 +1,12 @@
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui';
 import { MoreVertOutlined } from '@vicons/material';
 import type { Comment } from '@novelia/web-kit';
 import {
   copyToClipboard,
   UserBlacklistDialog,
   UserModerationDialog,
-  XButton,
   XConfirmDialog,
-  XDropdownMenu,
-  XDropdownMenuItem,
-  XDropdownMenuSeparator,
   getApiErrorMessage,
   Toast,
 } from '@novelia/web-kit';
@@ -153,6 +150,77 @@ async function unhideComment() {
   }).catch(() => {});
   submitting.value = false;
 }
+const menuItems = computed<DropdownMenuItem[][]>(() => {
+  const groups: DropdownMenuItem[][] = [
+    [
+      {
+        label: '复制原文',
+        disabled: copying.value,
+        onSelect: () => {
+          void copyComment();
+        },
+      },
+    ],
+  ];
+  const moderation: DropdownMenuItem[] = [];
+  if (whoami.value.asAdmin && props.comment.status === 0)
+    moderation.push({
+      label: '隐藏评论',
+      disabled: submitting.value,
+      onSelect: () => {
+        confirmationAction.value = 'hide';
+      },
+    });
+  if (whoami.value.asAdmin && props.comment.status === 1)
+    moderation.push({
+      label: '取消隐藏',
+      disabled: submitting.value,
+      onSelect: () => {
+        void unhideComment();
+      },
+    });
+  if (permissions.value.canDelete)
+    moderation.push({
+      label: '删除评论',
+      color: 'error',
+      disabled: submitting.value,
+      onSelect: () => {
+        confirmationAction.value = 'delete';
+      },
+    });
+  if (moderation.length) groups.push(moderation);
+  const author: DropdownMenuItem[] = [];
+  if (permissions.value.canBlockAuthor)
+    author.push({
+      label: props.comment.authorBlocked ? '取消屏蔽' : '屏蔽用户',
+      color: props.comment.authorBlocked ? undefined : 'error',
+      disabled: submitting.value,
+      onSelect: () => {
+        blacklistOpen.value = true;
+      },
+    });
+  if (permissions.value.canModerateAuthor)
+    author.push(
+      {
+        label: '处罚用户',
+        color: 'error',
+        disabled: submitting.value,
+        onSelect: () => {
+          userModerationAction.value = 'strike';
+        },
+      },
+      {
+        label: '封禁用户',
+        color: 'error',
+        disabled: submitting.value,
+        onSelect: () => {
+          userModerationAction.value = 'ban';
+        },
+      },
+    );
+  if (author.length) groups.push(author);
+  return groups;
+});
 </script>
 
 <template>
@@ -160,7 +228,7 @@ async function unhideComment() {
     v-if="permissions.showActions"
     class="ml-auto flex shrink-0 items-center gap-1"
   >
-    <XButton
+    <UButton
       v-if="permissions.canReply"
       color="neutral"
       variant="ghost"
@@ -170,8 +238,8 @@ async function unhideComment() {
       @click="emit('reply')"
     >
       回复
-    </XButton>
-    <XButton
+    </UButton>
+    <UButton
       v-if="permissions.canEdit"
       color="neutral"
       variant="ghost"
@@ -180,73 +248,23 @@ async function unhideComment() {
       @click="emit('edit')"
     >
       编辑
-    </XButton>
-    <XDropdownMenu align="end" class="min-w-32 w-32">
-      <template #trigger>
-        <XButton
-          color="neutral"
-          variant="ghost"
-          size="icon-xs"
-          aria-label="更多操作"
-          title="更多操作"
-        >
-          <MoreVertOutlined class="size-4" aria-hidden="true" />
-        </XButton>
-      </template>
-      <XDropdownMenuItem :disabled="copying" @select="copyComment">
-        复制原文
-      </XDropdownMenuItem>
-      <XDropdownMenuSeparator v-if="whoami.asAdmin || permissions.canDelete" />
-      <XDropdownMenuItem
-        v-if="whoami.asAdmin && comment.status === 0"
-        :disabled="submitting"
-        @select="confirmationAction = 'hide'"
+    </UButton>
+    <UDropdownMenu
+      :content="{ align: 'end' }"
+      :ui="{ content: 'min-w-32 w-32' }"
+      :items="menuItems"
+    >
+      <UButton
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        square
+        aria-label="更多操作"
+        title="更多操作"
       >
-        隐藏评论
-      </XDropdownMenuItem>
-      <XDropdownMenuItem
-        v-if="whoami.asAdmin && comment.status === 1"
-        :disabled="submitting"
-        @select="unhideComment"
-      >
-        取消隐藏
-      </XDropdownMenuItem>
-      <XDropdownMenuItem
-        v-if="permissions.canDelete"
-        destructive
-        :disabled="submitting"
-        @select="confirmationAction = 'delete'"
-      >
-        删除评论
-      </XDropdownMenuItem>
-      <XDropdownMenuSeparator
-        v-if="permissions.canBlockAuthor || permissions.canModerateAuthor"
-      />
-      <XDropdownMenuItem
-        v-if="permissions.canBlockAuthor"
-        :destructive="!comment.authorBlocked"
-        :disabled="submitting"
-        @select="blacklistOpen = true"
-      >
-        {{ comment.authorBlocked ? '取消屏蔽' : '屏蔽用户' }}
-      </XDropdownMenuItem>
-      <template v-if="permissions.canModerateAuthor">
-        <XDropdownMenuItem
-          destructive
-          :disabled="submitting"
-          @select="userModerationAction = 'strike'"
-        >
-          处罚用户
-        </XDropdownMenuItem>
-        <XDropdownMenuItem
-          destructive
-          :disabled="submitting"
-          @select="userModerationAction = 'ban'"
-        >
-          封禁用户
-        </XDropdownMenuItem>
-      </template>
-    </XDropdownMenu>
+        <MoreVertOutlined class="size-4" aria-hidden="true" />
+      </UButton>
+    </UDropdownMenu>
   </div>
   <XConfirmDialog
     :open="confirmationAction != null"

@@ -1,14 +1,5 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  XButton,
-  XDialog,
-  getApiErrorMessage,
-  XPage,
-  XPageHeader,
-  XSeparator,
-  XTime,
-} from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XPage, XTime } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   KeyboardDoubleArrowDownOutlined,
@@ -390,7 +381,7 @@ const levelOptions = [
 
 <template>
   <XPage>
-    <XPageHeader
+    <UPageHeader
       :title="`${novelId === undefined ? '新建' : '编辑'}文库小说`"
     />
 
@@ -436,35 +427,41 @@ const levelOptions = [
             :placeholder="formValue.title"
             :input-props="{ spellcheck: false }"
           />
-          <c-button
-            label="导入"
-            :round="false"
-            type="primary"
-            @action="populateNovelFromAmazon(amazonUrl, false)"
-          />
+          <ActionButton
+            class="rounded-md"
+            color="primary"
+            :action="() => populateNovelFromAmazon(amazonUrl, false)"
+            variant="solid"
+          >
+            导入
+          </ActionButton>
         </n-input-group>
         <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-          <c-button
-            label="在亚马逊搜索"
-            secondary
-            tag="a"
+          <UButton
+            color="neutral"
             :href="`https://www.amazon.co.jp/s?k=${encodeURIComponent(
               formValue.title,
             )}&i=stripbooks`"
             target="_blank"
-          />
-          <c-button
-            secondary
-            label="刷新分卷"
-            @action="populateNovelFromAmazon('', true)"
-          />
-          <c-button
+            variant="soft"
+            class="rounded-full"
+          >
+            在亚马逊搜索
+          </UButton>
+          <ActionButton
+            variant="soft"
+            :action="() => populateNovelFromAmazon('', true)"
+          >
+            刷新分卷
+          </ActionButton>
+          <ActionButton
             v-if="whoami.isAdmin"
-            type="error"
-            secondary
-            label="标记重复"
-            @action="markAsDuplicate"
-          />
+            color="error"
+            variant="soft"
+            :action="markAsDuplicate"
+          >
+            标记重复
+          </ActionButton>
         </div>
       </div>
     </div>
@@ -542,13 +539,15 @@ const levelOptions = [
       <n-form-item-row label="标签">
         <n-list bordered style="width: 100%">
           <n-list-item>
-            <c-button
+            <UButton
               v-if="presetKeywords.groups.length > 0"
-              label="用前必读"
-              @action="showKeywordsModal = true"
-              text
-              type="error"
-            />
+              color="error"
+              variant="link"
+              class="rounded-full p-0 leading-none"
+              @click="showKeywordsModal = true"
+            >
+              用前必读
+            </UButton>
             <n-p v-else>暂不支持标签。</n-p>
           </n-list-item>
           <n-list-item
@@ -612,24 +611,59 @@ const levelOptions = [
 
                 <template #header-extra>
                   <div class="flex flex-nowrap justify-start gap-1.5">
-                    <c-icon-button
-                      tooltip="置顶"
-                      :icon="KeyboardDoubleArrowUpOutlined"
-                      @action="topVolume(volume.asin)"
-                    />
+                    <UTooltip text="置顶">
+                      <UButton
+                        color="neutral"
+                        size="xs"
+                        variant="soft"
+                        square
+                        class="rounded-full"
+                        @click="topVolume(volume.asin)"
+                        aria-label="置顶"
+                      >
+                        <component
+                          :is="KeyboardDoubleArrowUpOutlined"
+                          class="size-4.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </UButton>
+                    </UTooltip>
 
-                    <c-icon-button
-                      tooltip="置底"
-                      :icon="KeyboardDoubleArrowDownOutlined"
-                      @action="bottomVolume(volume.asin)"
-                    />
+                    <UTooltip text="置底">
+                      <UButton
+                        color="neutral"
+                        size="xs"
+                        variant="soft"
+                        square
+                        class="rounded-full"
+                        @click="bottomVolume(volume.asin)"
+                        aria-label="置底"
+                      >
+                        <component
+                          :is="KeyboardDoubleArrowDownOutlined"
+                          class="size-4.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </UButton>
+                    </UTooltip>
 
-                    <c-icon-button
-                      tooltip="删除"
-                      :icon="DeleteOutlineOutlined"
-                      type="error"
-                      @action="deleteVolume(volume.asin)"
-                    />
+                    <UTooltip text="删除">
+                      <UButton
+                        size="xs"
+                        variant="soft"
+                        square
+                        color="error"
+                        class="rounded-full"
+                        @click="deleteVolume(volume.asin)"
+                        aria-label="删除"
+                      >
+                        <component
+                          :is="DeleteOutlineOutlined"
+                          class="size-4.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                      </UButton>
+                    </UTooltip>
                   </div>
                 </template>
 
@@ -672,17 +706,17 @@ const levelOptions = [
       </n-form-item-row>
     </n-form>
 
-    <XSeparator class="my-6" />
+    <USeparator class="my-6" />
 
     <div v-if="novelId" class="submit-action">
-      <XButton
+      <UButton
         class="min-h-11 rounded-full"
         :loading="submitting"
         @click="submit"
       >
         <UploadOutlined v-if="!submitting" class="size-5" aria-hidden="true" />
         提交
-      </XButton>
+      </UButton>
     </div>
 
     <n-steps
@@ -715,21 +749,21 @@ const levelOptions = [
           </div>
         </div>
         <div v-if="submitCurrentStep === 1" class="flex flex-wrap gap-3">
-          <XButton
+          <UButton
             color="warning"
             :disabled="similarNovels === null"
             @click="moveToNextStep"
           >
             我确定小说不存在
-          </XButton>
-          <XButton
+          </UButton>
+          <UButton
             color="neutral"
             variant="outline"
             :loading="searching"
             @click="findSimilarNovels"
           >
             自动搜索相似小说
-          </XButton>
+          </UButton>
         </div>
       </n-step>
 
@@ -740,52 +774,59 @@ const levelOptions = [
         <p>PDF、或者内容只有图片的EPUB是无法上传的。</p>
 
         <div v-if="submitCurrentStep === 2" class="flex flex-wrap gap-3">
-          <XButton color="warning" @click="moveToNextStep">
+          <UButton color="warning" @click="moveToNextStep">
             我确定我有可以上传的文件
-          </XButton>
-          <XButton color="neutral" variant="outline" @click="moveToPrevStep">
+          </UButton>
+          <UButton color="neutral" variant="outline" @click="moveToPrevStep">
             上一步
-          </XButton>
+          </UButton>
         </div>
       </n-step>
 
       <n-step title="创建文库小说">
         <div v-if="submitCurrentStep === 3" class="mt-4 flex flex-wrap gap-3">
-          <XButton :loading="submitting" @click="submit">
+          <UButton :loading="submitting" @click="submit">
             <UploadOutlined
               v-if="!submitting"
               class="size-5"
               aria-hidden="true"
             />
             提交
-          </XButton>
-          <XButton
+          </UButton>
+          <UButton
             color="neutral"
             variant="outline"
             :disabled="submitting"
             @click="moveToPrevStep"
           >
             上一步
-          </XButton>
+          </UButton>
         </div>
       </n-step>
     </n-steps>
   </XPage>
 
-  <XDialog title="使用说明" v-model:open="showKeywordsModal" class="w-[600px]">
-    <n-p>
-      标签的意义在于辅助搜索。一个标签是否合适，要看标签相关情节的比例。仅仅是存在相关情节，不足以作为添加标签的依据。在实际操作中，可以思考搜索该标签的用户想不想看到这本书。
-    </n-p>
-    <n-p>
-      下面是一些标签的具体解释。注意，同一个标签在一般向和R18下可能存在区别。
-    </n-p>
-    <XSeparator class="my-6" />
-    <n-p v-for="row of presetKeywords.explanations" :key="row.word">
-      <b>{{ row.word }}</b>
-      <br />
-      {{ row.explanation }}
-    </n-p>
-  </XDialog>
+  <UModal
+    title="使用说明"
+    v-model:open="showKeywordsModal"
+    class="w-[600px]"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+  >
+    <template #body>
+      <n-p>
+        标签的意义在于辅助搜索。一个标签是否合适，要看标签相关情节的比例。仅仅是存在相关情节，不足以作为添加标签的依据。在实际操作中，可以思考搜索该标签的用户想不想看到这本书。
+      </n-p>
+      <n-p>
+        下面是一些标签的具体解释。注意，同一个标签在一般向和R18下可能存在区别。
+      </n-p>
+      <USeparator class="my-6" />
+      <n-p v-for="row of presetKeywords.explanations" :key="row.word">
+        <b>{{ row.word }}</b>
+        <br />
+        {{ row.explanation }}
+      </n-p>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>

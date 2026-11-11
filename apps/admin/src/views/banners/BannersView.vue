@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import {
-  Toast,
-  XDialog,
-  XPage,
-  XPageHeader,
-  getApiErrorMessage,
-} from '@novelia/web-kit';
+import { Toast, XPage, getApiErrorMessage } from '@novelia/web-kit';
+import UModal from '@nuxt/ui/components/Modal.vue';
+import UPageHeader from '@nuxt/ui/components/PageHeader.vue';
 import { useBannerApi, type Banner } from '../../api';
 import BannerUploader from './BannerUploader.vue';
 import BannerPreview from './BannerPreview.vue';
@@ -190,7 +186,7 @@ onMounted(load);
 
 <template>
   <XPage>
-    <XPageHeader title="Banner 管理" />
+    <UPageHeader title="Banner 管理" />
 
     <aside
       class="mb-6 flex items-start gap-3 rounded-lg border-l-4 border-primary bg-primary-soft px-5 py-4 text-sm leading-[1.7] text-ink"
@@ -445,19 +441,23 @@ onMounted(load);
       </section>
     </section>
 
-    <XDialog
+    <UModal
       :open="!!deleting"
       title="删除 Banner"
       description="删除后无法恢复，关联图片也会被清理。"
-      :closable="busy === null"
-      @update:open="!$event && (deleting = null)"
+      :dismissible="busy === null"
+      :close="busy === null"
+      :ui="{ content: 'max-w-lg' }"
+      @update:open="!$event && busy === null && (deleting = null)"
     >
-      <p class="mt-3 mb-5 text-[13px] leading-[1.7] text-muted">
-        确定删除 Banner #{{ deleting?.id }} 吗？{{
-          deleting?.isActive ? '此图片目前正在首页展示。' : ''
-        }}
-      </p>
-      <div class="form-actions">
+      <template #body>
+        <p class="text-[13px] leading-[1.7] text-muted">
+          确定删除 Banner #{{ deleting?.id }} 吗？{{
+            deleting?.isActive ? '此图片目前正在首页展示。' : ''
+          }}
+        </p>
+      </template>
+      <template #footer>
         <button
           class="btn"
           :disabled="busy !== null || uploading"
@@ -472,8 +472,8 @@ onMounted(load);
         >
           {{ busy !== null ? '正在删除…' : '确认删除' }}
         </button>
-      </div>
-    </XDialog>
+      </template>
+    </UModal>
   </XPage>
 </template>
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 
 import type { WenkuNovelOutlineDto } from '@/model/WenkuNovel';
 import { FavoredRepo } from '@/stores';
@@ -87,28 +87,36 @@ const moveToFavored = async () => {
         <div
           class="flex flex-wrap justify-start items-baseline gap-x-3 gap-y-2"
         >
-          <n-button-group size="small">
-            <c-button
-              label="全选"
-              :round="false"
-              @action="$emit('selectAll')"
-            />
-            <c-button
-              label="反选"
-              :round="false"
-              @action="$emit('invertSelection')"
-            />
-          </n-button-group>
+          <UFieldGroup size="sm">
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('selectAll')"
+              class="text-sm/4"
+            >
+              全选
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('invertSelection')"
+              class="text-sm/4"
+            >
+              反选
+            </UButton>
+          </UFieldGroup>
 
-          <c-button
-            label="删除"
-            secondary
-            :round="false"
-            size="small"
-            type="error"
+          <UButton
+            size="sm"
+            color="error"
             @click="openDeleteModal"
-          />
-          <XDialog
+            variant="soft"
+            class="text-sm/4"
+          >
+            删除
+          </UButton>
+          <UModal
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
             :title="`确定删除 ${
               selectedNovels.length === 1
                 ? selectedNovels[0].titleZh ?? selectedNovels[0].title
@@ -118,9 +126,15 @@ const moveToFavored = async () => {
             class="w-[600px]"
           >
             <template #footer>
-              <c-button label="确定" type="primary" @action="deleteSelected" />
+              <ActionButton
+                color="primary"
+                :action="deleteSelected"
+                variant="solid"
+              >
+                确定
+              </ActionButton>
             </template>
-          </XDialog>
+          </UModal>
         </div>
         <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
       </div>
@@ -134,12 +148,13 @@ const moveToFavored = async () => {
           <div
             class="flex flex-wrap justify-start items-center gap-x-3 gap-y-2"
           >
-            <c-button
-              label="移动"
-              size="small"
-              :round="false"
-              @action="moveToFavored"
-            />
+            <ActionButton
+              class="rounded-md text-sm/4"
+              size="sm"
+              :action="moveToFavored"
+            >
+              移动
+            </ActionButton>
 
             <n-radio
               v-for="favored in favoreds.wenku"

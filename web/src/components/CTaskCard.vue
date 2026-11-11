@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { ScrollbarInst } from 'naive-ui';
-import { XDialog } from '@novelia/web-kit';
 
 const props = defineProps<{
   title: string;
@@ -70,16 +69,24 @@ defineExpose({
   >
     <template #header-extra>
       <div class="flex flex-wrap items-center justify-start gap-x-3 gap-y-2">
-        <c-button
-          :label="enableAutoScroll ? '暂停滚动' : '自动滚动'"
-          size="small"
-          @action="enableAutoScroll = !enableAutoScroll"
-        />
-        <c-button
-          :label="expandLog ? '收起日志' : '展开日志'"
-          size="small"
-          @action="expandLog = !expandLog"
-        />
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="rounded-full text-sm/4"
+          @click="enableAutoScroll = !enableAutoScroll"
+        >
+          {{ enableAutoScroll ? '暂停滚动' : '自动滚动' }}
+        </UButton>
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          class="rounded-full text-sm/4"
+          @click="expandLog = !expandLog"
+        >
+          {{ expandLog ? '收起日志' : '展开日志' }}
+        </UButton>
       </div>
     </template>
     <div class="flex flex-nowrap justify-start gap-x-3 gap-y-2">
@@ -98,18 +105,21 @@ defineExpose({
       <slot />
     </div>
 
-    <XDialog
+    <UModal
+      :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
       v-model:open="showLogDetailModal"
       :title="`日志详情 - ${selectedLogMessage}`"
       class="w-[600px]"
     >
-      <n-p
-        v-for="line of selectedLogDetail"
-        :key="line"
-        style="white-space: pre-wrap"
-      >
-        {{ line }}
-      </n-p>
-    </XDialog>
+      <template #body>
+        <n-p
+          v-for="line of selectedLogDetail"
+          :key="line"
+          style="white-space: pre-wrap"
+        >
+          {{ line }}
+        </n-p>
+      </template>
+    </UModal>
   </n-card>
 </template>

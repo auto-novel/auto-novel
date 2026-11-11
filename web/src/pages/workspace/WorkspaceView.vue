@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XButton, XPage, XPageHeader } from '@novelia/web-kit';
+import { XPage } from '@novelia/web-kit';
 import { BookOutlined } from '@vicons/material';
 import type { WorkspaceTranslatorId } from '@/model/Translator';
 import WorkspaceLog from './WorkspaceLog.vue';
@@ -34,19 +34,19 @@ const {
 
 <template>
   <XPage>
-    <XPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
-      <template #actions>
-        <XButton
+    <UPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
+      <template #links>
+        <UButton
           color="neutral"
           variant="outline"
-          size="sm"
+          size="md"
           @click="showLocalVolumeDrawer = true"
         >
           <BookOutlined class="size-4" aria-hidden="true" />
           本地书架
-        </XButton>
+        </UButton>
       </template>
-    </XPageHeader>
+    </UPageHeader>
     <WorkspaceBulletin :translator-id="translatorId" />
 
     <WorkerSection

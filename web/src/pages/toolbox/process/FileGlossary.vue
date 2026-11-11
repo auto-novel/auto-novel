@@ -1,11 +1,5 @@
 <script lang="ts" setup>
-import {
-  copyToClipboard,
-  Toast,
-  XDialog,
-  XScrollArea,
-  getApiErrorMessage,
-} from '@novelia/web-kit';
+import { copyToClipboard, Toast, getApiErrorMessage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import type { ParsedFile } from '@/util/file';
@@ -168,42 +162,51 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
 
     <c-action-wrapper title="操作">
       <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-        <n-button-group size="small">
-          <c-button
-            label="复制术语表"
-            :round="false"
-            @action="copyTranslationJson()"
-          />
-          <c-button
-            label="有道翻译"
-            :round="false"
-            @action="translateKatakanas('youdao')"
-          />
-        </n-button-group>
+        <UFieldGroup size="sm">
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => copyTranslationJson()"
+          >
+            复制术语表
+          </ActionButton>
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => translateKatakanas('youdao')"
+          >
+            有道翻译
+          </ActionButton>
+        </UFieldGroup>
 
-        <n-button-group size="small">
-          <c-button
-            :label="`Sakura翻译-${selectedSakuraWorkerId ?? '未选中'}`"
-            :round="false"
-            @action="translateKatakanas('sakura')"
-          />
-          <c-button
-            label="选择翻译器"
-            :round="false"
-            @action="showSakuraSelectModal = true"
-          />
-        </n-button-group>
+        <UFieldGroup size="sm">
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => translateKatakanas('sakura')"
+          >
+            {{ `Sakura翻译-${selectedSakuraWorkerId ?? '未选中'}` }}
+          </ActionButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            @click="showSakuraSelectModal = true"
+            class="text-sm/4"
+          >
+            选择翻译器
+          </UButton>
+        </UFieldGroup>
 
         <div
           class="flex flex-nowrap justify-start items-center gap-x-3 gap-y-2"
         >
-          <c-button
+          <UButton
+            color="neutral"
+            variant="outline"
             :disabled="katakanaDeleted.length === 0"
-            label="撤销删除"
-            :round="false"
-            size="small"
-            @action="undoDeleteKatakana"
-          />
+            size="sm"
+            @click="undoDeleteKatakana"
+            class="text-sm/4"
+          >
+            撤销删除
+          </UButton>
           <n-text
             v-if="katakanaDeleted.length > 0"
             depth="3"
@@ -215,7 +218,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
       </div>
     </c-action-wrapper>
 
-    <XScrollArea
+    <UScrollArea
       v-if="katakanas.size !== 0"
       style="
         max-height: 60vh;
@@ -227,14 +230,23 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
       <n-table striped size="small" style="font-size: 12px">
         <tr v-for="[word, number] in katakanas" :key="word">
           <td>
-            <c-icon-button
-              tooltip="移除"
-              :icon="DeleteOutlineOutlined"
-              text
-              size="small"
-              type="error"
-              @action="katakanaDeleted.push(word)"
-            />
+            <UTooltip text="移除">
+              <ActionButton
+                square
+                size="sm"
+                color="error"
+                variant="link"
+                class="p-0"
+                :action="() => katakanaDeleted.push(word)"
+                aria-label="移除"
+              >
+                <component
+                  :is="DeleteOutlineOutlined"
+                  class="size-4.5 shrink-0 group-aria-busy:hidden"
+                  aria-hidden="true"
+                />
+              </ActionButton>
+            </UTooltip>
           </td>
           <td nowrap="nowrap">{{ number }}</td>
           <td style="min-width: 100px">{{ word }}</td>
@@ -252,27 +264,30 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           </td>
         </tr>
       </n-table>
-    </XScrollArea>
+    </UScrollArea>
   </div>
 
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     title="选择Sakura翻译器"
     v-model:open="showSakuraSelectModal"
     class="w-[600px]"
   >
-    <n-radio-group v-model:value="selectedSakuraWorkerId">
-      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-        <n-radio
-          v-for="worker of sakuraWorkspace.workers"
-          :key="worker.id"
-          :value="worker.id"
-        >
-          {{ worker.id }}
-          <n-text depth="3">
-            {{ worker.endpoint }}
-          </n-text>
-        </n-radio>
-      </div>
-    </n-radio-group>
-  </XDialog>
+    <template #body>
+      <n-radio-group v-model:value="selectedSakuraWorkerId">
+        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+          <n-radio
+            v-for="worker of sakuraWorkspace.workers"
+            :key="worker.id"
+            :value="worker.id"
+          >
+            {{ worker.id }}
+            <n-text depth="3">
+              {{ worker.endpoint }}
+            </n-text>
+          </n-radio>
+        </div>
+      </n-radio-group>
+    </template>
+  </UModal>
 </template>

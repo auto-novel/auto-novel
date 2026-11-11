@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { XInput, XSeparator } from '@novelia/web-kit';
-import { SearchOutlined } from '@vicons/material';
 import {
   PopoverAnchor,
   PopoverContent,
@@ -44,7 +42,7 @@ const { searchHistory } = storeToRefs(searchHistoryStore);
 function appendTag(tag: string) {
   const current = text.value.trimEnd();
   text.value = current ? `${current} ${tag}` : tag;
-  input.value?.focus();
+  input.value?.inputRef?.focus();
 }
 
 const historyQueries = computed(() => searchHistory.value.queries ?? []);
@@ -94,7 +92,7 @@ function onKeydown(event: KeyboardEvent) {
 
 function closeSuggestions() {
   showSuggestions.value = false;
-  input.value?.focus();
+  input.value?.inputRef?.focus();
 }
 
 function processQueryWithLocaleAware(input: string): string {
@@ -126,7 +124,7 @@ const confirm = (key: string) => {
   value.value = newValue;
   text.value = newValue;
   searchHistoryStore.addHistory(key);
-  input.value?.blur();
+  input.value?.inputRef?.blur();
   showSuggestions.value = false;
 };
 </script>
@@ -136,20 +134,35 @@ const confirm = (key: string) => {
     <PopoverRoot v-model:open="suggestionsOpen" :modal="false">
       <PopoverAnchor as-child>
         <div ref="anchor" class="mr-2 min-w-0 flex-[0_1_400px]">
-          <XInput
+          <UInput
             ref="input"
             v-bind="$attrs"
             v-model="text"
-            clearable
+            class="w-full"
             :placeholder="option.placeholder"
             :aria-label="label"
             aria-haspopup="dialog"
             :aria-expanded="suggestionsOpen"
             :spellcheck="false"
-            :tail-icon="SearchOutlined"
+            trailing-icon="i-lucide-search"
             @click="showSuggestions = true"
             @keydown="onKeydown"
-          />
+          >
+            <template v-if="text" #trailing>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                square
+                aria-label="清空搜索"
+                icon="i-lucide-x"
+                @click="
+                  text = '';
+                  input?.inputRef?.focus();
+                "
+              />
+            </template>
+          </UInput>
         </div>
       </PopoverAnchor>
       <PopoverPortal>
@@ -169,14 +182,14 @@ const confirm = (key: string) => {
               v-for="query in historyQueries"
               :key="query"
               type="button"
-              class="menu-item block w-full cursor-pointer truncate text-left"
+              class="block w-full cursor-pointer truncate rounded-sm px-3 py-2 text-left text-sm text-ink hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
               :title="query"
               @mousedown.prevent
               @click="confirm(query)"
             >
               {{ query }}
             </button>
-            <XSeparator
+            <USeparator
               v-if="historyQueries.length && historyTags.length"
               class="my-1"
             />

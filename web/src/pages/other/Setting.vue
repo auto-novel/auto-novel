@@ -1,11 +1,5 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  useWebKit,
-  XPage,
-  XPageHeader,
-  XTooltip,
-} from '@novelia/web-kit';
+import { Toast, useWebKit, XPage } from '@novelia/web-kit';
 import SoundAllTaskCompleted from '@/sound/all_task_completed.mp3';
 import {
   Setting,
@@ -36,7 +30,7 @@ const { theme } = useWebKit();
 
 <template>
   <XPage>
-    <XPageHeader title="设置" />
+    <UPageHeader title="设置" />
 
     <n-list bordered>
       <n-list-item>
@@ -77,18 +71,28 @@ const { theme } = useWebKit();
           </n-checkbox>
           <n-checkbox v-model:checked="setting.tocExpandAll">
             目录默认展开所有章节
-            <XTooltip class="max-w-100">
-              <template #trigger>
-                <n-button text @click.stop>
-                  <n-icon depth="4" :component="InfoOutlined" size="12" />
-                </n-button>
+            <UTooltip :ui="{ content: 'max-w-100' }">
+              <UButton
+                color="neutral"
+                variant="link"
+                class="p-0"
+                aria-label="目录展开说明"
+                @click.stop
+              >
+                <InfoOutlined
+                  class="size-3 shrink-0 opacity-60"
+                  aria-hidden="true"
+                />
+              </UButton>
+
+              <template #content>
+                开启：默认展开所有章节（可能导致性能问题）
+                <br />
+                关闭：只展开上次阅读的章节（如无记录则展开第一个章节）
+                <br />
+                不影响无分章的网络小说
               </template>
-              开启：默认展开所有章节（可能导致性能问题）
-              <br />
-              关闭：只展开上次阅读的章节（如无记录则展开第一个章节）
-              <br />
-              不影响无分章的网络小说
-            </XTooltip>
+            </UTooltip>
           </n-checkbox>
           <b>评论</b>
           <n-checkbox v-model:checked="setting.hideCommmentWebNovel">
@@ -146,12 +150,14 @@ const { theme } = useWebKit();
             </n-checkbox>
 
             [
-            <c-button
-              label="点击播放"
-              text
-              type="primary"
-              @action="playSound(SoundAllTaskCompleted)"
-            />
+            <ActionButton
+              color="primary"
+              variant="link"
+              class="p-0 leading-none"
+              :action="() => playSound(SoundAllTaskCompleted)"
+            >
+              点击播放
+            </ActionButton>
             ]
           </div>
         </div>
@@ -163,16 +169,24 @@ const { theme } = useWebKit();
         >
           <b>清空搜索历史</b>
           <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-            <c-button
-              label="清空网络搜索历史"
-              size="small"
-              @action="clearWebSearchHistory"
-            />
-            <c-button
-              label="清空文库搜索历史"
-              size="small"
-              @action="clearWenkuSearchHistory"
-            />
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              class="rounded-full text-sm/4"
+              @click="clearWebSearchHistory"
+            >
+              清空网络搜索历史
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              class="rounded-full text-sm/4"
+              @click="clearWenkuSearchHistory"
+            >
+              清空文库搜索历史
+            </UButton>
           </div>
         </div>
       </n-list-item>

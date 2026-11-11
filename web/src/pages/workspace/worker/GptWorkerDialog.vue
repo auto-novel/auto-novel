@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XSelect, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
 
 import type { GptPipelineWorker } from '@/model/Translator';
@@ -462,194 +462,200 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 </script>
 
 <template>
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-16px)]', footer: 'justify-end' }"
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + '翻译器'"
     class="w-[min(750px,calc(100%-16px))]"
   >
-    <n-form
-      ref="form"
-      :model="props.worker === undefined ? addFormValue : formValue"
-      :rules="props.worker === undefined ? addFormRules : editFormRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row label="接口格式">
-        <XSelect
-          :model-value="formValue.profileId"
-          :options="
-            openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
-          "
-          aria-label="接口格式"
-          class="w-full"
-          @update:model-value="onProfileChange"
-        />
-      </n-form-item-row>
-
-      <template v-if="currentProfile?.fields.length">
-        <n-form-item-row
-          v-for="field in currentProfile.fields"
-          :key="`${formValue.profileId}-${field.key}`"
-          :label="field.label"
-        >
-          <XSelect
-            v-if="field.type === 'select'"
-            :model-value="
-              String(
-                field.options.findIndex(
-                  (option) =>
-                    option.value === formValue.profileValues[field.key],
-                ),
-              )
+    <template #body>
+      <n-form
+        ref="form"
+        :model="props.worker === undefined ? addFormValue : formValue"
+        :rules="props.worker === undefined ? addFormRules : editFormRules"
+        label-placement="left"
+        label-width="auto"
+      >
+        <n-form-item-row label="接口格式">
+          <USelect
+            :model-value="formValue.profileId"
+            :items="
+              openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
             "
-            :options="
-              field.options.map((option, index) => ({
-                label: option.label,
-                value: String(index),
-              }))
-            "
-            :aria-label="field.label"
+            aria-label="接口格式"
             class="w-full"
-            @update:model-value="
-              (value) =>
-                (formValue.profileValues[field.key] =
-                  field.options[Number(value)]?.value)
-            "
-          />
-        </n-form-item-row>
-      </template>
-      <!-- 添加模式：批量 -->
-      <template v-if="props.worker === undefined">
-        <n-form-item-row path="endpoint" label="API端点">
-          <n-input
-            :value="formValue.endpoint"
-            :placeholder="defaultEndpoint(formValue.profileId)"
-            @update:value="onEndpointInput"
+            @update:model-value="onProfileChange"
           />
         </n-form-item-row>
 
-        <n-form-item-row path="models" label="模型">
-          <n-input
-            v-model:value="modelText"
-            type="textarea"
-            placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-          />
-        </n-form-item-row>
+        <template v-if="currentProfile?.fields.length">
+          <n-form-item-row
+            v-for="field in currentProfile.fields"
+            :key="`${formValue.profileId}-${field.key}`"
+            :label="field.label"
+          >
+            <USelect
+              v-if="field.type === 'select'"
+              :model-value="
+                String(
+                  field.options.findIndex(
+                    (option) =>
+                      option.value === formValue.profileValues[field.key],
+                  ),
+                )
+              "
+              :items="
+                field.options.map((option, index) => ({
+                  label: option.label,
+                  value: String(index),
+                }))
+              "
+              :aria-label="field.label"
+              class="w-full"
+              @update:model-value="
+                (value) =>
+                  (formValue.profileValues[field.key] =
+                    field.options[Number(value)]?.value)
+              "
+            />
+          </n-form-item-row>
+        </template>
+        <!-- 添加模式：批量 -->
+        <template v-if="props.worker === undefined">
+          <n-form-item-row path="endpoint" label="API端点">
+            <n-input
+              :value="formValue.endpoint"
+              :placeholder="defaultEndpoint(formValue.profileId)"
+              @update:value="onEndpointInput"
+            />
+          </n-form-item-row>
 
-        <n-form-item-row path="keys" label="Key">
-          <n-input
-            v-model:value="keyText"
-            type="textarea"
-            placeholder="每行一个Key&#10;sk-xxxxxxxx&#10;sk-yyyyyyyy"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-          />
-        </n-form-item-row>
+          <n-form-item-row path="models" label="模型">
+            <n-input
+              v-model:value="modelText"
+              type="textarea"
+              placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
+              :autosize="{ minRows: 2, maxRows: 5 }"
+            />
+          </n-form-item-row>
 
-        <n-form-item-row label="默认并发">
-          <n-input-number
-            v-model:value="defaultConcurrency"
-            :min="1"
-            :max="100"
-          />
-        </n-form-item-row>
+          <n-form-item-row path="keys" label="Key">
+            <n-input
+              v-model:value="keyText"
+              type="textarea"
+              placeholder="每行一个Key&#10;sk-xxxxxxxx&#10;sk-yyyyyyyy"
+              :autosize="{ minRows: 2, maxRows: 5 }"
+            />
+          </n-form-item-row>
 
-        <n-form-item-row v-if="generatedWorkers.length > 0" label="预览">
-          <n-table :single-line="false" size="small">
-            <thead>
-              <tr>
-                <th>显示名称</th>
-                <th>模型</th>
-                <th>Key</th>
-                <th class="w-20">并发</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="w in generatedWorkers" :key="w.uid">
-                <td>
-                  <n-input
-                    :value="workerNames[w.uid] ?? w.id"
-                    :placeholder="w.id"
-                    size="small"
-                    aria-label="翻译器显示名称"
-                    @update:value="workerNames[w.uid] = $event"
-                  />
-                </td>
-                <td>{{ w.model }}</td>
-                <td class="text-[12px] font-[monospace]">
-                  {{ maskKey(w.key) }}
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    :class="[
-                      'w-15 rounded-sm border border-divider px-1 py-0.5 text-center',
-                      'text-[13px] outline-none transition-[border-color] duration-200',
-                      'focus:border-primary [&::-webkit-inner-spin-button]:m-0',
-                      '[&::-webkit-inner-spin-button]:appearance-none',
-                      '[&::-webkit-outer-spin-button]:m-0',
-                      '[&::-webkit-outer-spin-button]:appearance-none',
-                    ]"
-                    :value="workerConcurrencies[w.uid]"
-                    min="1"
-                    max="100"
-                    @input="
-                      workerConcurrencies[w.uid] = Number(
-                        ($event.target as HTMLInputElement).value,
-                      )
-                    "
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </n-table>
-        </n-form-item-row>
-      </template>
+          <n-form-item-row label="默认并发">
+            <n-input-number
+              v-model:value="defaultConcurrency"
+              :min="1"
+              :max="100"
+            />
+          </n-form-item-row>
 
-      <!-- 编辑模式：单个 -->
-      <template v-else>
-        <n-form-item-row path="id" label="名字">
-          <n-input
-            v-model:value="formValue.id"
-            placeholder="给你的翻译器起个名字"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="model" label="模型">
-          <n-input
-            v-model:value="formValue.model"
-            placeholder="deepseek-v4-pro"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="endpoint" label="API端点">
-          <n-input
-            :value="formValue.endpoint"
-            :placeholder="defaultEndpoint(formValue.profileId)"
-            @update:value="onEndpointInput"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="key" label="Key">
-          <n-input v-model:value="formValue.key" placeholder="API Key" />
-        </n-form-item-row>
-        <n-form-item-row path="concurrency" label="并发数">
-          <n-input-number
-            v-model:value="formValue.concurrency"
-            :min="1"
-            :max="100"
-          />
-        </n-form-item-row>
-      </template>
-    </n-form>
+          <n-form-item-row v-if="generatedWorkers.length > 0" label="预览">
+            <n-table :single-line="false" size="small">
+              <thead>
+                <tr>
+                  <th>显示名称</th>
+                  <th>模型</th>
+                  <th>Key</th>
+                  <th class="w-20">并发</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="w in generatedWorkers" :key="w.uid">
+                  <td>
+                    <n-input
+                      :value="workerNames[w.uid] ?? w.id"
+                      :placeholder="w.id"
+                      size="small"
+                      aria-label="翻译器显示名称"
+                      @update:value="workerNames[w.uid] = $event"
+                    />
+                  </td>
+                  <td>{{ w.model }}</td>
+                  <td class="text-[12px] font-[monospace]">
+                    {{ maskKey(w.key) }}
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      :class="[
+                        'w-15 rounded-sm border border-divider px-1 py-0.5 text-center',
+                        'text-[13px] outline-none transition-[border-color] duration-200',
+                        'focus:border-primary [&::-webkit-inner-spin-button]:m-0',
+                        '[&::-webkit-inner-spin-button]:appearance-none',
+                        '[&::-webkit-outer-spin-button]:m-0',
+                        '[&::-webkit-outer-spin-button]:appearance-none',
+                      ]"
+                      :value="workerConcurrencies[w.uid]"
+                      min="1"
+                      max="100"
+                      @input="
+                        workerConcurrencies[w.uid] = Number(
+                          ($event.target as HTMLInputElement).value,
+                        )
+                      "
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </n-table>
+          </n-form-item-row>
+        </template>
 
+        <!-- 编辑模式：单个 -->
+        <template v-else>
+          <n-form-item-row path="id" label="名字">
+            <n-input
+              v-model:value="formValue.id"
+              placeholder="给你的翻译器起个名字"
+            />
+          </n-form-item-row>
+          <n-form-item-row path="model" label="模型">
+            <n-input
+              v-model:value="formValue.model"
+              placeholder="deepseek-v4-pro"
+            />
+          </n-form-item-row>
+          <n-form-item-row path="endpoint" label="API端点">
+            <n-input
+              :value="formValue.endpoint"
+              :placeholder="defaultEndpoint(formValue.profileId)"
+              @update:value="onEndpointInput"
+            />
+          </n-form-item-row>
+          <n-form-item-row path="key" label="Key">
+            <n-input v-model:value="formValue.key" placeholder="API Key" />
+          </n-form-item-row>
+          <n-form-item-row path="concurrency" label="并发数">
+            <n-input-number
+              v-model:value="formValue.concurrency"
+              :min="1"
+              :max="100"
+            />
+          </n-form-item-row>
+        </template>
+      </n-form>
+    </template>
     <template #footer>
       <div
         class="flex flex-wrap justify-start gap-3"
         v-if="props.worker === undefined"
       >
-        <c-button label="添加并继续" @action="submitAndContinue" />
-        <c-button label="添加" type="primary" @action="submit" />
+        <ActionButton :action="submitAndContinue">添加并继续</ActionButton>
+        <ActionButton color="primary" :action="submit" variant="solid">
+          添加
+        </ActionButton>
       </div>
-      <c-button v-else label="更新" type="primary" @action="submit" />
+      <ActionButton v-else color="primary" :action="submit" variant="solid">
+        更新
+      </ActionButton>
     </template>
-  </XDialog>
+  </UModal>
 </template>

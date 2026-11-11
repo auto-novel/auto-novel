@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { DeleteOutlineOutlined, RemoveRedEyeOutlined } from '@vicons/material';
-import { XDialog } from '@novelia/web-kit';
 
 import type { ParsedFile } from '@/util/file';
 
@@ -17,30 +16,51 @@ const showPreviewModal = ref(false);
 
 <template>
   <div class="flex flex-nowrap items-center justify-start gap-1 text-[12px]">
-    <c-icon-button
-      tooltip="预览"
-      :icon="RemoveRedEyeOutlined"
-      text
-      size="small"
-      type="primary"
-      @action="showPreviewModal = true"
-    />
-    <c-icon-button
-      tooltip="移除"
-      :icon="DeleteOutlineOutlined"
-      text
-      size="small"
-      type="error"
-      @action="emit('delete')"
-    />
+    <UTooltip text="预览">
+      <UButton
+        square
+        size="sm"
+        color="primary"
+        variant="link"
+        class="rounded-full p-0"
+        @click="showPreviewModal = true"
+        aria-label="预览"
+      >
+        <component
+          :is="RemoveRedEyeOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+      </UButton>
+    </UTooltip>
+    <UTooltip text="移除">
+      <UButton
+        square
+        size="sm"
+        color="error"
+        variant="link"
+        class="rounded-full p-0"
+        @click="emit('delete')"
+        aria-label="移除"
+      >
+        <component
+          :is="DeleteOutlineOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+      </UButton>
+    </UTooltip>
     <n-text>{{ file.name }}</n-text>
   </div>
 
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     title="预览（前100行）"
     v-model:open="showPreviewModal"
     class="w-[600px]"
   >
-    <n-text>暂未实现</n-text>
-  </XDialog>
+    <template #body>
+      <n-text>暂未实现</n-text>
+    </template>
+  </UModal>
 </template>

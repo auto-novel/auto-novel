@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { XSlider } from '@novelia/web-kit';
+import USlider from '@nuxt/ui/components/Slider.vue';
 import { bannerFocalPosition } from './bannerFocal';
 import ImageCompare from './ImageCompare.vue';
 
@@ -120,7 +120,7 @@ watch(canCompare, (available) => {
       >
         <div class="focal-slider-row">
           <span class="focal-axis" aria-hidden="true">X</span>
-          <XSlider
+          <USlider
             class="focal-slider"
             v-model="focalX"
             aria-label="X"
@@ -135,7 +135,7 @@ watch(canCompare, (available) => {
         </div>
         <div class="focal-slider-row">
           <span class="focal-axis" aria-hidden="true">Y</span>
-          <XSlider
+          <USlider
             class="focal-slider"
             v-model="focalY"
             aria-label="Y"

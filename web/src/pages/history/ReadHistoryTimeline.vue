@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XTime, XTooltip } from '@novelia/web-kit';
+import { XTime } from '@novelia/web-kit';
 
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 
@@ -70,16 +70,17 @@ const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
           :key="`${item.providerId}/${item.novelId}`"
           class="relative pb-5 pl-5 last:pb-0"
         >
-          <XTooltip>
-            <template #trigger>
-              <span
-                class="absolute top-1.25 -left-1.25 size-2.5 rounded-full ring-4 ring-body sm:top-1.5"
-                :class="hasUpdateSinceRead(item) ? 'bg-warning' : 'bg-primary'"
-                aria-hidden="true"
-              />
+          <UTooltip>
+            <span
+              class="absolute top-1.25 -left-1.25 size-2.5 rounded-full ring-4 ring-body sm:top-1.5"
+              :class="hasUpdateSinceRead(item) ? 'bg-warning' : 'bg-primary'"
+              aria-hidden="true"
+            />
+
+            <template #content>
+              {{ hasUpdateSinceRead(item) ? '上次阅读后有更新' : '阅读记录' }}
             </template>
-            {{ hasUpdateSinceRead(item) ? '上次阅读后有更新' : '阅读记录' }}
-          </XTooltip>
+          </UTooltip>
           <span v-if="hasUpdateSinceRead(item)" class="sr-only">有更新</span>
           <div
             class="grid min-w-0 gap-y-0.5 sm:grid-cols-[4rem_minmax(0,1fr)] sm:items-baseline sm:gap-x-2"

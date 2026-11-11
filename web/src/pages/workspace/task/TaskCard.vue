@@ -181,7 +181,7 @@ const closePreview = () => {
                 tooltip="删除"
                 :icon="DeleteOutlineOutlined"
                 icon-only
-                color="danger"
+                color="error"
                 @action="emit('delete', job.task)"
               />
             </div>

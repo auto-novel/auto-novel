@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog, XTooltip } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 
 import { FavoredRepo, useLocalVolumeStore, useSettingStore } from '@/stores';
 import { useShouldTopJob } from '@/util';
@@ -131,42 +131,52 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
         <div
           class="flex flex-wrap justify-start items-baseline gap-x-3 gap-y-2"
         >
-          <n-button-group size="small">
-            <c-button
-              label="全选"
-              :round="false"
-              @action="$emit('selectAll')"
-            />
-            <c-button
-              label="反选"
-              :round="false"
-              @action="$emit('invertSelection')"
-            />
-          </n-button-group>
+          <UFieldGroup size="sm">
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('selectAll')"
+              class="text-sm/4"
+            >
+              全选
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('invertSelection')"
+              class="text-sm/4"
+            >
+              反选
+            </UButton>
+          </UFieldGroup>
 
-          <n-button-group size="small">
-            <c-button
-              label="下载原文"
-              :round="false"
-              @action="downloadRawSelected"
-            />
-            <c-button
-              label="下载机翻"
-              :round="false"
-              @action="downloadSelected"
-            />
-            <DownloadOptionsButton size="small" :round="false" />
-          </n-button-group>
+          <UFieldGroup size="sm">
+            <ActionButton
+              class="rounded-md text-sm/4"
+              :action="downloadRawSelected"
+            >
+              下载原文
+            </ActionButton>
+            <ActionButton
+              class="rounded-md text-sm/4"
+              :action="downloadSelected"
+            >
+              下载机翻
+            </ActionButton>
+            <DownloadOptionsButton size="sm" class="rounded-md text-sm/4" />
+          </UFieldGroup>
 
-          <c-button
-            label="删除"
-            secondary
-            :round="false"
-            size="small"
-            type="error"
+          <UButton
+            size="sm"
+            color="error"
             @click="openDeleteModal"
-          />
-          <XDialog
+            variant="soft"
+            class="text-sm/4"
+          >
+            删除
+          </UButton>
+          <UModal
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
             :title="`确定删除 ${
               selectedIds.length === 1
                 ? selectedIds[0]
@@ -176,9 +186,15 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             class="w-[600px]"
           >
             <template #footer>
-              <c-button label="确定" type="primary" @action="deleteSelected" />
+              <ActionButton
+                color="primary"
+                :action="deleteSelected"
+                variant="solid"
+              >
+                确定
+              </ActionButton>
             </template>
-          </XDialog>
+          </UModal>
         </div>
 
         <n-text depth="3">已选择{{ selectedIds.length }}本小说</n-text>
@@ -193,12 +209,13 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           <div
             class="flex flex-wrap justify-start items-center gap-x-3 gap-y-2"
           >
-            <c-button
-              label="移动"
-              size="small"
-              :round="false"
-              @action="moveToFavored"
-            />
+            <ActionButton
+              class="rounded-md text-sm/4"
+              size="sm"
+              :action="moveToFavored"
+            >
+              移动
+            </ActionButton>
 
             <n-radio
               v-for="favored in favoreds.local"
@@ -223,47 +240,50 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
 
         <c-action-wrapper title="选项">
           <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
-            <XTooltip>
-              <template #trigger>
-                <div class="flex flex-nowrap justify-start gap-0">
-                  <tag-button
-                    label="过期"
-                    :checked="translateLevel === 'expire'"
-                    @update:checked="translateLevel = 'expire'"
-                  />
-                  <tag-button
-                    label="重翻"
-                    type="warning"
-                    :checked="translateLevel === 'all'"
-                    @update:checked="translateLevel = 'all'"
-                  />
-                </div>
+            <UTooltip>
+              <div class="flex flex-nowrap justify-start gap-0">
+                <tag-button
+                  label="过期"
+                  :checked="translateLevel === 'expire'"
+                  @update:checked="translateLevel = 'expire'"
+                />
+                <tag-button
+                  label="重翻"
+                  type="warning"
+                  :checked="translateLevel === 'all'"
+                  @update:checked="translateLevel = 'all'"
+                />
+              </div>
+
+              <template #content>
+                过期：翻译术语表过期的章节
+                <br />
+                重翻：重翻全部章节
+                <br />
               </template>
-              过期：翻译术语表过期的章节
-              <br />
-              重翻：重翻全部章节
-              <br />
-            </XTooltip>
+            </UTooltip>
 
             <tag-button label="倒序添加" v-model:checked="reverseOrder" />
           </div>
         </c-action-wrapper>
 
         <c-action-wrapper title="操作">
-          <n-button-group size="small">
-            <c-button
+          <UFieldGroup size="sm">
+            <ActionButton
+              class="rounded-md text-sm/4"
               v-if="setting.enabledTranslator.includes('gpt')"
-              label="排队GPT"
-              :round="false"
-              @action="queueJobs('gpt')"
-            />
-            <c-button
+              :action="() => queueJobs('gpt')"
+            >
+              排队GPT
+            </ActionButton>
+            <ActionButton
+              class="rounded-md text-sm/4"
               v-if="setting.enabledTranslator.includes('sakura')"
-              label="排队Sakura"
-              :round="false"
-              @action="queueJobs('sakura')"
-            />
-          </n-button-group>
+              :action="() => queueJobs('sakura')"
+            >
+              排队Sakura
+            </ActionButton>
+          </UFieldGroup>
         </c-action-wrapper>
       </div>
     </n-list-item>

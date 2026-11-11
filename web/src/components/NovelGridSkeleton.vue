@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { XSkeleton } from '@novelia/web-kit';
-
 withDefaults(defineProps<{ panel?: boolean }>(), { panel: false });
 </script>
 
@@ -17,10 +15,10 @@ withDefaults(defineProps<{ panel?: boolean }>(), { panel: false });
       "
     >
       <div v-for="index in panel ? 12 : 8" :key="index" class="min-w-0">
-        <XSkeleton class="aspect-[2/3] w-full" />
+        <USkeleton class="aspect-[2/3] w-full" />
         <div class="space-y-1.5 p-2">
-          <XSkeleton class="h-3.5 w-full bg-border" />
-          <XSkeleton class="h-3.5 w-2/3" />
+          <USkeleton class="h-3.5 w-full bg-border" />
+          <USkeleton class="h-3.5 w-2/3" />
         </div>
       </div>
     </div>

@@ -2,7 +2,6 @@
 import type { Comment } from '@novelia/web-kit';
 import {
   CommentRulesNotice,
-  XButton,
   XMarkdownHelpDialog,
   getApiErrorMessage,
   Toast,
@@ -94,7 +93,7 @@ const reply = async () => {
       class="mb-2 flex items-center gap-2 text-xs text-muted"
     >
       <span>已恢复草稿</span>
-      <XButton
+      <UButton
         size="xs"
         color="neutral"
         variant="ghost"
@@ -102,7 +101,7 @@ const reply = async () => {
         @click="clearDraft()"
       >
         丢弃草稿
-      </XButton>
+      </UButton>
     </div>
     <MarkdownEditor
       :disabled="submitting || disabled"
@@ -115,17 +114,17 @@ const reply = async () => {
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
       <XMarkdownHelpDialog mode="comment" />
       <div class="flex items-center gap-2">
-        <XButton
+        <UButton
           color="neutral"
           variant="outline"
           :disabled="submitting"
           @click="emit('cancel')"
         >
           取消
-        </XButton>
-        <XButton :disabled="!canSubmit" @click="reply()">
+        </UButton>
+        <UButton :disabled="!canSubmit" @click="reply()">
           {{ submitting ? '发表中…' : '发表' }}
-        </XButton>
+        </UButton>
       </div>
     </div>
   </div>

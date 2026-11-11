@@ -1,10 +1,5 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  getApiErrorMessage,
-  XPage,
-  XPageHeader,
-} from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XPage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined, PlusOutlined } from '@vicons/material';
 import type { UploadCustomRequestOptions } from 'naive-ui';
 
@@ -76,7 +71,7 @@ const showListModal = ref(false);
 
 <template>
   <XPage>
-    <XPageHeader title="小说处理" />
+    <UPageHeader title="小说处理" />
 
     <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
       <div>
@@ -87,20 +82,43 @@ const showListModal = ref(false);
           directory-dnd
           :custom-request="customRequest"
         >
-          <c-button label="加载文件" :icon="PlusOutlined" />
+          <UButton color="neutral" variant="outline" class="rounded-full">
+            <component
+              :is="PlusOutlined"
+              class="size-4.5 shrink-0"
+              aria-hidden="true"
+            />
+            加载文件
+          </UButton>
         </n-upload>
       </div>
 
-      <c-button
-        label="本地书架"
-        :icon="PlusOutlined"
-        @action="showListModal = true"
-      />
-      <c-button
-        label="清空"
-        :icon="DeleteOutlineOutlined"
-        @action="clearFile"
-      />
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="showListModal = true"
+      >
+        <component
+          :is="PlusOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+        本地书架
+      </UButton>
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="clearFile"
+      >
+        <component
+          :is="DeleteOutlineOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+        清空
+      </UButton>
     </div>
 
     <div class="mt-4 flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">

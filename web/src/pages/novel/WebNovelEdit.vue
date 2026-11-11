@@ -1,11 +1,6 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  getApiErrorMessage,
-  XPage,
-  XPageHeader,
-  XSeparator,
-} from '@novelia/web-kit';
+import { useRequireLogin } from '@/util/useRequireLogin';
+import { Toast, getApiErrorMessage, XPage } from '@novelia/web-kit';
 import { UploadOutlined } from '@vicons/material';
 
 import { WebNovelRepo } from '@/repos';
@@ -92,11 +87,12 @@ const submit = async () => {
     })
     .catch(() => {});
 };
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
   <XPage>
-    <XPageHeader title="编辑网络小说" />
+    <UPageHeader title="编辑网络小说" />
 
     <n-form
       :model="formValue"
@@ -167,16 +163,21 @@ const submit = async () => {
       </tr>
     </n-table>
 
-    <XSeparator class="my-6" />
+    <USeparator class="my-6" />
 
-    <c-button
-      label="提交"
-      :icon="UploadOutlined"
-      require-login
-      size="large"
-      type="primary"
+    <ActionButton
+      size="xl"
+      color="primary"
       class="float"
-      @action="submit"
-    />
+      :action="requireLogin(submit)"
+      variant="solid"
+    >
+      <component
+        :is="UploadOutlined"
+        class="size-5 shrink-0 group-aria-busy:hidden"
+        aria-hidden="true"
+      />
+      提交
+    </ActionButton>
   </XPage>
 </template>

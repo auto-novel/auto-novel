@@ -6,7 +6,6 @@ import {
   copyToClipboard,
   Toast,
   XConfirmDialog,
-  XScrollArea,
   getApiErrorMessage,
 } from '@novelia/web-kit';
 
@@ -249,7 +248,15 @@ defineExpose({
           :placeholder="['日文', '中文']"
           :input-props="{ spellcheck: false }"
         />
-        <c-button label="添加" :round="false" size="small" @action="addTerm" />
+        <UButton
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="addTerm"
+          class="text-sm/4"
+        >
+          添加
+        </UButton>
       </n-input-group>
 
       <n-input
@@ -262,43 +269,50 @@ defineExpose({
       />
 
       <div class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2">
-        <c-button
-          label="导出"
-          :round="false"
-          size="small"
-          @action="exportGlossary"
-        />
-        <c-button
-          label="导入"
-          :round="false"
-          size="small"
-          @action="importGlossary"
-        />
-        <c-button
-          label="下载json文件"
-          :round="false"
-          size="small"
-          @action="downloadGlossaryAsJsonFile"
-        />
-        <c-button
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="exportGlossary"
+        >
+          导出
+        </ActionButton>
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="importGlossary"
+        >
+          导入
+        </ActionButton>
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="downloadGlossaryAsJsonFile"
+        >
+          下载json文件
+        </ActionButton>
+        <UButton
           v-if="whoami.isAdmin"
-          secondary
-          type="error"
-          label="清空"
-          :round="false"
-          size="small"
-          @action="clearTerm"
-        />
+          color="error"
+          size="sm"
+          variant="soft"
+          @click="clearTerm"
+          class="text-sm/4"
+        >
+          清空
+        </UButton>
       </div>
 
       <div class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2">
-        <c-button
+        <UButton
+          color="neutral"
+          variant="outline"
           :disabled="deletedTerms.length === 0"
-          label="撤销删除"
-          :round="false"
-          size="small"
-          @action="undoDeleteTerm"
-        />
+          size="sm"
+          @click="undoDeleteTerm"
+          class="text-sm/4"
+        >
+          撤销删除
+        </UButton>
         <n-text
           v-if="lastDeletedTerm !== undefined"
           depth="3"
@@ -309,20 +323,28 @@ defineExpose({
       </div>
     </div>
 
-    <XScrollArea
+    <UScrollArea
       v-if="Object.keys(glossary).length !== 0"
       style="max-height: 400px; max-width: 500px; margin-bottom: 16px"
     >
       <n-table striped size="small" style="font-size: 12px; width: 100%">
         <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
           <td>
-            <c-button
-              :icon="DeleteOutlineOutlined"
-              text
-              type="error"
-              size="small"
-              @action="deleteTerm(wordJp)"
-            />
+            <ActionButton
+              color="error"
+              size="sm"
+              variant="link"
+              square
+              class="p-0"
+              :action="() => deleteTerm(wordJp)"
+              aria-label="删除"
+            >
+              <component
+                :is="DeleteOutlineOutlined"
+                class="size-4.5 shrink-0 group-aria-busy:hidden"
+                aria-hidden="true"
+              />
+            </ActionButton>
           </td>
           <td>{{ wordJp }}</td>
           <td nowrap="nowrap">=></td>
@@ -339,10 +361,16 @@ defineExpose({
           </td>
         </tr>
       </n-table>
-    </XScrollArea>
+    </UScrollArea>
 
     <div class="flex max-w-125 flex-wrap justify-end gap-x-3 gap-y-2">
-      <c-button label="提交" type="primary" @action="submitGlossary()" />
+      <ActionButton
+        color="primary"
+        :action="() => submitGlossary()"
+        variant="solid"
+      >
+        提交
+      </ActionButton>
     </div>
 
     <XConfirmDialog

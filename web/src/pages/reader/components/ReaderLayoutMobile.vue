@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { XDrawer } from '@novelia/web-kit';
 import {
   ArrowBackIosOutlined,
   ArrowForwardIosOutlined,
@@ -78,62 +77,65 @@ const onGlobalClick = (event: MouseEvent) => {
     <slot />
   </div>
 
-  <XDrawer
+  <USlideover
     v-model:open="showMenu"
     title="阅读菜单"
-    size="auto"
+    :close="false"
     side="bottom"
-    @open-auto-focus.prevent
+    :content="{ onOpenAutoFocus: (event: Event) => event.preventDefault() }"
+    :ui="{ content: 'h-auto max-h-[calc(100dvh-3rem)]' }"
   >
-    <div
-      class="my-1 flex w-full flex-wrap justify-start gap-0 pb-[env(safe-area-inset-bottom)]"
-    >
-      <div style="flex: 1 1 0px">
-        <side-button
-          quaternary
-          :disabled="!chapter.prevId"
-          text="上一章"
-          :icon="ArrowBackIosOutlined"
-          @click="emit('nav', chapter.prevId!)"
-          style="width: 100%"
-        />
+    <template #content>
+      <div
+        class="my-1 flex w-full flex-wrap justify-start gap-0 pb-[env(safe-area-inset-bottom)]"
+      >
+        <div style="flex: 1 1 0px">
+          <side-button
+            quaternary
+            :disabled="!chapter.prevId"
+            text="上一章"
+            :icon="ArrowBackIosOutlined"
+            @click="emit('nav', chapter.prevId!)"
+            style="width: 100%"
+          />
+        </div>
+        <router-link v-if="novelUrl" :to="novelUrl" style="flex: 1">
+          <side-button
+            quaternary
+            text="详情"
+            :icon="LibraryBooksOutlined"
+            style="width: 100%"
+          />
+        </router-link>
+        <div style="flex: 1 1 0px">
+          <side-button
+            quaternary
+            text="目录"
+            :icon="FormatListBulletedOutlined"
+            @click="openCatalogModal"
+            style="width: 100%"
+          />
+        </div>
+        <div style="flex: 1 1 0px">
+          <side-button
+            quaternary
+            text="设置"
+            :icon="TuneOutlined"
+            @click="openSettingModal"
+            style="width: 100%"
+          />
+        </div>
+        <div style="flex: 1 1 0px">
+          <side-button
+            quaternary
+            :disabled="!chapter.nextId"
+            text="下一章"
+            :icon="ArrowForwardIosOutlined"
+            @click="emit('nav', chapter.nextId!)"
+            style="width: 100%"
+          />
+        </div>
       </div>
-      <router-link v-if="novelUrl" :to="novelUrl" style="flex: 1">
-        <side-button
-          quaternary
-          text="详情"
-          :icon="LibraryBooksOutlined"
-          style="width: 100%"
-        />
-      </router-link>
-      <div style="flex: 1 1 0px">
-        <side-button
-          quaternary
-          text="目录"
-          :icon="FormatListBulletedOutlined"
-          @click="openCatalogModal"
-          style="width: 100%"
-        />
-      </div>
-      <div style="flex: 1 1 0px">
-        <side-button
-          quaternary
-          text="设置"
-          :icon="TuneOutlined"
-          @click="openSettingModal"
-          style="width: 100%"
-        />
-      </div>
-      <div style="flex: 1 1 0px">
-        <side-button
-          quaternary
-          :disabled="!chapter.nextId"
-          text="下一章"
-          :icon="ArrowForwardIosOutlined"
-          @click="emit('nav', chapter.nextId!)"
-          style="width: 100%"
-        />
-      </div>
-    </div>
-  </XDrawer>
+    </template>
+  </USlideover>
 </template>

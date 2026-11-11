@@ -44,13 +44,21 @@ function invertSelection() {
         {{ tag }}
       </n-text>
 
-      <c-button
+      <UButton
         v-if="option.multiple"
-        :icon="SyncAltOutlined"
-        type="primary"
-        text
+        color="primary"
         @click="invertSelection()"
-      />
+        variant="link"
+        square
+        class="rounded-full p-0"
+        aria-label="反选"
+      >
+        <component
+          :is="SyncAltOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+      </UButton>
     </div>
   </CActionWrapper>
 </template>

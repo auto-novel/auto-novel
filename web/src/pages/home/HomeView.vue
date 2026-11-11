@@ -6,7 +6,7 @@ import {
   ReadMoreOutlined,
   StarBorderOutlined,
 } from '@vicons/material';
-import { XDialog, XPage } from '@novelia/web-kit';
+import { XPage } from '@novelia/web-kit';
 
 import { FavoredApi } from '@/api';
 import { forumPostUrls, forumUrl, siteUrls } from '@/config';
@@ -86,54 +86,68 @@ const showQQModal = ref(false);
 
   <XPage class="pb-0">
     <div class="my-2 grid grid-cols-4 min-[540px]:hidden">
-      <router-link
+      <UButton
         :to="whoami.isSignedIn ? '/favorite/web' : '/favorite/local'"
+        color="neutral"
+        variant="ghost"
+        block
+        class="h-16!"
       >
-        <n-button quaternary block class="h-16!">
-          <div class="flex flex-col items-center gap-2 text-xs">
-            <n-icon size="24" :component="StarBorderOutlined" />
-            我的收藏
-          </div>
-        </n-button>
-      </router-link>
+        <div class="flex flex-col items-center gap-2 text-xs">
+          <StarBorderOutlined class="size-6 shrink-0" aria-hidden="true" />
+          我的收藏
+        </div>
+      </UButton>
 
-      <router-link to="/novel">
-        <n-button quaternary block class="h-16!">
-          <div class="flex flex-col items-center gap-2 text-xs">
-            <n-icon size="24" :component="LanguageOutlined" />
-            网络小说
-          </div>
-        </n-button>
-      </router-link>
+      <UButton to="/novel" color="neutral" variant="ghost" block class="h-16!">
+        <div class="flex flex-col items-center gap-2 text-xs">
+          <LanguageOutlined class="size-6 shrink-0" aria-hidden="true" />
+          网络小说
+        </div>
+      </UButton>
 
-      <router-link to="/wenku">
-        <n-button quaternary block class="h-16!">
-          <div class="flex flex-col items-center gap-2 text-xs">
-            <n-icon size="24" :component="BookOutlined" />
-            文库小说
-          </div>
-        </n-button>
-      </router-link>
+      <UButton to="/wenku" color="neutral" variant="ghost" block class="h-16!">
+        <div class="flex flex-col items-center gap-2 text-xs">
+          <BookOutlined class="size-6 shrink-0" aria-hidden="true" />
+          文库小说
+        </div>
+      </UButton>
 
-      <n-a :href="forumUrl" target="_blank" rel="noopener noreferrer">
-        <n-button quaternary block class="h-16!">
-          <div class="flex flex-col items-center gap-2 text-xs">
-            <n-icon size="24" :component="ForumOutlined" />
-            论坛
-          </div>
-        </n-button>
-      </n-a>
+      <UButton
+        :href="forumUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        color="neutral"
+        variant="ghost"
+        block
+        class="h-16!"
+      >
+        <div class="flex flex-col items-center gap-2 text-xs">
+          <ForumOutlined class="size-6 shrink-0" aria-hidden="true" />
+          论坛
+        </div>
+      </UButton>
     </div>
 
     <bulletin>
       <div class="flex flex-wrap gap-x-3 gap-y-2">
-        <n-button text type="primary" @click="showHowToUseModal = true">
+        <UButton
+          variant="link"
+          color="primary"
+          class="p-0 leading-none"
+          @click="showHowToUseModal = true"
+        >
           使用说明
-        </n-button>
+        </UButton>
         /
-        <n-button text type="primary" @click="showQQModal = true">
+        <UButton
+          variant="link"
+          color="primary"
+          class="p-0 leading-none"
+          @click="showQQModal = true"
+        >
           QQ群
-        </n-button>
+        </UButton>
         /
         <n-a :href="siteUrls.telegram" target="_blank">Telegram</n-a>
         /
@@ -164,9 +178,19 @@ const showQQModal = ref(false);
 
     <template v-if="whoami.isSignedIn">
       <section-header title="我的收藏">
-        <router-link to="/favorite/web">
-          <c-button label="更多" :icon="ReadMoreOutlined" />
-        </router-link>
+        <UButton
+          to="/favorite/web"
+          color="neutral"
+          variant="outline"
+          class="rounded-full"
+        >
+          <component
+            :is="ReadMoreOutlined"
+            class="size-4.5 shrink-0"
+            aria-hidden="true"
+          />
+          更多
+        </UButton>
       </section-header>
       <PanelWebNovel
         :novels="favoriteList?.data?.slice(0, 8)"
@@ -176,9 +200,19 @@ const showQQModal = ref(false);
     </template>
 
     <section-header title="网络小说-最多点击">
-      <router-link to="/novel">
-        <c-button label="更多" :icon="ReadMoreOutlined" />
-      </router-link>
+      <UButton
+        to="/novel"
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+      >
+        <component
+          :is="ReadMoreOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+        更多
+      </UButton>
     </section-header>
     <PanelWebNovel
       :novels="mostVisitedWeb?.items?.slice(0, 8)"
@@ -187,9 +221,19 @@ const showQQModal = ref(false);
     <hr class="my-6 border-divider" />
 
     <section-header title="文库小说-最新更新">
-      <router-link to="/wenku">
-        <c-button label="更多" :icon="ReadMoreOutlined" />
-      </router-link>
+      <UButton
+        to="/wenku"
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+      >
+        <component
+          :is="ReadMoreOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+        更多
+      </UButton>
     </section-header>
     <PanelWenkuNovel
       :novels="latestUpdateWenku?.items?.slice(0, 12)"
@@ -198,40 +242,56 @@ const showQQModal = ref(false);
     <hr class="my-6 border-divider" />
   </XPage>
 
-  <XDialog title="使用说明" v-model:open="showHowToUseModal" class="w-150">
-    <p class="my-4 first:mt-0 last:mb-0">
-      将小说链接复制到网站首页的输入框里，点击搜索，如果链接正确，将会跳转到小说页面。更高级的用法，例如生成机翻、高级搜索等，参见
-      <n-a
-        :href="forumPostUrls.usageGuide"
-        target="_blank"
-        rel="noopener noreferrer"
+  <UModal
+    title="使用说明"
+    v-model:open="showHowToUseModal"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+  >
+    <template #body>
+      <p class="my-4 first:mt-0 last:mb-0">
+        将小说链接复制到网站首页的输入框里，点击搜索，如果链接正确，将会跳转到小说页面。更高级的用法，例如生成机翻、高级搜索等，参见
+        <n-a
+          :href="forumPostUrls.usageGuide"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          使用教程
+        </n-a>
+        。有什么问题和建议请在
+        <n-a :href="forumUrl" target="_blank" rel="noopener noreferrer">
+          论坛
+        </n-a>
+        中发帖讨论。
+      </p>
+      <p class="my-4 first:mt-0 last:mb-0">支持的小说站如下:</p>
+      <p
+        v-for="[name, link] of linkExample"
+        :key="name"
+        class="my-4 first:mt-0 last:mb-0"
       >
-        使用教程
-      </n-a>
-      。有什么问题和建议请在
-      <n-a :href="forumUrl" target="_blank" rel="noopener noreferrer">论坛</n-a>
-      中发帖讨论。
-    </p>
-    <p class="my-4 first:mt-0 last:mb-0">支持的小说站如下:</p>
-    <p
-      v-for="[name, link] of linkExample"
-      :key="name"
-      class="my-4 first:mt-0 last:mb-0"
-    >
-      <b>{{ name }}</b>
-      <br />
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <span v-html="link" />
-    </p>
-  </XDialog>
+        <b>{{ name }}</b>
+        <br />
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <span v-html="link" />
+      </p>
+    </template>
+  </UModal>
 
-  <XDialog title="QQ群No.2" v-model:open="showQQModal" class="w-150">
-    <p class="my-4 first:mt-0 last:mb-0">
-      交流群：
-      <n-a :href="siteUrls.qqGroup" target="_blank">1131569744</n-a>
-      ，验证答案是“绿色”。
-      <br />
-      <n-qr-code :size="150" :value="siteUrls.qqGroup" />
-    </p>
-  </XDialog>
+  <UModal
+    title="QQ群No.2"
+    v-model:open="showQQModal"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+  >
+    <template #body>
+      <p class="my-4 first:mt-0 last:mb-0">
+        交流群：
+        <n-a :href="siteUrls.qqGroup" target="_blank">1131569744</n-a>
+        ，验证答案是“绿色”。
+        <br />
+        <n-qr-code :size="150" :value="siteUrls.qqGroup" />
+      </p>
+    </template>
+  </UModal>
 </template>

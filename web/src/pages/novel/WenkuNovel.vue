@@ -1,15 +1,7 @@
 <script lang="ts" setup>
-import {
-  XDialog,
-  XError,
-  getApiErrorMessage,
-  Toast,
-  XPage,
-  XScrollArea,
-  XEmpty,
-  XSeparator,
-  XTime,
-} from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+import { vHorizontalDrag } from '@/util/dragScroll';
+import { getApiErrorMessage, Toast, XPage, XTime } from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -163,46 +155,64 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
 
   <XPage>
     <NovelDetailSkeleton wenku v-if="!novel && !error" />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novel && error"
       title="加载错误"
       :description="error.message"
     />
     <template v-else-if="novel">
       <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-        <router-link
+        <UButton
           v-if="whoami.hasNovelAccess"
           :to="`/wenku-edit/${novelId}`"
+          color="neutral"
+          variant="outline"
         >
-          <c-button label="编辑" :round="false" :icon="EditNoteOutlined" />
-        </router-link>
+          <component
+            :is="EditNoteOutlined"
+            class="size-4.5 shrink-0"
+            aria-hidden="true"
+          />
+          编辑
+        </UButton>
 
         <favorite-button
           :favored="novel.favored"
           :novel="{ type: 'wenku', novelId }"
         />
 
-        <c-button
+        <UButton
+          color="neutral"
+          variant="outline"
           v-if="novel.webIds.length > 0"
-          label="网络"
-          :round="false"
-          :icon="LanguageOutlined"
-          @action="showWebNovelsModal = true"
-        />
+          @click="showWebNovelsModal = true"
+        >
+          <component
+            :is="LanguageOutlined"
+            class="size-4.5 shrink-0"
+            aria-hidden="true"
+          />
+          网络
+        </UButton>
 
-        <XDialog
+        <UModal
+          :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
           title="相关网络小说"
           v-model:open="showWebNovelsModal"
           class="w-[600px]"
         >
-          <ul class="content-list">
-            <li v-for="webId of novel.webIds" :key="webId">
-              <c-a :to="`/novel/${webId}`">
-                {{ webId }}
-              </c-a>
-            </li>
-          </ul>
-        </XDialog>
+          <template #body>
+            <ul class="content-list">
+              <li v-for="webId of novel.webIds" :key="webId">
+                <c-a :to="`/novel/${webId}`">
+                  {{ webId }}
+                </c-a>
+              </li>
+            </ul>
+          </template>
+        </UModal>
       </div>
 
       <n-p>原名：{{ novel.title }}</n-p>
@@ -224,11 +234,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       </div>
 
       <template v-if="novel.volumes.length">
-        <XScrollArea
-          orientation="horizontal"
-          drag-scroll="inertia"
-          class="mt-4"
-        >
+        <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
           <n-image-group show-toolbar-tooltip>
             <div class="mb-4 flex flex-nowrap justify-start gap-1">
               <n-image
@@ -243,7 +249,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               />
             </div>
           </n-image-group>
-        </XScrollArea>
+        </UScrollArea>
       </template>
 
       <NovelBottomTabs
@@ -275,9 +281,9 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               style="margin-top: 16px"
             />
             <div class="mt-4 flex flex-wrap justify-start gap-x-3 gap-y-2">
-              <DownloadOptionsButton :round="false" />
+              <DownloadOptionsButton class="rounded-md" />
             </div>
-            <XSeparator style="margin: 16px 0 0" />
+            <USeparator style="margin: 16px 0 0" />
 
             <n-list>
               <n-list-item
@@ -294,7 +300,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
             </n-list>
 
             <template v-if="whoami.isAdmin">
-              <XSeparator style="margin: 0" />
+              <USeparator style="margin: 0" />
 
               <ul class="content-list">
                 <li v-for="volumeId in novel.volumeZh" :key="volumeId">
@@ -306,29 +312,28 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
                     {{ volumeId }}
                   </n-a>
 
-                  <c-button-confirm
+                  <ConfirmActionButton
                     v-if="whoami.asAdmin"
                     :hint="`真的要删除《${volumeId}》吗？`"
-                    label="删除"
-                    text
-                    type="error"
+                    color="error"
                     style="margin-left: 16px"
-                    @action="deleteVolume(volumeId)"
+                    variant="link"
+                    class="p-0 leading-none"
+                    label="删除"
+                    :action="() => deleteVolume(volumeId)"
                   />
                 </li>
               </ul>
             </template>
 
-            <XEmpty
-              size="compact"
-              class="min-h-0 p-0"
+            <CEmpty
+              inline
               v-if="novel.volumeJp.length === 0 && novel.volumeZh.length === 0"
               title="请不要创建一个空页面"
             />
 
-            <XEmpty
-              size="compact"
-              class="min-h-0 p-0"
+            <CEmpty
+              inline
               v-if="
                 !whoami.isAdmin &&
                 novel.volumeJp.length === 0 &&

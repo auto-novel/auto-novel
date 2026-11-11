@@ -1,17 +1,13 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import ReadHistoryTimeline from './ReadHistoryTimeline.vue';
 import {
-  XButton,
   XConfirmDialog,
-  XEmpty,
-  XError,
   XPagination,
-  XSeparator,
   getApiErrorMessage,
   Toast,
   XPage,
-  XPageHeader,
 } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
@@ -130,30 +126,30 @@ const deleteHistory = async (providerId: string, novelId: string) => {
 
 <template>
   <XPage role="region" aria-label="阅读历史列表">
-    <XPageHeader title="阅读历史">
-      <template #actions>
-        <XButton
+    <UPageHeader title="阅读历史">
+      <template #links>
+        <UButton
           color="neutral"
           variant="outline"
-          size="sm"
+          size="md"
           :loading="loadingRecordState"
           loading-auto
           @click="toggleRecording"
         >
           {{ recordStateLabel }}
-        </XButton>
-        <XButton
-          color="danger"
+        </UButton>
+        <UButton
+          color="error"
           variant="outline"
-          size="sm"
+          size="md"
           :disabled="clearingHistory"
           @click="showClearConfirmation = true"
         >
           <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
           清空记录
-        </XButton>
+        </UButton>
       </template>
-    </XPageHeader>
+    </UPageHeader>
 
     <div
       v-if="readHistoryPaused"
@@ -192,17 +188,19 @@ const deleteHistory = async (providerId: string, novelId: string) => {
       @update:page="onUpdatePage"
     />
 
-    <XSeparator
+    <USeparator
       :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
     />
 
     <NovelListSkeleton v-if="!novelPage && !error" simple />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novelPage && error"
       title="加载错误"
       :description="error.message"
     />
-    <XEmpty
+    <CEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
       title="暂无阅读历史"
       :description="
@@ -210,26 +208,31 @@ const deleteHistory = async (providerId: string, novelId: string) => {
           ? '当前已暂停记录，恢复后阅读小说，会在这里留下记录。'
           : '阅读小说后，会在这里留下记录。'
       "
-      size="compact"
     >
-      <XButton color="neutral" variant="outline" @click="router.push('/novel')">
-        浏览网络小说
-      </XButton>
-    </XEmpty>
+      <template #actions>
+        <UButton
+          color="neutral"
+          variant="outline"
+          @click="router.push('/novel')"
+        >
+          浏览网络小说
+        </UButton>
+      </template>
+    </CEmpty>
     <template v-else-if="novelPage">
       <ReadHistoryTimeline :items="novelPage.items">
         <template #action="item">
-          <XButton
-            color="danger"
+          <UButton
+            color="error"
             variant="ghost"
-            size="tiny"
+            size="xs"
             class="-my-1 h-auto rounded px-1 py-1 text-xs font-normal leading-4 text-error-text hover:bg-transparent hover:underline active:bg-transparent"
             :aria-label="`删除《${item.titleZh || item.titleJp}》的阅读记录`"
             :disabled="isDeletingHistory(item.providerId, item.novelId)"
             @click="deleteHistory(item.providerId, item.novelId)"
           >
             删除
-          </XButton>
+          </UButton>
         </template>
       </ReadHistoryTimeline>
     </template>

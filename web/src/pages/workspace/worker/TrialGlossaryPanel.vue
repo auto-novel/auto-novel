@@ -78,29 +78,45 @@ const importGlossary = () => {
         class="min-w-0 flex-1"
         @keydown="onAddKeydown"
       />
-      <c-button label="添加" :round="false" size="small" @action="addTerm" />
+      <UButton
+        color="neutral"
+        variant="outline"
+        size="sm"
+        @click="addTerm"
+        class="text-sm/4"
+      >
+        添加
+      </UButton>
     </div>
 
     <div class="flex flex-none flex-wrap items-center gap-x-2 gap-y-1">
       <span class="text-xs text-muted">共 {{ count }} 条 · 下次翻译生效</span>
       <div class="ml-auto flex items-center gap-0.5">
-        <c-button
+        <UButton
+          color="neutral"
           v-if="lastDeleted"
-          text
-          size="tiny"
-          :round="false"
-          :icon="UndoOutlined"
-          label="撤销删除"
+          size="xs"
           :title="`撤销删除：${lastDeleted[0]}`"
-          @action="undoDelete"
-        />
-        <c-button
-          text
-          size="tiny"
-          :round="false"
-          :label="showImport ? '收起导入' : '批量导入'"
-          @action="showImport = !showImport"
-        />
+          variant="link"
+          class="p-0 leading-none"
+          @click="undoDelete"
+        >
+          <component
+            :is="UndoOutlined"
+            class="size-3.5 shrink-0"
+            aria-hidden="true"
+          />
+          撤销删除
+        </UButton>
+        <UButton
+          color="neutral"
+          size="xs"
+          variant="link"
+          class="p-0 leading-none"
+          @click="showImport = !showImport"
+        >
+          {{ showImport ? '收起导入' : '批量导入' }}
+        </UButton>
       </div>
     </div>
 
@@ -114,13 +130,14 @@ const importGlossary = () => {
         :input-props="{ spellcheck: false }"
         class="min-w-0 flex-1"
       />
-      <c-button
-        label="导入"
-        :round="false"
-        size="small"
+      <ActionButton
+        class="rounded-md text-sm/4"
+        size="sm"
         :disabled="!importRaw.trim()"
-        @action="importGlossary"
-      />
+        :action="importGlossary"
+      >
+        导入
+      </ActionButton>
     </div>
 
     <div
@@ -138,15 +155,22 @@ const importGlossary = () => {
           'gap-1 border-b border-divider py-0.5',
         ]"
       >
-        <c-button
-          :icon="DeleteOutlineOutlined"
-          text
-          type="error"
-          size="tiny"
+        <ActionButton
+          color="error"
+          size="xs"
           :title="`删除词条：${jp}`"
           :aria-label="`删除词条：${jp}`"
-          @action="deleteTerm(jp)"
-        />
+          variant="link"
+          square
+          class="p-0"
+          :action="() => deleteTerm(jp)"
+        >
+          <component
+            :is="DeleteOutlineOutlined"
+            class="size-3.5 shrink-0 group-aria-busy:hidden"
+            aria-hidden="true"
+          />
+        </ActionButton>
         <span class="truncate text-xs" :title="jp">{{ jp }}</span>
         <span class="text-[11px] text-muted">=></span>
         <n-input

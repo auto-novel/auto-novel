@@ -33,33 +33,49 @@ const startReadChapter = computed(() => {
 
 <template>
   <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-    <router-link
+    <UButton
       v-if="startReadChapter !== undefined"
       :to="`/novel/${providerId}/${novelId}/${startReadChapter.chapter.chapterId}`"
+      color="primary"
+      variant="soft"
     >
-      <c-button
-        :label="startReadChapter.type === 'continue' ? '继续阅读' : '开始阅读'"
-        type="primary"
-        secondary
-        :round="false"
-      />
-    </router-link>
-    <c-button v-else label="开始阅读" :round="false" disabled />
+      {{ startReadChapter.type === 'continue' ? '继续阅读' : '开始阅读' }}
+    </UButton>
+    <UButton color="neutral" variant="outline" v-else disabled>
+      开始阅读
+    </UButton>
 
     <FavoriteButton
       :favored="novel.favored"
       :novel="{ type: 'web', providerId, novelId }"
     />
 
-    <router-link
+    <UButton
       v-if="whoami.hasNovelAccess"
       :to="`/novel-edit/${providerId}/${novelId}`"
+      color="neutral"
+      variant="outline"
     >
-      <c-button label="编辑" :round="false" :icon="EditNoteOutlined" />
-    </router-link>
+      <component
+        :is="EditNoteOutlined"
+        class="size-4.5 shrink-0"
+        aria-hidden="true"
+      />
+      编辑
+    </UButton>
 
-    <router-link v-if="novel.wenkuId" :to="`/wenku/${novel.wenkuId}`">
-      <c-button label="文库" :round="false" :icon="BookOutlined" />
-    </router-link>
+    <UButton
+      v-if="novel.wenkuId"
+      :to="`/wenku/${novel.wenkuId}`"
+      color="neutral"
+      variant="outline"
+    >
+      <component
+        :is="BookOutlined"
+        class="size-4.5 shrink-0"
+        aria-hidden="true"
+      />
+      文库
+    </UButton>
   </div>
 </template>

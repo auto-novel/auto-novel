@@ -47,18 +47,19 @@ const startTranslateTask = (translatorId: 'youdao') =>
     </n-text>
 
     <div class="flex flex-wrap justify-start gap-2">
-      <c-button
+      <ActionButton
         v-if="setting.enabledTranslator.includes('youdao')"
-        label="更新有道"
-        size="tiny"
-        secondary
-        @action="startTranslateTask('youdao')"
-      />
+        size="xs"
+        variant="soft"
+        :action="() => startTranslateTask('youdao')"
+      >
+        更新有道
+      </ActionButton>
       <glossary-button
         :gnid="GenericNovelId.local(volume.id)"
         :value="volume.glossary"
-        size="tiny"
-        secondary
+        size="xs"
+        variant="soft"
       />
     </div>
   </div>

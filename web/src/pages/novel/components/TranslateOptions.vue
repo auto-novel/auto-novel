@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { XTooltip } from '@novelia/web-kit';
 import { InfoOutlined } from '@vicons/material';
 
 import { hasAddonInstalled } from '@/external/addon';
@@ -53,44 +52,45 @@ defineExpose({
   <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <c-action-wrapper title="选项">
       <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
-        <XTooltip style="max-width: 200px">
-          <template #trigger>
-            <div class="flex flex-nowrap justify-start gap-0">
-              <tag-button
-                label="常规"
-                :checked="translateLevel === 'normal'"
-                @update:checked="translateLevel = 'normal'"
-              />
-              <tag-button
-                label="过期"
-                :checked="translateLevel === 'expire'"
-                @update:checked="translateLevel = 'expire'"
-              />
-              <tag-button
-                label="重翻"
-                type="warning"
-                :checked="translateLevel === 'all'"
-                @update:checked="translateLevel = 'all'"
-              />
-              <tag-button
-                v-if="gnid.type === 'web'"
-                label="源站同步"
-                type="warning"
-                :checked="translateLevel === 'sync'"
-                @update:checked="translateLevel = 'sync'"
-              />
-            </div>
+        <UTooltip :ui="{ content: 'max-w-50' }">
+          <div class="flex flex-nowrap justify-start gap-0">
+            <tag-button
+              label="常规"
+              :checked="translateLevel === 'normal'"
+              @update:checked="translateLevel = 'normal'"
+            />
+            <tag-button
+              label="过期"
+              :checked="translateLevel === 'expire'"
+              @update:checked="translateLevel = 'expire'"
+            />
+            <tag-button
+              label="重翻"
+              type="warning"
+              :checked="translateLevel === 'all'"
+              @update:checked="translateLevel = 'all'"
+            />
+            <tag-button
+              v-if="gnid.type === 'web'"
+              label="源站同步"
+              type="warning"
+              :checked="translateLevel === 'sync'"
+              @update:checked="translateLevel = 'sync'"
+            />
+          </div>
+
+          <template #content>
+            常规：只翻译未翻译的章节
+            <br />
+            过期：翻译术语表过期的章节
+            <br />
+            重翻：重翻全部章节
+            <br />
+            <template v-if="gnid.type === 'web'">
+              源站同步：用于原作者修改了原文的情况导致不一致的情况，可能清空现有翻译，慎用！!
+            </template>
           </template>
-          常规：只翻译未翻译的章节
-          <br />
-          过期：翻译术语表过期的章节
-          <br />
-          重翻：重翻全部章节
-          <br />
-          <template v-if="gnid.type === 'web'">
-            源站同步：用于原作者修改了原文的情况导致不一致的情况，可能清空现有翻译，慎用！!
-          </template>
-        </XTooltip>
+        </UTooltip>
 
         <tag-button
           v-if="gnid.type === 'web'"
@@ -150,14 +150,23 @@ defineExpose({
           </n-input-group>
         </div>
 
-        <XTooltip style="max-width: 200px">
-          <template #trigger>
-            <n-button text>
-              <n-icon depth="4" :component="InfoOutlined" />
-            </n-button>
+        <UTooltip :ui="{ content: 'max-w-50' }">
+          <UButton
+            color="neutral"
+            variant="link"
+            class="p-0"
+            aria-label="章节范围说明"
+          >
+            <InfoOutlined
+              class="size-4 shrink-0 opacity-60"
+              aria-hidden="true"
+            />
+          </UButton>
+
+          <template #content>
+            章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。
           </template>
-          章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。
-        </XTooltip>
+        </UTooltip>
       </div>
     </c-action-wrapper>
   </div>

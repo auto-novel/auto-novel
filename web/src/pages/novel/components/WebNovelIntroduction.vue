@@ -47,19 +47,20 @@ watch(introduction, () => {
       </div>
     </div>
     <div v-if="collapsed" class="introduction-action">
-      <n-button
-        text
-        type="primary"
-        class="introduction-toggle"
+      <UButton
+        variant="link"
+        color="primary"
+        class="introduction-toggle gap-0"
         :aria-expanded="expanded"
         :aria-controls="contentId"
         @click="expanded = true"
       >
         展开全部简介
-        <n-icon class="introduction-toggle-icon">
-          <KeyboardArrowDownRound />
-        </n-icon>
-      </n-button>
+        <KeyboardArrowDownRound
+          class="introduction-toggle-icon size-4 shrink-0"
+          aria-hidden="true"
+        />
+      </UButton>
     </div>
   </div>
 </template>

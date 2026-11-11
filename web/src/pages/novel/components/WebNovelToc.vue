@@ -4,7 +4,6 @@ import {
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
-import { XScrollArea } from '@novelia/web-kit';
 
 import type { WebNovelDto } from '@/model/WebNovel';
 import { useSettingStore } from '@/stores';
@@ -37,27 +36,39 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
 
 <template>
   <section-header title="目录">
-    <c-button
+    <UButton
+      color="neutral"
       v-if="hasSeparators"
-      :label="isAnyExpanded ? '折叠' : '展开'"
-      :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-      quaternary
-      size="small"
-      :round="false"
-      @action="toggleAll"
+      size="sm"
       style="margin-right: 8px"
-    />
-    <c-button
-      :label="setting.tocSortReverse ? '倒序' : '正序'"
-      :icon="SortOutlined"
-      quaternary
-      size="small"
-      :round="false"
-      @action="setting.tocSortReverse = !setting.tocSortReverse"
-    />
+      variant="ghost"
+      class="text-sm/4"
+      @click="toggleAll"
+    >
+      <component
+        :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
+        class="size-4 shrink-0"
+        aria-hidden="true"
+      />
+      {{ isAnyExpanded ? '折叠' : '展开' }}
+    </UButton>
+    <UButton
+      color="neutral"
+      size="sm"
+      variant="ghost"
+      class="text-sm/4"
+      @click="setting.tocSortReverse = !setting.tocSortReverse"
+    >
+      <component
+        :is="SortOutlined"
+        class="size-4 shrink-0"
+        aria-hidden="true"
+      />
+      {{ setting.tocSortReverse ? '倒序' : '正序' }}
+    </UButton>
   </section-header>
 
-  <XScrollArea class="min-h-0 flex-1 pr-4">
+  <UScrollArea class="min-h-0 flex-1 pr-4">
     <ChapterTocList
       :toc-sections="tocSections"
       v-model:expanded-names="expandedNames"
@@ -72,5 +83,5 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         collapse: false,
       }"
     />
-  </XScrollArea>
+  </UScrollArea>
 </template>

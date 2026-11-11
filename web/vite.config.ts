@@ -1,4 +1,6 @@
-import tailwindcss from '@tailwindcss/vite';
+import ui from '@nuxt/ui/vite';
+// web-kit 导出 TS 源码；相对路径让 Vite 配置加载器一并转译，避免 Node 外部加载 node_modules 中的 TS。
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/nuxt-ui/index.ts';
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
@@ -6,7 +8,6 @@ import { ProxyAgent } from 'proxy-agent';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
-import Components from 'unplugin-vue-components/vite';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -102,7 +103,15 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       vue(),
-      tailwindcss(),
+      ui({
+        ...webKitNuxtUiOptions,
+        // 统一生成组件声明，避免两套组件自动导入插件互相覆盖。
+        components: {
+          dts: 'src/components.d.ts',
+          dirs: ['src/**/components/**'],
+          resolvers: [NaiveUiResolver()],
+        },
+      }),
       htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),
       AutoImport({
         dts: 'src/auto-imports.d.ts',
@@ -120,11 +129,6 @@ export default defineConfig(({ command, mode }) => {
             ],
           },
         ],
-      }),
-      Components({
-        dts: 'src/components.d.ts',
-        dirs: ['src/**/components/**'],
-        resolvers: [NaiveUiResolver()],
       }),
     ],
   };

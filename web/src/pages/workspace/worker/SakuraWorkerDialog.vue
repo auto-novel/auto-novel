@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
 
 import type { SakuraWorker } from '@/model/Translator';
@@ -112,60 +112,66 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 </script>
 
 <template>
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + 'Sakura翻译器'"
     class="w-150"
   >
-    <n-form
-      ref="form"
-      :model="formValue"
-      :rules="formRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row path="id" label="名字">
-        <n-input
-          v-model:value="formValue.id"
-          placeholder="给你的翻译器起个名字"
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
-      <n-form-item-row path="endpoint" label="API端点">
-        <n-input
-          v-model:value="formValue.endpoint"
-          placeholder="翻译器的API端点"
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
+    <template #body>
+      <n-form
+        ref="form"
+        :model="formValue"
+        :rules="formRules"
+        label-placement="left"
+        label-width="auto"
+      >
+        <n-form-item-row path="id" label="名字">
+          <n-input
+            v-model:value="formValue.id"
+            placeholder="给你的翻译器起个名字"
+            :input-props="{ spellcheck: false }"
+          />
+        </n-form-item-row>
+        <n-form-item-row path="endpoint" label="API端点">
+          <n-input
+            v-model:value="formValue.endpoint"
+            placeholder="翻译器的API端点"
+            :input-props="{ spellcheck: false }"
+          />
+        </n-form-item-row>
 
-      <n-form-item-row path="concurrency" label="并发数">
-        <n-input-number
-          :value="formValue.concurrency"
-          :min="1"
-          :max="100"
-          :precision="0"
-          @update:value="(value) => (formValue.concurrency = value ?? 1)"
-        />
-      </n-form-item-row>
+        <n-form-item-row path="concurrency" label="并发数">
+          <n-input-number
+            :value="formValue.concurrency"
+            :min="1"
+            :max="100"
+            :precision="0"
+            @update:value="(value) => (formValue.concurrency = value ?? 1)"
+          />
+        </n-form-item-row>
 
-      <n-text depth="3" class="text-[12px]!">
-        # 分段长度与前文长度固定为500字符，不支持配置
-        <br />
-        # API端点例子：http://127.0.0.1:8080
-      </n-text>
-    </n-form>
-
+        <n-text depth="3" class="text-[12px]!">
+          # 分段长度与前文长度固定为500字符，不支持配置
+          <br />
+          # API端点例子：http://127.0.0.1:8080
+        </n-text>
+      </n-form>
+    </template>
     <template #footer>
       <div
         class="flex flex-wrap justify-start gap-3"
         v-if="props.worker === undefined"
       >
-        <c-button label="添加并继续" @action="submitAndContinue" />
-        <c-button label="添加" type="primary" @action="submit" />
+        <ActionButton :action="submitAndContinue">添加并继续</ActionButton>
+        <ActionButton color="primary" :action="submit" variant="solid">
+          添加
+        </ActionButton>
       </div>
-      <c-button v-else label="更新" type="primary" @action="submit" />
+      <ActionButton v-else color="primary" :action="submit" variant="solid">
+        更新
+      </ActionButton>
     </template>
-  </XDialog>
+  </UModal>
 </template>

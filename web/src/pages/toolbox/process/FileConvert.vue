@@ -25,7 +25,9 @@ const convertAll = () =>
 <template>
   <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
     <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-      <c-button label="转换" size="small" @action="convertAll" />
+      <ActionButton size="sm" class="text-sm/4" :action="convertAll">
+        转换
+      </ActionButton>
     </div>
   </div>
 </template>

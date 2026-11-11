@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { XEmpty, XScrollArea, XSeparator } from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+
 import { Setting, useSettingStore } from '@/stores';
 import {
   BookshelfLocalUtil,
@@ -91,7 +92,7 @@ defineExpose({
     </c-action-wrapper>
   </div>
 
-  <XSeparator style="margin: 16px 0 8px" />
+  <USeparator style="margin: 16px 0 8px" />
 
   <n-spin v-if="loading" description="正在加载" style="margin-top: 20px" />
 
@@ -103,19 +104,18 @@ defineExpose({
   >
     <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
       <span>{{ loadError }}</span>
-      <c-button label="重试" @action="loadVolumes" />
+      <ActionButton :action="loadVolumes">重试</ActionButton>
     </div>
   </n-alert>
 
-  <XEmpty
-    size="compact"
-    class="min-h-0 p-0"
+  <CEmpty
+    inline
     v-else-if="sortedVolumes.length === 0"
     title="没有文件"
     style="margin-top: 20px"
   />
 
-  <XScrollArea v-else style="flex: auto">
+  <UScrollArea v-else style="flex: auto">
     <n-list style="padding-bottom: 48px; padding-right: 12px">
       <n-list-item v-for="volume of sortedVolumes" :key="volume.id">
         <bookshelf-local-list-item :volume="volume" />
@@ -128,5 +128,5 @@ defineExpose({
         />
       </n-list-item>
     </n-list>
-  </XScrollArea>
+  </UScrollArea>
 </template>

@@ -1,13 +1,7 @@
 <script lang="ts" setup>
+import { useRequireLogin } from '@/util/useRequireLogin';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import {
-  XButton,
-  XDropdownMenu,
-  XDropdownMenuItem,
-  XDialog,
-  getApiErrorMessage,
-  Toast,
-} from '@novelia/web-kit';
+import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 import { MoreVertOutlined } from '@vicons/material';
 
 import { FavoredRepo } from '@/stores';
@@ -99,6 +93,7 @@ const deleteFavored = () =>
       showDeleteModal.value = false;
     })
     .catch(() => {});
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
@@ -114,71 +109,85 @@ const deleteFavored = () =>
       {{ title }}
     </RouterLink>
     <div v-if="options.length > 0" class="shrink-0">
-      <XDropdownMenu class="min-w-32 w-32">
-        <template #trigger>
-          <XButton
-            color="neutral"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="更多操作"
-            title="更多操作"
-          >
-            <MoreVertOutlined class="size-4" aria-hidden="true" />
-          </XButton>
-        </template>
-        <XDropdownMenuItem
-          v-for="option in options"
-          :key="option.key"
-          :destructive="option.key === 'delete'"
-          @select="onSelect(option.key)"
+      <UDropdownMenu
+        :ui="{ content: 'min-w-32 w-32' }"
+        :items="
+          options.map((option) => ({
+            label: option.label,
+            color: option.key === 'delete' ? ('error' as const) : undefined,
+            onSelect: () => onSelect(option.key),
+          }))
+        "
+      >
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          square
+          aria-label="更多操作"
+          title="更多操作"
         >
-          {{ option.label }}
-        </XDropdownMenuItem>
-      </XDropdownMenu>
+          <MoreVertOutlined class="size-4" aria-hidden="true" />
+        </UButton>
+      </UDropdownMenu>
     </div>
   </div>
 
-  <XDialog v-model:open="showEditModal" title="编辑收藏夹" class="w-[600px]">
-    <n-form
-      ref="form"
-      :model="formValue"
-      :rules="formRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row label="标题" path="title">
-        <n-input
-          v-model:value="formValue.title"
-          placeholder="收藏夹标题"
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
-    </n-form>
-
-    <template #footer>
-      <c-button
-        label="确定"
-        require-login
-        type="primary"
-        @action="updateFavored"
-      />
+  <UModal
+    v-model:open="showEditModal"
+    title="编辑收藏夹"
+    class="w-[600px]"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+  >
+    <template #body>
+      <n-form
+        ref="form"
+        :model="formValue"
+        :rules="formRules"
+        label-placement="left"
+        label-width="auto"
+      >
+        <n-form-item-row label="标题" path="title">
+          <n-input
+            v-model:value="formValue.title"
+            placeholder="收藏夹标题"
+            :input-props="{ spellcheck: false }"
+          />
+        </n-form-item-row>
+      </n-form>
     </template>
-  </XDialog>
-
-  <XDialog v-model:open="showDeleteModal" title="删除收藏夹" class="w-[600px]">
-    确定删除收藏夹[{{ title }}]吗？
-    <n-text v-if="type === 'local'">
-      <br />
-      注意，删除本地收藏夹的同时也会清空收藏夹内所有小说。
-    </n-text>
-
     <template #footer>
-      <c-button
-        label="确定"
-        require-login
-        type="primary"
-        @action="deleteFavored"
-      />
+      <ActionButton
+        color="primary"
+        :action="requireLogin(updateFavored)"
+        variant="solid"
+      >
+        确定
+      </ActionButton>
     </template>
-  </XDialog>
+  </UModal>
+
+  <UModal
+    v-model:open="showDeleteModal"
+    title="删除收藏夹"
+    class="w-[600px]"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+  >
+    <template #body>
+      确定删除收藏夹[{{ title }}]吗？
+      <n-text v-if="type === 'local'">
+        <br />
+        注意，删除本地收藏夹的同时也会清空收藏夹内所有小说。
+      </n-text>
+    </template>
+    <template #footer>
+      <ActionButton
+        color="primary"
+        :action="requireLogin(deleteFavored)"
+        variant="solid"
+      >
+        确定
+      </ActionButton>
+    </template>
+  </UModal>
 </template>

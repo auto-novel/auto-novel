@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XDrawer, XPage, XPageHeader, XScrollArea } from '@novelia/web-kit';
+import { XPage } from '@novelia/web-kit';
 import { ExpandMoreOutlined } from '@vicons/material';
 
 import { useIsWideScreen } from '@/pages/util';
@@ -39,16 +39,19 @@ watch([menuKey, isWideScreen], () => {
 
 <template>
   <XPage>
-    <XPageHeader :title="favoredTitle">
+    <UPageHeader :title="favoredTitle">
       <template v-if="!isWideScreen" #title>
-        <XDrawer
+        <USlideover
           v-model:open="showListDrawer"
           title="收藏夹"
-          show-header
+          :close="false"
           side="right"
-          size="clamp(280px, 80vw, 800px)"
+          :ui="{
+            content: 'w-[clamp(280px,80vw,800px)] max-w-[calc(100vw-3rem)]',
+            body: 'flex min-h-0 flex-1 flex-col overflow-hidden p-0 sm:p-0',
+          }"
         >
-          <template #trigger>
+          <template #default>
             <button
               type="button"
               class="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-sm border-0 bg-transparent p-0 text-left [font:inherit] text-inherit focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -58,15 +61,17 @@ watch([menuKey, isWideScreen], () => {
               <ExpandMoreOutlined class="size-6 shrink-0" aria-hidden="true" />
             </button>
           </template>
-          <template #action>
+          <template #actions>
             <BookshelfAddButton />
           </template>
-          <XScrollArea class="min-h-0 flex-1">
-            <BookshelfMenu :value="menuKey" />
-          </XScrollArea>
-        </XDrawer>
+          <template #body>
+            <UScrollArea class="min-h-0 flex-1">
+              <BookshelfMenu :value="menuKey" />
+            </UScrollArea>
+          </template>
+        </USlideover>
       </template>
-    </XPageHeader>
+    </UPageHeader>
     <BookshelfWeb
       v-if="type === 'web'"
       :favored-id="favoredId"

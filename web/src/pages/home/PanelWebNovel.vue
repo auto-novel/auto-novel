@@ -1,6 +1,6 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XEmpty, XError } from '@novelia/web-kit';
 
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 
@@ -12,15 +12,16 @@ defineProps<{
 
 <template>
   <NovelListSkeleton v-if="novels === undefined && !error" panel />
-  <XError
+  <UAlert
+    color="error"
+    variant="soft"
     v-else-if="novels === undefined && error"
     title="加载错误"
     :description="error.message"
   />
-  <XEmpty
+  <CEmpty
     v-else-if="novels !== undefined && novels.length === 0"
     title="空列表"
-    size="compact"
   />
   <template v-else-if="novels !== undefined">
     <div class="@container">

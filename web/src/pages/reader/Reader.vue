@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
-import { XError, XSeparator } from '@novelia/web-kit';
 
 import { ReadHistoryApi } from '@/api';
 import { GenericNovelId } from '@/model/Common';
@@ -281,18 +280,20 @@ onKeyDown(['Enter'], (e) => {
 
 <template>
   <DefineChapterLink v-slot="{ id, label }">
-    <c-button
+    <UButton
       :disabled="id === undefined"
-      :lable="label"
-      quaternary
-      :focusable="false"
-      :type="id ? 'primary' : 'default'"
-      @action.stop="
+      :tabindex="-1"
+      :color="id ? 'primary' : 'neutral'"
+      variant="ghost"
+      class="rounded-full"
+      @click.stop="
         () => {
           navToChapter(id!);
         }
       "
-    />
+    >
+      {{ label }}
+    </UButton>
   </DefineChapterLink>
 
   <div class="content">
@@ -303,7 +304,9 @@ onKeyDown(['Enter'], (e) => {
         <span aria-hidden="true">正在加载章节…</span>
       </div>
     </template>
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!chapterResult.ok"
       title="加载错误"
       :description="chapterResult.error.message"
@@ -323,7 +326,7 @@ onKeyDown(['Enter'], (e) => {
           :chapter-id="currentChapter.chapterId"
           :chapter="currentChapter"
         />
-        <XSeparator class="my-6" />
+        <USeparator class="my-6" />
         <div
           class="flex w-full flex-wrap justify-between items-center gap-x-3 gap-y-2"
         >
@@ -342,13 +345,15 @@ onKeyDown(['Enter'], (e) => {
             <span aria-hidden="true">正在加载下一章…</span>
           </div>
         </template>
-        <XError
+        <UAlert
+          color="error"
+          variant="soft"
           v-else-if="!item.result.ok"
           title="加载错误"
           :description="item.result.error.message"
         />
         <template v-else-if="item.chapter">
-          <XSeparator
+          <USeparator
             v-if="idx > 0 && loadedChapters.length > 0"
             class="my-6"
           />

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
-import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
+import { XPagination } from '@novelia/web-kit';
 
 import { WebNovelRepo } from '@/repos';
 import { useSettingStore, useWhoamiStore } from '@/stores';
@@ -74,11 +75,19 @@ const novelListRef = useTemplateRef('novelList');
 <template>
   <div role="region" aria-label="网络小说收藏列表">
     <div class="mb-6">
-      <c-button
-        label="选择"
-        :icon="ChecklistOutlined"
-        @action="showControlPanel = !showControlPanel"
-      />
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="showControlPanel = !showControlPanel"
+      >
+        <component
+          :is="ChecklistOutlined"
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+        />
+        选择
+      </UButton>
     </div>
 
     <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
@@ -105,22 +114,23 @@ const novelListRef = useTemplateRef('novelList');
       @update:page="onUpdatePage"
     />
 
-    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+    <USeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
 
     <NovelListSkeleton
       v-if="!novelPage && !error"
       :simple="!setting.showTagInWebFavored"
     />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novelPage && error"
       title="加载错误"
       :description="error.message"
     />
-    <XEmpty
+    <CEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
       class="mt-3"
       title="空列表"
-      size="compact"
     />
     <template v-else-if="novelPage">
       <NovelListWeb

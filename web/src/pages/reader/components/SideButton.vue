@@ -6,11 +6,20 @@ defineProps<{
 </script>
 
 <template>
-  <n-button :focusable="false" style="height: 64px">
+  <UButton
+    color="neutral"
+    variant="outline"
+    :tabindex="-1"
+    style="height: 64px"
+  >
     <div>
-      <n-icon size="24" :component="icon" style="margin-bottom: 4px" />
+      <component
+        :is="icon"
+        class="mb-1 inline-block size-6 shrink-0"
+        aria-hidden="true"
+      />
       <br />
       {{ text }}
     </div>
-  </n-button>
+  </UButton>
 </template>
