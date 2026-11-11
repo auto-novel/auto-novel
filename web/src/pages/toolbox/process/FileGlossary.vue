@@ -3,6 +3,7 @@ import {
   copyToClipboard,
   Toast,
   XDialog,
+  XScrollArea,
   getApiErrorMessage,
 } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
@@ -214,9 +215,8 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
       </div>
     </c-action-wrapper>
 
-    <n-scrollbar
+    <XScrollArea
       v-if="katakanas.size !== 0"
-      trigger="none"
       style="
         max-height: 60vh;
         max-width: 600px;
@@ -252,7 +252,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           </td>
         </tr>
       </n-table>
-    </n-scrollbar>
+    </XScrollArea>
   </div>
 
   <XDialog

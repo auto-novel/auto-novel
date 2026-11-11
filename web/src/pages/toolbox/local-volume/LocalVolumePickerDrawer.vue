@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { getApiErrorMessage, Toast } from '@novelia/web-kit';
+import { getApiErrorMessage, Toast, XTime } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -27,7 +27,7 @@ const deleteVolume = (volumeId: string) =>
         <n-text>{{ volume.id }}</n-text>
 
         <n-text depth="3">
-          <n-time :time="volume.createAt" type="relative" />
+          <XTime :time="volume.createAt" preset="relative" />
           / 总计
           {{ volume.toc.length }}
         </n-text>

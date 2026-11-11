@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XEmpty, XSeparator } from '@novelia/web-kit';
+import { XEmpty, XScrollArea, XSeparator } from '@novelia/web-kit';
 import { Setting, useSettingStore } from '@/stores';
 import {
   BookshelfLocalUtil,
@@ -115,7 +115,7 @@ defineExpose({
     style="margin-top: 20px"
   />
 
-  <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
+  <XScrollArea v-else style="flex: auto">
     <n-list style="padding-bottom: 48px; padding-right: 12px">
       <n-list-item v-for="volume of sortedVolumes" :key="volume.id">
         <bookshelf-local-list-item :volume="volume" />
@@ -128,5 +128,5 @@ defineExpose({
         />
       </n-list-item>
     </n-list>
-  </n-scrollbar>
+  </XScrollArea>
 </template>

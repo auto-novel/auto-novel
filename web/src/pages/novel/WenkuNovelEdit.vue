@@ -7,6 +7,7 @@ import {
   XPage,
   XPageHeader,
   XSeparator,
+  XTime,
 } from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
@@ -657,10 +658,10 @@ const levelOptions = [
                     /
                     {{ volume.imprint ?? '未知文库' }}
                     /
-                    <n-time
+                    <XTime
                       v-if="volume.publishAt"
                       :time="volume.publishAt * 1000"
-                      type="date"
+                      format="yyyy-MM-dd"
                     />
                   </n-text>
                 </template>

@@ -8,6 +8,7 @@ import {
   XScrollArea,
   XEmpty,
   XSeparator,
+  XTime,
 } from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
@@ -207,7 +208,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       <n-p>原名：{{ novel.title }}</n-p>
       <n-p v-if="novel.latestPublishAt">
         最新出版于
-        <n-time :time="novel.latestPublishAt * 1000" type="date" />
+        <XTime :time="novel.latestPublishAt * 1000" format="yyyy-MM-dd" />
       </n-p>
       <!-- eslint-disable-next-line vue/no-v-html -->
       <n-p v-html="novel.introduction.replace(/\n/g, '<br />')" />

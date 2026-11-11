@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import CA from '@/components/CA.vue';
-import { NText, NTime, useThemeVars } from 'naive-ui';
+import { XTime } from '@novelia/web-kit';
+import { NText, useThemeVars } from 'naive-ui';
 
 import type { ReadableTocItem } from '@/pages/novel/components/common';
 
@@ -81,7 +82,7 @@ const visitedColor = mixColor();
         <br />
         <n-text v-if="!isSeparator" depth="3" style="font-size: 12px">
           [{{ tocItem.order }}]
-          <n-time
+          <XTime
             v-if="tocItem.createAt"
             :time="tocItem.createAt * 1000"
             format="yyyy-MM-dd HH:mm"

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XTime } from '@novelia/web-kit';
 import { StarFilled } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -142,11 +143,11 @@ defineExpose({
           </template>
           <template v-if="item.updateAt">
             本站更新于
-            <n-time :time="item.updateAt * 1000" type="relative" />
+            <XTime :time="item.updateAt * 1000" preset="relative" />
             /
           </template>
           <template v-if="item.lastReadAt">
-            <n-time :time="item.lastReadAt * 1000" type="relative" />
+            <XTime :time="item.lastReadAt * 1000" preset="relative" />
             看过 /
           </template>
         </n-text>

@@ -9,15 +9,17 @@ const emits = defineEmits<{
 
 <template>
   <div class="flex w-full flex-wrap items-center justify-start gap-1 px-3 py-2">
-    <n-tag
+    <button
       v-for="tag in tags"
       :key="tag"
-      :type="tag.startsWith('-') ? 'error' : 'success'"
-      size="small"
-      style="cursor: pointer"
+      type="button"
+      class="cursor-pointer rounded-sm border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      @mousedown.prevent
       @click="emits('select', tag)"
     >
-      {{ tag }}
-    </n-tag>
+      <n-tag :type="tag.startsWith('-') ? 'error' : 'success'" size="small">
+        {{ tag }}
+      </n-tag>
+    </button>
   </div>
 </template>

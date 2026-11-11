@@ -9,6 +9,7 @@ import {
   XDialog,
   XEmpty,
   XSeparator,
+  XScrollArea,
 } from '@novelia/web-kit';
 import { FileDownloadOutlined, MoreVertOutlined } from '@vicons/material';
 
@@ -152,7 +153,7 @@ const sortedVolumes = computed(() => {
       </XDropdownMenu>
     </template>
 
-    <n-scrollbar trigger="none" class="min-h-0 flex-1">
+    <XScrollArea class="min-h-0 flex-1">
       <div style="padding: 24px 16px">
         <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
           <c-action-wrapper title="搜索">
@@ -193,13 +194,13 @@ const sortedVolumes = computed(() => {
           style="margin-top: 20px"
         />
 
-        <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
+        <template v-else>
           <n-list style="padding-bottom: 48px; padding-right: 12px">
             <n-list-item v-for="volume of sortedVolumes ?? []" :key="volume.id">
               <slot name="volume" v-bind="volume" />
             </n-list-item>
           </n-list>
-        </n-scrollbar>
+        </template>
 
         <XDialog
           title="清空所有文件"
@@ -216,6 +217,6 @@ const sortedVolumes = computed(() => {
           </template>
         </XDialog>
       </div>
-    </n-scrollbar>
+    </XScrollArea>
   </XDrawer>
 </template>

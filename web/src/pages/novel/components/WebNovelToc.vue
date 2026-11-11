@@ -4,7 +4,7 @@ import {
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
-import { NScrollbar } from 'naive-ui';
+import { XScrollArea } from '@novelia/web-kit';
 
 import type { WebNovelDto } from '@/model/WebNovel';
 import { useSettingStore } from '@/stores';
@@ -57,7 +57,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     />
   </section-header>
 
-  <n-scrollbar style="flex: 1; min-height: 0; padding: 0 16px 0 0">
+  <XScrollArea class="min-h-0 flex-1 pr-4">
     <ChapterTocList
       :toc-sections="tocSections"
       v-model:expanded-names="expandedNames"
@@ -72,5 +72,5 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         collapse: false,
       }"
     />
-  </n-scrollbar>
+  </XScrollArea>
 </template>

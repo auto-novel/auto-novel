@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { XTime } from '@novelia/web-kit';
+
 const props = defineProps<{
   type: string;
   totalCharacters?: number;
@@ -65,9 +67,9 @@ const exactVisited = computed(() =>
       trigger="click"
     >
       <template #trigger>
-        <n-time :time="latestChapterCreateAt * 1000" type="relative" />
+        <XTime :time="latestChapterCreateAt * 1000" preset="relative" />
       </template>
-      <n-time :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
+      <XTime :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
     </n-tooltip>
     <n-text v-else>NA</n-text>
     <span>/</span>

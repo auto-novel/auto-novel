@@ -6,6 +6,7 @@ import {
   copyToClipboard,
   Toast,
   XConfirmDialog,
+  XScrollArea,
   getApiErrorMessage,
 } from '@novelia/web-kit';
 
@@ -308,7 +309,7 @@ defineExpose({
       </div>
     </div>
 
-    <n-scrollbar
+    <XScrollArea
       v-if="Object.keys(glossary).length !== 0"
       style="max-height: 400px; max-width: 500px; margin-bottom: 16px"
     >
@@ -338,7 +339,7 @@ defineExpose({
           </td>
         </tr>
       </n-table>
-    </n-scrollbar>
+    </XScrollArea>
 
     <div class="flex max-w-125 flex-wrap justify-end gap-x-3 gap-y-2">
       <c-button label="提交" type="primary" @action="submitGlossary()" />

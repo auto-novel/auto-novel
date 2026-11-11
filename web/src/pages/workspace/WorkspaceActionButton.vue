@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { XButton, XTooltip } from '@novelia/web-kit';
-import type { XButtonColor } from '@novelia/web-kit';
+import type { XColor } from '@novelia/web-kit';
 import type { Component } from 'vue';
 
 withDefaults(
@@ -9,7 +9,7 @@ withDefaults(
     icon: Component;
     tooltip?: string;
     iconOnly?: boolean;
-    color?: XButtonColor;
+    color?: XColor;
     disabled?: boolean;
     onAction?: () => unknown;
   }>(),

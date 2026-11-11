@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XDrawer, XPage, XPageHeader } from '@novelia/web-kit';
+import { XDrawer, XPage, XPageHeader, XScrollArea } from '@novelia/web-kit';
 import { ExpandMoreOutlined } from '@vicons/material';
 
 import { useIsWideScreen } from '@/pages/util';
@@ -61,9 +61,9 @@ watch([menuKey, isWideScreen], () => {
           <template #action>
             <BookshelfAddButton />
           </template>
-          <n-scrollbar trigger="none" class="min-h-0 flex-1">
+          <XScrollArea class="min-h-0 flex-1">
             <BookshelfMenu :value="menuKey" />
-          </n-scrollbar>
+          </XScrollArea>
         </XDrawer>
       </template>
     </XPageHeader>

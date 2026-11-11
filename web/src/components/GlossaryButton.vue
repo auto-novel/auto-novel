@@ -4,6 +4,7 @@ import {
   copyToClipboard,
   Toast,
   XDialog,
+  XScrollArea,
   getApiErrorMessage,
 } from '@novelia/web-kit';
 
@@ -190,7 +191,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
     @open-auto-focus.prevent
     style="max-width: 600px"
   >
-    <n-scrollbar style="max-height: calc(80dvh - 140px)">
+    <XScrollArea style="max-height: calc(80dvh - 140px)">
       <div
         class="mb-4 flex max-w-100 flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
       >
@@ -318,7 +319,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           </td>
         </tr>
       </n-table>
-    </n-scrollbar>
+    </XScrollArea>
 
     <div class="mt-4 flex flex-wrap justify-end gap-x-3 gap-y-2">
       <c-button label="提交" type="primary" @action="submitGlossary()" />

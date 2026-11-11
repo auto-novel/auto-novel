@@ -1,11 +1,10 @@
 <script lang="ts" setup>
-import { XDrawer, XSeparator } from '@novelia/web-kit';
+import { XDrawer, XScrollArea, XSeparator } from '@novelia/web-kit';
 import {
   KeyboardArrowDownRound,
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
-import { NScrollbar } from 'naive-ui';
 
 import { subjectKeys } from '@/api/commentSubject';
 import { GenericNovelId } from '@/model/Common';
@@ -135,7 +134,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         :is-special-chapter="true"
       />
     </n-card>
-    <n-scrollbar>
+    <XScrollArea>
       <ChapterTocList
         :toc-sections="tocSections"
         v-model:expanded-names="expandedNames"
@@ -150,7 +149,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
           collapse: false,
         }"
       />
-    </n-scrollbar>
+    </XScrollArea>
   </template>
 
   <XDrawer
