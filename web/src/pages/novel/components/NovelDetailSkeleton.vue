@@ -11,12 +11,12 @@ defineProps<{
       <div v-if="wenku" class="flex gap-3 py-5">
         <USkeleton class="h-56 w-40 shrink-0" />
         <div class="min-w-0 flex-1 space-y-4 pt-2">
-          <USkeleton class="h-7 w-5/6 bg-border" />
+          <USkeleton class="h-7 w-5/6" />
           <USkeleton v-for="index in 3" :key="index" class="h-6 w-3/4" />
         </div>
       </div>
       <template v-else>
-        <USkeleton class="h-7 w-4/5 bg-border" />
+        <USkeleton class="h-7 w-4/5" />
         <USkeleton class="mt-3 h-6 w-2/3" />
         <USkeleton class="mt-4 h-5 w-2/5" />
       </template>
@@ -33,8 +33,8 @@ defineProps<{
       <div v-if="wenku" class="mt-4 flex gap-1 overflow-hidden">
         <USkeleton v-for="index in 5" :key="index" class="h-36 w-26 shrink-0" />
       </div>
-      <div class="mt-6 border-t border-divider pt-5">
-        <USkeleton class="mb-5 h-6 w-32 bg-border" />
+      <div class="mt-6 border-t border-default pt-5">
+        <USkeleton class="mb-5 h-6 w-32" />
         <USkeleton v-for="index in 4" :key="index" class="mb-4 h-5 w-4/5" />
       </div>
     </div>

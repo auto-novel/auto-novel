@@ -139,13 +139,13 @@ const deleteHistory = async (providerId: string, novelId: string) => {
           {{ recordStateLabel }}
         </UButton>
         <UButton
+          :icon="DeleteOutlineOutlined"
           color="error"
           variant="outline"
           size="md"
           :disabled="clearingHistory"
           @click="showClearConfirmation = true"
         >
-          <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
           清空记录
         </UButton>
       </template>
@@ -153,16 +153,16 @@ const deleteHistory = async (providerId: string, novelId: string) => {
 
     <div
       v-if="readHistoryPaused"
-      class="mt-3 flex items-start gap-3 rounded-lg border border-warning/25 bg-warning-soft px-4 py-3"
+      class="mt-3 flex items-start gap-3 rounded-lg border border-warning/25 bg-warning/10 px-4 py-3"
       role="status"
     >
       <span
-        class="grid size-9 shrink-0 place-items-center rounded-full bg-warning/15 text-warning-text"
+        class="grid size-9 shrink-0 place-items-center rounded-full bg-warning/15 text-warning"
       >
         <PauseCircleOutlineOutlined class="size-5" aria-hidden="true" />
       </span>
       <div class="min-w-0 text-sm">
-        <p class="m-0 font-medium text-ink">阅读历史已暂停</p>
+        <p class="m-0 font-medium text-default">阅读历史已暂停</p>
         <p class="mt-0.5 mb-0 text-muted">
           暂停期间的阅读不会加入历史，已有记录不受影响。
         </p>
@@ -188,9 +188,7 @@ const deleteHistory = async (providerId: string, novelId: string) => {
       @update:page="onUpdatePage"
     />
 
-    <USeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelListSkeleton v-if="!novelPage && !error" simple />
     <UAlert
@@ -226,7 +224,7 @@ const deleteHistory = async (providerId: string, novelId: string) => {
             color="error"
             variant="ghost"
             size="xs"
-            class="-my-1 h-auto rounded px-1 py-1 text-xs font-normal leading-4 text-error-text hover:bg-transparent hover:underline active:bg-transparent"
+            class="-my-1 h-auto rounded px-1 py-1 text-xs font-normal leading-4 text-error hover:bg-transparent hover:underline active:bg-transparent"
             :aria-label="`删除《${item.titleZh || item.titleJp}》的阅读记录`"
             :disabled="isDeletingHistory(item.providerId, item.novelId)"
             @click="deleteHistory(item.providerId, item.novelId)"

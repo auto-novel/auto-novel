@@ -189,61 +189,64 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
     :open="showGlossaryModal"
     @update:open="handleUpdateShow"
     :content="{ onOpenAutoFocus: (event: Event) => event.preventDefault() }"
-    :ui="{ content: 'w-[600px] max-w-[calc(100vw-2rem)]' }"
+    :ui="{ content: 'w-150 max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
-      <UScrollArea style="max-height: calc(80dvh - 140px)">
-        <div
-          class="mb-4 flex max-w-100 flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
-        >
+      <UScrollArea class="max-h-[calc(80dvh-140px)]">
+        <div class="mb-4 flex max-w-100 flex-col gap-y-3">
           <template v-if="gnidHint">
-            <n-text style="font-size: 12px">{{ gnidHint }}</n-text>
+            <span class="text-default text-[12px]">{{ gnidHint }}</span>
 
-            <n-text>
+            <span class="text-default">
               使用前务必先阅读
-              <n-a
-                :href="forumPostUrls.glossaryGuide"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
                 术语表使用指南
-              </n-a>
+              </ULink>
               ，不要滥用术语表。
-            </n-text>
+            </span>
           </template>
 
-          <n-input-group>
-            <n-input
-              pair
-              v-model:value="termsToAdd"
-              size="small"
-              separator="=>"
-              :placeholder="['日文', '中文']"
-              :input-props="{ spellcheck: false }"
+          <UFieldGroup size="sm" class="w-full">
+            <UInput
+              v-model="termsToAdd[0]"
+              placeholder="日文"
+              aria-label="日文术语"
+              :spellcheck="false"
+              class="min-w-0 flex-1"
+            />
+            <span
+              class="flex items-center border border-default px-2 text-muted"
+              aria-hidden="true"
+            >
+              =&gt;
+            </span>
+            <UInput
+              v-model="termsToAdd[1]"
+              placeholder="中文"
+              aria-label="中文翻译"
+              :spellcheck="false"
+              class="min-w-0 flex-1"
             />
             <UButton
               color="neutral"
               variant="outline"
-              size="sm"
               @click="addTerm"
-              class="text-sm/4"
+              class="shrink-0 justify-center"
             >
               添加
             </UButton>
-          </n-input-group>
+          </UFieldGroup>
 
-          <n-input
-            v-model:value="importGlossaryRaw"
-            type="textarea"
-            size="small"
+          <UTextarea
+            v-model="importGlossaryRaw"
+            size="sm"
             placeholder="批量导入术语表"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
             :rows="1"
+            class="w-full"
           />
 
-          <div
-            class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2"
-          >
+          <div class="flex items-center gap-x-3">
             <ActionButton
               class="rounded-md text-sm/4"
               size="sm"
@@ -276,9 +279,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
               清空
             </UButton>
           </div>
-          <div
-            class="flex flex-nowrap items-center justify-start gap-x-3 gap-y-2"
-          >
+          <div class="flex items-center gap-x-3">
             <UButton
               color="neutral"
               variant="outline"
@@ -289,55 +290,48 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
             >
               撤销删除
             </UButton>
-            <n-text
+            <span
+              class="text-muted text-[12px]"
               v-if="lastDeletedTerm !== undefined"
-              depth="3"
-              style="font-size: 12px"
             >
               {{ lastDeletedTerm }}
-            </n-text>
+            </span>
           </div>
         </div>
 
-        <n-table
+        <table
           v-if="Object.keys(glossary).length !== 0"
-          striped
-          size="small"
-          style="font-size: 12px; max-width: 400px"
+          class="content-table rounded-[3px] border border-default [&>tbody>tr:last-child>td]:border-b-0 [&>tbody>tr:nth-child(even)]:bg-surface max-w-[400px] text-[12px]"
         >
-          <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
-            <td>
-              <ActionButton
-                color="error"
-                size="sm"
-                variant="link"
-                square
-                class="p-0"
-                :action="() => deleteTerm(wordJp)"
-                aria-label="删除"
-              >
-                <component
-                  :is="DeleteOutlineOutlined"
-                  class="size-4.5 shrink-0 group-aria-busy:hidden"
-                  aria-hidden="true"
+          <tbody>
+            <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
+              <td>
+                <ActionButton
+                  color="error"
+                  size="sm"
+                  variant="link"
+                  square
+                  class="p-0"
+                  :action="() => deleteTerm(wordJp)"
+                  aria-label="删除"
+                  :icon="DeleteOutlineOutlined"
+                  :ui="{ leadingIcon: 'size-4.5' }"
                 />
-              </ActionButton>
-            </td>
-            <td>{{ wordJp }}</td>
-            <td nowrap="nowrap">=></td>
-            <td style="padding-right: 16px">
-              <n-input
-                v-model:value="glossary[wordJp]"
-                size="tiny"
-                placeholder="请输入中文翻译"
-                :theme-overrides="{
-                  border: '0',
-                  color: 'transprent',
-                }"
-              />
-            </td>
-          </tr>
-        </n-table>
+              </td>
+              <td>{{ wordJp }}</td>
+              <td class="whitespace-nowrap">=></td>
+              <td class="pr-4!">
+                <UInput
+                  v-model="glossary[wordJp]"
+                  size="xs"
+                  placeholder="请输入中文翻译"
+                  variant="none"
+                  class="w-full"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </UScrollArea>
 
       <div class="mt-4 flex flex-wrap justify-end gap-x-3 gap-y-2">
@@ -356,7 +350,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
         :ui="{ content: 'w-[420px] max-w-[calc(100vw-2rem)]' }"
       >
         <template #body>
-          <n-text>检测到未保存的修改，确认关闭吗？</n-text>
+          <span class="text-default">检测到未保存的修改，确认关闭吗？</span>
           <div class="mt-4 flex flex-wrap justify-end gap-x-3 gap-y-2">
             <UButton
               variant="solid"

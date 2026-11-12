@@ -16,7 +16,7 @@ withDefaults(
       :class="
         panel
           ? 'grid grid-cols-1 gap-3 @min-[850px]:grid-cols-4'
-          : 'divide-y divide-divider'
+          : 'divide-y divide-default'
       "
     >
       <div
@@ -24,7 +24,7 @@ withDefaults(
         :key="index"
         :class="panel ? 'min-w-0 space-y-2 p-2' : 'space-y-2 py-3'"
       >
-        <USkeleton class="h-5 w-4/5 bg-border" />
+        <USkeleton class="h-5 w-4/5" />
         <USkeleton class="h-5 w-3/5" />
         <USkeleton v-if="!panel && !simple" class="h-4 w-1/3" />
         <USkeleton v-if="!panel && !simple" class="h-4 w-2/3" />

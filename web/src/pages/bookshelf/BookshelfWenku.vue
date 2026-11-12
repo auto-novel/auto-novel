@@ -58,28 +58,28 @@ const novelListRef = useTemplateRef('novelList');
   <div role="region" aria-label="文库小说收藏列表">
     <div class="mb-6">
       <UButton
+        :icon="ChecklistOutlined"
         color="neutral"
         variant="outline"
         class="rounded-full"
         @click="showControlPanel = !showControlPanel"
       >
-        <component
-          :is="ChecklistOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         选择
       </UButton>
     </div>
 
-    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
-      <bookshelf-wenku-control
-        :selected-novels="novelListRef?.selectedNovels ?? []"
-        :favored-id="favoredId"
-        @select-all="novelListRef?.selectAll()"
-        @invert-selection="novelListRef?.invertSelection()"
-      />
-    </n-collapse-transition>
+    <UCollapsible v-model:open="showControlPanel">
+      <template #content>
+        <div class="pb-4">
+          <bookshelf-wenku-control
+            :selected-novels="novelListRef?.selectedNovels ?? []"
+            :favored-id="favoredId"
+            @select-all="novelListRef?.selectAll()"
+            @invert-selection="novelListRef?.invertSelection()"
+          />
+        </div>
+      </template>
+    </UCollapsible>
 
     <ListFilter
       :options="listOptions"
@@ -96,9 +96,7 @@ const novelListRef = useTemplateRef('novelList');
       @update:page="onUpdatePage"
     />
 
-    <USeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelGridSkeleton v-if="!novelPage && !error" />
     <UAlert

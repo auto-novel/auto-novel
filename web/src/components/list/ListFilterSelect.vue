@@ -32,19 +32,19 @@ function invertSelection() {
 
 <template>
   <CActionWrapper :title="label" size="medium">
-    <div class="flex flex-wrap justify-start gap-x-4 gap-y-1">
-      <n-text
+    <div class="flex flex-wrap gap-x-4 gap-y-1">
+      <span
         v-for="(tag, index) in option.tags"
         :key="tag"
-        text
-        :type="isSelected(index) ? 'primary' : 'default'"
+        :class="isSelected(index) ? 'text-primary' : 'text-default'"
         @click="updateSelect(index)"
-        style="cursor: pointer"
+        class="cursor-pointer"
       >
         {{ tag }}
-      </n-text>
+      </span>
 
       <UButton
+        :icon="SyncAltOutlined"
         v-if="option.multiple"
         color="primary"
         @click="invertSelection()"
@@ -52,13 +52,7 @@ function invertSelection() {
         square
         class="rounded-full p-0"
         aria-label="反选"
-      >
-        <component
-          :is="SyncAltOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
-      </UButton>
+      />
     </div>
   </CActionWrapper>
 </template>

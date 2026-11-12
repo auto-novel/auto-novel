@@ -63,8 +63,8 @@ const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
 <template>
   <ol class="m-0 list-none p-0" aria-label="阅读历史时间线">
     <li v-for="group in historyGroups" :key="group.key" class="not-first:mt-7">
-      <h2 class="mb-3 text-sm font-medium text-ink">{{ group.label }}</h2>
-      <ol class="relative m-0 list-none border-l border-divider p-0">
+      <h2 class="mb-3 text-sm font-medium text-default">{{ group.label }}</h2>
+      <ol class="relative m-0 list-none border-l border-default p-0">
         <li
           v-for="item in group.items"
           :key="`${item.providerId}/${item.novelId}`"
@@ -72,7 +72,7 @@ const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
         >
           <UTooltip>
             <span
-              class="absolute top-1.25 -left-1.25 size-2.5 rounded-full ring-4 ring-body sm:top-1.5"
+              class="absolute top-1.25 -left-1.25 size-2.5 rounded-full ring-4 ring-bg sm:top-1.5"
               :class="hasUpdateSinceRead(item) ? 'bg-warning' : 'bg-primary'"
               aria-hidden="true"
             />
@@ -95,14 +95,17 @@ const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
               />
               <template v-else>—</template>
             </span>
-            <RouterLink
+            <ULink
               :to="`/novel/${item.providerId}/${item.novelId}`"
-              class="min-w-0 font-medium wrap-anywhere text-primary hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              class="min-w-0 font-medium wrap-anywhere"
             >
               {{ item.titleJp }}
-            </RouterLink>
+            </ULink>
             <div class="min-w-0 sm:col-start-2 sm:row-start-2">
-              <p v-if="item.titleZh" class="m-0 text-sm wrap-anywhere text-ink">
+              <p
+                v-if="item.titleZh"
+                class="m-0 text-sm wrap-anywhere text-default"
+              >
                 {{ item.titleZh }}
               </p>
               <p v-if="item.extra" class="m-0 text-xs wrap-anywhere text-muted">

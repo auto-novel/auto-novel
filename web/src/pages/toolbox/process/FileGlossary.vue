@@ -52,7 +52,7 @@ watch(props, async ({ files }) => {
   infos.value = newInfos;
 });
 
-const katakanaThredhold = ref(10);
+const katakanaThredhold = ref<number | undefined>(10);
 
 const katakanaMerged = computed(() => {
   const map = new Map<string, number>();
@@ -78,7 +78,8 @@ const katakanas = computed(() => {
   return new Map(
     [...katakanaMerged.value].filter(
       ([w, c]) =>
-        c > katakanaThredhold.value && !katakanaDeleted.value.includes(w),
+        c > (katakanaThredhold.value ?? 0) &&
+        !katakanaDeleted.value.includes(w),
     ),
   );
 });
@@ -140,28 +141,42 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
+  <div class="flex flex-col gap-y-3">
     <bulletin>
-      <n-p>术语表辅助制作工具正在开发中，当前方案分为识别和翻译两步。</n-p>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        术语表辅助制作工具正在开发中，当前方案分为识别和翻译两步。
+      </p>
       <ul class="content-list">
         <li>识别阶段：根据片假名词汇出现频率判断可能是术语的词汇。</li>
         <li>翻译阶段：直接翻译日语词汇。</li>
       </ul>
-      <n-p><b>注意，这是辅助制作，不是全自动生成，使用前务必检查结果。</b></n-p>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        <b>注意，这是辅助制作，不是全自动生成，使用前务必检查结果。</b>
+      </p>
     </bulletin>
 
     <c-action-wrapper title="次数下限">
-      <n-input-number
-        v-model:value="katakanaThredhold"
-        clearable
-        size="small"
-        style="width: 16em"
-        min="0"
-      />
+      <div class="flex w-[16em] items-center gap-1">
+        <UInputNumber
+          class="min-w-0 flex-1"
+          v-model.optional="katakanaThredhold"
+          size="sm"
+          :min="0"
+        />
+        <UButton
+          v-if="katakanaThredhold !== undefined"
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          aria-label="清空次数下限"
+          @click="katakanaThredhold = undefined"
+        />
+      </div>
     </c-action-wrapper>
 
     <c-action-wrapper title="操作">
-      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+      <div class="flex flex-col gap-y-2">
         <UFieldGroup size="sm">
           <ActionButton
             class="rounded-md text-sm/4"
@@ -194,9 +209,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           </UButton>
         </UFieldGroup>
 
-        <div
-          class="flex flex-nowrap justify-start items-center gap-x-3 gap-y-2"
-        >
+        <div class="flex items-center gap-x-3">
           <UButton
             color="neutral"
             variant="outline"
@@ -207,63 +220,55 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
           >
             撤销删除
           </UButton>
-          <n-text
+          <span
+            class="text-muted text-[12px]"
             v-if="katakanaDeleted.length > 0"
-            depth="3"
-            style="font-size: 12px"
           >
             {{ lastDeletedHint }}
-          </n-text>
+          </span>
         </div>
       </div>
     </c-action-wrapper>
 
     <UScrollArea
+      class="mt-4 ml-8 max-h-[60vh] max-w-150"
       v-if="katakanas.size !== 0"
-      style="
-        max-height: 60vh;
-        max-width: 600px;
-        margin-top: 16px;
-        margin-left: 32px;
-      "
     >
-      <n-table striped size="small" style="font-size: 12px">
-        <tr v-for="[word, number] in katakanas" :key="word">
-          <td>
-            <UTooltip text="移除">
-              <ActionButton
-                square
-                size="sm"
-                color="error"
-                variant="link"
-                class="p-0"
-                :action="() => katakanaDeleted.push(word)"
-                aria-label="移除"
-              >
-                <component
-                  :is="DeleteOutlineOutlined"
-                  class="size-4.5 shrink-0 group-aria-busy:hidden"
-                  aria-hidden="true"
+      <table
+        class="content-table rounded-[3px] border border-default [&>tbody>tr:last-child>td]:border-b-0 [&>tbody>tr:nth-child(even)]:bg-surface text-[12px]"
+      >
+        <tbody>
+          <tr v-for="[word, number] in katakanas" :key="word">
+            <td>
+              <UTooltip text="移除">
+                <ActionButton
+                  square
+                  size="sm"
+                  color="error"
+                  variant="link"
+                  class="p-0"
+                  :action="() => katakanaDeleted.push(word)"
+                  aria-label="移除"
+                  :icon="DeleteOutlineOutlined"
+                  :ui="{ leadingIcon: 'size-4.5' }"
                 />
-              </ActionButton>
-            </UTooltip>
-          </td>
-          <td nowrap="nowrap">{{ number }}</td>
-          <td style="min-width: 100px">{{ word }}</td>
-          <td nowrap="nowrap">=></td>
-          <td style="padding-right: 16px">
-            <n-input
-              v-model:value="katakanaTranslations[word]"
-              size="tiny"
-              placeholder="请输入中文翻译"
-              :theme-overrides="{
-                border: '0',
-                color: 'transprent',
-              }"
-            />
-          </td>
-        </tr>
-      </n-table>
+              </UTooltip>
+            </td>
+            <td class="whitespace-nowrap">{{ number }}</td>
+            <td class="min-w-[100px]">{{ word }}</td>
+            <td class="whitespace-nowrap">=></td>
+            <td class="pr-4!">
+              <UInput
+                class="w-full"
+                v-model="katakanaTranslations[word]"
+                size="xs"
+                placeholder="请输入中文翻译"
+                variant="none"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </UScrollArea>
   </div>
 
@@ -271,20 +276,20 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     title="选择Sakura翻译器"
     v-model:open="showSakuraSelectModal"
-    class="w-[600px]"
+    class="w-150"
   >
     <template #body>
       <n-radio-group v-model:value="selectedSakuraWorkerId">
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <n-radio
             v-for="worker of sakuraWorkspace.workers"
             :key="worker.id"
             :value="worker.id"
           >
             {{ worker.id }}
-            <n-text depth="3">
+            <span class="text-muted">
               {{ worker.endpoint }}
-            </n-text>
+            </span>
           </n-radio>
         </div>
       </n-radio-group>

@@ -72,21 +72,21 @@ const canReply = computed(() => {
     ref="paginationScope"
     tabindex="0"
     aria-label="评论列表"
-    class="comment-list mt-5 border-t border-divider"
+    class="comment-list mt-5 border-t border-default"
   >
     <header
       class="flex items-center justify-between gap-4 py-4"
-      :class="{ 'border-b border-divider': !showInput }"
+      :class="{ 'border-b border-default': !showInput }"
     >
-      <h2 class="text-lg font-semibold text-ink">评论</h2>
+      <h2 class="text-lg font-semibold text-default">评论</h2>
       <UButton
+        :icon="CommentOutlined"
         v-if="canReply"
         size="sm"
         aria-controls="comment-composer"
         :aria-expanded="showInput"
         @click="toggleInput()"
       >
-        <CommentOutlined class="size-4" aria-hidden="true" />
         {{ showInput ? '取消评论' : '发表评论' }}
       </UButton>
     </header>
@@ -99,7 +99,7 @@ const canReply = computed(() => {
       v-if="showInput"
       id="comment-composer"
       :disabled="!canReply"
-      class="border-b border-divider py-4"
+      class="border-b border-default py-4"
       :site="site"
       placeholder="发表评论"
       @replied="onReplied()"
@@ -115,9 +115,9 @@ const canReply = computed(() => {
 
     <div v-if="!commentPage && !error" role="status">
       <span class="sr-only">正在加载评论…</span>
-      <div class="divide-y divide-divider" aria-hidden="true">
+      <div class="divide-y divide-default" aria-hidden="true">
         <div v-for="index in 3" :key="index" class="py-4">
-          <USkeleton class="h-5 w-28 bg-border" />
+          <USkeleton class="h-5 w-28" />
           <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
             <USkeleton class="h-4 w-full" />
             <USkeleton class="mt-2 h-4 w-2/3" />
@@ -141,7 +141,7 @@ const canReply = computed(() => {
       title="暂无评论"
     />
     <template v-else-if="commentPage">
-      <div class="divide-y divide-divider">
+      <div class="divide-y divide-default">
         <CommentThread
           v-for="comment in commentPage.items"
           :key="comment.id"

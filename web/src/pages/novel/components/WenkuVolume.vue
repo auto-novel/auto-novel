@@ -79,16 +79,16 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <div class="flex flex-nowrap justify-between items-center gap-x-3 gap-y-2">
-    <div class="flex flex-col flex-nowrap justify-start gap-1">
-      <n-text>{{ volume.volumeId }}</n-text>
+  <div class="flex justify-between items-center gap-x-3">
+    <div class="flex flex-col gap-1">
+      <span class="text-default">{{ volume.volumeId }}</span>
 
-      <n-text depth="3">
+      <span class="text-muted">
         总计 {{ volume.total }} / 有道 {{ volume.youdao }} / GPT
         {{ volume.gpt }} / Sakura {{ volume.sakura }}
-      </n-text>
+      </span>
 
-      <div class="flex flex-wrap justify-start gap-2">
+      <div class="flex flex-wrap gap-2">
         <ActionButton
           v-if="setting.enabledTranslator.includes('youdao')"
           size="xs"
@@ -127,17 +127,13 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     </div>
 
     <UButton
+      :icon="FileDownloadOutlined"
       color="neutral"
       variant="outline"
       :href="hasTranslation ? file.url : undefined"
       :download="file.filename"
       target="_blank"
     >
-      <component
-        :is="FileDownloadOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
       下载
     </UButton>
   </div>
@@ -146,6 +142,6 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     ref="translateTask"
     @update:youdao="(zh) => (volume.youdao = zh)"
     @update:sakura="(zh) => (volume.sakura = zh)"
-    style="margin-top: 20px"
+    class="mt-5"
   />
 </template>

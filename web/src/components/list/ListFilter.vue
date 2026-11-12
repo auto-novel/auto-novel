@@ -19,7 +19,7 @@ function changeOptionValue(label: string, val: string | number) {
 <template>
   <div
     v-if="Object.keys(options).length > 0"
-    class="mt-2 flex w-full flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
+    class="mt-2 flex w-full flex-col gap-y-3"
   >
     <template v-for="(option, label) in options" :key="label">
       <template v-if="!option.hide">

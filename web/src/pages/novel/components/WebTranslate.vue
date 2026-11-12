@@ -135,11 +135,11 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <div class="mt-2 flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-    <n-text>
+  <div class="mt-2 flex flex-col gap-y-2">
+    <span class="text-default">
       总计 {{ total }} / 有道 {{ youdao }} / GPT {{ gpt }} / Sakura
       {{ sakura }}
-    </n-text>
+    </span>
 
     <UFieldGroup>
       <UButton
@@ -168,12 +168,14 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     </UFieldGroup>
   </div>
 
-  <div style="margin: 28px" />
+  <div class="m-7" />
 
-  <n-text v-if="!whoami.isSignedIn">游客无法使用翻译功能，请先登录。</n-text>
-  <n-text v-else-if="setting.enabledTranslator.length === 0">
+  <span class="text-default" v-if="!whoami.isSignedIn">
+    游客无法使用翻译功能，请先登录。
+  </span>
+  <span class="text-default" v-else-if="setting.enabledTranslator.length === 0">
     没有翻译器启用。
-  </n-text>
+  </span>
   <TranslateOptions
     v-else
     ref="translateOptions"
@@ -181,7 +183,7 @@ const submitJob = (id: 'gpt' | 'sakura') => {
   />
 
   <div
-    class="mt-4 flex flex-wrap justify-start gap-x-3 gap-y-2"
+    class="mt-4 flex flex-wrap gap-x-3 gap-y-2"
     v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0"
   >
     <ActionButton class="rounded-md" :action="importToWorkspace">
@@ -217,6 +219,6 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     ref="translateTask"
     @update:jp="(zh) => emit('update:jp', zh)"
     @update:youdao="(zh) => emit('update:youdao', zh)"
-    style="margin-top: 20px"
+    class="mt-5"
   />
 </template>

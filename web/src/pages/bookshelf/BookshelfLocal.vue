@@ -11,18 +11,14 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
 </script>
 
 <template>
-  <div class="mb-6 flex flex-wrap justify-start gap-x-3 gap-y-2">
+  <div class="mb-6 flex flex-wrap gap-x-3 gap-y-2">
     <UButton
+      :icon="ChecklistOutlined"
       color="neutral"
       variant="outline"
       class="rounded-full"
       @click="showControlPanel = !showControlPanel"
     >
-      <component
-        :is="ChecklistOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
       选择
     </UButton>
     <div>
@@ -30,14 +26,18 @@ const bookshelfListRef = useTemplateRef('bookshelfList');
     </div>
   </div>
 
-  <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
-    <bookshelf-local-control
-      :selected-ids="bookshelfListRef?.selectedIds ?? []"
-      :favored-id="favoredId"
-      @select-all="bookshelfListRef?.selectAll()"
-      @invert-selection="bookshelfListRef?.invertSelection()"
-    />
-  </n-collapse-transition>
+  <UCollapsible v-model:open="showControlPanel">
+    <template #content>
+      <div class="pb-4">
+        <bookshelf-local-control
+          :selected-ids="bookshelfListRef?.selectedIds ?? []"
+          :favored-id="favoredId"
+          @select-all="bookshelfListRef?.selectAll()"
+          @invert-selection="bookshelfListRef?.invertSelection()"
+        />
+      </div>
+    </template>
+  </UCollapsible>
 
   <bookshelf-local-list
     ref="bookshelfList"

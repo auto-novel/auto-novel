@@ -15,7 +15,7 @@ const emit = defineEmits<{
     role="button"
     :type="checked ? type ?? 'success' : 'default'"
     @click="emit('update:checked', !checked)"
-    style="border-radius: 0px; cursor: pointer"
+    class="cursor-pointer! rounded-none!"
     size="small"
   >
     {{ label }}

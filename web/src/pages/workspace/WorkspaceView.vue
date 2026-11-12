@@ -37,12 +37,12 @@ const {
     <UPageHeader :title="isSakura ? 'Sakura工作区' : 'GPT工作区'">
       <template #links>
         <UButton
+          :icon="BookOutlined"
           color="neutral"
           variant="outline"
           size="md"
           @click="showLocalVolumeDrawer = true"
         >
-          <BookOutlined class="size-4" aria-hidden="true" />
           本地书架
         </UButton>
       </template>

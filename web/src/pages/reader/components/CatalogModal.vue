@@ -106,6 +106,7 @@ watch(
       }
     }
   },
+  { immediate: true },
 );
 
 const currentKey = computed(() => {
@@ -123,48 +124,38 @@ const onTocItemClick = (item: ReadableTocItem) => {
   <UModal
     :open="show"
     @update:open="$emit('update:show', $event)"
-    class="w-[600px]"
+    class="w-150"
     :ui="{ content: 'min-h-[30vh] max-h-[80vh] max-w-[calc(100vw-2rem)]' }"
   >
     <template #title>
-      <div class="pr-2" style="display: flex; align-items: baseline">
+      <div class="flex items-baseline pr-2">
         <span>目录</span>
-        <n-text
+        <span
+          class="ml-3 text-muted text-[12px]"
           v-if="tocNumber !== undefined"
-          depth="3"
-          style="font-size: 12px; margin-left: 12px"
         >
           共{{ tocNumber }}章
-        </n-text>
-        <div style="flex: 1" />
+        </span>
+        <div class="flex-1" />
         <UButton
+          :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
           color="neutral"
           v-if="hasSeparators"
           size="sm"
-          style="margin-right: 8px"
           variant="ghost"
-          class="text-sm/4"
+          class="mr-2 text-sm/4"
           @click="toggleAll"
         >
-          <component
-            :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-            class="size-4 shrink-0"
-            aria-hidden="true"
-          />
           {{ isAnyExpanded ? '折叠' : '展开' }}
         </UButton>
         <UButton
+          :icon="SortOutlined"
           color="neutral"
           size="sm"
           variant="ghost"
           class="text-sm/4"
           @click="setting.tocSortReverse = !setting.tocSortReverse"
         >
-          <component
-            :is="SortOutlined"
-            class="size-4 shrink-0"
-            aria-hidden="true"
-          />
           {{ setting.tocSortReverse ? '倒序' : '正序' }}
         </UButton>
       </div>
@@ -174,7 +165,7 @@ const onTocItemClick = (item: ReadableTocItem) => {
       <template v-if="!tocResult">
         <div role="status">
           <span class="sr-only">正在加载章节目录…</span>
-          <div aria-hidden="true" class="divide-y divide-divider">
+          <div aria-hidden="true" class="divide-y divide-default">
             <div v-for="index in 8" :key="index" class="py-3">
               <USkeleton class="h-5" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
               <USkeleton class="mt-2 h-4 w-1/2" />

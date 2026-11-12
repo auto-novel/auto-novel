@@ -47,7 +47,7 @@ watch(
       webTheme.setOverride({
         preference: isDarkColor(readerTheme.bodyColor) ? 'dark' : 'light',
         tokens: {
-          '--color-body': readerTheme.bodyColor,
+          '--ui-bg': readerTheme.bodyColor,
           '--color-surface': readerTheme.bodyColor,
         },
         themeColor: readerTheme.bodyColor,
@@ -88,7 +88,6 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
       :date-locale="dateZhCN"
       inline-theme-disabled
       :theme-overrides="{
-        List: { color: '#0000' },
         common: {
           ...(theme.bodyColor === undefined
             ? undefined
@@ -97,13 +96,11 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
       }"
     >
       <n-global-style />
-      <n-loading-bar-provider>
-        <router-view v-slot="{ Component }">
-          <keep-alive :include="['MainLayout']">
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
-      </n-loading-bar-provider>
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['MainLayout']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </n-config-provider>
   </WebKitApp>
 </template>
@@ -116,12 +113,6 @@ p,
 li {
   overflow-wrap: break-word;
   word-break: break-word;
-}
-.text-2line {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .float {
   position: fixed;

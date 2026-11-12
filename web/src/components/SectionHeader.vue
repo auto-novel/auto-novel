@@ -6,8 +6,8 @@ defineProps<{ title: string }>();
   <div
     class="flex w-full flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
   >
-    <h2 class="heading-bar" style="flex-shrink: 0">{{ title }}</h2>
-    <div class="flex shrink-0 flex-wrap justify-start gap-x-3 gap-y-2">
+    <h2 class="heading-bar shrink-0">{{ title }}</h2>
+    <div class="flex shrink-0 flex-wrap gap-x-3 gap-y-2">
       <slot />
     </div>
   </div>

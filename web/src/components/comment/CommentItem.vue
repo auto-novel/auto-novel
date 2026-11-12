@@ -92,7 +92,7 @@ watch(
 <template>
   <article :id="`comment-${comment.id}`" class="min-w-0 py-4">
     <header class="flex items-center gap-2 text-xs text-muted">
-      <span class="min-w-0 break-words text-sm font-bold text-ink">
+      <span class="min-w-0 break-words text-sm font-bold text-default">
         {{ comment.authorUsername }}
       </span>
       <XTime class="shrink-0" :time="comment.createdAt" preset="relative" />

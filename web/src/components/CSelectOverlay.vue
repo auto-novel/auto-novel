@@ -23,9 +23,9 @@ const checked = defineModel<boolean>('checked', { default: false });
   border-radius: 2px;
 }
 .overlay-unselected:hover {
-  border: 1px dashed var(--color-muted);
+  border: 1px dashed var(--ui-text-muted);
 }
 .overlay-selected {
-  border: 2px solid var(--color-primary);
+  border: 2px solid var(--ui-primary);
 }
 </style>

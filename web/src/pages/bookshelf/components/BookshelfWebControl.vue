@@ -137,12 +137,12 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-list bordered>
-    <n-list-item>
-      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-        <div
-          class="flex flex-wrap justify-start items-baseline gap-x-3 gap-y-2"
-        >
+  <div
+    class="divide-y divide-default leading-[1.6] text-default text-sm rounded-[3px] border border-default"
+  >
+    <div class="relative min-w-0 py-3 px-5">
+      <div class="flex flex-col gap-y-2">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
           <UFieldGroup size="sm">
             <UButton
               color="neutral"
@@ -172,14 +172,14 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             删除
           </UButton>
           <UModal
-            :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
             :title="`确定删除 ${
               selectedNovels.length === 1
                 ? selectedNovels[0].titleZh ?? selectedNovels[0].titleJp
                 : `${selectedNovels.length}本小说`
             }？`"
             v-model:open="showDeleteModal"
-            class="w-[600px]"
+            class="w-150"
           >
             <template #footer>
               <ActionButton
@@ -193,18 +193,16 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           </UModal>
         </div>
 
-        <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
+        <span class="text-muted">已选择{{ selectedNovels.length }}本小说</span>
       </div>
-    </n-list-item>
+    </div>
 
-    <n-list-item v-if="favoreds.web.length > 1">
-      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+    <div class="relative min-w-0 py-3 px-5" v-if="favoreds.web.length > 1">
+      <div class="flex flex-col gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
-          <div
-            class="flex flex-wrap justify-start items-center gap-x-3 gap-y-2"
-          >
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
             <ActionButton
               class="rounded-md text-sm/4"
               size="sm"
@@ -223,20 +221,21 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           </div>
         </n-radio-group>
       </div>
-    </n-list-item>
+    </div>
 
-    <n-list-item
+    <div
+      class="relative min-w-0 py-3 px-5"
       v-if="
         setting.enabledTranslator.includes('gpt') ||
         setting.enabledTranslator.includes('sakura')
       "
     >
-      <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+      <div class="flex flex-col gap-y-2">
         <b>生成翻译任务</b>
 
-        <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
+        <div class="flex flex-wrap gap-x-2 gap-y-1">
           <UTooltip>
-            <div class="flex flex-nowrap justify-start gap-0">
+            <div class="flex">
               <tag-button
                 label="常规"
                 :checked="translateLevel === 'normal'"
@@ -269,13 +268,12 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           <tag-button label="前5话" v-model:checked="first5" />
           <tag-button label="倒序添加" v-model:checked="reverseOrder" />
 
-          <n-text
+          <span
+            class="text-warning basis-full text-[12px]"
             v-if="translateLevel === 'all'"
-            type="warning"
-            style="font-size: 12px; flex-basis: 100%"
           >
             <b>* 请确保你知道自己在干啥，不要随便使用危险功能</b>
-          </n-text>
+          </span>
         </div>
 
         <UFieldGroup size="sm">
@@ -295,6 +293,6 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           </ActionButton>
         </UFieldGroup>
       </div>
-    </n-list-item>
-  </n-list>
+    </div>
+  </div>
 </template>

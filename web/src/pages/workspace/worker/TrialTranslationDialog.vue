@@ -413,7 +413,7 @@ const handleOpenChange = (open: boolean) => {
 
 <template>
   <UModal
-    :ui="{ content: 'max-w-[95vw]', footer: 'justify-end' }"
+    :ui="{ content: 'max-w-[95vw]' }"
     :open="show"
     :title="title"
     class="w-200 max-w-[95vw]"
@@ -448,7 +448,7 @@ const handleOpenChange = (open: boolean) => {
         v-if="isMobile && rightView === 'glossary'"
         class="flex h-[min(56dvh,460px)] min-h-75 flex-col gap-1.5"
       >
-        <span class="text-xs font-semibold text-ink">术语表</span>
+        <span class="text-xs font-semibold text-default">术语表</span>
         <div class="min-h-0 flex-1">
           <trial-glossary-panel v-model:value="glossary" />
         </div>
@@ -459,27 +459,30 @@ const handleOpenChange = (open: boolean) => {
       >
         <section class="flex min-w-0 flex-col gap-1.5">
           <div class="flex min-h-6 flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold text-ink">原文</span>
+            <span class="text-xs font-semibold text-default">原文</span>
           </div>
-          <n-input
-            v-model:value="textJp"
-            type="textarea"
+          <UTextarea
+            class="w-full"
+            v-model="textJp"
             placeholder="输入需要翻译的文本"
             :rows="isMobile ? 6 : 14"
-            show-count
             :maxlength="50000"
             :readonly="isBusy"
-            :input-props="{
-              spellcheck: false,
-              'aria-label': '原文',
-            }"
+            :spellcheck="false"
+            aria-label="原文"
             @keydown="onInputKeydown"
           />
+          <span
+            class="text-right text-xs text-muted tabular-nums"
+            aria-live="polite"
+          >
+            {{ textJp.length }} / 50000
+          </span>
         </section>
 
         <section ref="resultPaneRef" class="flex min-w-0 flex-col gap-1.5">
           <div class="flex min-h-6 flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold text-ink">
+            <span class="text-xs font-semibold text-default">
               {{ rightView === 'glossary' ? '术语表' : '译文' }}
             </span>
             <n-tag
@@ -521,47 +524,54 @@ const handleOpenChange = (open: boolean) => {
             </ActionButton>
           </div>
           <div class="flex min-w-0 flex-col gap-1.5">
-            <n-alert
+            <UAlert
               v-if="error"
-              type="error"
-              :bordered="false"
+              color="error"
+              variant="soft"
+              icon="i-lucide-circle-alert"
               title="翻译失败"
+              :ui="{ description: 'break-words' }"
               role="alert"
             >
-              <pre
-                :class="[
-                  'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
-                  'whitespace-pre-wrap [word-break:break-word]',
-                ]"
-                >{{ error }}</pre
-              >
-            </n-alert>
-            <n-alert
+              <template #description>
+                <pre
+                  :class="[
+                    'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                    'whitespace-pre-wrap [word-break:break-word]',
+                  ]"
+                  >{{ error }}</pre
+                >
+              </template>
+            </UAlert>
+            <UAlert
               v-else-if="warning"
-              type="warning"
-              :bordered="false"
+              color="warning"
+              variant="soft"
+              icon="i-lucide-triangle-alert"
               title="部分失败"
+              :ui="{ description: 'break-words' }"
+              role="alert"
             >
-              <pre
-                :class="[
-                  'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
-                  'whitespace-pre-wrap [word-break:break-word]',
-                ]"
-                >{{ warning }}</pre
-              >
-            </n-alert>
+              <template #description>
+                <pre
+                  :class="[
+                    'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                    'whitespace-pre-wrap [word-break:break-word]',
+                  ]"
+                  >{{ warning }}</pre
+                >
+              </template>
+            </UAlert>
             <div class="relative">
-              <n-input
-                v-model:value="textZh"
-                type="textarea"
+              <UTextarea
+                class="w-full"
+                v-model="textZh"
                 placeholder="译文会显示在这里"
                 :rows="isMobile ? 6 : 14"
                 readonly
                 :class="{ invisible: rightView === 'glossary' }"
-                :input-props="{
-                  spellcheck: false,
-                  'aria-label': '译文',
-                }"
+                :spellcheck="false"
+                aria-label="译文"
                 @keydown="onInputKeydown"
               />
               <div
@@ -585,12 +595,17 @@ const handleOpenChange = (open: boolean) => {
         <div
           class="flex min-h-5 flex-wrap items-center gap-1.5 text-xs text-muted"
         >
-          <n-spin v-if="isBusy" :size="12" />
+          <UIcon
+            v-if="isBusy"
+            name="i-lucide-loader-circle"
+            class="size-3 animate-spin"
+            aria-hidden="true"
+          />
           <span
             v-else
             class="size-2 rounded-full"
             :class="{
-              'bg-muted': statusTone === 'idle',
+              'bg-(--ui-text-muted)': statusTone === 'idle',
               'bg-success': statusTone === 'success',
               'bg-warning': statusTone === 'warning',
               'bg-error': statusTone === 'error',

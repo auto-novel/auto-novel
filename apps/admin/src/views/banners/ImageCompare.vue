@@ -142,7 +142,7 @@ function measure(event: Event) {
   cursor: ew-resize;
 }
 .compare:has(.compare-range:focus-visible) {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ui-primary);
   outline-offset: 2px;
 }
 </style>

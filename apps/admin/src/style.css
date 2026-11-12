@@ -23,7 +23,7 @@ button:disabled {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ui-primary);
   outline-offset: 3px;
 }
 .empty-state h1 {
@@ -41,41 +41,41 @@ h2 {
   justify-content: center;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
   background: var(--color-surface);
   padding: 9px 16px;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  color: var(--color-ink);
+  color: var(--ui-text);
   white-space: nowrap;
 }
 .btn:hover:not(:disabled) {
   background: var(--color-hover);
 }
 .btn-primary {
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  color: var(--ui-text-inverted);
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: color-mix(in srgb, var(--ui-primary) 90%, transparent);
 }
 .btn-small {
   padding: 6px 12px;
   font-size: 13px;
 }
 .btn-danger {
-  color: var(--color-on-error);
-  background: var(--color-error);
-  border-color: var(--color-error);
+  color: var(--ui-text-inverted);
+  background: var(--ui-error);
+  border-color: var(--ui-error);
 }
 .btn-danger:hover:not(:disabled) {
-  background: var(--color-error-hover);
+  background: color-mix(in srgb, var(--ui-error) 90%, transparent);
 }
 .text-button {
-  color: var(--color-primary);
+  color: var(--ui-primary);
   font-size: 13px;
 }
 .text-button:hover:not(:disabled) {
@@ -83,16 +83,16 @@ h2 {
 }
 .danger,
 .required {
-  color: var(--color-error);
+  color: var(--ui-error);
 }
 .empty-state {
   padding: 72px 20px;
   text-align: center;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
 }
 .empty-state h1,
 .empty-state h2 {
-  color: var(--color-ink);
+  color: var(--ui-text);
 }
 .empty-state p {
   margin: 12px 0 20px;
@@ -108,12 +108,12 @@ h2 {
   overflow-wrap: anywhere;
 }
 .error-notice {
-  background: var(--color-error-soft);
-  color: var(--color-error);
+  background: color-mix(in srgb, var(--ui-error) 10%, transparent);
+  color: var(--ui-error);
 }
 .success-notice {
-  background: var(--color-success-soft);
-  color: var(--color-success);
+  background: color-mix(in srgb, var(--ui-success) 10%, transparent);
+  color: var(--ui-success);
 }
 .field {
   display: flex;
@@ -123,20 +123,20 @@ h2 {
   font-size: 14px;
 }
 .field small {
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 12px;
 }
 .field input:not([type='file']) {
   width: 100%;
   box-sizing: border-box;
   padding: 9px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   border-radius: 5px;
   background: var(--color-surface);
-  color: var(--color-ink);
+  color: var(--ui-text);
 }
 .hint {
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 13px;
   line-height: 1.7;
   margin: 12px 0 20px;
@@ -145,7 +145,7 @@ h2 {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  border-top: 1px solid var(--color-divider);
+  border-top: 1px solid var(--ui-border);
   padding-top: 18px;
   margin-top: 22px;
 }

@@ -37,33 +37,24 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
 <template>
   <section-header title="目录">
     <UButton
+      :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
       color="neutral"
       v-if="hasSeparators"
       size="sm"
-      style="margin-right: 8px"
       variant="ghost"
-      class="text-sm/4"
+      class="mr-2 text-sm/4"
       @click="toggleAll"
     >
-      <component
-        :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-        class="size-4 shrink-0"
-        aria-hidden="true"
-      />
       {{ isAnyExpanded ? '折叠' : '展开' }}
     </UButton>
     <UButton
+      :icon="SortOutlined"
       color="neutral"
       size="sm"
       variant="ghost"
       class="text-sm/4"
       @click="setting.tocSortReverse = !setting.tocSortReverse"
     >
-      <component
-        :is="SortOutlined"
-        class="size-4 shrink-0"
-        aria-hidden="true"
-      />
       {{ setting.tocSortReverse ? '倒序' : '正序' }}
     </UButton>
   </section-header>

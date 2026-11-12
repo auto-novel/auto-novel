@@ -75,12 +75,12 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+  <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="搜索">
       <search-input
+        class="max-w-[400px]"
         v-model:value="search"
         placeholder="搜索文件名"
-        style="max-width: 400px"
       />
     </c-action-wrapper>
 
@@ -92,32 +92,56 @@ defineExpose({
     </c-action-wrapper>
   </div>
 
-  <USeparator style="margin: 16px 0 8px" />
+  <USeparator class="mx-0 mt-4 mb-2" />
 
-  <n-spin v-if="loading" description="正在加载" style="margin-top: 20px" />
-
-  <n-alert
-    v-else-if="loadError !== null"
-    type="error"
-    title="加载失败"
-    style="margin-top: 20px"
+  <div
+    v-if="loading"
+    class="mt-5 flex flex-col items-center gap-2 text-primary"
+    role="status"
+    aria-label="正在加载"
   >
-    <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-      <span>{{ loadError }}</span>
-      <ActionButton :action="loadVolumes">重试</ActionButton>
-    </div>
-  </n-alert>
+    <UIcon
+      name="i-lucide-loader-circle"
+      class="size-8 animate-spin"
+      aria-hidden="true"
+    />
+    <span>正在加载</span>
+  </div>
+
+  <UAlert
+    class="mt-5"
+    v-else-if="loadError !== null"
+    color="error"
+    variant="subtle"
+    icon="i-lucide-circle-alert"
+    title="加载失败"
+    :ui="{ description: 'break-words' }"
+    role="alert"
+  >
+    <template #description>
+      <div class="flex flex-col gap-y-2">
+        <span>{{ loadError }}</span>
+        <ActionButton :action="loadVolumes">重试</ActionButton>
+      </div>
+    </template>
+  </UAlert>
 
   <CEmpty
+    class="mt-5"
     inline
     v-else-if="sortedVolumes.length === 0"
     title="没有文件"
-    style="margin-top: 20px"
   />
 
-  <UScrollArea v-else style="flex: auto">
-    <n-list style="padding-bottom: 48px; padding-right: 12px">
-      <n-list-item v-for="volume of sortedVolumes" :key="volume.id">
+  <UScrollArea class="flex-auto" v-else>
+    <div
+      class="divide-y divide-default leading-[1.6] text-default text-sm pb-12 pr-3"
+    >
+      <div
+        class="relative min-w-0 py-3"
+        v-for="volume of sortedVolumes"
+        :key="volume.id"
+      >
         <bookshelf-local-list-item :volume="volume" />
         <c-select-overlay
           v-if="selectable"
@@ -126,7 +150,7 @@ defineExpose({
             (checked: boolean) => toggleSelect(volume.id, checked)
           "
         />
-      </n-list-item>
-    </n-list>
+      </div>
+    </div>
   </UScrollArea>
 </template>

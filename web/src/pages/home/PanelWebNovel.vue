@@ -31,12 +31,12 @@ defineProps<{
           :key="`${item.providerId}/${item.novelId}`"
           class="min-w-0 p-2"
         >
-          <c-a :to="`/novel/${item.providerId}/${item.novelId}`">
-            <span class="text-2line">
+          <ULink :to="`/novel/${item.providerId}/${item.novelId}`">
+            <span class="line-clamp-2">
               {{ item.titleJp }}
             </span>
-          </c-a>
-          <div class="text-2line">{{ item.titleZh }}</div>
+          </ULink>
+          <div class="line-clamp-2">{{ item.titleZh }}</div>
           <span class="text-muted">
             {{ item.type }} / 总计 {{ item.total }} / 有道 {{ item.youdao }}
             <br />

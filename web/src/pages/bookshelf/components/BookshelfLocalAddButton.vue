@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, XDropZone } from '@novelia/web-kit';
 import { useFileDialog } from '@vueuse/core';
 import { PlusOutlined } from '@vicons/material';
 
@@ -38,6 +38,7 @@ const handleDropError = (error: unknown) => {
 <template>
   <UTooltip>
     <UButton
+      :icon="PlusOutlined"
       color="neutral"
       variant="outline"
       class="rounded-full"
@@ -45,7 +46,6 @@ const handleDropError = (error: unknown) => {
       :disabled="running"
       @click="!running && openFiles()"
     >
-      <PlusOutlined v-if="!running" class="size-5" aria-hidden="true" />
       {{ running ? '导入中' : '添加' }}
     </UButton>
 
@@ -56,7 +56,7 @@ const handleDropError = (error: unknown) => {
     </template>
   </UTooltip>
 
-  <DropZone @drop="handleFiles" @error="handleDropError">
+  <XDropZone directories @drop="handleFiles" @error="handleDropError">
     拖拽文件到这里导入
-  </DropZone>
+  </XDropZone>
 </template>

@@ -24,7 +24,7 @@ withDefaults(
         inline ? 'min-h-0 p-0 sm:p-0 lg:p-0' : 'min-h-52 p-6 sm:p-6 lg:p-6',
       ].join(' '),
       header: 'max-w-none gap-0',
-      title: 'mt-3 text-sm font-medium text-ink text-wrap',
+      title: 'mt-3 text-sm font-medium text-default text-wrap',
       description: 'mt-1 text-xs text-muted text-wrap',
       body: 'mt-5 max-w-none gap-0',
     }"

@@ -34,26 +34,53 @@ const glossaryCount = computed(() => Object.keys(props.glossary).length);
 const editorRef =
   useTemplateRef<InstanceType<typeof NovelGlossaryEditor>>('editorRef');
 
-const handleBeforeLeave = (name: string, oldName: string) => {
-  if (oldName === 'glossary' && editorRef.value) {
-    return editorRef.value.confirmLeave();
+const tabs = computed(() => [
+  ...(slots.wenkuToc
+    ? [{ value: 'wenkuToc', label: '目录', slot: 'wenkuToc' as const }]
+    : []),
+  ...(!props.hideComment
+    ? [{ value: 'comment', label: '评论区', slot: 'comment' as const }]
+    : []),
+  {
+    value: 'glossary',
+    label: `术语表${glossaryCount.value > 0 ? ` [${glossaryCount.value}]` : ''}`,
+    slot: 'glossary' as const,
+  },
+]);
+const availableTabs = computed(() => tabs.value.map((tab) => tab.value));
+
+// 目录和评论首次访问才挂载，之后隐藏保留；术语编辑器仍在离开后卸载。
+const visitedTabs = reactive(new Set([activeTab.value]));
+watch(activeTab, (tab) => visitedTabs.add(tab), { flush: 'sync' });
+
+let switching = false;
+const switchTab = async (value: string | number) => {
+  const targetTab = String(value);
+  if (
+    switching ||
+    targetTab === activeTab.value ||
+    !availableTabs.value.includes(targetTab)
+  ) {
+    return;
   }
-  return true;
-};
 
-const availableTabs = computed(() => {
-  const tabs: string[] = [];
-  if (slots.wenkuToc) tabs.push('wenkuToc');
-  if (!props.hideComment) tabs.push('comment');
-  tabs.push('glossary');
-  return tabs;
-});
-
-const switchTab = async (targetTab: string) => {
-  if (targetTab === activeTab.value) return;
-  const allow = await handleBeforeLeave(targetTab, activeTab.value);
-  if (allow) {
-    activeTab.value = targetTab;
+  // 确认期间忽略重复请求，避免重复弹窗或异步结果覆盖之后的选择。
+  switching = true;
+  const previousTab = activeTab.value;
+  try {
+    const allow =
+      previousTab !== 'glossary' ||
+      !editorRef.value ||
+      (await editorRef.value.confirmLeave());
+    if (
+      allow &&
+      activeTab.value === previousTab &&
+      availableTabs.value.includes(targetTab)
+    ) {
+      activeTab.value = targetTab;
+    }
+  } finally {
+    switching = false;
   }
 };
 
@@ -100,41 +127,38 @@ useHorizontalSwipe(swipeTarget, {
 </script>
 
 <template>
-  <div ref="swipeTarget" class="novel-bottom-tabs" style="margin-top: 24px">
-    <n-tabs
-      v-model:value="activeTab"
-      type="line"
-      animated
-      :on-before-leave="handleBeforeLeave"
+  <div ref="swipeTarget" class="novel-bottom-tabs mt-6">
+    <UTabs
+      :model-value="activeTab"
+      :items="tabs"
+      variant="link"
+      :unmount-on-hide="false"
+      :ui="{
+        list: 'justify-start',
+        trigger: 'flex-none',
+        content: 'min-h-[400px]',
+      }"
+      @update:model-value="switchTab"
     >
-      <n-tab-pane
-        v-if="$slots.wenkuToc"
-        name="wenkuToc"
-        tab="目录"
-        display-directive="show:lazy"
-        style="min-height: 400px"
-      >
-        <slot name="wenkuToc" />
-      </n-tab-pane>
+      <template #wenkuToc>
+        <slot v-if="visitedTabs.has('wenkuToc')" name="wenkuToc" />
+      </template>
 
-      <n-tab-pane
-        v-if="!hideComment"
-        name="comment"
-        tab="评论区"
-        display-directive="show:lazy"
-        style="min-height: 400px"
-      >
-        <slot name="commentNotice" />
-        <comment-list :site="site" :locked="locked ?? false" />
-      </n-tab-pane>
+      <template #comment>
+        <template v-if="visitedTabs.has('comment')">
+          <slot name="commentNotice" />
+          <comment-list :site="site" :locked="locked ?? false" />
+        </template>
+      </template>
 
-      <n-tab-pane
-        name="glossary"
-        :tab="`术语表${glossaryCount > 0 ? ` [${glossaryCount}]` : ''}`"
-        style="min-height: 400px"
-      >
-        <NovelGlossaryEditor ref="editorRef" :gnid="gnid" :value="glossary" />
-      </n-tab-pane>
-    </n-tabs>
+      <template #glossary>
+        <NovelGlossaryEditor
+          v-if="activeTab === 'glossary'"
+          ref="editorRef"
+          :gnid="gnid"
+          :value="glossary"
+        />
+      </template>
+    </UTabs>
   </div>
 </template>

@@ -92,17 +92,22 @@ const onUpdateShow = (val: boolean) => {
     class="w-[min(900px,95vw)]"
   >
     <template #body>
-      <n-alert
+      <UAlert
         v-if="chapterState?.errorMessage"
-        type="error"
+        color="error"
+        variant="soft"
+        icon="i-lucide-circle-alert"
         title="章节处理失败"
-        :bordered="false"
+        :ui="{ description: 'break-words' }"
+        role="alert"
       >
-        <pre
-          class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
-          >{{ chapterState.errorMessage }}</pre
-        >
-      </n-alert>
+        <template #description>
+          <pre
+            class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
+            >{{ chapterState.errorMessage }}</pre
+          >
+        </template>
+      </UAlert>
       <div>
         <div v-if="previewState.previewProgressStatus" class="flex gap-2">
           <n-tag size="small" :bordered="false">
@@ -132,7 +137,7 @@ const onUpdateShow = (val: boolean) => {
           variant="soft"
           :color="segmentBtnType(previewState.segmentStatuses[i])"
           :title="getSegmentError(i) ?? size + '行'"
-          class="aspect-square min-w-0! px-0! text-sm/4"
+          class="aspect-square min-w-0! justify-center px-0! text-sm/4"
           :class="{
             'outline-2! outline-offset-1 outline-primary!':
               selectedSegmentIndex === i,
@@ -148,24 +153,29 @@ const onUpdateShow = (val: boolean) => {
       >
         翻译器：{{ previewState.translatorId }}
       </div>
-      <n-alert
+      <UAlert
         v-if="previewState.currentSegmentError"
-        type="error"
+        color="error"
+        variant="soft"
+        icon="i-lucide-circle-alert"
         title="翻译出错"
-        :bordered="false"
+        :ui="{ description: 'break-words' }"
+        role="alert"
       >
-        <pre
-          class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
-          >{{ previewState.currentSegmentError }}</pre
-        >
-      </n-alert>
+        <template #description>
+          <pre
+            class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
+            >{{ previewState.currentSegmentError }}</pre
+          >
+        </template>
+      </UAlert>
 
-      <n-table :bordered="false" size="small" class="mt-2 table-fixed">
+      <table class="content-table mt-2 table-fixed">
         <thead class="[@media(max-width:768px)]:hidden">
           <tr
             :class="[
               '[@media(max-width:768px)]:mb-2.5 [@media(max-width:768px)]:block',
-              '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-divider',
+              '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-default',
               '[@media(max-width:768px)]:pb-2',
             ]"
           >
@@ -179,7 +189,7 @@ const onUpdateShow = (val: boolean) => {
             :key="i"
             :class="[
               '[@media(max-width:768px)]:mb-2.5 [@media(max-width:768px)]:block',
-              '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-divider',
+              '[@media(max-width:768px)]:border-b [@media(max-width:768px)]:border-default',
               '[@media(max-width:768px)]:pb-2',
             ]"
           >
@@ -206,7 +216,7 @@ const onUpdateShow = (val: boolean) => {
             </td>
           </tr>
         </tbody>
-      </n-table>
+      </table>
     </template>
   </UModal>
 </template>

@@ -53,7 +53,7 @@ const pageCount = computed(() =>
         <span class="sr-only">正在加载回复…</span>
         <div class="space-y-8" aria-hidden="true">
           <div v-for="index in Math.min(comment.replyCount, 3)" :key="index">
-            <USkeleton class="h-5 w-28 bg-border" />
+            <USkeleton class="h-5 w-28" />
             <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
               <USkeleton class="h-4 w-full" />
               <USkeleton class="mt-2 h-4 w-2/3" />

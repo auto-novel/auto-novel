@@ -8,7 +8,7 @@ const emits = defineEmits<{
 </script>
 
 <template>
-  <div class="flex w-full flex-wrap items-center justify-start gap-1 px-3 py-2">
+  <div class="flex w-full flex-wrap items-center gap-1 px-3 py-2">
     <button
       v-for="tag in tags"
       :key="tag"

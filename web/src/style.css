@@ -3,7 +3,7 @@
 
 /*
  * 剧透遮罩语义色，web-kit 尚未暴露该语义，沿用论坛前端的 @theme +
- * [data-theme='dark'] 写法补充，避免直接拿正文色当遮罩导致暗色下发白。
+ * .dark 写法补充，避免直接拿正文色当遮罩导致暗色下发白。
  */
 @theme {
   --color-spoiler: #1f2225;
@@ -12,11 +12,23 @@
 
 /* 原生内容排版使用 web-kit 语义色，不依赖 Naive UI 的主题变量。 */
 @layer components {
+  .content-table {
+    @apply w-full border-separate border-spacing-0 bg-default text-left text-sm leading-[1.6] text-default;
+  }
+
+  .content-table > :is(thead, tbody) > tr > :is(th, td) {
+    @apply border-b border-default p-1.5;
+  }
+
+  .content-table > :is(thead, tbody) > tr > th {
+    @apply bg-surface font-medium;
+  }
+
   .content-list {
     margin: 0;
     padding: 0 0 0 2em;
     list-style-type: disc;
-    color: var(--color-ink);
+    color: var(--ui-text);
     font-size: 14px;
     line-height: 1.6;
   }
@@ -26,39 +38,23 @@
   }
 
   .heading-bar {
-    position: relative;
     margin: 28px 0 20px;
-    color: var(--color-ink);
+    color: var(--ui-text);
     font-weight: 500;
   }
 
   h2.heading-bar {
-    padding-left: 16px;
+    padding-inline-start: 16px;
     font-size: 22px;
   }
 
   h3.heading-bar {
-    padding-left: 12px;
     font-size: 18px;
-  }
-
-  .heading-bar::before {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    border-radius: 1.5px;
-    background-color: var(--color-primary);
-    content: '';
-  }
-
-  h2.heading-bar::before {
-    width: 4px;
-    border-radius: 2px;
   }
 }
 
 @layer base {
-  :root[data-theme='dark'] {
+  :root.dark {
     --color-spoiler: rgb(255 255 255 / 20%);
     --color-spoiler-ink: #f2f2f5;
   }

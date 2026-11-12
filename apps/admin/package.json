@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@novelia/web-kit": "github:auto-novel/web-kit#b3addb63061a006bda6776b83fa011bbbc9c1759",
+    "@novelia/web-kit": "github:auto-novel/web-kit#0b63d9383db1deadf00bd7e700b9945fa03fc4b1",
     "@nuxt/ui": "^4.12.0",
     "@vicons/material": "^0.13.0",
     "vue": "^3.5.41",

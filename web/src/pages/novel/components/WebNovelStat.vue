@@ -40,10 +40,10 @@ const exactVisited = computed(() =>
 </script>
 
 <template>
-  <div class="metadata-stat flex flex-wrap justify-start items-center gap-2">
-    <n-text>
+  <div class="metadata-stat flex flex-wrap items-center gap-2">
+    <span class="text-default">
       {{ type }}
-    </n-text>
+    </span>
     <span>/</span>
 
     <n-tooltip
@@ -52,13 +52,13 @@ const exactVisited = computed(() =>
       trigger="click"
     >
       <template #trigger>
-        <n-text>
+        <span class="text-default">
           {{ totalCharacters }}
-        </n-text>
+        </span>
       </template>
       {{ exactTotalCharacters }}
     </n-tooltip>
-    <n-text v-else>NA</n-text>
+    <span class="text-default" v-else>NA</span>
     <span>/</span>
 
     <n-tooltip
@@ -71,12 +71,12 @@ const exactVisited = computed(() =>
       </template>
       <XTime :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
     </n-tooltip>
-    <n-text v-else>NA</n-text>
+    <span class="text-default" v-else>NA</span>
     <span>/</span>
 
     <n-tooltip placement="top-start" trigger="click">
       <template #trigger>
-        <n-text>{{ visited }}</n-text>
+        <span class="text-default">{{ visited }}</span>
       </template>
       {{ exactVisited }}
     </n-tooltip>

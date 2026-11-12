@@ -1,6 +1,6 @@
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
 // Bundle this TypeScript preset instead of externalizing it for Node to load.
-import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/nuxt-ui/index.ts';
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/src/ui/nuxt-ui.ts';
 import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { execFileSync } from 'node:child_process';

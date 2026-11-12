@@ -6,17 +6,6 @@ import { TaskState } from '../src/domain/translator/task-state';
 import TaskCard from '../src/pages/workspace/task/TaskCard.vue';
 
 vi.mock('@novelia/web-kit', () => ({ Toast: { info: vi.fn() } }));
-vi.mock('naive-ui', async () => {
-  const { defineComponent, h } = await import('vue');
-  return {
-    NCard: defineComponent({
-      setup:
-        (_, { slots }) =>
-        () =>
-          h('section', [slots.header?.(), slots.default?.()]),
-    }),
-  };
-});
 vi.mock('@/pages/workspace/task/ChapterGrid.vue', () => ({
   default: { render: () => null },
 }));
@@ -56,7 +45,7 @@ describe('TaskCard', () => {
         }),
       );
 
-      expect(html).toContain('text-error-text');
+      expect(html).toContain('text-error');
       expect(html).toContain(`任务失败，共 ${chapterCount} 章`);
       expect(html).not.toContain('等待中');
     },

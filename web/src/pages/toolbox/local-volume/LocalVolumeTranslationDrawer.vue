@@ -132,7 +132,7 @@ const progressFilterFunc = computed(() => {
         :gnid="GenericNovelId.local('')"
         :glossary="{}"
       />
-      <USeparator style="margin: 12px 0" />
+      <USeparator class="mx-0 my-3" />
       <c-action-wrapper title="状态">
         <c-radio-group
           v-model:value="progressFilter"
@@ -151,17 +151,17 @@ const progressFilterFunc = computed(() => {
     </template>
 
     <template #volume="volume">
-      <div class="flex flex-col flex-nowrap justify-start gap-1">
-        <n-text>{{ volume.id }}</n-text>
+      <div class="flex flex-col gap-1">
+        <span class="text-default">{{ volume.id }}</span>
 
-        <n-text depth="3">
+        <span class="text-muted">
           <XTime :time="volume.createAt" preset="relative" />
           / 总计 {{ volume.toc.length }} / 完成
           {{ calculateFinished(volume) }} / 过期
           {{ calculateExpired(volume) }}
-        </n-text>
+        </span>
 
-        <div class="flex flex-wrap justify-start gap-2">
+        <div class="flex flex-wrap gap-2">
           <ActionButton
             size="xs"
             variant="soft"
@@ -197,7 +197,7 @@ const progressFilterFunc = computed(() => {
             variant="soft"
           />
 
-          <div style="flex: 1" />
+          <div class="flex-1" />
 
           <ConfirmActionButton
             aria-label="删除"

@@ -63,13 +63,13 @@ watch(novelPage, (novelPage) => {
     <UPageHeader title="文库小说">
       <template #links>
         <UButton
+          :icon="PlusOutlined"
           v-if="whoami.hasNovelAccess"
           to="/wenku-edit"
           color="neutral"
           variant="outline"
           size="md"
         >
-          <PlusOutlined class="size-4" aria-hidden="true" />
           新建小说
         </UButton>
       </template>
@@ -90,9 +90,7 @@ watch(novelPage, (novelPage) => {
       @update:page="onUpdatePage"
     />
 
-    <USeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelGridSkeleton v-if="!novelPage && !error" />
     <UAlert
@@ -120,9 +118,3 @@ watch(novelPage, (novelPage) => {
     />
   </XPage>
 </template>
-
-<style scoped>
-.n-card-header__main {
-  text-overflow: ellipsis;
-}
-</style>

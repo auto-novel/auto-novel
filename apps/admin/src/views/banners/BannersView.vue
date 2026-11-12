@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { Toast, XPage, getApiErrorMessage } from '@novelia/web-kit';
-import UModal from '@nuxt/ui/components/Modal.vue';
-import UPageHeader from '@nuxt/ui/components/PageHeader.vue';
 import { useBannerApi, type Banner } from '../../api';
 import BannerUploader from './BannerUploader.vue';
 import BannerPreview from './BannerPreview.vue';
@@ -189,7 +187,7 @@ onMounted(load);
     <UPageHeader title="Banner 管理" />
 
     <aside
-      class="mb-6 flex items-start gap-3 rounded-lg border-l-4 border-primary bg-primary-soft px-5 py-4 text-sm leading-[1.7] text-ink"
+      class="mb-6 flex items-start gap-3 rounded-lg border-l-4 border-primary bg-primary/10 px-5 py-4 text-sm leading-[1.7] text-default"
       aria-label="更新提醒"
     >
       <span class="text-[22px] leading-[1.2] text-primary" aria-hidden="true">
@@ -206,7 +204,7 @@ onMounted(load);
     </aside>
 
     <div
-      class="mb-6 inline-flex gap-1 rounded-[10px] bg-neutral-soft p-1"
+      class="mb-6 inline-flex gap-1 rounded-[10px] bg-muted p-1"
       role="tablist"
       aria-label="Banner 操作"
       @keydown="navigateTabs"
@@ -332,7 +330,7 @@ onMounted(load);
                 class="inline-flex items-center gap-1.5 rounded-[20px] px-[9px] py-1 text-xs before:size-[5px] before:rounded-full before:bg-current before:content-['']"
                 :class="
                   selected.isActive
-                    ? 'bg-success-soft text-success'
+                    ? 'bg-success/10 text-success'
                     : 'bg-hover text-muted'
                 "
               >

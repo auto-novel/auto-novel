@@ -6,7 +6,7 @@ import {
   KeyboardDoubleArrowUpOutlined,
   UploadOutlined,
 } from '@vicons/material';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import type { Form, FormError, FormSchema } from '@nuxt/ui';
 import { VueDraggable } from 'vue-draggable-plus';
 
 import { WenkuNovelApi } from '@/api';
@@ -29,7 +29,17 @@ const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
 const allowSubmit = ref(novelId === undefined);
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+const formFieldProps = computed(() => ({
+  orientation: isWideScreen.value
+    ? ('horizontal' as const)
+    : ('vertical' as const),
+  eagerValidation: true,
+  ui: {
+    wrapper: isWideScreen.value ? 'w-20 shrink-0 pt-1.5' : undefined,
+    container: 'min-w-0 flex-1',
+  },
+}));
 const formValue = ref({
   title: '',
   titleZh: '',
@@ -41,67 +51,39 @@ const formValue = ref({
   introduction: '',
   volumes: <WenkuVolumeDto[]>[],
 });
-const formRules: FormRules = {
-  title: [
-    {
-      validator: (_rule: FormItemRule, value: string) =>
-        value.trim().length > 0,
-      message: '标题不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length <= 80,
-      message: '标题长度不能超过80个字符',
-      trigger: 'input',
-    },
-  ],
-  titleZh: [
-    {
-      validator: (_rule: FormItemRule, value: string) =>
-        value.trim().length > 0,
-      message: '标题不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length <= 80,
-      message: '标题长度不能超过80个字符',
-      trigger: 'input',
-    },
-    {
-      validator: (_rule: FormItemRule, value: string) =>
-        !RegexUtil.hasKanaChars(value),
+const validate = (state: typeof formValue.value): FormError[] => {
+  const errors: FormError[] = [];
+  for (const name of ['title', 'titleZh'] as const) {
+    if (!state[name].trim()) {
+      errors.push({ name, message: '标题不能为空' });
+    } else if (state[name].length > 80) {
+      errors.push({ name, message: '标题长度不能超过80个字符' });
+    }
+  }
+  if (RegexUtil.hasKanaChars(state.titleZh)) {
+    errors.push({
+      name: 'titleZh',
       message: '不要使用日文当作中文标题，没有公认的标题可以尝试自行翻译',
-      trigger: 'input',
-    },
-  ],
-  cover: [
-    {
-      validator: (_rule: FormItemRule, value: string) => RegexUtil.isUrl(value),
-      message: '封面链接必须是有效的URL',
-      trigger: 'input',
-    },
-    {
-      validator: (_rule: FormItemRule, value: string) =>
-        !RegexUtil.isUrl(value) || RegexUtil.isImageUrl(value),
+    });
+  }
+  if (!RegexUtil.isUrl(state.cover)) {
+    errors.push({ name: 'cover', message: '封面链接必须是有效的URL' });
+  } else if (!RegexUtil.isImageUrl(state.cover)) {
+    errors.push({
+      name: 'cover',
       message: '封面链接必须是图片链接（.jpg、.png、.webp 等）',
-      trigger: 'input',
-    },
-  ],
-  level: [
-    {
-      validator: (_rule: FormItemRule, value: string) =>
-        value !== '成人向' || whoami.value.hasNsfwAccess,
-      message: '你太年轻了，无法创建成人向页面',
-      trigger: 'input',
-    },
-  ],
-  introduction: [
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length <= 500,
-      message: '简介长度不能超过500个字符',
-      trigger: 'input',
-    },
-  ],
+    });
+  }
+  if (state.level === '成人向' && !whoami.value.hasNsfwAccess) {
+    errors.push({ name: 'level', message: '你太年轻了，无法创建成人向页面' });
+  }
+  if (state.introduction.length > 1000) {
+    errors.push({
+      name: 'introduction',
+      message: '简介长度不能超过1000个字符',
+    });
+  }
+  return errors;
 };
 
 const amazonUrl = ref('');
@@ -157,9 +139,7 @@ const submit = async () => {
   }
 
   submitting.value = true;
-  try {
-    await formRef.value?.validate();
-  } catch {
+  if (!(await formRef.value?.validate({ silent: true }))) {
     submitting.value = false;
     return;
   }
@@ -269,6 +249,11 @@ const populateNovelFromAmazon = async (
   }
 };
 
+const submitSteps = [
+  { value: 1, title: '检查小说是否已经存在' },
+  { value: 2, title: '检查小说文件是否可以上传' },
+  { value: 3, title: '创建文库小说' },
+] as const;
 const submitCurrentStep = ref(1);
 const title = computed(() => formValue.value.title);
 const similarNovels = ref<WenkuNovelOutlineDto[] | null>(null);
@@ -385,10 +370,14 @@ const levelOptions = [
       :title="`${novelId === undefined ? '新建' : '编辑'}文库小说`"
     />
 
-    <n-card embedded :bordered="false" style="margin-bottom: 20px">
-      <n-text type="error">
+    <UCard
+      variant="soft"
+      class="mb-5 bg-embedded text-sm leading-[1.6] text-default"
+      :ui="{ body: 'px-6 py-5 sm:px-6 sm:py-5' }"
+    >
+      <span class="text-error">
         <b>创建文库小说注意事项：</b>
-      </n-text>
+      </span>
       <ul class="content-list">
         <li>
           请先安装机翻站扩展以启用智能导入功能，另外自动机翻简介功能要求你能使用有道机翻。
@@ -403,9 +392,9 @@ const levelOptions = [
           导入R18书需要注册机翻站满一个月、使用日本IP，并在亚马逊上点过“已满18岁”。
         </li>
       </ul>
-    </n-card>
+    </UCard>
 
-    <div class="mb-12 flex w-full flex-wrap justify-start gap-x-3 gap-y-2">
+    <div class="mb-12 flex w-full flex-wrap gap-x-3 gap-y-2">
       <div v-if="isWideScreen">
         <n-image
           width="160"
@@ -418,25 +407,24 @@ const levelOptions = [
         />
       </div>
 
-      <div
-        class="flex flex-auto flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
-      >
-        <n-input-group>
-          <n-input
-            v-model:value="amazonUrl"
+      <div class="flex flex-auto flex-col gap-y-3">
+        <UFieldGroup class="w-full">
+          <UInput
+            class="min-w-0 flex-1"
+            v-model="amazonUrl"
             :placeholder="formValue.title"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
           <ActionButton
-            class="rounded-md"
+            class="shrink-0 justify-center rounded-sm"
             color="primary"
             :action="() => populateNovelFromAmazon(amazonUrl, false)"
             variant="solid"
           >
             导入
           </ActionButton>
-        </n-input-group>
-        <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+        </UFieldGroup>
+        <div class="flex flex-wrap gap-x-3 gap-y-2">
           <UButton
             color="neutral"
             :href="`https://www.amazon.co.jp/s?k=${encodeURIComponent(
@@ -466,79 +454,134 @@ const levelOptions = [
       </div>
     </div>
 
-    <n-form
+    <UForm
       ref="form"
-      :model="formValue"
-      :rules="formRules"
-      :label-placement="isWideScreen ? 'left' : 'top'"
-      label-width="auto"
+      :state="formValue"
+      :validate="validate"
+      :validate-on-input-delay="0"
+      class="space-y-5"
+      @submit="
+        novelId !== undefined || submitCurrentStep === 3 ? submit() : undefined
+      "
     >
-      <n-form-item-row path="title" label="日文标题">
-        <n-input
-          v-model:value="formValue.title"
+      <UFormField v-bind="formFieldProps" name="title" label="日文标题">
+        <UInput
+          class="w-full"
+          v-model="formValue.title"
           placeholder="请输入日文标题"
           maxlength="80"
-          show-count
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
+          :spellcheck="false"
+          :ui="{ base: 'pr-18' }"
+        >
+          <template #default>
+            <span
+              class="pointer-events-none absolute right-3 bottom-2 text-xs text-muted"
+              aria-live="polite"
+            >
+              {{ formValue.title.length }}/80
+            </span>
+          </template>
+        </UInput>
+      </UFormField>
 
-      <n-form-item-row path="titleZh" label="中文标题">
-        <n-input
-          v-model:value="formValue.titleZh"
+      <UFormField v-bind="formFieldProps" name="titleZh" label="中文标题">
+        <UInput
+          class="w-full"
+          v-model="formValue.titleZh"
           placeholder="请输入中文标题"
           maxlength="80"
-          show-count
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
+          :spellcheck="false"
+          :ui="{ base: 'pr-18' }"
+        >
+          <template #default>
+            <span
+              class="pointer-events-none absolute right-3 bottom-2 text-xs text-muted"
+              aria-live="polite"
+            >
+              {{ formValue.titleZh.length }}/80
+            </span>
+          </template>
+        </UInput>
+      </UFormField>
 
-      <n-form-item-row path="cover" label="封面链接">
+      <UFormField v-bind="formFieldProps" name="cover" label="封面链接">
         <div class="flex w-full flex-col gap-1.5">
-          <n-input
-            v-model:value="formValue.cover"
+          <UInput
+            class="w-full"
+            v-model="formValue.cover"
             placeholder="请输入封面链接"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
-          <n-text depth="3" type="warning">
+          <span class="text-warning">
             <b>* 如果已经有封面就不要修改，其他人会认不出来</b>
-          </n-text>
+          </span>
         </div>
-      </n-form-item-row>
+      </UFormField>
 
-      <n-form-item-row path="authors" label="作者">
-        <n-dynamic-tags v-model:value="formValue.authors" />
-      </n-form-item-row>
-
-      <n-form-item-row path="artists" label="画师">
-        <n-dynamic-tags v-model:value="formValue.artists" />
-      </n-form-item-row>
-
-      <n-form-item-row path="level" label="分级">
-        <c-radio-group
-          v-model:value="formValue.level"
-          :options="levelOptions"
+      <UFormField v-bind="formFieldProps" name="authors" label="作者">
+        <UInputTags
+          v-model="formValue.authors"
+          class="w-full"
+          placeholder="添加作者"
+          duplicate
+          add-on-blur
+          delimiter=""
         />
-      </n-form-item-row>
+      </UFormField>
 
-      <n-form-item-row path="content" label="简介">
-        <n-input
-          v-model:value="formValue.introduction"
-          type="textarea"
-          placeholder="请输入小说简介"
-          :autosize="{
-            minRows: 8,
-            maxRows: 24,
+      <UFormField v-bind="formFieldProps" name="artists" label="画师">
+        <UInputTags
+          v-model="formValue.artists"
+          class="w-full"
+          placeholder="添加画师"
+          duplicate
+          add-on-blur
+          delimiter=""
+        />
+      </UFormField>
+
+      <UFormField v-bind="formFieldProps" name="level" label="分级">
+        <URadioGroup
+          v-model="formValue.level"
+          :items="levelOptions"
+          orientation="horizontal"
+          variant="card"
+          indicator="hidden"
+          :ui="{
+            fieldset: 'flex flex-wrap gap-1',
+            item: 'flex-none px-3 py-1.5',
           }"
-          maxlength="1000"
-          show-count
-          :input-props="{ spellcheck: false }"
         />
-      </n-form-item-row>
+      </UFormField>
 
-      <n-form-item-row label="标签">
-        <n-list bordered style="width: 100%">
-          <n-list-item>
+      <UFormField v-bind="formFieldProps" name="introduction" label="简介">
+        <UTextarea
+          class="w-full"
+          v-model="formValue.introduction"
+          autoresize
+          placeholder="请输入小说简介"
+          :rows="8"
+          :maxrows="24"
+          maxlength="1000"
+          :spellcheck="false"
+          :ui="{ base: 'pr-18' }"
+        >
+          <template #default>
+            <span
+              class="pointer-events-none absolute right-3 bottom-2 text-xs text-muted"
+              aria-live="polite"
+            >
+              {{ formValue.introduction.length }}/1000
+            </span>
+          </template>
+        </UTextarea>
+      </UFormField>
+
+      <UFormField v-bind="formFieldProps" label="标签">
+        <div
+          class="divide-y divide-default leading-[1.6] text-default text-sm rounded-[3px] border border-default w-full"
+        >
+          <div class="relative min-w-0 px-5 py-3">
             <UButton
               v-if="presetKeywords.groups.length > 0"
               color="error"
@@ -548,13 +591,19 @@ const levelOptions = [
             >
               用前必读
             </UButton>
-            <n-p v-else>暂不支持标签。</n-p>
-          </n-list-item>
-          <n-list-item
+            <p
+              class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+              v-else
+            >
+              暂不支持标签。
+            </p>
+          </div>
+          <div
+            class="relative min-w-0 px-5 py-3"
             v-for="group of presetKeywords.groups"
             :key="group.title"
           >
-            <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
+            <div class="flex flex-wrap gap-x-2 gap-y-1">
               <n-tag :bordered="false" size="small">
                 <b>{{ group.title }}</b>
               </n-tag>
@@ -571,260 +620,293 @@ const levelOptions = [
                 {{ keyword }}
               </n-tag>
             </div>
-          </n-list-item>
-        </n-list>
-      </n-form-item-row>
+          </div>
+        </div>
+      </UFormField>
 
-      <n-form-item-row label="分卷" v-if="formValue.volumes.length > 0">
-        <n-list style="width: 100%; font-size: 12px">
+      <UFormField
+        v-bind="formFieldProps"
+        label="分卷"
+        v-if="formValue.volumes.length > 0"
+      >
+        <div class="w-full text-[12px] leading-[1.6] text-default">
           <vue-draggable
             v-model="formValue.volumes"
+            class="divide-y divide-default"
             :animation="150"
             handle=".drag-trigger"
           >
-            <n-list-item v-for="volume of formValue.volumes" :key="volume.asin">
-              <n-thing>
-                <template #avatar>
+            <div
+              class="relative min-w-0 py-3"
+              v-for="volume of formValue.volumes"
+              :key="volume.asin"
+            >
+              <div
+                class="flex w-full min-w-0 items-start gap-3 text-sm text-default"
+              >
+                <div class="mt-0.5 shrink-0">
                   <div>
                     <n-image
-                      class="drag-trigger"
+                      class="drag-trigger cursor-move! rounded-[2px]"
                       width="88"
                       :src="volume.cover"
                       :preview-src="volume.coverHires ?? volume.cover"
                       :alt="volume.asin"
                       lazy
-                      style="border-radius: 2px; cursor: move"
                     />
                   </div>
-                </template>
+                </div>
 
-                <template #header>
-                  <n-text style="font-size: 12px">
-                    ASIN：
-                    <n-a
-                      :href="`https://www.amazon.co.jp/zh/dp/${volume.asin}`"
-                    >
-                      {{ volume.asin }}
-                    </n-a>
-                  </n-text>
-                </template>
-
-                <template #header-extra>
-                  <div class="flex flex-nowrap justify-start gap-1.5">
-                    <UTooltip text="置顶">
-                      <UButton
-                        color="neutral"
-                        size="xs"
-                        variant="soft"
-                        square
-                        class="rounded-full"
-                        @click="topVolume(volume.asin)"
-                        aria-label="置顶"
-                      >
-                        <component
-                          :is="KeyboardDoubleArrowUpOutlined"
-                          class="size-4.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </UButton>
-                    </UTooltip>
-
-                    <UTooltip text="置底">
-                      <UButton
-                        color="neutral"
-                        size="xs"
-                        variant="soft"
-                        square
-                        class="rounded-full"
-                        @click="bottomVolume(volume.asin)"
-                        aria-label="置底"
-                      >
-                        <component
-                          :is="KeyboardDoubleArrowDownOutlined"
-                          class="size-4.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </UButton>
-                    </UTooltip>
-
-                    <UTooltip text="删除">
-                      <UButton
-                        size="xs"
-                        variant="soft"
-                        square
-                        color="error"
-                        class="rounded-full"
-                        @click="deleteVolume(volume.asin)"
-                        aria-label="删除"
-                      >
-                        <component
-                          :is="DeleteOutlineOutlined"
-                          class="size-4.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                      </UButton>
-                    </UTooltip>
-                  </div>
-                </template>
-
-                <template #description>
+                <div class="min-w-0 flex-1 break-words">
                   <div
-                    class="flex flex-nowrap justify-start items-center gap-0"
+                    class="mb-1 flex flex-wrap items-center justify-between gap-2"
                   >
-                    <n-text style="word-break: keep-all; font-size: 12px">
-                      标题：
-                    </n-text>
-                    <n-input
-                      v-model:value="volume.title"
-                      placeholder="标题"
-                      :input-props="{ spellcheck: false }"
-                      size="small"
-                      style="font-size: 12px"
-                    />
+                    <span class="text-[12px] text-default">
+                      ASIN：
+                      <ULink
+                        :href="`https://www.amazon.co.jp/zh/dp/${volume.asin}`"
+                      >
+                        {{ volume.asin }}
+                      </ULink>
+                    </span>
+
+                    <div class="flex gap-1.5">
+                      <UTooltip text="置顶">
+                        <UButton
+                          :icon="KeyboardDoubleArrowUpOutlined"
+                          color="neutral"
+                          size="xs"
+                          variant="soft"
+                          square
+                          class="rounded-full"
+                          @click="topVolume(volume.asin)"
+                          aria-label="置顶"
+                        />
+                      </UTooltip>
+
+                      <UTooltip text="置底">
+                        <UButton
+                          :icon="KeyboardDoubleArrowDownOutlined"
+                          color="neutral"
+                          size="xs"
+                          variant="soft"
+                          square
+                          class="rounded-full"
+                          @click="bottomVolume(volume.asin)"
+                          aria-label="置底"
+                        />
+                      </UTooltip>
+
+                      <UTooltip text="删除">
+                        <UButton
+                          :icon="DeleteOutlineOutlined"
+                          size="xs"
+                          variant="soft"
+                          square
+                          color="error"
+                          class="rounded-full"
+                          @click="deleteVolume(volume.asin)"
+                          aria-label="删除"
+                        />
+                      </UTooltip>
+                    </div>
                   </div>
-                  <n-text style="font-size: 12px">
-                    缩略：{{ volume.cover }}
-                    <br />
-                    高清：{{ volume.coverHires }}
-                    <br />
-                    出版：
-                    {{ volume.publisher ?? '未知出版商' }}
-                    /
-                    {{ volume.imprint ?? '未知文库' }}
-                    /
-                    <XTime
-                      v-if="volume.publishAt"
-                      :time="volume.publishAt * 1000"
-                      format="yyyy-MM-dd"
-                    />
-                  </n-text>
-                </template>
-              </n-thing>
-            </n-list-item>
+
+                  <div>
+                    <div class="flex items-center">
+                      <span class="text-[12px] break-keep text-default">
+                        标题：
+                      </span>
+                      <UInput
+                        class="w-full"
+                        v-model="volume.title"
+                        placeholder="标题"
+                        :spellcheck="false"
+                        size="sm"
+                        :ui="{ base: 'text-[12px]!' }"
+                      />
+                    </div>
+                    <span class="text-[12px] text-default">
+                      缩略：{{ volume.cover }}
+                      <br />
+                      高清：{{ volume.coverHires }}
+                      <br />
+                      出版：
+                      {{ volume.publisher ?? '未知出版商' }}
+                      /
+                      {{ volume.imprint ?? '未知文库' }}
+                      /
+                      <XTime
+                        v-if="volume.publishAt"
+                        :time="volume.publishAt * 1000"
+                        format="yyyy-MM-dd"
+                      />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </vue-draggable>
-        </n-list>
-      </n-form-item-row>
-    </n-form>
+        </div>
+      </UFormField>
+    </UForm>
 
     <USeparator class="my-6" />
 
     <div v-if="novelId" class="submit-action">
       <UButton
+        :icon="UploadOutlined"
         class="min-h-11 rounded-full"
         :loading="submitting"
         @click="submit"
       >
-        <UploadOutlined v-if="!submitting" class="size-5" aria-hidden="true" />
         提交
       </UButton>
     </div>
 
-    <n-steps
+    <ol
       v-else
-      :current="submitCurrentStep"
-      vertical
-      style="margin-left: 8px"
+      role="list"
+      aria-label="创建文库小说步骤"
+      class="ml-6 list-none p-0"
     >
-      <n-step title="检查小说是否已经存在">
-        <p>
-          创建文库页面前，请先确定你要创建的小说页面不存在，不要重复创建。你可以通过下面的搜索按钮搜索章节标题，注意自动搜索不总是能正确提取出关键词，如果关键词不正确，请手动搜索日文标题。
-        </p>
-        <p>
-          自动搜索关键词：
-          <b>{{ similarQuery }}</b>
-        </p>
-        <div v-if="similarNovels !== null" class="my-[1em]">
-          <template v-if="similarNovels.length === 0">没有相似的小说</template>
-          <div v-else class="@container w-full">
-            <div class="grid grid-cols-3 gap-3 @[600px]:grid-cols-6">
-              <div v-for="item in similarNovels" :key="item.id" class="min-w-0">
-                <router-link :to="`/wenku/${item.id}`">
-                  <ImageCard
-                    :src="item.cover"
-                    :title="item.titleZh ? item.titleZh : item.title"
-                  />
-                </router-link>
+      <li
+        v-for="step in submitSteps"
+        :key="step.value"
+        :aria-current="submitCurrentStep === step.value ? 'step' : undefined"
+        class="relative border-l border-default pb-8 pl-7 last:border-transparent last:pb-0"
+      >
+        <span
+          aria-hidden="true"
+          class="absolute -left-4 top-0 flex size-8 items-center justify-center rounded-full border text-sm"
+          :class="
+            submitCurrentStep === step.value
+              ? 'border-primary bg-primary text-inverted'
+              : submitCurrentStep > step.value
+                ? 'border-primary bg-default text-primary'
+                : 'border-default bg-default text-muted'
+          "
+        >
+          {{ step.value }}
+        </span>
+        <h3
+          class="mb-3 min-h-8 text-base font-medium leading-8"
+          :class="
+            submitCurrentStep >= step.value ? 'text-default' : 'text-muted'
+          "
+        >
+          {{ step.title }}
+        </h3>
+        <template v-if="step.value === 1">
+          <p class="my-3 text-sm leading-[1.6] text-default">
+            创建文库页面前，请先确定你要创建的小说页面不存在，不要重复创建。你可以通过下面的搜索按钮搜索章节标题，注意自动搜索不总是能正确提取出关键词，如果关键词不正确，请手动搜索日文标题。
+          </p>
+          <p class="my-3 text-sm leading-[1.6] text-default">
+            自动搜索关键词：
+            <b>{{ similarQuery }}</b>
+          </p>
+          <div v-if="similarNovels !== null" class="my-[1em]">
+            <template v-if="similarNovels.length === 0">
+              没有相似的小说
+            </template>
+            <div v-else class="@container w-full">
+              <div class="grid grid-cols-3 gap-3 @[600px]:grid-cols-6">
+                <div
+                  v-for="item in similarNovels"
+                  :key="item.id"
+                  class="min-w-0"
+                >
+                  <router-link :to="`/wenku/${item.id}`">
+                    <ImageCard
+                      :src="item.cover"
+                      :title="item.titleZh ? item.titleZh : item.title"
+                    />
+                  </router-link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div v-if="submitCurrentStep === 1" class="flex flex-wrap gap-3">
-          <UButton
-            color="warning"
-            :disabled="similarNovels === null"
-            @click="moveToNextStep"
-          >
-            我确定小说不存在
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            :loading="searching"
-            @click="findSimilarNovels"
-          >
-            自动搜索相似小说
-          </UButton>
-        </div>
-      </n-step>
+          <div v-if="submitCurrentStep === 1" class="flex flex-wrap gap-3">
+            <UButton
+              color="warning"
+              :disabled="similarNovels === null"
+              @click="moveToNextStep"
+            >
+              我确定小说不存在
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              :loading="searching"
+              @click="findSimilarNovels"
+            >
+              自动搜索相似小说
+            </UButton>
+          </div>
+        </template>
+        <template v-else-if="step.value === 2">
+          <p class="my-3 text-sm leading-[1.6] text-default">
+            创建文库页面前，请先确认你有可以上传的小说文件。不要创建文库页再去寻找资源，最后发现资源用不了或者找不到，留下一个空的文库页。尤其禁止创建空页面来求书，会被封号。
+          </p>
+          <p class="my-3 text-sm leading-[1.6] text-default">
+            PDF、或者内容只有图片的EPUB是无法上传的。
+          </p>
 
-      <n-step title="检查小说文件是否可以上传">
-        <p>
-          创建文库页面前，请先确认你有可以上传的小说文件。不要创建文库页再去寻找资源，最后发现资源用不了或者找不到，留下一个空的文库页。尤其禁止创建空页面来求书，会被封号。
-        </p>
-        <p>PDF、或者内容只有图片的EPUB是无法上传的。</p>
-
-        <div v-if="submitCurrentStep === 2" class="flex flex-wrap gap-3">
-          <UButton color="warning" @click="moveToNextStep">
-            我确定我有可以上传的文件
-          </UButton>
-          <UButton color="neutral" variant="outline" @click="moveToPrevStep">
-            上一步
-          </UButton>
-        </div>
-      </n-step>
-
-      <n-step title="创建文库小说">
-        <div v-if="submitCurrentStep === 3" class="mt-4 flex flex-wrap gap-3">
-          <UButton :loading="submitting" @click="submit">
-            <UploadOutlined
-              v-if="!submitting"
-              class="size-5"
-              aria-hidden="true"
-            />
-            提交
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="outline"
-            :disabled="submitting"
-            @click="moveToPrevStep"
-          >
-            上一步
-          </UButton>
-        </div>
-      </n-step>
-    </n-steps>
+          <div v-if="submitCurrentStep === 2" class="flex flex-wrap gap-3">
+            <UButton color="warning" @click="moveToNextStep">
+              我确定我有可以上传的文件
+            </UButton>
+            <UButton color="neutral" variant="outline" @click="moveToPrevStep">
+              上一步
+            </UButton>
+          </div>
+        </template>
+        <template v-else>
+          <div v-if="submitCurrentStep === 3" class="mt-4 flex flex-wrap gap-3">
+            <UButton
+              :icon="UploadOutlined"
+              :loading="submitting"
+              @click="submit"
+            >
+              提交
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              :disabled="submitting"
+              @click="moveToPrevStep"
+            >
+              上一步
+            </UButton>
+          </div>
+        </template>
+      </li>
+    </ol>
   </XPage>
 
   <UModal
     title="使用说明"
     v-model:open="showKeywordsModal"
-    class="w-[600px]"
+    class="w-150"
     :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
-      <n-p>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
         标签的意义在于辅助搜索。一个标签是否合适，要看标签相关情节的比例。仅仅是存在相关情节，不足以作为添加标签的依据。在实际操作中，可以思考搜索该标签的用户想不想看到这本书。
-      </n-p>
-      <n-p>
+      </p>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
         下面是一些标签的具体解释。注意，同一个标签在一般向和R18下可能存在区别。
-      </n-p>
+      </p>
       <USeparator class="my-6" />
-      <n-p v-for="row of presetKeywords.explanations" :key="row.word">
+      <p
+        class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+        v-for="row of presetKeywords.explanations"
+        :key="row.word"
+      >
         <b>{{ row.word }}</b>
         <br />
         {{ row.explanation }}
-      </n-p>
+      </p>
     </template>
   </UModal>
 </template>

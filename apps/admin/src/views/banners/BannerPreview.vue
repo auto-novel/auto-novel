@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import USlider from '@nuxt/ui/components/Slider.vue';
 import { bannerFocalPosition } from './bannerFocal';
 import ImageCompare from './ImageCompare.vue';
 
@@ -260,7 +259,7 @@ watch(canCompare, (available) => {
 .preview-toolbar .filter-tabs {
   padding: 3px;
   border-radius: 8px;
-  background: var(--color-neutral-soft);
+  background: var(--ui-bg-muted);
 }
 .preview-toolbar .filter-tabs button {
   border-radius: 6px;
@@ -289,7 +288,7 @@ watch(canCompare, (available) => {
   padding: 6px 10px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-surface) 78%, transparent);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 2px 10px rgb(0 0 0 / 8%);
@@ -298,7 +297,7 @@ watch(canCompare, (available) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--color-ink);
+  color: var(--ui-text);
   font-size: 12px;
 }
 .focal-axis {
@@ -325,7 +324,7 @@ watch(canCompare, (available) => {
   overflow: hidden;
   padding: 20px;
   border-radius: 10px;
-  background: var(--color-neutral-soft);
+  background: var(--ui-bg-muted);
 }
 .mobile-stage {
   height: auto;
@@ -345,10 +344,10 @@ watch(canCompare, (available) => {
   box-sizing: border-box;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
   background: var(--color-surface);
-  color: var(--color-ink);
+  color: var(--ui-text);
   box-shadow: 0 12px 32px rgb(0 0 0 / 8%);
   container-type: inline-size;
 }
@@ -366,10 +365,10 @@ watch(canCompare, (available) => {
   align-items: center;
   gap: 20px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--ui-border);
   background: var(--color-hover);
   font-size: 11px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
 }
 .window-dots {
   display: flex;
@@ -379,7 +378,7 @@ watch(canCompare, (available) => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--color-muted);
+  background: var(--ui-text-muted);
   opacity: 0.45;
 }
 .browser-address {
@@ -399,11 +398,11 @@ watch(canCompare, (available) => {
 .mock-nav-links {
   display: flex;
   gap: 20px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
 }
 .mock-account {
   margin-left: auto;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   white-space: nowrap;
 }
 .mock-banner {
@@ -440,15 +439,15 @@ watch(canCompare, (available) => {
   overflow: hidden;
   border-radius: 5px;
   background: var(--color-surface);
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: clamp(8px, 1.2cqw, 13px);
 }
 .mock-search span {
   padding: 9px 12px;
 }
 .mock-search span:last-child {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--ui-primary);
+  color: var(--ui-text-inverted);
   white-space: nowrap;
 }
 .mock-content {
@@ -463,7 +462,7 @@ watch(canCompare, (available) => {
 }
 .mock-content-heading > span {
   font-size: 10px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
 }
 .mock-books {
   display: grid;
@@ -473,7 +472,7 @@ watch(canCompare, (available) => {
 .mock-cover {
   height: clamp(40px, 8cqw, 90px);
   border-radius: 5px;
-  background: var(--color-neutral-soft);
+  background: var(--ui-bg-muted);
 }
 .mock-line {
   height: 5px;
@@ -487,7 +486,7 @@ watch(canCompare, (available) => {
 .mobile {
   max-height: none;
   max-width: var(--device-width);
-  border: 5px solid var(--color-ink);
+  border: 5px solid var(--ui-text);
   border-radius: 30px;
 }
 .phone-status {
@@ -502,7 +501,7 @@ watch(canCompare, (available) => {
   width: 72px;
   height: 18px;
   border-radius: 20px;
-  background: var(--color-ink);
+  background: var(--ui-text);
 }
 .mobile .mock-page {
   overflow: visible;
@@ -533,11 +532,11 @@ watch(canCompare, (available) => {
   width: 100px;
   height: 4px;
   border-radius: 4px;
-  background: var(--color-ink);
+  background: var(--ui-text);
 }
 .preview-caption {
   white-space: nowrap;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 12px;
   line-height: 1.7;
 }

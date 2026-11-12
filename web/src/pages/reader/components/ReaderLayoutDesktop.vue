@@ -23,15 +23,13 @@ const router = useRouter();
 </script>
 
 <template>
-  <div class="flex flex-nowrap justify-start gap-x-3 gap-y-2">
-    <div style="flex: auto">
+  <div class="flex gap-x-3">
+    <div class="flex-auto">
       <slot />
     </div>
 
-    <div style="flex: 0 0 0">
-      <div
-        class="fixed bottom-5 flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
-      >
+    <div class="flex-[0_0_0]">
+      <div class="fixed bottom-5 flex flex-col gap-y-3">
         <side-button
           :disabled="!chapter.prevId"
           text="上一章"

@@ -125,7 +125,7 @@ const hasStoppedWorkers = computed(() =>
     v-else
     v-model="workers"
     tag="ul"
-    class="m-0 list-none divide-y divide-divider p-0"
+    class="m-0 list-none divide-y divide-default p-0"
     aria-label="翻译器列表"
     :animation="150"
     handle=".drag-trigger"

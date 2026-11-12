@@ -1,6 +1,6 @@
 import ui from '@nuxt/ui/vite';
 // web-kit 导出 TS 源码；相对路径让 Vite 配置加载器一并转译，避免 Node 外部加载 node_modules 中的 TS。
-import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/nuxt-ui/index.ts';
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/src/ui/nuxt-ui.ts';
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
@@ -32,6 +32,7 @@ export default defineConfig(({ command, mode }) => {
       __COMMIT_SHA__: JSON.stringify(env.VITE_COMMIT_SHA || 'unknown'),
     },
     build: {
+      target: 'safari16',
       cssCodeSplit: false,
       rolldownOptions: {
         preserveEntrySignatures: false,
@@ -116,19 +117,7 @@ export default defineConfig(({ command, mode }) => {
       AutoImport({
         dts: 'src/auto-imports.d.ts',
         ignore: ['h'],
-        imports: [
-          'vue',
-          'vue-router',
-          'pinia',
-          {
-            'naive-ui': [
-              'useDialog',
-              'useNotification',
-              'useLoadingBar',
-              'useThemeVars',
-            ],
-          },
-        ],
+        imports: ['vue', 'vue-router', 'pinia'],
       }),
     ],
   };

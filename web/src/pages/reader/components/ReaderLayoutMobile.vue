@@ -10,9 +10,10 @@ import {
 import type { WebNovelChapterDto } from '@/model/WebNovel';
 import { useReaderSettingStore } from '@/stores';
 
-defineProps<{
+const props = defineProps<{
   novelUrl?: string;
   chapter: WebNovelChapterDto;
+  modalOpen?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -23,16 +24,14 @@ const emit = defineEmits<{
 
 const showMenu = ref(false);
 
-// 先关闭抽屉，避免其模态交互和滚动锁影响外部弹窗。
-const openCatalogModal = () => {
-  showMenu.value = false;
-  emit('requireCatalogModal');
-};
-
-const openSettingModal = () => {
-  showMenu.value = false;
-  emit('requireSettingModal');
-};
+// 快捷键等外部入口打开弹窗时，也先挂载承载弹窗的菜单内容。
+watch(
+  () => props.modalOpen,
+  (open) => {
+    if (open) showMenu.value = true;
+  },
+  { immediate: true },
+);
 
 const readerSettingStore = useReaderSettingStore();
 const { readerSetting } = storeToRefs(readerSettingStore);
@@ -86,56 +85,56 @@ const onGlobalClick = (event: MouseEvent) => {
     :ui="{ content: 'h-auto max-h-[calc(100dvh-3rem)]' }"
   >
     <template #content>
-      <div
-        class="my-1 flex w-full flex-wrap justify-start gap-0 pb-[env(safe-area-inset-bottom)]"
-      >
-        <div style="flex: 1 1 0px">
+      <div class="my-1 flex w-full flex-wrap pb-[env(safe-area-inset-bottom)]">
+        <div class="flex-[1_1_0px]">
           <side-button
-            quaternary
+            variant="ghost"
             :disabled="!chapter.prevId"
             text="上一章"
             :icon="ArrowBackIosOutlined"
             @click="emit('nav', chapter.prevId!)"
-            style="width: 100%"
+            class="w-full"
           />
         </div>
-        <router-link v-if="novelUrl" :to="novelUrl" style="flex: 1">
+        <router-link v-if="novelUrl" :to="novelUrl" class="flex-1">
           <side-button
-            quaternary
+            variant="ghost"
             text="详情"
             :icon="LibraryBooksOutlined"
-            style="width: 100%"
+            class="w-full"
           />
         </router-link>
-        <div style="flex: 1 1 0px">
+        <div class="flex-[1_1_0px]">
           <side-button
-            quaternary
+            variant="ghost"
             text="目录"
             :icon="FormatListBulletedOutlined"
-            @click="openCatalogModal"
-            style="width: 100%"
+            @click="emit('requireCatalogModal')"
+            class="w-full"
           />
         </div>
-        <div style="flex: 1 1 0px">
+        <div class="flex-[1_1_0px]">
           <side-button
-            quaternary
+            variant="ghost"
             text="设置"
             :icon="TuneOutlined"
-            @click="openSettingModal"
-            style="width: 100%"
+            @click="emit('requireSettingModal')"
+            class="w-full"
           />
         </div>
-        <div style="flex: 1 1 0px">
+        <div class="flex-[1_1_0px]">
           <side-button
-            quaternary
+            variant="ghost"
             :disabled="!chapter.nextId"
             text="下一章"
             :icon="ArrowForwardIosOutlined"
             @click="emit('nav', chapter.nextId!)"
-            style="width: 100%"
+            class="w-full"
           />
         </div>
       </div>
+      <!-- 嵌套声明使弹窗 Portal 排在菜单之后，无需手动分配 z-index。 -->
+      <slot name="modals" />
     </template>
   </USlideover>
 </template>

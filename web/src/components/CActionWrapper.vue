@@ -14,15 +14,15 @@ withDefaults(
 
 <template>
   <div
-    class="flex flex-nowrap justify-start"
+    class="flex"
     :class="[
       align === 'center' ? 'items-center' : 'items-baseline',
       size === 'medium' ? 'gap-x-4 gap-y-3' : 'gap-x-3 gap-y-2',
     ]"
   >
-    <n-text depth="3" class="text-[12px] whitespace-nowrap">
+    <span class="text-muted text-[12px] whitespace-nowrap">
       {{ title }}
-    </n-text>
+    </span>
     <slot />
   </div>
 </template>

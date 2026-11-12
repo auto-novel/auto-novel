@@ -27,18 +27,15 @@ withDefaults(
         :color="color"
         variant="soft"
         class="shrink-0 whitespace-nowrap"
-        :class="iconOnly ? 'size-5.5 p-0' : 'px-2.5'"
+        :class="iconOnly ? 'size-5.5 justify-center p-0' : 'px-2.5'"
         size="xs"
         :square="iconOnly"
         :aria-label="label"
         :disabled="disabled"
         :action="() => onAction?.()"
+        :icon="icon"
+        :ui="{ leadingIcon: 'size-3.5' }"
       >
-        <component
-          :is="icon"
-          class="size-3.5 shrink-0 group-aria-busy:hidden"
-          aria-hidden="true"
-        />
         <template v-if="!iconOnly">{{ label }}</template>
       </ActionButton>
     </span>
@@ -49,18 +46,15 @@ withDefaults(
     :color="color"
     variant="soft"
     class="shrink-0 whitespace-nowrap"
-    :class="iconOnly ? 'size-5.5 p-0' : 'px-2.5'"
+    :class="iconOnly ? 'size-5.5 justify-center p-0' : 'px-2.5'"
     size="xs"
     :square="iconOnly"
     :aria-label="label"
     :disabled="disabled"
     :action="() => onAction?.()"
+    :icon="icon"
+    :ui="{ leadingIcon: 'size-3.5' }"
   >
-    <component
-      :is="icon"
-      class="size-3.5 shrink-0 group-aria-busy:hidden"
-      aria-hidden="true"
-    />
     <template v-if="!iconOnly">{{ label }}</template>
   </ActionButton>
 </template>

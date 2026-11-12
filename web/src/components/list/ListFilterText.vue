@@ -171,7 +171,7 @@ const confirm = (key: string) => {
           align="start"
           :side-offset="6"
           :collision-padding="8"
-          class="floating-panel z-50 max-h-(--reka-popover-content-available-height) w-(--reka-popover-trigger-width) overflow-y-auto p-1 text-ink outline-none"
+          class="floating-panel z-50 max-h-(--reka-popover-content-available-height) w-(--reka-popover-trigger-width) overflow-y-auto p-1 text-default outline-none"
           @open-auto-focus.prevent
           @close-auto-focus.prevent
           @interact-outside="onInteractOutside"
@@ -182,7 +182,7 @@ const confirm = (key: string) => {
               v-for="query in historyQueries"
               :key="query"
               type="button"
-              class="block w-full cursor-pointer truncate rounded-sm px-3 py-2 text-left text-sm text-ink hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+              class="block w-full cursor-pointer truncate rounded-sm px-3 py-2 text-left text-sm text-default hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
               :title="query"
               @mousedown.prevent
               @click="confirm(query)"

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { LoadingBar } from '@novelia/web-kit';
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 
 import { ReadHistoryApi } from '@/api';
@@ -23,6 +24,8 @@ const [DefineChapterLink, ReuseChapterLink] = createReusableTemplate<{
   label: string;
   id: string | undefined;
 }>();
+
+const [DefineReaderModals, ReuseReaderModals] = createReusableTemplate();
 
 const route = useRoute();
 const router = useRouter();
@@ -65,7 +68,6 @@ const loadedChapters = computed(() =>
     chapter: item.result?.ok ? item.result.value : undefined,
   })),
 );
-const loadingBar = useLoadingBar();
 
 const novelUrl = (() => {
   if (gnid.type === 'web') {
@@ -118,19 +120,24 @@ const navToChapter = async (chapterId: string) => {
 
   const { type, promiseOrValue } = store.loadChapter(chapterId);
 
-  if (type === 'async') {
-    loadingBar.start();
-  }
+  const task = type === 'async' ? LoadingBar.start() : undefined;
 
-  const result = await promiseOrValue;
+  let result: Result<ReaderChapter>;
+  try {
+    result = await promiseOrValue;
+  } catch (error) {
+    task?.error();
+    throw error;
+  }
   if (chapterId !== targetChapterId.value) {
+    task?.finish();
     return;
   }
 
   if (result.ok) {
-    loadingBar.finish();
+    task?.finish();
   } else {
-    loadingBar.error();
+    task?.error();
   }
 
   chapterResult.value = result;
@@ -296,6 +303,15 @@ onKeyDown(['Enter'], (e) => {
     </UButton>
   </DefineChapterLink>
 
+  <DefineReaderModals>
+    <reader-setting-modal v-model:open="showSettingModal" />
+    <catalog-modal
+      v-model:show="showCatalogModal"
+      :gnid="gnid"
+      :chapter-id="currentChapterId"
+    />
+  </DefineReaderModals>
+
   <div class="content">
     <template v-if="!chapterResult">
       <ReaderSkeleton v-if="chapterList.length === 0" />
@@ -316,10 +332,16 @@ onKeyDown(['Enter'], (e) => {
       :is="isMobile ? ReaderLayoutMobile : ReaderLayoutDesktop"
       :novel-url="novelUrl"
       :chapter="currentChapter"
+      v-bind="
+        isMobile ? { modalOpen: showSettingModal || showCatalogModal } : {}
+      "
       @nav="navToChapter"
       @require-catalog-modal="showCatalogModal = true"
       @require-setting-modal="showSettingModal = true"
     >
+      <template v-if="isMobile" #modals>
+        <ReuseReaderModals />
+      </template>
       <template v-if="readerSetting.pageTurnMode === 'page'">
         <reader-content
           :gnid="gnid"
@@ -364,19 +386,13 @@ onKeyDown(['Enter'], (e) => {
           />
 
           <template v-if="!item.chapter.nextId">
-            <div style="text-align: center; margin: 48px 0">暂无更多章节</div>
+            <div class="mx-0 my-12 text-center">暂无更多章节</div>
           </template>
         </template>
       </template>
     </component>
 
-    <reader-setting-modal v-model:open="showSettingModal" />
-
-    <catalog-modal
-      v-model:show="showCatalogModal"
-      :gnid="gnid"
-      :chapter-id="currentChapterId"
-    />
+    <ReuseReaderModals v-if="!isMobile || !currentChapter" />
   </div>
 </template>
 

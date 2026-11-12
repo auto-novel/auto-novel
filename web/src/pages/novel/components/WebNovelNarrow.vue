@@ -82,63 +82,45 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     <UButton
       color="neutral"
       v-if="novel.toc.length > 1"
-      style="width: 100%"
       variant="soft"
-      class="rounded-full"
+      class="w-full rounded-full"
       @click="showCatalogDrawer = true"
     >
       展开目录
     </UButton>
   </template>
   <template v-else>
-    <div
-      style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-      "
-    >
-      <div style="flex: 1"></div>
+    <div class="mb-4 flex items-center justify-between">
+      <div class="flex-1"></div>
       <UButton
+        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
         color="neutral"
         v-if="hasSeparators"
         size="sm"
-        style="margin-right: 8px"
         variant="ghost"
-        class="text-sm/4"
+        class="mr-2 text-sm/4"
         @click="toggleAll"
       >
-        <component
-          :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-          class="size-4 shrink-0"
-          aria-hidden="true"
-        />
         {{ isAnyExpanded ? '折叠' : '展开' }}
       </UButton>
       <UButton
+        :icon="SortOutlined"
         color="neutral"
         size="sm"
         variant="ghost"
         class="text-sm/4"
         @click="setting.tocSortReverse = !setting.tocSortReverse"
       >
-        <component
-          :is="SortOutlined"
-          class="size-4 shrink-0"
-          aria-hidden="true"
-        />
         {{ setting.tocSortReverse ? '倒序' : '正序' }}
       </UButton>
     </div>
-    <n-card
+    <UCard
       v-if="lastReadChapter !== undefined"
-      :bordered="false"
-      embedded
-      style="margin-bottom: 8px"
-      content-style="padding: 6px 0px 0px;"
+      variant="soft"
+      class="mb-2 bg-embedded text-sm leading-[1.6] text-default"
+      :ui="{ body: 'px-0 pt-1.5 pb-0 sm:px-0 sm:pt-1.5 sm:pb-0' }"
     >
-      <b style="padding-left: 6px">上次读到:</b>
+      <b class="pl-1.5">上次读到:</b>
       <ChapterTocItem
         :provider-id="providerId"
         :novel-id="novelId"
@@ -147,7 +129,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         :is-separator="false"
         :is-special-chapter="true"
       />
-    </n-card>
+    </UCard>
     <UScrollArea>
       <ChapterTocList
         :toc-sections="tocSections"
@@ -180,39 +162,30 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
   >
     <template #actions>
       <UButton
+        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
         color="neutral"
         v-if="hasSeparators"
         size="sm"
-        style="margin-right: 8px"
         variant="ghost"
-        class="text-sm/4"
+        class="mr-2 text-sm/4"
         @click="toggleAll"
       >
-        <component
-          :is="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-          class="size-4 shrink-0"
-          aria-hidden="true"
-        />
         {{ isAnyExpanded ? '折叠' : '展开' }}
       </UButton>
       <UButton
+        :icon="SortOutlined"
         color="neutral"
         size="sm"
         variant="ghost"
         class="text-sm/4"
         @click="setting.tocSortReverse = !setting.tocSortReverse"
       >
-        <component
-          :is="SortOutlined"
-          class="size-4 shrink-0"
-          aria-hidden="true"
-        />
         {{ setting.tocSortReverse ? '倒序' : '正序' }}
       </UButton>
     </template>
 
     <template #body>
-      <div style="flex: 1; min-height: 0; padding: 16px 16px 16px 8px">
+      <div class="min-h-0 flex-1 py-4 pr-4 pl-2">
         <ChapterTocList
           :toc-sections="tocSections"
           v-model:expanded-names="expandedNames"
@@ -226,7 +199,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
             modal: false,
             collapse: true,
           }"
-          style="height: 100%"
+          class="h-full"
         />
       </div>
     </template>

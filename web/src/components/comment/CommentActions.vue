@@ -255,15 +255,14 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
       :items="menuItems"
     >
       <UButton
+        :icon="MoreVertOutlined"
         color="neutral"
         variant="ghost"
         size="xs"
         square
         aria-label="更多操作"
         title="更多操作"
-      >
-        <MoreVertOutlined class="size-4" aria-hidden="true" />
-      </UButton>
+      />
     </UDropdownMenu>
   </div>
   <XConfirmDialog

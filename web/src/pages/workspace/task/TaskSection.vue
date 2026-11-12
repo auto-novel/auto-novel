@@ -118,7 +118,7 @@ const hasFailedTasks = computed(() =>
     <div
       v-for="(job, index) of jobs"
       :key="job.task"
-      class="task-item [&+.task-item]:border-t! [&+.task-item]:border-divider!"
+      class="task-item [&+.task-item]:border-t! [&+.task-item]:border-default!"
       :class="{ 'task-moved': movedTask === job.task }"
     >
       <TaskCard
@@ -161,11 +161,7 @@ const hasFailedTasks = computed(() =>
     background-color: transparent;
   }
   50% {
-    background-color: color-mix(
-      in oklab,
-      var(--color-primary) 10%,
-      transparent
-    );
+    background-color: color-mix(in oklab, var(--ui-primary) 10%, transparent);
   }
 }
 
@@ -180,11 +176,7 @@ const hasFailedTasks = computed(() =>
 
   .task-moved {
     animation: none;
-    background-color: color-mix(
-      in oklab,
-      var(--color-primary) 10%,
-      transparent
-    );
+    background-color: color-mix(in oklab, var(--ui-primary) 10%, transparent);
   }
 }
 </style>

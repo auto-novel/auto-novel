@@ -1,16 +1,20 @@
 <script lang="ts" setup>
-defineProps<{
-  icon: Component;
-  text: string;
-}>();
+withDefaults(
+  defineProps<{
+    icon: Component;
+    text: string;
+    variant?: 'outline' | 'ghost';
+  }>(),
+  { variant: 'outline' },
+);
 </script>
 
 <template>
   <UButton
     color="neutral"
-    variant="outline"
+    :variant="variant"
     :tabindex="-1"
-    style="height: 64px"
+    class="h-16 justify-center text-center"
   >
     <div>
       <component

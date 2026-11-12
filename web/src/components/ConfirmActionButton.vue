@@ -48,21 +48,12 @@ const confirm = async () => {
     class="group rounded-full"
     v-bind="$attrs"
     :label="label"
+    :icon="icon"
     :loading="running || loading"
     :aria-busy="running || loading"
     :disabled="disabled"
     @click="openConfirmation"
-  >
-    <template v-if="icon" #default>
-      <component
-        :is="icon"
-        class="shrink-0 group-aria-busy:hidden"
-        :class="attrs.size === 'xs' ? 'size-3.5' : 'size-4.5'"
-        aria-hidden="true"
-      />
-      <span v-if="label">{{ label }}</span>
-    </template>
-  </UButton>
+  />
   <XConfirmDialog
     :open="open"
     :title="label ? `确认${label}` : '确认操作'"
