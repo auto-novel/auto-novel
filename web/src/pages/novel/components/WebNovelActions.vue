@@ -32,7 +32,7 @@ const startReadChapter = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+  <div class="flex flex-wrap gap-x-3 gap-y-2">
     <UButton
       v-if="startReadChapter !== undefined"
       :to="`/novel/${providerId}/${novelId}/${startReadChapter.chapter.chapterId}`"
@@ -51,30 +51,22 @@ const startReadChapter = computed(() => {
     />
 
     <UButton
+      :icon="EditNoteOutlined"
       v-if="whoami.hasNovelAccess"
       :to="`/novel-edit/${providerId}/${novelId}`"
       color="neutral"
       variant="outline"
     >
-      <component
-        :is="EditNoteOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
       编辑
     </UButton>
 
     <UButton
+      :icon="BookOutlined"
       v-if="novel.wenkuId"
       :to="`/wenku/${novel.wenkuId}`"
       color="neutral"
       variant="outline"
     >
-      <component
-        :is="BookOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
       文库
     </UButton>
   </div>

@@ -53,39 +53,29 @@ const requireLogin = useRequireLogin();
       v-if="favored && favoredTitle"
       class="rounded-md"
       :action="requireLogin(unfavoriteNovel)"
+      :icon="FavoriteOutlined"
+      :ui="{ leadingIcon: 'size-4.5' }"
     >
-      <component
-        :is="FavoriteOutlined"
-        class="size-4.5 shrink-0 group-aria-busy:hidden"
-        aria-hidden="true"
-      />
       已收藏
     </ActionButton>
     <ActionButton
       v-else
       class="rounded-md"
       :action="requireLogin(() => favoriteNovel(favoreds[0].id))"
+      :icon="FavoriteBorderOutlined"
+      :ui="{ leadingIcon: 'size-4.5' }"
     >
-      <component
-        :is="FavoriteBorderOutlined"
-        class="size-4.5 shrink-0 group-aria-busy:hidden"
-        aria-hidden="true"
-      />
       收藏
     </ActionButton>
   </template>
 
   <template v-else>
     <UButton
+      :icon="favored ? FavoriteOutlined : FavoriteBorderOutlined"
       color="neutral"
       variant="outline"
       @click="requireLogin(() => (showFavoredModal = true))()"
     >
-      <component
-        :is="favored ? FavoriteOutlined : FavoriteBorderOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
       {{ favored && favoredTitle ? '已收藏:' + favoredTitle : '收藏' }}
     </UButton>
   </template>
@@ -93,12 +83,12 @@ const requireLogin = useRequireLogin();
   <UModal
     v-model:open="showFavoredModal"
     title="收藏到..."
-    class="w-[600px]"
-    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
       <n-radio-group v-model:value="selectedFavoredId">
-        <div class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3">
+        <div class="flex flex-col gap-y-3">
           <n-radio
             v-for="favoredItem in favoreds"
             :key="favoredItem.id"

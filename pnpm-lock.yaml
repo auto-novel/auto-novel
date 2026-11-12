@@ -14,8 +14,8 @@ importers:
   apps/admin:
     dependencies:
       '@novelia/web-kit':
-        specifier: github:auto-novel/web-kit#b3addb63061a006bda6776b83fa011bbbc9c1759
-        version: https://codeload.github.com/auto-novel/web-kit/tar.gz/b3addb63061a006bda6776b83fa011bbbc9c1759(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+        specifier: github:auto-novel/web-kit#deafe7a97d0a77e9bca239b06ed9ca59fec14544
+        version: https://codeload.github.com/auto-novel/web-kit/tar.gz/deafe7a97d0a77e9bca239b06ed9ca59fec14544(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       '@nuxt/ui':
         specifier: ^4.12.0
         version: 4.12.0(7ff9a641af02ffa083c29f519c525c5c)
@@ -240,8 +240,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
       '@novelia/web-kit':
-        specifier: github:auto-novel/web-kit#b3addb63061a006bda6776b83fa011bbbc9c1759
-        version: https://codeload.github.com/auto-novel/web-kit/tar.gz/b3addb63061a006bda6776b83fa011bbbc9c1759(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+        specifier: github:auto-novel/web-kit#deafe7a97d0a77e9bca239b06ed9ca59fec14544
+        version: https://codeload.github.com/auto-novel/web-kit/tar.gz/deafe7a97d0a77e9bca239b06ed9ca59fec14544(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       '@nuxt/ui':
         specifier: ^4.12.0
         version: 4.12.0(7ff9a641af02ffa083c29f519c525c5c)
@@ -310,10 +310,10 @@ importers:
         version: 5.9.3
       unplugin-auto-import:
         specifier: ^0.17.8
-        version: 0.17.8(@vueuse/core@14.4.0(vue@3.5.44(typescript@5.9.3)))(rollup@4.64.6)
+        version: 0.17.8(@nuxt/kit@4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))))(@vueuse/core@14.4.0(vue@3.5.44(typescript@5.9.3)))(rollup@4.64.6)
       unplugin-vue-components:
         specifier: ^0.27.5
-        version: 0.27.5(@babel/parser@7.29.9)(rollup@4.64.6)(supports-color@7.2.0)(vue@3.5.44(typescript@5.9.3))
+        version: 0.27.5(@babel/parser@7.29.9)(@nuxt/kit@4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))))(rollup@4.64.6)(supports-color@7.2.0)(vue@3.5.44(typescript@5.9.3))
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -1679,12 +1679,12 @@ packages:
       }
     engines: { node: '>= 8' }
 
-  '@novelia/web-kit@https://codeload.github.com/auto-novel/web-kit/tar.gz/b3addb63061a006bda6776b83fa011bbbc9c1759':
+  '@novelia/web-kit@https://codeload.github.com/auto-novel/web-kit/tar.gz/deafe7a97d0a77e9bca239b06ed9ca59fec14544':
     resolution:
       {
         gitHosted: true,
-        integrity: sha512-nJYcyC+NZrb8U7W6gpgWvYfaJUmtF3+grWlMYH7C0G2o4xfjFhZN6RkWPwy4ms7emmCyoPQLoNsGJutOjbD9xQ==,
-        tarball: https://codeload.github.com/auto-novel/web-kit/tar.gz/b3addb63061a006bda6776b83fa011bbbc9c1759,
+        integrity: sha512-epzTDRbb9IrQYsYFcJeSYCXNsivFZsyELV+hukp90TYYAR+hssa4f642lT80VQ9t0kTuUK/o1SPP/dNLVI49tg==,
+        tarball: https://codeload.github.com/auto-novel/web-kit/tar.gz/deafe7a97d0a77e9bca239b06ed9ca59fec14544,
       }
     version: 0.1.0
     engines: { node: '>=22.18.0' }
@@ -9141,7 +9141,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@novelia/web-kit@https://codeload.github.com/auto-novel/web-kit/tar.gz/b3addb63061a006bda6776b83fa011bbbc9c1759(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
+  '@novelia/web-kit@https://codeload.github.com/auto-novel/web-kit/tar.gz/deafe7a97d0a77e9bca239b06ed9ca59fec14544(@nuxt/ui@4.12.0(7ff9a641af02ffa083c29f519c525c5c))(@vicons/material@0.13.0)(tailwindcss@4.3.3)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue-router@5.4.0(@pinia/colada@1.4.8(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
     dependencies:
       '@internationalized/date': 3.12.4
       '@mdit/plugin-container': 2.0.2(markdown-it@15.0.3)
@@ -12954,7 +12954,7 @@ snapshots:
 
   unpipe@1.0.0: {}
 
-  unplugin-auto-import@0.17.8(@vueuse/core@14.4.0(vue@3.5.44(typescript@5.9.3)))(rollup@4.64.6):
+  unplugin-auto-import@0.17.8(@nuxt/kit@4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))))(@vueuse/core@14.4.0(vue@3.5.44(typescript@5.9.3)))(rollup@4.64.6):
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.4.0(rollup@4.64.6)
@@ -12965,6 +12965,7 @@ snapshots:
       unimport: 3.14.6(rollup@4.64.6)
       unplugin: 1.16.1
     optionalDependencies:
+      '@nuxt/kit': 4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)))
       '@vueuse/core': 14.4.0(vue@3.5.44(typescript@5.9.3))
     transitivePeerDependencies:
       - rollup
@@ -12998,7 +12999,7 @@ snapshots:
       pathe: 2.0.3
       picomatch: 4.0.7
 
-  unplugin-vue-components@0.27.5(@babel/parser@7.29.9)(rollup@4.64.6)(supports-color@7.2.0)(vue@3.5.44(typescript@5.9.3)):
+  unplugin-vue-components@0.27.5(@babel/parser@7.29.9)(@nuxt/kit@4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2))))(rollup@4.64.6)(supports-color@7.2.0)(vue@3.5.44(typescript@5.9.3)):
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.4.0(rollup@4.64.6)
@@ -13013,6 +13014,7 @@ snapshots:
       vue: 3.5.44(typescript@5.9.3)
     optionalDependencies:
       '@babel/parser': 7.29.9
+      '@nuxt/kit': 4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)(vite@8.3.4(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)))
     transitivePeerDependencies:
       - rollup
       - supports-color

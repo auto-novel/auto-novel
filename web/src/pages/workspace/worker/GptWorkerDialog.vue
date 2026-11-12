@@ -1,6 +1,12 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import type { Form, FormSchema } from '@nuxt/ui';
+
+import {
+  parseWorkerLines,
+  validateGptWorker,
+  validateGptWorkerBatch,
+} from './gptWorkerForm';
 
 import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
@@ -95,7 +101,8 @@ const initFormValue = (
   }
 };
 
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+
 const formValue = ref(initFormValue(props.worker));
 
 /** 已保存或手动输入的 API 端点不随接口格式切换而覆盖。 */
@@ -132,66 +139,18 @@ const onProfileChange = (value: string) => {
   }
 };
 
-const emptyCheck = (name: string) => ({
-  validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
-  message: name + '不能为空',
-  trigger: 'input',
-});
+const otherWorkers = computed(() =>
+  workspaceRef.value.workers.filter((worker) => worker.id !== props.worker?.id),
+);
+const duplicateKeyWarning = computed(() =>
+  formValue.value.key.trim() &&
+  otherWorkers.value.some((worker) => worker.key === formValue.value.key)
+    ? '有重复的Key，请确保使用的API支持并发'
+    : undefined,
+);
 
-const editFormRules: FormRules = {
-  id: [
-    emptyCheck('名字'),
-    {
-      validator: (rule: FormItemRule, value: string) =>
-        workspaceRef.value.workers
-          .filter((w) => w.id !== props.worker?.id)
-          .find((w) => w.id === value) === undefined,
-      message: '名字不能重复',
-      trigger: 'input',
-    },
-  ],
-  model: [emptyCheck('模型')],
-  endpoint: [
-    emptyCheck('API端点'),
-    {
-      validator: (rule: FormItemRule, value: string) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch (_) {
-          return false;
-        }
-      },
-      message: 'API端点不合法',
-      trigger: 'input',
-    },
-  ],
-  key: [
-    emptyCheck('Key'),
-    {
-      level: 'warning',
-      validator: (rule: FormItemRule, value: string) =>
-        workspaceRef.value.workers
-          .filter((w) => w.id !== props.worker?.id)
-          .find((w) => w.key === value) === undefined,
-      message: '有重复的Key，请确保使用的API支持并发',
-      trigger: 'input',
-    },
-  ],
-  concurrency: [
-    {
-      validator: (rule: FormItemRule, value: number) =>
-        Number.isInteger(value) && value >= 1 && value <= 100,
-      message: '并发数需为 1~100 的整数',
-      trigger: 'input',
-    },
-  ],
-};
-
-const doValidate = () =>
-  new Promise<boolean>((resolve) => {
-    formRef.value?.validate((errors) => resolve(!errors));
-  });
+const doValidate = async () =>
+  Boolean(await formRef.value?.validate({ silent: true }));
 
 const addFormValue = computed(() => ({
   endpoint: formValue.value.endpoint,
@@ -199,71 +158,10 @@ const addFormValue = computed(() => ({
   keys: keyText.value,
 }));
 
-const addFormRules: FormRules = {
-  endpoint: [
-    {
-      validator: (_r: FormItemRule, value: string) => value.trim().length > 0,
-      message: 'API端点不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch {
-          return false;
-        }
-      },
-      message: 'API端点不合法',
-      trigger: 'input',
-    },
-  ],
-  models: [
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return items.length > 0;
-      },
-      message: '请至少输入一个模型',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return new Set(items).size === items.length;
-      },
-      message: '存在重复的模型名',
-    },
-  ],
-  keys: [
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return items.length > 0;
-      },
-      message: '请至少输入一个Key',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return new Set(items).size === items.length;
-      },
-      message: '存在重复的Key',
-    },
-  ],
-};
+const validateForm = () =>
+  props.worker === undefined
+    ? validateGptWorkerBatch(addFormValue.value)
+    : validateGptWorker(formValue.value, otherWorkers.value);
 
 const modelText = ref('');
 const keyText = ref('');
@@ -290,21 +188,8 @@ watch(
   },
 );
 
-const models = computed(() => [
-  ...new Set(
-    modelText.value
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  ),
-]);
-
-const keys = computed(() =>
-  keyText.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
+const models = computed(() => [...new Set(parseWorkerLines(modelText.value))]);
+const keys = computed(() => parseWorkerLines(keyText.value));
 
 interface GeneratedWorker {
   uid: string;
@@ -364,10 +249,6 @@ watch(defaultConcurrency, (val) => {
   }
 });
 
-watch([modelText, keyText], () => {
-  nextTick(() => formRef.value?.validate());
-});
-
 const workerName = (worker: GeneratedWorker) =>
   (workerNames[worker.uid] ?? worker.id).trim();
 
@@ -410,9 +291,8 @@ const addWorkers = (profile: OpenAiProfileSelection) => {
   }
 };
 
-const submit = async () => {
+const save = () => {
   if (props.worker === undefined) {
-    if (!(await doValidate())) return;
     const idError = validateIds();
     if (idError) {
       Toast.warning(idError);
@@ -424,7 +304,6 @@ const submit = async () => {
     Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
     emit('update:show', false);
   } else {
-    if (!(await doValidate())) return;
     const profile = profileForSave();
     if (!profile) return;
     const { id, model, endpoint, key, concurrency } = formValue.value;
@@ -445,6 +324,10 @@ const submit = async () => {
   }
 };
 
+const submit = async () => {
+  if (await doValidate()) save();
+};
+
 const submitAndContinue = async () => {
   if (!(await doValidate())) return;
   const idError = validateIds();
@@ -463,21 +346,28 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 
 <template>
   <UModal
-    :ui="{ content: 'max-w-[calc(100vw-16px)]', footer: 'justify-end' }"
+    :ui="{ content: 'max-w-[calc(100vw-16px)]' }"
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + '翻译器'"
     class="w-[min(750px,calc(100%-16px))]"
   >
     <template #body>
-      <n-form
+      <UForm
         ref="form"
-        :model="props.worker === undefined ? addFormValue : formValue"
-        :rules="props.worker === undefined ? addFormRules : editFormRules"
-        label-placement="left"
-        label-width="auto"
+        :state="props.worker === undefined ? addFormValue : formValue"
+        :validate="validateForm"
+        :validate-on="['input', 'change']"
+        :validate-on-input-delay="0"
+        class="space-y-5"
+        @submit="save"
       >
-        <n-form-item-row label="接口格式">
+        <UFormField
+          orientation="horizontal"
+          :ui="{ container: 'flex-1 min-w-0' }"
+          eager-validation
+          label="接口格式"
+        >
           <USelect
             :model-value="formValue.profileId"
             :items="
@@ -487,10 +377,13 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
             class="w-full"
             @update:model-value="onProfileChange"
           />
-        </n-form-item-row>
+        </UFormField>
 
         <template v-if="currentProfile?.fields.length">
-          <n-form-item-row
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
             v-for="field in currentProfile.fields"
             :key="`${formValue.profileId}-${field.key}`"
             :label="field.label"
@@ -519,45 +412,80 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
                     field.options[Number(value)]?.value)
               "
             />
-          </n-form-item-row>
+          </UFormField>
         </template>
         <!-- 添加模式：批量 -->
         <template v-if="props.worker === undefined">
-          <n-form-item-row path="endpoint" label="API端点">
-            <n-input
-              :value="formValue.endpoint"
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="endpoint"
+            label="API端点"
+          >
+            <UInput
+              class="w-full"
+              :model-value="formValue.endpoint"
               :placeholder="defaultEndpoint(formValue.profileId)"
-              @update:value="onEndpointInput"
+              @update:model-value="onEndpointInput"
             />
-          </n-form-item-row>
+          </UFormField>
 
-          <n-form-item-row path="models" label="模型">
-            <n-input
-              v-model:value="modelText"
-              type="textarea"
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="models"
+            label="模型"
+          >
+            <UTextarea
+              class="w-full"
+              v-model="modelText"
               placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
-              :autosize="{ minRows: 2, maxRows: 5 }"
+              autoresize
+              :rows="2"
+              :maxrows="5"
             />
-          </n-form-item-row>
+          </UFormField>
 
-          <n-form-item-row path="keys" label="Key">
-            <n-input
-              v-model:value="keyText"
-              type="textarea"
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="keys"
+            label="Key"
+          >
+            <UTextarea
+              class="w-full"
+              v-model="keyText"
               placeholder="每行一个Key&#10;sk-xxxxxxxx&#10;sk-yyyyyyyy"
-              :autosize="{ minRows: 2, maxRows: 5 }"
+              autoresize
+              :rows="2"
+              :maxrows="5"
             />
-          </n-form-item-row>
+          </UFormField>
 
-          <n-form-item-row label="默认并发">
-            <n-input-number
-              v-model:value="defaultConcurrency"
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            label="默认并发"
+          >
+            <UInputNumber
+              class="w-full"
+              v-model="defaultConcurrency"
               :min="1"
               :max="100"
             />
-          </n-form-item-row>
+          </UFormField>
 
-          <n-form-item-row v-if="generatedWorkers.length > 0" label="预览">
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            v-if="generatedWorkers.length > 0"
+            label="预览"
+          >
             <n-table :single-line="false" size="small">
               <thead>
                 <tr>
@@ -570,12 +498,13 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
               <tbody>
                 <tr v-for="w in generatedWorkers" :key="w.uid">
                   <td>
-                    <n-input
-                      :value="workerNames[w.uid] ?? w.id"
+                    <UInput
+                      class="w-full"
+                      :model-value="workerNames[w.uid] ?? w.id"
                       :placeholder="w.id"
-                      size="small"
+                      size="sm"
                       aria-label="翻译器显示名称"
-                      @update:value="workerNames[w.uid] = $event"
+                      @update:model-value="workerNames[w.uid] = $event"
                     />
                   </td>
                   <td>{{ w.model }}</td>
@@ -606,48 +535,84 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
                 </tr>
               </tbody>
             </n-table>
-          </n-form-item-row>
+          </UFormField>
         </template>
 
         <!-- 编辑模式：单个 -->
         <template v-else>
-          <n-form-item-row path="id" label="名字">
-            <n-input
-              v-model:value="formValue.id"
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="id"
+            label="名字"
+          >
+            <UInput
+              class="w-full"
+              v-model="formValue.id"
               placeholder="给你的翻译器起个名字"
             />
-          </n-form-item-row>
-          <n-form-item-row path="model" label="模型">
-            <n-input
-              v-model:value="formValue.model"
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="model"
+            label="模型"
+          >
+            <UInput
+              class="w-full"
+              v-model="formValue.model"
               placeholder="deepseek-v4-pro"
             />
-          </n-form-item-row>
-          <n-form-item-row path="endpoint" label="API端点">
-            <n-input
-              :value="formValue.endpoint"
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="endpoint"
+            label="API端点"
+          >
+            <UInput
+              class="w-full"
+              :model-value="formValue.endpoint"
               :placeholder="defaultEndpoint(formValue.profileId)"
-              @update:value="onEndpointInput"
+              @update:model-value="onEndpointInput"
             />
-          </n-form-item-row>
-          <n-form-item-row path="key" label="Key">
-            <n-input v-model:value="formValue.key" placeholder="API Key" />
-          </n-form-item-row>
-          <n-form-item-row path="concurrency" label="并发数">
-            <n-input-number
-              v-model:value="formValue.concurrency"
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            eager-validation
+            name="key"
+            label="Key"
+            :help="duplicateKeyWarning"
+            :ui="{ container: 'flex-1 min-w-0', help: 'text-warning' }"
+          >
+            <UInput
+              class="w-full"
+              v-model="formValue.key"
+              placeholder="API Key"
+            />
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="concurrency"
+            label="并发数"
+          >
+            <UInputNumber
+              class="w-full"
+              v-model="formValue.concurrency"
               :min="1"
               :max="100"
             />
-          </n-form-item-row>
+          </UFormField>
         </template>
-      </n-form>
+      </UForm>
     </template>
     <template #footer>
-      <div
-        class="flex flex-wrap justify-start gap-3"
-        v-if="props.worker === undefined"
-      >
+      <div class="flex flex-wrap gap-3" v-if="props.worker === undefined">
         <ActionButton :action="submitAndContinue">添加并继续</ActionButton>
         <ActionButton color="primary" :action="submit" variant="solid">
           添加

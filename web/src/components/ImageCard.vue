@@ -8,28 +8,19 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-0">
+  <div class="flex flex-col">
     <img
       :src="src ? src : externalImageUrls.wenkuCoverPlaceholder"
       alt="cover"
-      style="
-        width: 100%;
-        aspect-ratio: 1 / 1.5;
-        object-fit: cover;
-        border-radius: 2px;
-      "
+      class="aspect-[1/1.5] w-full rounded-[2px] object-cover"
       loading="lazy"
     />
 
-    <div style="padding: 8px">
-      <n-text
-        tag="div"
-        style="height: 2.5em; line-height: 1.25; overflow-wrap: anywhere"
-        class="text-2line"
-      >
+    <div class="p-2">
+      <div class="text-ink line-clamp-2 h-[2.5em] leading-[1.25] wrap-anywhere">
         <slot name="prefix" />
         {{ title }}
-      </n-text>
+      </div>
     </div>
   </div>
 </template>

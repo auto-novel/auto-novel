@@ -68,7 +68,7 @@ const progressPercentage = computed(() => {
     class="mt-1 text-xs/4 font-normal text-muted tabular-nums @min-[640px]:contents"
   >
     <div
-      class="mb-1.25 flex flex-wrap items-center justify-start gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-2 @min-[640px]:mt-1 @min-[640px]:mb-0 [&>span]:whitespace-nowrap"
+      class="mb-1.25 flex flex-wrap items-center gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-2 @min-[640px]:mt-1 @min-[640px]:mb-0 [&>span]:whitespace-nowrap"
     >
       <span
         :class="{

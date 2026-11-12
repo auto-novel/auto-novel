@@ -134,7 +134,7 @@ const showPreview = (image: EpubImage) => {
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+  <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="格式">
       <c-radio-group
         v-model:value="imageFormat"
@@ -145,28 +145,28 @@ const showPreview = (image: EpubImage) => {
 
     <c-action-wrapper title="压缩率" align="center">
       <USlider
+        class="max-w-[400px]"
         :tooltip="{ text: `${(quality * 100).toFixed(0)}%` }"
         aria-label="压缩率"
         v-model="quality"
         :max="1"
         :min="0.1"
         :step="0.05"
-        style="max-width: 400px"
       />
-      <n-text style="width: 6em">{{ (quality * 100).toFixed(0) }}%</n-text>
+      <span class="text-ink w-[6em]">{{ (quality * 100).toFixed(0) }}%</span>
     </c-action-wrapper>
 
     <c-action-wrapper title="尺寸" align="center">
       <USlider
+        class="max-w-[400px]"
         :tooltip="{ text: `${(scaleRatio * 100).toFixed(0)}%` }"
         aria-label="尺寸"
         v-model="scaleRatio"
         :max="1"
         :min="0.1"
         :step="0.05"
-        style="max-width: 400px"
       />
-      <n-text style="width: 6em">{{ (scaleRatio * 100).toFixed(0) }}%</n-text>
+      <span class="text-ink w-[6em]">{{ (scaleRatio * 100).toFixed(0) }}%</span>
     </c-action-wrapper>
 
     <UFieldGroup>
@@ -175,26 +175,26 @@ const showPreview = (image: EpubImage) => {
     </UFieldGroup>
 
     <template v-if="showDetail">
-      <n-text>点击图片预览压缩效果</n-text>
+      <span class="text-ink">点击图片预览压缩效果</span>
       <CEmpty inline v-if="detailList.length === 0" title="未载入文件" />
       <template v-for="detail of detailList" :key="detail.name">
-        <n-text>
+        <span class="text-ink">
           [{{ Humanize.bytes(detail.size) }}
           =>
           {{ Humanize.bytes(detail.sizeCompressed) }}]
           {{ detail.name }}
-        </n-text>
+        </span>
         <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
           <n-image-group show-toolbar-tooltip>
-            <div class="mb-4 flex flex-nowrap justify-start gap-1">
+            <div class="mb-4 flex gap-1">
               <n-image
+                class="rounded-[2px]!"
                 v-for="image of detail.images"
                 :key="image.id"
                 height="150"
                 :src="image.uri"
                 preview-disabled
                 :alt="image.id"
-                style="border-radius: 2px"
                 @click="showPreview(image)"
               />
             </div>
@@ -209,16 +209,16 @@ const showPreview = (image: EpubImage) => {
       :ui="{ content: 'w-auto max-w-[95vw]', title: 'sr-only' }"
     >
       <template #body>
-        <img-comparison-slider style="outline: none">
+        <img-comparison-slider class="outline-none">
           <!-- eslint-disable -->
           <img
+            class="w-full max-h-[85vh]"
             slot="first"
-            style="width: 100%; max-height: 85vh"
             :src="compareImages.old"
           />
           <img
+            class="w-full max-h-[85vh]"
             slot="second"
-            style="width: 100%; max-height: 85vh"
             :src="compareImages.new"
           />
           <!-- eslint-enable -->

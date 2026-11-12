@@ -149,20 +149,19 @@ const showQQModal = ref(false);
           QQ群
         </UButton>
         /
-        <n-a :href="siteUrls.telegram" target="_blank">Telegram</n-a>
+        <ULink :href="siteUrls.telegram" target="_blank">Telegram</ULink>
         /
-        <n-a :href="siteUrls.repository" target="_blank">GitHub</n-a>
+        <ULink :href="siteUrls.repository" target="_blank">GitHub</ULink>
       </div>
       <p class="my-4 text-warning first:mt-0 last:mb-0">
         安卓 App 已上线，前往
-        <n-a
+        <ULink
           class="underline underline-offset-2"
           :href="`${siteUrls.androidApp}/releases`"
           target="_blank"
-          rel="noopener noreferrer"
         >
           发布页
-        </n-a>
+        </ULink>
         下载。
       </p>
       <p class="my-4 text-warning first:mt-0 last:mb-0">
@@ -179,16 +178,12 @@ const showQQModal = ref(false);
     <template v-if="whoami.isSignedIn">
       <section-header title="我的收藏">
         <UButton
+          :icon="ReadMoreOutlined"
           to="/favorite/web"
           color="neutral"
           variant="outline"
           class="rounded-full"
         >
-          <component
-            :is="ReadMoreOutlined"
-            class="size-4.5 shrink-0"
-            aria-hidden="true"
-          />
           更多
         </UButton>
       </section-header>
@@ -201,16 +196,12 @@ const showQQModal = ref(false);
 
     <section-header title="网络小说-最多点击">
       <UButton
+        :icon="ReadMoreOutlined"
         to="/novel"
         color="neutral"
         variant="outline"
         class="rounded-full"
       >
-        <component
-          :is="ReadMoreOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         更多
       </UButton>
     </section-header>
@@ -222,16 +213,12 @@ const showQQModal = ref(false);
 
     <section-header title="文库小说-最新更新">
       <UButton
+        :icon="ReadMoreOutlined"
         to="/wenku"
         color="neutral"
         variant="outline"
         class="rounded-full"
       >
-        <component
-          :is="ReadMoreOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         更多
       </UButton>
     </section-header>
@@ -251,17 +238,9 @@ const showQQModal = ref(false);
     <template #body>
       <p class="my-4 first:mt-0 last:mb-0">
         将小说链接复制到网站首页的输入框里，点击搜索，如果链接正确，将会跳转到小说页面。更高级的用法，例如生成机翻、高级搜索等，参见
-        <n-a
-          :href="forumPostUrls.usageGuide"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          使用教程
-        </n-a>
+        <ULink :href="forumPostUrls.usageGuide" target="_blank">使用教程</ULink>
         。有什么问题和建议请在
-        <n-a :href="forumUrl" target="_blank" rel="noopener noreferrer">
-          论坛
-        </n-a>
+        <ULink :href="forumUrl" target="_blank">论坛</ULink>
         中发帖讨论。
       </p>
       <p class="my-4 first:mt-0 last:mb-0">支持的小说站如下:</p>
@@ -287,7 +266,7 @@ const showQQModal = ref(false);
     <template #body>
       <p class="my-4 first:mt-0 last:mb-0">
         交流群：
-        <n-a :href="siteUrls.qqGroup" target="_blank">1131569744</n-a>
+        <ULink :href="siteUrls.qqGroup" target="_blank">1131569744</ULink>
         ，验证答案是“绿色”。
         <br />
         <n-qr-code :size="150" :value="siteUrls.qqGroup" />

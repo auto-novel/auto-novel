@@ -139,13 +139,13 @@ const deleteHistory = async (providerId: string, novelId: string) => {
           {{ recordStateLabel }}
         </UButton>
         <UButton
+          :icon="DeleteOutlineOutlined"
           color="error"
           variant="outline"
           size="md"
           :disabled="clearingHistory"
           @click="showClearConfirmation = true"
         >
-          <DeleteOutlineOutlined class="size-4" aria-hidden="true" />
           清空记录
         </UButton>
       </template>
@@ -188,9 +188,7 @@ const deleteHistory = async (providerId: string, novelId: string) => {
       @update:page="onUpdatePage"
     />
 
-    <USeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelListSkeleton v-if="!novelPage && !error" simple />
     <UAlert

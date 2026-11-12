@@ -32,21 +32,21 @@ const startTranslateTask = (translatorId: 'youdao') =>
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-1">
-    <c-a
+  <div class="flex flex-col gap-1">
+    <ULink
       v-if="!volume.id.endsWith('.epub')"
       :to="`/workspace/reader/${encodeURIComponent(volume.id)}/0`"
     >
       {{ volume.id }}
-    </c-a>
-    <n-text v-else>{{ volume.id }}</n-text>
+    </ULink>
+    <span class="text-ink" v-else>{{ volume.id }}</span>
 
-    <n-text depth="3">
+    <span class="text-muted">
       总计 {{ volume.toc.length }} / 有道 {{ youdao }} / GPT {{ gpt }} / Sakura
       {{ sakura }}
-    </n-text>
+    </span>
 
-    <div class="flex flex-wrap justify-start gap-2">
+    <div class="flex flex-wrap gap-2">
       <ActionButton
         v-if="setting.enabledTranslator.includes('youdao')"
         size="xs"
@@ -64,8 +64,8 @@ const startTranslateTask = (translatorId: 'youdao') =>
     </div>
   </div>
   <TranslateTask
+    class="mt-5"
     ref="translateTask"
-    style="margin-top: 20px"
     @update:youdao="(zh) => (youdao = zh)"
   />
 </template>

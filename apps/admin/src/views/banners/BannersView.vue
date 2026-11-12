@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { Toast, XPage, getApiErrorMessage } from '@novelia/web-kit';
-import UModal from '@nuxt/ui/components/Modal.vue';
-import UPageHeader from '@nuxt/ui/components/PageHeader.vue';
 import { useBannerApi, type Banner } from '../../api';
 import BannerUploader from './BannerUploader.vue';
 import BannerPreview from './BannerPreview.vue';

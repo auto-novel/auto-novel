@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick, reactive, type App } from 'vue';
+import { createApp, h, nextTick, reactive, ref, type App } from 'vue';
 
 import ActionButton from '../src/components/ActionButton.vue';
 import ConfirmActionButton from '../src/components/ConfirmActionButton.vue';
@@ -40,7 +40,7 @@ vi.mock('@nuxt/ui/components/Button.vue', async () => {
   const { defineComponent, h } = await import('vue');
   return {
     default: defineComponent({
-      props: ['loading', 'disabled', 'label', 'color', 'variant'],
+      props: ['loading', 'disabled', 'label', 'color', 'variant', 'icon'],
       setup:
         (props, { attrs, slots }) =>
         () =>
@@ -52,7 +52,14 @@ vi.mock('@nuxt/ui/components/Button.vue', async () => {
               'data-loading': !!props.loading,
               'data-color': props.color,
             },
-            slots.default?.({}) ?? props.label,
+            [
+              props.loading
+                ? h('span', { 'data-loading-icon': '' })
+                : props.icon
+                  ? h(props.icon)
+                  : null,
+              slots.default?.({}) ?? props.label,
+            ],
           ),
     }),
   };

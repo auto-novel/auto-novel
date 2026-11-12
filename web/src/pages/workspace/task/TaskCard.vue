@@ -123,14 +123,15 @@ const closePreview = () => {
 </script>
 
 <template>
-  <n-card
-    size="small"
-    :bordered="false"
-    class="task-card @container rounded-none! bg-transparent!"
-    :header-style="{ padding: '10px 0' }"
-    :content-style="
-      hasVisibleChapters ? { padding: '0 0 10px' } : { padding: '0' }
-    "
+  <UCard
+    variant="soft"
+    class="task-card @container divide-y-0 rounded-none bg-transparent text-sm leading-[1.6] text-ink"
+    :ui="{
+      header: 'px-0 py-2.5 sm:px-0',
+      body: hasVisibleChapters
+        ? 'px-0 pt-0 pb-2.5 sm:px-0 sm:pt-0 sm:pb-2.5'
+        : 'p-0 sm:p-0',
+    }"
   >
     <template #header>
       <div
@@ -142,9 +143,7 @@ const closePreview = () => {
         <div
           class="flex min-w-0 flex-1 flex-col gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-1"
         >
-          <div
-            class="flex flex-nowrap justify-start items-center gap-x-3 gap-y-2"
-          >
+          <div class="flex items-center gap-x-3">
             <div class="min-w-0 flex-1 truncate text-[14px]">
               {{ job.description }}
             </div>
@@ -211,7 +210,7 @@ const closePreview = () => {
         @preview="(cid: string) => openPreview(cid)"
       />
     </div>
-  </n-card>
+  </UCard>
 
   <ChapterPreviewDialog
     :show="showPreview"

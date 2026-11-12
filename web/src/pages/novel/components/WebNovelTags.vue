@@ -27,7 +27,7 @@ const buildTagQuery = (tag: string) => `/novel?query=${tag}\$`;
 </script>
 
 <template>
-  <div class="flex flex-wrap justify-start gap-1">
+  <div class="flex flex-wrap gap-1">
     <NovelTag v-if="pointTag" type="success" :tag="pointTag" strong />
 
     <router-link

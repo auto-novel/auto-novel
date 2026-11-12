@@ -72,7 +72,7 @@ const pageCount = computed<number>(
       @update:page="onUpdatePage"
     />
 
-    <USeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+    <USeparator class="mx-0 mb-0" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelListSkeleton v-if="!novelPage && !error" />
     <UAlert

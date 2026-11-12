@@ -73,7 +73,7 @@ const showListModal = ref(false);
   <XPage>
     <UPageHeader title="小说处理" />
 
-    <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+    <div class="flex flex-wrap gap-x-3 gap-y-2">
       <div>
         <n-upload
           :show-file-list="false"
@@ -82,52 +82,44 @@ const showListModal = ref(false);
           directory-dnd
           :custom-request="customRequest"
         >
-          <UButton color="neutral" variant="outline" class="rounded-full">
-            <component
-              :is="PlusOutlined"
-              class="size-4.5 shrink-0"
-              aria-hidden="true"
-            />
+          <UButton
+            :icon="PlusOutlined"
+            color="neutral"
+            variant="outline"
+            class="rounded-full"
+          >
             加载文件
           </UButton>
         </n-upload>
       </div>
 
       <UButton
+        :icon="PlusOutlined"
         color="neutral"
         variant="outline"
         class="rounded-full"
         @click="showListModal = true"
       >
-        <component
-          :is="PlusOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         本地书架
       </UButton>
       <UButton
+        :icon="DeleteOutlineOutlined"
         color="neutral"
         variant="outline"
         class="rounded-full"
         @click="clearFile"
       >
-        <component
-          :is="DeleteOutlineOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         清空
       </UButton>
     </div>
 
-    <div class="mt-4 flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
-      <n-text v-for="file of files" :key="file.name">
+    <div class="mt-4 flex flex-col gap-y-2">
+      <span class="text-ink" v-for="file of files" :key="file.name">
         <file-card :file="file" @delete="removeFile(file.name)" />
-      </n-text>
+      </span>
     </div>
 
-    <n-tabs type="segment" animated style="margin-top: 48px">
+    <n-tabs class="mt-12" type="segment" animated>
       <n-tab-pane name="0" tab="术语表">
         <file-glossary :files="files" />
       </n-tab-pane>

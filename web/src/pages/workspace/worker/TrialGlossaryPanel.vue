@@ -68,16 +68,27 @@ const importGlossary = () => {
 <template>
   <div class="flex h-full min-h-0 flex-col gap-2">
     <div class="flex flex-none items-center gap-2">
-      <n-input
-        v-model:value="termsToAdd"
-        pair
-        size="small"
-        separator="=>"
-        :placeholder="['日文', '中文']"
-        :input-props="{ spellcheck: false }"
-        class="min-w-0 flex-1"
-        @keydown="onAddKeydown"
-      />
+      <div class="flex min-w-0 flex-1 items-center gap-1">
+        <UInput
+          v-model="termsToAdd[0]"
+          size="sm"
+          placeholder="日文"
+          aria-label="日文术语"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+          @keydown="onAddKeydown"
+        />
+        <span class="text-xs text-muted">=&gt;</span>
+        <UInput
+          v-model="termsToAdd[1]"
+          size="sm"
+          placeholder="中文"
+          aria-label="中文术语"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+          @keydown="onAddKeydown"
+        />
+      </div>
       <UButton
         color="neutral"
         variant="outline"
@@ -93,6 +104,7 @@ const importGlossary = () => {
       <span class="text-xs text-muted">共 {{ count }} 条 · 下次翻译生效</span>
       <div class="ml-auto flex items-center gap-0.5">
         <UButton
+          :icon="UndoOutlined"
           color="neutral"
           v-if="lastDeleted"
           size="xs"
@@ -101,11 +113,6 @@ const importGlossary = () => {
           class="p-0 leading-none"
           @click="undoDelete"
         >
-          <component
-            :is="UndoOutlined"
-            class="size-3.5 shrink-0"
-            aria-hidden="true"
-          />
           撤销删除
         </UButton>
         <UButton
@@ -121,13 +128,12 @@ const importGlossary = () => {
     </div>
 
     <div v-if="showImport" class="flex flex-none items-end gap-2">
-      <n-input
-        v-model:value="importRaw"
-        type="textarea"
-        size="small"
+      <UTextarea
+        v-model="importRaw"
+        size="sm"
         :rows="2"
         placeholder="每行一条：日文 => 中文"
-        :input-props="{ spellcheck: false }"
+        :spellcheck="false"
         class="min-w-0 flex-1"
       />
       <ActionButton
@@ -164,21 +170,17 @@ const importGlossary = () => {
           square
           class="p-0"
           :action="() => deleteTerm(jp)"
-        >
-          <component
-            :is="DeleteOutlineOutlined"
-            class="size-3.5 shrink-0 group-aria-busy:hidden"
-            aria-hidden="true"
-          />
-        </ActionButton>
+          :icon="DeleteOutlineOutlined"
+          :ui="{ leadingIcon: 'size-3.5' }"
+        />
         <span class="truncate text-xs" :title="jp">{{ jp }}</span>
         <span class="text-[11px] text-muted">=></span>
-        <n-input
-          v-model:value="glossary[jp]"
-          size="tiny"
+        <UInput
+          v-model="glossary[jp]"
+          size="xs"
           placeholder="中文"
-          :theme-overrides="{ border: '0', color: 'transparent' }"
-          class="min-w-0"
+          variant="none"
+          class="w-full min-w-0"
         />
       </div>
     </div>

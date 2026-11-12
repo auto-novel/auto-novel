@@ -80,13 +80,13 @@ const canReply = computed(() => {
     >
       <h2 class="text-lg font-semibold text-ink">评论</h2>
       <UButton
+        :icon="CommentOutlined"
         v-if="canReply"
         size="sm"
         aria-controls="comment-composer"
         :aria-expanded="showInput"
         @click="toggleInput()"
       >
-        <CommentOutlined class="size-4" aria-hidden="true" />
         {{ showInput ? '取消评论' : '发表评论' }}
       </UButton>
     </header>
@@ -117,7 +117,7 @@ const canReply = computed(() => {
       <span class="sr-only">正在加载评论…</span>
       <div class="divide-y divide-divider" aria-hidden="true">
         <div v-for="index in 3" :key="index" class="py-4">
-          <USkeleton class="h-5 w-28 bg-border" />
+          <USkeleton class="h-5 w-28" />
           <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
             <USkeleton class="h-4 w-full" />
             <USkeleton class="mt-2 h-4 w-2/3" />

@@ -38,6 +38,7 @@ const handleDropError = (error: unknown) => {
 <template>
   <UTooltip>
     <UButton
+      :icon="PlusOutlined"
       color="neutral"
       variant="outline"
       class="rounded-full"
@@ -45,7 +46,6 @@ const handleDropError = (error: unknown) => {
       :disabled="running"
       @click="!running && openFiles()"
     >
-      <PlusOutlined v-if="!running" class="size-5" aria-hidden="true" />
       {{ running ? '导入中' : '添加' }}
     </UButton>
 

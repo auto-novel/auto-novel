@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRequireLogin } from '@/util/useRequireLogin';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import type { Form, FormError, FormSchema } from '@nuxt/ui';
 import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 import { MoreVertOutlined } from '@vicons/material';
 
@@ -40,27 +40,16 @@ const onSelect = (key: string) => {
 };
 
 const showEditModal = ref(false);
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+
 const formValue = ref({ title });
-const formRules: FormRules = {
-  title: [
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length > 0,
-      message: '收藏夹标题不能为空',
-      trigger: 'input',
-    },
-  ],
-};
+const validate = (): FormError[] =>
+  formValue.value.title.length > 0
+    ? []
+    : [{ name: 'title', message: '收藏夹标题不能为空' }];
+
 const updateFavored = async () => {
-  if (formRef.value == null) {
-    return;
-  } else {
-    try {
-      await formRef.value.validate();
-    } catch (e) {
-      return;
-    }
-  }
+  if (!(await formRef.value?.validate({ silent: true }))) return;
 
   const title = formValue.value.title;
 
@@ -120,15 +109,14 @@ const requireLogin = useRequireLogin();
         "
       >
         <UButton
+          :icon="MoreVertOutlined"
           color="neutral"
           variant="ghost"
           size="xs"
           square
           aria-label="更多操作"
           title="更多操作"
-        >
-          <MoreVertOutlined class="size-4" aria-hidden="true" />
-        </UButton>
+        />
       </UDropdownMenu>
     </div>
   </div>
@@ -136,25 +124,32 @@ const requireLogin = useRequireLogin();
   <UModal
     v-model:open="showEditModal"
     title="编辑收藏夹"
-    class="w-[600px]"
-    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
-      <n-form
+      <UForm
         ref="form"
-        :model="formValue"
-        :rules="formRules"
-        label-placement="left"
-        label-width="auto"
+        :state="formValue"
+        :validate="validate"
+        :validate-on="['input']"
+        :validate-on-input-delay="0"
       >
-        <n-form-item-row label="标题" path="title">
-          <n-input
-            v-model:value="formValue.title"
+        <UFormField
+          name="title"
+          label="标题"
+          orientation="horizontal"
+          eager-validation
+          :ui="{ container: 'flex-1' }"
+        >
+          <UInput
+            class="w-full"
+            v-model="formValue.title"
             placeholder="收藏夹标题"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
-        </n-form-item-row>
-      </n-form>
+        </UFormField>
+      </UForm>
     </template>
     <template #footer>
       <ActionButton
@@ -170,15 +165,15 @@ const requireLogin = useRequireLogin();
   <UModal
     v-model:open="showDeleteModal"
     title="删除收藏夹"
-    class="w-[600px]"
-    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
       确定删除收藏夹[{{ title }}]吗？
-      <n-text v-if="type === 'local'">
+      <span class="text-ink" v-if="type === 'local'">
         <br />
         注意，删除本地收藏夹的同时也会清空收藏夹内所有小说。
-      </n-text>
+      </span>
     </template>
     <template #footer>
       <ActionButton

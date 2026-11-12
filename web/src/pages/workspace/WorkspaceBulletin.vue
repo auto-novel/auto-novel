@@ -10,92 +10,67 @@ const isSakura = computed(() => props.translatorId === 'sakura');
 <template>
   <bulletin>
     <template v-if="isSakura">
-      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-        <n-a
-          :href="forumPostUrls.sakuraDeployGuide"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+      <div class="flex flex-wrap gap-x-3 gap-y-2">
+        <ULink :href="forumPostUrls.sakuraDeployGuide" target="_blank">
           本地部署教程
-        </n-a>
+        </ULink>
         /
         <span>
-          <n-a
-            :href="forumPostUrls.sakuraAutoDlGuide"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <ULink :href="forumPostUrls.sakuraAutoDlGuide" target="_blank">
             AutoDL教程
-          </n-a>
+          </ULink>
           :
-          <n-a
+          <ULink
             href="https://www.autodl.com/console/instance/list"
             target="_blank"
-            rel="noopener noreferrer"
           >
             控制台
-          </n-a>
+          </ULink>
         </span>
         /
-        <n-a
-          :href="siteUrls.sakuraMonitor"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ULink :href="siteUrls.sakuraMonitor" target="_blank">
           共享 Sakura 当前负载
-        </n-a>
+        </ULink>
       </div>
-      <n-p>允许上传的模型如下，禁止一切试图突破上传检查的操作。</n-p>
+      <p class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0">
+        允许上传的模型如下，禁止一切试图突破上传检查的操作。
+      </p>
       <ul class="content-list">
         <li v-for="({ repo }, model) in allowModels" :key="model">
           [
-          <n-a
+          <ULink
             :href="`https://huggingface.co/${repo}/blob/main/${model}.gguf`"
             target="_blank"
-            rel="noopener noreferrer"
           >
             HF
-          </n-a>
+          </ULink>
           /
-          <n-a
+          <ULink
             :href="`https://hf-mirror.com/${repo}/blob/main/${model}.gguf`"
             target="_blank"
-            rel="noopener noreferrer"
           >
             国内镜像
-          </n-a>
+          </ULink>
           ]
           {{ model }}
         </li>
       </ul>
     </template>
     <template v-else>
-      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
-        <n-a
-          :href="forumPostUrls.usageGuide"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          使用教程
-        </n-a>
+      <div class="flex flex-wrap gap-x-3 gap-y-2">
+        <ULink :href="forumPostUrls.usageGuide" target="_blank">使用教程</ULink>
         /
-        <n-a
-          href="https://chat.deepseek.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ULink href="https://chat.deepseek.com" target="_blank">
           DeepSeek Chat
-        </n-a>
+        </ULink>
         /
-        <n-a
-          href="https://platform.deepseek.com/usage"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <ULink href="https://platform.deepseek.com/usage" target="_blank">
           DeepSeek API
-        </n-a>
+        </ULink>
       </div>
-      <n-p>本地小说支持韩语等其他语种，网络小说/文库小说暂时只允许日语。</n-p>
+      <p class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0">
+        本地小说支持韩语等其他语种，网络小说/文库小说暂时只允许日语。
+      </p>
     </template>
   </bulletin>
 </template>

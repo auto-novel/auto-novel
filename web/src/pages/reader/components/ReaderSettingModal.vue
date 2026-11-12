@@ -26,7 +26,7 @@ const setIndentSize = (diff: number) => {
   <UModal
     v-model:open="open"
     title="阅读设置"
-    class="w-[600px]"
+    class="w-150"
     :ui="{
       content: 'max-w-[calc(100vw-2rem)] overflow-visible',
       body: 'flex min-h-0 flex-1 flex-col p-0 sm:p-0 overflow-visible',
@@ -38,19 +38,17 @@ const setIndentSize = (diff: number) => {
       <div class="flex min-h-0 flex-1 flex-col">
         <!-- 表单内置浮层放在弹窗内、滚动区外，避免跨库模态隔离和滚动裁剪。 -->
         <div :id="popupTargetId" class="shrink-0" />
-        <div class="min-h-0 flex-1 overflow-y-auto" style="max-height: 80dvh">
+        <div class="max-h-[80dvh] min-h-0 flex-1 overflow-y-auto">
           <n-tabs
             type="line"
             size="large"
             :tabs-padding="20"
             pane-style="padding: 0px;"
             animated
-            style="width: 100%"
+            class="w-full!"
           >
             <n-tab-pane name="signin" tab="内容">
-              <div
-                class="box-border flex w-full flex-col flex-nowrap justify-start gap-x-4 gap-y-3 p-5"
-              >
+              <div class="box-border flex w-full flex-col gap-y-3 p-5">
                 <c-action-wrapper title="语言">
                   <c-radio-group
                     v-model:value="readerSetting.mode"
@@ -59,7 +57,7 @@ const setIndentSize = (diff: number) => {
                 </c-action-wrapper>
 
                 <c-action-wrapper title="翻译">
-                  <div class="flex flex-wrap justify-start gap-x-4 gap-y-3">
+                  <div class="flex flex-wrap gap-x-4 gap-y-3">
                     <c-radio-group
                       v-model:value="readerSetting.translationsMode"
                       :options="ReaderSetting.translationModeOptions"
@@ -120,9 +118,7 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
                 <c-action-wrapper title="缩进修正" align="center">
-                  <div
-                    class="flex flex-wrap justify-start items-center gap-x-4 gap-y-3"
-                  >
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
                     <USwitch
                       :model-value="readerSetting.indentSize !== undefined"
                       @update:model-value="
@@ -136,14 +132,13 @@ const setIndentSize = (diff: number) => {
                       title="缩进值"
                       align="center"
                     >
-                      <n-input-group>
+                      <UFieldGroup size="sm">
                         <UButton
-                          size="sm"
                           color="neutral"
                           variant="outline"
                           aria-label="减少缩进"
                           @click="setIndentSize(-1)"
-                          class="px-2.5"
+                          class="shrink-0 justify-center px-2.5"
                         >
                           <template #leading>
                             <MinusOutlined
@@ -152,19 +147,19 @@ const setIndentSize = (diff: number) => {
                             />
                           </template>
                         </UButton>
-                        <n-input
-                          :value="readerSetting.indentSize + ' 字符'"
-                          size="small"
-                          style="text-align: center; width: 70px"
+                        <UInput
+                          :model-value="readerSetting.indentSize + ' 字符'"
+                          class="w-17.5"
+                          :ui="{ base: 'text-center' }"
+                          aria-label="缩进值"
                           readonly
                         />
                         <UButton
-                          size="sm"
                           color="neutral"
                           variant="outline"
                           aria-label="增加缩进"
                           @click="setIndentSize(1)"
-                          class="px-2.5"
+                          class="shrink-0 justify-center px-2.5"
                         >
                           <template #leading>
                             <AddOutlined
@@ -173,21 +168,19 @@ const setIndentSize = (diff: number) => {
                             />
                           </template>
                         </UButton>
-                      </n-input-group>
+                      </UFieldGroup>
                     </c-action-wrapper>
                   </div>
                 </c-action-wrapper>
 
-                <n-text depth="3" style="font-size: 12px">
+                <span class="text-muted text-[12px]">
                   # 左/右方向键跳转章节，数字键1～3切换翻译
-                </n-text>
+                </span>
               </div>
             </n-tab-pane>
 
             <n-tab-pane name="signup" tab="样式">
-              <div
-                class="flex w-full flex-col flex-nowrap justify-start gap-x-4 gap-y-3 p-5"
-              >
+              <div class="flex w-full flex-col gap-y-3 p-5">
                 <c-action-wrapper title="字重">
                   <c-radio-group
                     v-model:value="readerSetting.fontWeight"
@@ -205,11 +198,11 @@ const setIndentSize = (diff: number) => {
                     v-model="readerSetting.fontSize"
                     :min="14"
                     :max="40"
-                    style="flex: auto"
+                    class="flex-auto"
                   />
-                  <n-text style="width: 6em">
+                  <span class="w-[6em] text-ink">
                     {{ readerSetting.fontSize }}px
-                  </n-text>
+                  </span>
                 </c-action-wrapper>
 
                 <c-action-wrapper title="行距" align="center">
@@ -223,11 +216,11 @@ const setIndentSize = (diff: number) => {
                     :step="0.1"
                     :min="0"
                     :max="2"
-                    style="flex: auto"
+                    class="flex-auto"
                   />
-                  <n-text style="width: 6em">
+                  <span class="w-[6em] text-ink">
                     {{ readerSetting.lineSpace.toFixed(1) }}
-                  </n-text>
+                  </span>
                 </c-action-wrapper>
 
                 <c-action-wrapper title="页宽" align="center">
@@ -241,11 +234,11 @@ const setIndentSize = (diff: number) => {
                     :step="50"
                     :min="600"
                     :max="1200"
-                    style="flex: auto"
+                    class="flex-auto"
                   />
-                  <n-text style="width: 6em">
+                  <span class="w-[6em] text-ink">
                     {{ readerSetting.pageWidth }}px
-                  </n-text>
+                  </span>
                 </c-action-wrapper>
 
                 <c-action-wrapper title="下划线">
@@ -256,15 +249,13 @@ const setIndentSize = (diff: number) => {
                 </c-action-wrapper>
 
                 <c-action-wrapper title="主题">
-                  <div
-                    class="flex flex-col flex-nowrap justify-start gap-x-4 gap-y-3"
-                  >
+                  <div class="flex flex-col gap-y-3">
                     <c-radio-group
                       v-model:value="readerSetting.theme.mode"
                       :options="ReaderSetting.themeModeOptions"
                     />
                     <template v-if="readerSetting.theme.mode === 'custom'">
-                      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+                      <div class="flex flex-wrap gap-x-3 gap-y-2">
                         <n-radio
                           v-for="theme of ReaderSetting.themeOptions"
                           :key="theme.bodyColor"
@@ -280,22 +271,20 @@ const setIndentSize = (diff: number) => {
                               color: theme.bodyColor,
                               textColor: theme.fontColor,
                             }"
-                            :style="{
-                              width: isWideScreen ? '5.5em' : '2em',
-                            }"
+                            :class="isWideScreen ? 'w-[5.5em]' : 'w-[2em]'"
                           >
                             {{ isWideScreen ? theme.bodyColor : '#' }}
                           </n-tag>
                         </n-radio>
                       </div>
-                      <USeparator style="margin: 0px" />
-                      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+                      <USeparator class="m-0" />
+                      <div class="flex flex-wrap gap-x-3 gap-y-2">
                         <n-color-picker
                           :to="`#${popupTargetId}`"
                           :modes="['hex']"
                           :show-alpha="false"
                           v-model:value="readerSetting.theme.bodyColor"
-                          style="width: 8.2em"
+                          class="w-[8.2em]!"
                         >
                           <template #label="color">背景：{{ color }}</template>
                         </n-color-picker>
@@ -304,7 +293,7 @@ const setIndentSize = (diff: number) => {
                           :modes="['hex']"
                           :show-alpha="false"
                           v-model:value="readerSetting.theme.fontColor"
-                          style="width: 8.2em"
+                          class="w-[8.2em]!"
                         >
                           <template #label="color">文字：{{ color }}</template>
                         </n-color-picker>
@@ -324,11 +313,11 @@ const setIndentSize = (diff: number) => {
                     :max="1"
                     :min="0"
                     :step="0.05"
-                    style="flex: auto"
+                    class="flex-auto"
                   />
-                  <n-text style="width: 6em">
+                  <span class="w-[6em] text-ink">
                     {{ (readerSetting.mixZhOpacity * 100).toFixed(0) }}%
-                  </n-text>
+                  </span>
                 </c-action-wrapper>
 
                 <c-action-wrapper title="辅透明度" align="center">
@@ -343,9 +332,9 @@ const setIndentSize = (diff: number) => {
                     :min="0"
                     :step="0.05"
                   />
-                  <n-text style="width: 6em">
+                  <span class="w-[6em] text-ink">
                     {{ (readerSetting.mixJpOpacity * 100).toFixed(0) }}%
-                  </n-text>
+                  </span>
                 </c-action-wrapper>
               </div>
             </n-tab-pane>

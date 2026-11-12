@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { NText } from 'naive-ui';
-
 import { WebUtil } from '@/util/web';
 
 const props = defineProps<{
@@ -14,18 +12,14 @@ const displayTitle = computed(() => props.titleZh ?? props.titleJp);
 </script>
 
 <template>
-  <div style="margin: 0 0 18px">
-    <h3 class="heading-bar" style="margin: 0 0 4px">
-      <n-a :href="WebUtil.buildNovelUrl(providerId, novelId)">
+  <div class="mx-0 mt-0 mb-4.5">
+    <h3 class="heading-bar mx-0 mt-0 mb-1">
+      <ULink :href="WebUtil.buildNovelUrl(providerId, novelId)">
         {{ displayTitle }}
-      </n-a>
+      </ULink>
     </h3>
-    <n-text
-      v-if="titleZh"
-      depth="3"
-      style="display: block; font-size: 14px; line-height: 1.6"
-    >
+    <span class="block text-[14px] leading-[1.6] text-muted" v-if="titleZh">
       {{ titleJp }}
-    </n-text>
+    </span>
   </div>
 </template>

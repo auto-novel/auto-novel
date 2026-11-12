@@ -34,7 +34,7 @@ const { theme } = useWebKit();
 
     <n-list bordered>
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>主题</b>
           <c-radio-group
             :value="theme.preference.value"
@@ -46,7 +46,7 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>快捷键说明</b>
           <ul class="content-list">
             <li>列表页面，可以使用左右方向键翻页。</li>
@@ -64,7 +64,7 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>网络小说目录</b>
           <n-checkbox v-model:checked="setting.tocCollapseInNarrowScreen">
             目录折叠在侧边栏 (移动端)
@@ -73,17 +73,14 @@ const { theme } = useWebKit();
             目录默认展开所有章节
             <UTooltip :ui="{ content: 'max-w-100' }">
               <UButton
+                :icon="InfoOutlined"
+                :ui="{ leadingIcon: 'size-3 shrink-0 opacity-60' }"
                 color="neutral"
                 variant="link"
                 class="p-0"
                 aria-label="目录展开说明"
                 @click.stop
-              >
-                <InfoOutlined
-                  class="size-3 shrink-0 opacity-60"
-                  aria-hidden="true"
-                />
-              </UButton>
+              />
 
               <template #content>
                 开启：默认展开所有章节（可能导致性能问题）
@@ -112,7 +109,7 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>工作区</b>
           <n-checkbox v-model:checked="setting.autoTopJobWhenAddTask">
             工作区添加时自动置顶
@@ -121,7 +118,7 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>列表分页方式</b>
           <c-radio-group
             v-model:value="setting.paginationMode"
@@ -132,19 +129,20 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>显示的翻译按钮</b>
           <translator-check
             v-model:value="setting.enabledTranslator"
-            size="small"
+            size="sm"
+            class="self-start"
           />
         </div>
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>工作区语音提醒</b>
-          <div class="flex flex-nowrap justify-start gap-0">
+          <div class="flex">
             <n-checkbox v-model:checked="setting.workspaceSound">
               任务全部完成
             </n-checkbox>
@@ -164,11 +162,9 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div
-          class="flex flex-col flex-nowrap justify-start items-start gap-x-3 gap-y-2"
-        >
+        <div class="flex flex-col items-start gap-y-2">
           <b>清空搜索历史</b>
-          <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+          <div class="flex flex-wrap gap-x-3 gap-y-2">
             <UButton
               color="neutral"
               variant="outline"
@@ -192,7 +188,7 @@ const { theme } = useWebKit();
       </n-list-item>
 
       <n-list-item>
-        <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+        <div class="flex flex-col gap-y-2">
           <b>语言</b>
           简繁转换目前只覆盖web章节内容。
           <c-radio-group

@@ -116,19 +116,7 @@ export default defineConfig(({ command, mode }) => {
       AutoImport({
         dts: 'src/auto-imports.d.ts',
         ignore: ['h'],
-        imports: [
-          'vue',
-          'vue-router',
-          'pinia',
-          {
-            'naive-ui': [
-              'useDialog',
-              'useNotification',
-              'useLoadingBar',
-              'useThemeVars',
-            ],
-          },
-        ],
+        imports: ['vue', 'vue-router', 'pinia'],
       }),
     ],
   };

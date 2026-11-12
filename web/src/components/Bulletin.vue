@@ -1,7 +1,10 @@
 <template>
-  <n-card embedded class="notice">
+  <UCard
+    class="notice bg-embedded text-sm leading-[1.6] text-ink ring-divider"
+    :ui="{ body: 'px-6 py-5 sm:px-6 sm:py-5' }"
+  >
     <slot />
-  </n-card>
+  </UCard>
 </template>
 
 <style>

@@ -95,12 +95,12 @@ const hasUpdateSinceRead = (item: WebNovelOutlineDto) =>
               />
               <template v-else>—</template>
             </span>
-            <RouterLink
+            <ULink
               :to="`/novel/${item.providerId}/${item.novelId}`"
-              class="min-w-0 font-medium wrap-anywhere text-primary hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              class="min-w-0 font-medium wrap-anywhere"
             >
               {{ item.titleJp }}
-            </RouterLink>
+            </ULink>
             <div class="min-w-0 sm:col-start-2 sm:row-start-2">
               <p v-if="item.titleZh" class="m-0 text-sm wrap-anywhere text-ink">
                 {{ item.titleZh }}

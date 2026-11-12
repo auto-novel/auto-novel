@@ -10,7 +10,7 @@ defineProps<{
     color="neutral"
     variant="outline"
     :tabindex="-1"
-    style="height: 64px"
+    class="h-16 justify-center text-center"
   >
     <div>
       <component

@@ -100,7 +100,7 @@ useHorizontalSwipe(swipeTarget, {
 </script>
 
 <template>
-  <div ref="swipeTarget" class="novel-bottom-tabs" style="margin-top: 24px">
+  <div ref="swipeTarget" class="novel-bottom-tabs mt-6">
     <n-tabs
       v-model:value="activeTab"
       type="line"
@@ -112,7 +112,7 @@ useHorizontalSwipe(swipeTarget, {
         name="wenkuToc"
         tab="目录"
         display-directive="show:lazy"
-        style="min-height: 400px"
+        class="min-h-[400px]"
       >
         <slot name="wenkuToc" />
       </n-tab-pane>
@@ -122,7 +122,7 @@ useHorizontalSwipe(swipeTarget, {
         name="comment"
         tab="评论区"
         display-directive="show:lazy"
-        style="min-height: 400px"
+        class="min-h-[400px]"
       >
         <slot name="commentNotice" />
         <comment-list :site="site" :locked="locked ?? false" />
@@ -131,7 +131,7 @@ useHorizontalSwipe(swipeTarget, {
       <n-tab-pane
         name="glossary"
         :tab="`术语表${glossaryCount > 0 ? ` [${glossaryCount}]` : ''}`"
-        style="min-height: 400px"
+        class="min-h-[400px]"
       >
         <NovelGlossaryEditor ref="editorRef" :gnid="gnid" :value="glossary" />
       </n-tab-pane>

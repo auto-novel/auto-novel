@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { LoadingBar } from '@novelia/web-kit';
 import { createReusableTemplate, onKeyDown } from '@vueuse/core';
 
 import { ReadHistoryApi } from '@/api';
@@ -65,7 +66,6 @@ const loadedChapters = computed(() =>
     chapter: item.result?.ok ? item.result.value : undefined,
   })),
 );
-const loadingBar = useLoadingBar();
 
 const novelUrl = (() => {
   if (gnid.type === 'web') {
@@ -118,19 +118,24 @@ const navToChapter = async (chapterId: string) => {
 
   const { type, promiseOrValue } = store.loadChapter(chapterId);
 
-  if (type === 'async') {
-    loadingBar.start();
-  }
+  const task = type === 'async' ? LoadingBar.start() : undefined;
 
-  const result = await promiseOrValue;
+  let result: Result<ReaderChapter>;
+  try {
+    result = await promiseOrValue;
+  } catch (error) {
+    task?.error();
+    throw error;
+  }
   if (chapterId !== targetChapterId.value) {
+    task?.finish();
     return;
   }
 
   if (result.ok) {
-    loadingBar.finish();
+    task?.finish();
   } else {
-    loadingBar.error();
+    task?.error();
   }
 
   chapterResult.value = result;
@@ -364,7 +369,7 @@ onKeyDown(['Enter'], (e) => {
           />
 
           <template v-if="!item.chapter.nextId">
-            <div style="text-align: center; margin: 48px 0">暂无更多章节</div>
+            <div class="mx-0 my-12 text-center">暂无更多章节</div>
           </template>
         </template>
       </template>

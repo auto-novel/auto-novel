@@ -48,6 +48,8 @@ watch(introduction, () => {
     </div>
     <div v-if="collapsed" class="introduction-action">
       <UButton
+        :trailing-icon="KeyboardArrowDownRound"
+        :ui="{ trailingIcon: 'ml-1 size-4 shrink-0' }"
         variant="link"
         color="primary"
         class="introduction-toggle gap-0"
@@ -56,10 +58,6 @@ watch(introduction, () => {
         @click="expanded = true"
       >
         展开全部简介
-        <KeyboardArrowDownRound
-          class="introduction-toggle-icon size-4 shrink-0"
-          aria-hidden="true"
-        />
       </UButton>
     </div>
   </div>
@@ -99,9 +97,5 @@ watch(introduction, () => {
   .introduction-toggle {
     min-height: 44px;
   }
-}
-
-.introduction-toggle-icon {
-  margin-left: 4px;
 }
 </style>

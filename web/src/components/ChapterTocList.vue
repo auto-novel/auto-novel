@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { KeyboardArrowDownRound } from '@vicons/material';
 import { useResizeObserver } from '@vueuse/core';
-import { NIcon, NVirtualList, useThemeVars } from 'naive-ui';
+import { NVirtualList } from 'naive-ui';
 import type { ReadableTocItem } from '@/pages/novel/components/common';
 
 interface TocSection {
@@ -34,8 +34,6 @@ const handleItemClick = (item: ReadableTocItem) => {
     emit('itemClick', item);
   }
 };
-
-const vars = useThemeVars();
 
 const expandedSet = computed(() => new Set(props.expandedNames));
 
@@ -107,7 +105,7 @@ const virtualListClass = computed(() => {
     :items="flatItems"
     :item-size="ITEM_MIN_HEIGHT"
     :default-scroll-key="defaultScrollKey"
-    style="overflow: auto"
+    class="overflow-auto!"
     :class="virtualListClass"
     :scrollbar-props="{ trigger: 'none' }"
     item-resizable
@@ -124,18 +122,13 @@ const virtualListClass = computed(() => {
           :novel-id="novelId"
           :toc-item="item"
           :is-separator="true"
-          style="flex: 1"
+          class="flex-1"
         />
-        <n-icon
-          size="18"
-          :style="{
-            transform: expandedSet.has(item.titleJp)
-              ? 'rotate(180deg)'
-              : undefined,
-          }"
-        >
-          <KeyboardArrowDownRound />
-        </n-icon>
+        <KeyboardArrowDownRound
+          class="size-4.5 shrink-0"
+          aria-hidden="true"
+          :class="{ 'rotate-180': expandedSet.has(item.titleJp) }"
+        />
       </div>
       <ChapterTocItem
         v-else
@@ -160,7 +153,7 @@ const virtualListClass = computed(() => {
   cursor: pointer;
 }
 .toc-separator-divider {
-  border-top: 1px solid v-bind('vars.dividerColor');
+  border-top: 1px solid var(--color-divider);
 }
 @supports (height: 100dvh) {
   .modal-virtual-list {

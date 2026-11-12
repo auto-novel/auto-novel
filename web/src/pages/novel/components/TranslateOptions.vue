@@ -49,11 +49,11 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex flex-col flex-nowrap justify-start gap-x-3 gap-y-2">
+  <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="选项">
-      <div class="flex flex-wrap justify-start gap-x-2 gap-y-1">
+      <div class="flex flex-wrap gap-x-2 gap-y-1">
         <UTooltip :ui="{ content: 'max-w-50' }">
-          <div class="flex flex-nowrap justify-start gap-0">
+          <div class="flex">
             <tag-button
               label="常规"
               :checked="translateLevel === 'normal'"
@@ -104,21 +104,19 @@ defineExpose({
           v-model:checked="useBrowserCrawler"
         />
 
-        <n-text
+        <span
+          class="basis-full text-[12px] text-warning-text"
           v-if="translateLevel === 'all' || translateLevel === 'sync'"
-          type="warning"
-          style="font-size: 12px; flex-basis: 100%"
         >
           <b>* 请确保你知道自己在干啥，不要随便使用危险功能</b>
-        </n-text>
+        </span>
 
-        <n-text
+        <span
+          class="basis-full text-[12px] text-warning-text"
           v-if="gnid.type === 'web' && whoami.hasNovelAccess"
-          type="warning"
-          style="font-size: 12px; flex-basis: 100%"
         >
           <b>* 浏览器爬虫还处于测试阶段，翻译后务必检查结果</b>
-        </n-text>
+        </span>
       </div>
     </c-action-wrapper>
 
@@ -126,42 +124,48 @@ defineExpose({
       v-if="gnid.type === 'web' || gnid.type === 'local'"
       title="范围"
     >
-      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2 text-center">
+      <div class="flex flex-wrap gap-x-3 gap-y-2 text-center">
         <div>
-          <n-input-group>
-            <n-input-group-label size="small">从</n-input-group-label>
-            <n-input-number
-              size="small"
-              v-model:value="startIndex"
-              :show-button="false"
-              button-placement="both"
-              :min="0"
-              style="width: 60px"
+          <UFieldGroup size="sm">
+            <UBadge
+              label="从"
+              color="neutral"
+              variant="outline"
+              class="rounded-sm px-2 font-normal"
             />
-            <n-input-group-label size="small">到</n-input-group-label>
-            <n-input-number
-              size="small"
-              v-model:value="endIndex"
+            <UInputNumber
+              v-model="startIndex"
+              :increment="false"
+              :decrement="false"
+              :min="0"
+              class="w-20"
+            />
+            <UBadge
+              label="到"
+              color="neutral"
+              variant="outline"
+              class="rounded-sm px-2 font-normal"
+            />
+            <UInputNumber
+              v-model="endIndex"
               placeholder="不限"
-              :show-button="false"
+              :increment="false"
+              :decrement="false"
               :min="0"
-              style="width: 60px"
+              class="w-20"
             />
-          </n-input-group>
+          </UFieldGroup>
         </div>
 
         <UTooltip :ui="{ content: 'max-w-50' }">
           <UButton
+            :icon="InfoOutlined"
+            :ui="{ leadingIcon: 'size-4 shrink-0 opacity-60' }"
             color="neutral"
             variant="link"
             class="p-0"
             aria-label="章节范围说明"
-          >
-            <InfoOutlined
-              class="size-4 shrink-0 opacity-60"
-              aria-hidden="true"
-            />
-          </UButton>
+          />
 
           <template #content>
             章节序号看下面目录方括号里的数字。“从0到10”表示从第0章到第9章，不包含第10章。

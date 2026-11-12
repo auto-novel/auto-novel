@@ -58,21 +58,17 @@ const novelListRef = useTemplateRef('novelList');
   <div role="region" aria-label="文库小说收藏列表">
     <div class="mb-6">
       <UButton
+        :icon="ChecklistOutlined"
         color="neutral"
         variant="outline"
         class="rounded-full"
         @click="showControlPanel = !showControlPanel"
       >
-        <component
-          :is="ChecklistOutlined"
-          class="size-4.5 shrink-0"
-          aria-hidden="true"
-        />
         选择
       </UButton>
     </div>
 
-    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
+    <n-collapse-transition class="mb-4" :show="showControlPanel">
       <bookshelf-wenku-control
         :selected-novels="novelListRef?.selectedNovels ?? []"
         :favored-id="favoredId"
@@ -96,9 +92,7 @@ const novelListRef = useTemplateRef('novelList');
       @update:page="onUpdatePage"
     />
 
-    <USeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelGridSkeleton v-if="!novelPage && !error" />
     <UAlert

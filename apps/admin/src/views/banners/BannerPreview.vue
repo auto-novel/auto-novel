@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import USlider from '@nuxt/ui/components/Slider.vue';
 import { bannerFocalPosition } from './bannerFocal';
 import ImageCompare from './ImageCompare.vue';
 

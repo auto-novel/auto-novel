@@ -34,24 +34,29 @@ const latestChapterCreateAt = computed(() => {
     :title-zh="novel.titleZh"
   />
 
-  <n-p v-if="novel.authors.length > 0">
+  <p
+    class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0"
+    v-if="novel.authors.length > 0"
+  >
     <template v-if="novel.authors.length > 0">
       作者：
       <template v-for="author in novel.authors" :key="author.name">
-        <n-a :href="author.link">{{ author.name }}</n-a>
+        <ULink as="a" :href="author.link" external>
+          {{ author.name }}
+        </ULink>
       </template>
       /
-      <c-a :to="generateSearchUrl(novel.authors[0].name)">搜索作者</c-a>
+      <ULink :to="generateSearchUrl(novel.authors[0].name)">搜索作者</ULink>
     </template>
     /
-    <c-a :to="generateSearchUrl(novel.titleJp)">搜索标题</c-a>
-  </n-p>
+    <ULink :to="generateSearchUrl(novel.titleJp)">搜索标题</ULink>
+  </p>
 
   <WebNovelActions
     :provider-id="providerId"
     :novel-id="novelId"
     :novel="novel"
-    style="margin-top: 20px"
+    class="mt-5"
   />
 
   <USeparator class="my-6" />
@@ -66,7 +71,7 @@ const latestChapterCreateAt = computed(() => {
   <WebNovelIntroduction
     :introduction-jp="novel.introductionJp"
     :introduction-zh="novel.introductionZh"
-    style="margin-top: 16px"
+    class="mt-4"
   />
 
   <WebNovelTags
@@ -74,6 +79,6 @@ const latestChapterCreateAt = computed(() => {
     :attentions="novel.attentions"
     :keywords="novel.keywords"
     :points="novel.points"
-    style="margin-top: 12px"
+    class="mt-3"
   />
 </template>

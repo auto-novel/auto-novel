@@ -23,16 +23,16 @@ const deleteVolume = (volumeId: string) =>
 <template>
   <local-volume-drawer>
     <template #volume="volume">
-      <div class="flex flex-col flex-nowrap justify-start gap-1">
-        <n-text>{{ volume.id }}</n-text>
+      <div class="flex flex-col gap-1">
+        <span class="text-ink">{{ volume.id }}</span>
 
-        <n-text depth="3">
+        <span class="text-muted">
           <XTime :time="volume.createAt" preset="relative" />
           / 总计
           {{ volume.toc.length }}
-        </n-text>
+        </span>
 
-        <div class="flex flex-wrap justify-start gap-2">
+        <div class="flex flex-wrap gap-2">
           <UButton
             color="neutral"
             size="xs"
@@ -50,7 +50,7 @@ const deleteVolume = (volumeId: string) =>
             variant="soft"
           />
 
-          <div style="flex: 1" />
+          <div class="flex-1" />
 
           <ConfirmActionButton
             aria-label="删除"

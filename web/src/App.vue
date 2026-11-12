@@ -97,13 +97,11 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
       }"
     >
       <n-global-style />
-      <n-loading-bar-provider>
-        <router-view v-slot="{ Component }">
-          <keep-alive :include="['MainLayout']">
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
-      </n-loading-bar-provider>
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['MainLayout']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </n-config-provider>
   </WebKitApp>
 </template>
@@ -116,12 +114,6 @@ p,
 li {
   overflow-wrap: break-word;
   word-break: break-word;
-}
-.text-2line {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .float {
   position: fixed;

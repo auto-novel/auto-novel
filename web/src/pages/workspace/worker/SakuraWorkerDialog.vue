@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Toast } from '@novelia/web-kit';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import type { Form, FormError, FormSchema } from '@nuxt/ui';
 
 import type { SakuraWorker } from '@/model/Translator';
 import { useSakuraWorkspaceStore } from '@/stores';
@@ -21,7 +21,8 @@ const initFormValue = () => ({
   concurrency: props.worker?.concurrency ?? 1,
 });
 
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+
 const formValue = ref(initFormValue());
 watch(
   () => props.show,
@@ -29,51 +30,31 @@ watch(
     if (show) formValue.value = initFormValue();
   },
 );
-const formRules: FormRules = {
-  id: [
-    {
-      validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
-      message: '名字不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (rule: FormItemRule, value: string) =>
-        workspaceRef.value.workers
-          .filter(({ id }) => id !== props.worker?.id)
-          .find(({ id }) => id === value) === undefined,
-      message: '名字不能重复',
-      trigger: 'input',
-    },
-  ],
-  endpoint: [
-    {
-      validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
-      message: 'API端点不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (rule: FormItemRule, value: string) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch (_) {
-          return false;
-        }
-      },
-      message: 'API端点不合法',
-      trigger: 'input',
-    },
-  ],
-};
-
-const doValidate = async () => {
-  const validated = await new Promise<boolean>(function (resolve, _reject) {
-    formRef.value?.validate((errors) => {
-      if (errors) resolve(false);
-      else resolve(true);
-    });
-  });
-  return validated;
+const validate = (): FormError[] => {
+  const errors: FormError[] = [];
+  const { id, endpoint } = formValue.value;
+  if (id.trim().length === 0) {
+    errors.push({ name: 'id', message: '名字不能为空' });
+  }
+  if (
+    workspaceRef.value.workers.some(
+      (worker) => worker.id !== props.worker?.id && worker.id === id,
+    )
+  ) {
+    errors.push({ name: 'id', message: '名字不能重复' });
+  }
+  if (endpoint.trim().length === 0) {
+    errors.push({ name: 'endpoint', message: 'API端点不能为空' });
+  }
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      errors.push({ name: 'endpoint', message: 'API端点不合法' });
+    }
+  } catch {
+    errors.push({ name: 'endpoint', message: 'API端点不合法' });
+  }
+  return errors;
 };
 
 const buildWorker = () => {
@@ -84,7 +65,7 @@ const buildWorker = () => {
 };
 
 const submit = async () => {
-  if (!(await doValidate())) return;
+  if (!(await formRef.value?.validate({ silent: true }))) return;
   const worker = buildWorker();
 
   if (props.worker === undefined) {
@@ -102,7 +83,7 @@ const submit = async () => {
 };
 
 const submitAndContinue = async () => {
-  if (!(await doValidate())) return;
+  if (!(await formRef.value?.validate({ silent: true }))) return;
   const worker = buildWorker();
   workspace.addWorker(worker);
   Toast.success(`已添加翻译器「${worker.id}」`);
@@ -113,57 +94,77 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 
 <template>
   <UModal
-    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + 'Sakura翻译器'"
     class="w-150"
   >
     <template #body>
-      <n-form
+      <UForm
         ref="form"
-        :model="formValue"
-        :rules="formRules"
-        label-placement="left"
-        label-width="auto"
+        :state="formValue"
+        :validate="validate"
+        :validate-on="['input']"
+        :validate-on-input-delay="0"
+        class="space-y-6"
       >
-        <n-form-item-row path="id" label="名字">
-          <n-input
-            v-model:value="formValue.id"
+        <UFormField
+          name="id"
+          label="名字"
+          orientation="horizontal"
+          eager-validation
+          :ui="{ wrapper: 'w-15 shrink-0', container: 'min-w-0 flex-1' }"
+        >
+          <UInput
+            class="w-full"
+            v-model="formValue.id"
             placeholder="给你的翻译器起个名字"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
-        </n-form-item-row>
-        <n-form-item-row path="endpoint" label="API端点">
-          <n-input
-            v-model:value="formValue.endpoint"
+        </UFormField>
+        <UFormField
+          name="endpoint"
+          label="API端点"
+          orientation="horizontal"
+          eager-validation
+          :ui="{ wrapper: 'w-15 shrink-0', container: 'min-w-0 flex-1' }"
+        >
+          <UInput
+            class="w-full"
+            v-model="formValue.endpoint"
             placeholder="翻译器的API端点"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
-        </n-form-item-row>
+        </UFormField>
 
-        <n-form-item-row path="concurrency" label="并发数">
-          <n-input-number
-            :value="formValue.concurrency"
+        <UFormField
+          name="concurrency"
+          label="并发数"
+          orientation="horizontal"
+          :ui="{ wrapper: 'w-15 shrink-0', container: 'min-w-0 flex-1' }"
+        >
+          <UInputNumber
+            class="w-full"
+            :model-value="formValue.concurrency"
             :min="1"
             :max="100"
-            :precision="0"
-            @update:value="(value) => (formValue.concurrency = value ?? 1)"
+            :format-options="{ maximumFractionDigits: 0 }"
+            @update:model-value="
+              (value) => (formValue.concurrency = value ?? 1)
+            "
           />
-        </n-form-item-row>
+        </UFormField>
 
-        <n-text depth="3" class="text-[12px]!">
+        <span class="text-muted text-[12px]!">
           # 分段长度与前文长度固定为500字符，不支持配置
           <br />
           # API端点例子：http://127.0.0.1:8080
-        </n-text>
-      </n-form>
+        </span>
+      </UForm>
     </template>
     <template #footer>
-      <div
-        class="flex flex-wrap justify-start gap-3"
-        v-if="props.worker === undefined"
-      >
+      <div class="flex flex-wrap gap-3" v-if="props.worker === undefined">
         <ActionButton :action="submitAndContinue">添加并继续</ActionButton>
         <ActionButton color="primary" :action="submit" variant="solid">
           添加

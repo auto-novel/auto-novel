@@ -184,16 +184,12 @@ const onRuleModalCloseAutoFocus = async () => {
 
 <template>
   <UButton
+    :icon="PlusOutlined"
     color="neutral"
     variant="outline"
     v-if="!haveReadRule"
     @click="uploadVolumes"
   >
-    <component
-      :is="PlusOutlined"
-      class="size-4.5 shrink-0"
-      aria-hidden="true"
-    />
     上传
   </UButton>
   <n-upload
@@ -205,12 +201,7 @@ const onRuleModalCloseAutoFocus = async () => {
     @before-upload="beforeUpload"
     :on-remove="cancelUpload"
   >
-    <UButton color="neutral" variant="outline">
-      <component
-        :is="PlusOutlined"
-        class="size-4.5 shrink-0"
-        aria-hidden="true"
-      />
+    <UButton :icon="PlusOutlined" color="neutral" variant="outline">
       上传
     </UButton>
   </n-upload>
@@ -219,11 +210,13 @@ const onRuleModalCloseAutoFocus = async () => {
     title="上传须知"
     v-model:open="showRuleModal"
     :content="{ onCloseAutoFocus: onRuleModalCloseAutoFocus }"
-    :ui="{ content: 'max-w-[calc(100vw-2rem)]', footer: 'justify-end' }"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     class="w-150"
   >
     <template #body>
-      <n-p>在上传小说之前，请务必遵守以下规则。</n-p>
+      <p class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0">
+        在上传小说之前，请务必遵守以下规则。
+      </p>
       <ul class="content-list">
         <li>
           日文章节上传前请确定里面有文本，单卷书压缩包超40MB里面大概率只有扫图无文本，这种是无法翻译的。
@@ -232,7 +225,9 @@ const onRuleModalCloseAutoFocus = async () => {
         <li>不要上传已存在的分卷，现存的分卷有问题请联系管理员。</li>
         <li>分卷文件名应当只包含日文标题、卷数、分卷日文标题。</li>
       </ul>
-      <n-p>由于文库小说还在开发中，规则也会变化，务必留意。</n-p>
+      <p class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0">
+        由于文库小说还在开发中，规则也会变化，务必留意。
+      </p>
     </template>
     <template #footer>
       <UButton

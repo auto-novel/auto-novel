@@ -48,7 +48,7 @@ const calculateTranslatorOrderLabel = (id: TranslatorId) => {
       :aria-pressed="value.includes(option.value)"
       :value="option.value"
       @click="toggleTranslator(option.value)"
-      :style="twoLine ? { height: '48px' } : {}"
+      :class="{ 'h-12': twoLine }"
     >
       <span>
         {{ option.label }}

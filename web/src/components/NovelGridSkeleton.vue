@@ -17,7 +17,7 @@ withDefaults(defineProps<{ panel?: boolean }>(), { panel: false });
       <div v-for="index in panel ? 12 : 8" :key="index" class="min-w-0">
         <USkeleton class="aspect-[2/3] w-full" />
         <div class="space-y-1.5 p-2">
-          <USkeleton class="h-3.5 w-full bg-border" />
+          <USkeleton class="h-3.5 w-full" />
           <USkeleton class="h-3.5 w-2/3" />
         </div>
       </div>

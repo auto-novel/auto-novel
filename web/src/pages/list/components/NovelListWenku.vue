@@ -53,16 +53,19 @@ defineExpose({
       class="grid grid-cols-2 gap-3 @[500px]:grid-cols-3 @[800px]:grid-cols-4"
     >
       <div v-for="item in items" :key="item.id" class="min-w-0">
-        <div style="position: relative">
+        <div class="relative">
           <router-link :to="`/wenku/${item.id}`">
             <ImageCard
               :src="item.cover"
               :title="item.titleZh ? item.titleZh : item.title"
             >
               <template #prefix>
-                <n-text v-if="item.favored" type="warning">
-                  <n-icon :size="16" :component="StarFilled" />
-                </n-text>
+                <span class="text-warning-text" v-if="item.favored">
+                  <StarFilled
+                    class="inline-block size-4 align-baseline"
+                    aria-hidden="true"
+                  />
+                </span>
               </template>
             </ImageCard>
           </router-link>

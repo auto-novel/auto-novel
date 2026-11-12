@@ -23,7 +23,6 @@ const [DefineTagGroup, ReuseTagGroup] = createReusableTemplate<{
 }>();
 
 const isWideScreen = useIsWideScreen(600);
-const vars = useThemeVars();
 
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
@@ -73,14 +72,11 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
 
 <template>
   <DefineTagGroup v-slot="{ label, tags }">
-    <div
-      class="flex flex-nowrap justify-start gap-x-3 gap-y-2"
-      v-if="tags.length > 0"
-    >
+    <div class="flex gap-x-3" v-if="tags.length > 0">
       <n-tag :bordered="false" size="small">
         {{ label }}
       </n-tag>
-      <div class="flex flex-wrap justify-start gap-1">
+      <div class="flex flex-wrap gap-1">
         <router-link v-for="tag of tags" :key="tag" :to="buildSearchLink(tag)">
           <novel-tag :tag="tag" />
         </router-link>
@@ -91,28 +87,19 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
   <div
     v-if="novel"
     :style="{
-      background: `url(${novel.cover})`,
+      backgroundImage: `url(${novel.cover})`,
     }"
-    style="
-      width: 100%;
-      clip: rect(0, auto, auto, 0);
-      background-size: cover;
-      background-position: center 15%;
-    "
+    class="w-full bg-cover bg-position-[center_15%] [clip:rect(0,auto,auto,0)]"
   >
-    <div
-      :style="{
-        background: `linear-gradient(to bottom, ${
-          vars.bodyColor == '#fff' ? '#ffffff80' : 'rgba(16, 16, 20, 0.5)'
-        }, ${vars.bodyColor})`,
-      }"
-      style="width: 100%; height: 100%; backdrop-filter: blur(8px)"
-    >
+    <div class="relative isolate h-full w-full backdrop-blur-sm">
+      <!-- 渐变遮罩固定透明度，背景色沿用全局主题过渡。 -->
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 -z-10 bg-body mask-linear-180 mask-linear-from-black/50 mask-linear-to-black"
+      />
       <div class="mx-auto w-full max-w-5xl px-3 sm:px-8">
-        <div
-          class="flex flex-nowrap justify-start gap-x-3 gap-y-2 pt-5 pb-5.25"
-        >
-          <div style="flex: 0 0 160px">
+        <div class="flex gap-x-3 pt-5 pb-5.25">
+          <div class="flex-[0_0_160px]">
             <n-image
               width="160"
               :src="
@@ -122,16 +109,13 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               "
               alt="cover"
               show-toolbar-tooltip
-              style="border-radius: 2px"
+              class="rounded-[2px]"
             />
           </div>
-          <div
-            class="flex min-w-0 flex-1 flex-col flex-nowrap justify-start gap-x-3 gap-y-2"
-          >
+          <div class="flex min-w-0 flex-1 flex-col gap-y-2">
             <h2
-              class="heading-bar"
-              style="margin: 8px 0"
-              :style="{ 'font-size': isWideScreen ? '22px' : '18px' }"
+              class="heading-bar mx-0 my-2"
+              :class="isWideScreen ? 'text-[22px]' : 'text-[18px]'"
             >
               <b>
                 {{ novel.titleZh ? novel.titleZh : novel.title }}
@@ -163,18 +147,14 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       :description="error.message"
     />
     <template v-else-if="novel">
-      <div class="flex flex-wrap justify-start gap-x-3 gap-y-2">
+      <div class="flex flex-wrap gap-x-3 gap-y-2">
         <UButton
+          :icon="EditNoteOutlined"
           v-if="whoami.hasNovelAccess"
           :to="`/wenku-edit/${novelId}`"
           color="neutral"
           variant="outline"
         >
-          <component
-            :is="EditNoteOutlined"
-            class="size-4.5 shrink-0"
-            aria-hidden="true"
-          />
           编辑
         </UButton>
 
@@ -184,16 +164,12 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         />
 
         <UButton
+          :icon="LanguageOutlined"
           color="neutral"
           variant="outline"
           v-if="novel.webIds.length > 0"
           @click="showWebNovelsModal = true"
         >
-          <component
-            :is="LanguageOutlined"
-            class="size-4.5 shrink-0"
-            aria-hidden="true"
-          />
           网络
         </UButton>
 
@@ -201,29 +177,38 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
           :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
           title="相关网络小说"
           v-model:open="showWebNovelsModal"
-          class="w-[600px]"
+          class="w-150"
         >
           <template #body>
             <ul class="content-list">
               <li v-for="webId of novel.webIds" :key="webId">
-                <c-a :to="`/novel/${webId}`">
+                <ULink :to="`/novel/${webId}`">
                   {{ webId }}
-                </c-a>
+                </ULink>
               </li>
             </ul>
           </template>
         </UModal>
       </div>
 
-      <n-p>原名：{{ novel.title }}</n-p>
-      <n-p v-if="novel.latestPublishAt">
+      <p class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0">
+        原名：{{ novel.title }}
+      </p>
+      <p
+        class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0"
+        v-if="novel.latestPublishAt"
+      >
         最新出版于
         <XTime :time="novel.latestPublishAt * 1000" format="yyyy-MM-dd" />
-      </n-p>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <n-p v-html="novel.introduction.replace(/\n/g, '<br />')" />
+      </p>
+      <!-- eslint-disable vue/no-v-html -->
+      <p
+        class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0"
+        v-html="novel.introduction.replace(/\n/g, '<br />')"
+      />
+      <!-- eslint-enable vue/no-v-html -->
 
-      <div class="flex flex-wrap justify-start gap-1">
+      <div class="flex flex-wrap gap-1">
         <router-link
           v-for="keyword of novel.keywords"
           :key="keyword"
@@ -236,7 +221,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       <template v-if="novel.volumes.length">
         <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
           <n-image-group show-toolbar-tooltip>
-            <div class="mb-4 flex flex-nowrap justify-start gap-1">
+            <div class="mb-4 flex gap-1">
               <n-image
                 v-for="volume of novel.volumes"
                 :key="volume.asin"
@@ -245,7 +230,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
                 :preview-src="volume.coverHires ?? volume.cover"
                 :alt="volume.asin"
                 lazy
-                style="border-radius: 2px; flex: 0 0 104px; width: 104px"
+                class="w-[104px] flex-[0_0_104px] rounded-[2px]"
               />
             </div>
           </n-image-group>
@@ -260,14 +245,19 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         :locked="false"
       >
         <template #commentNotice>
-          <n-alert
-            type="warning"
-            :bordered="false"
+          <UAlert
+            color="warning"
+            variant="soft"
+            icon="i-lucide-triangle-alert"
             title="公告"
-            style="margin-bottom: 12px"
+            :ui="{ description: 'break-words' }"
+            role="alert"
+            class="mb-3"
           >
-            近期有人在评论区到处冒充文库本的上传者，请勿相信此类评论（世界很奇妙吧，啥人都有）
-          </n-alert>
+            <template #description>
+              近期有人在评论区到处冒充文库本的上传者，请勿相信此类评论（世界很奇妙吧，啥人都有）
+            </template>
+          </UAlert>
         </template>
 
         <template #wenkuToc>
@@ -278,12 +268,12 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
             <TranslateOptions
               ref="translateOptions"
               :gnid="GenericNovelId.wenku(novelId)"
-              style="margin-top: 16px"
+              class="mt-4"
             />
-            <div class="mt-4 flex flex-wrap justify-start gap-x-3 gap-y-2">
+            <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2">
               <DownloadOptionsButton class="rounded-md" />
             </div>
-            <USeparator style="margin: 16px 0 0" />
+            <USeparator class="mx-0 mt-4 mb-0" />
 
             <n-list>
               <n-list-item
@@ -300,25 +290,25 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
             </n-list>
 
             <template v-if="whoami.isAdmin">
-              <USeparator style="margin: 0" />
+              <USeparator class="m-0" />
 
               <ul class="content-list">
                 <li v-for="volumeId in novel.volumeZh" :key="volumeId">
-                  <n-a
+                  <ULink
                     :href="`/files-wenku/${novelId}/${encodeURIComponent(volumeId)}`"
                     target="_blank"
                     :download="volumeId"
+                    external
                   >
                     {{ volumeId }}
-                  </n-a>
+                  </ULink>
 
                   <ConfirmActionButton
                     v-if="whoami.asAdmin"
                     :hint="`真的要删除《${volumeId}》吗？`"
                     color="error"
-                    style="margin-left: 16px"
                     variant="link"
-                    class="p-0 leading-none"
+                    class="ml-4 p-0 leading-none"
                     label="删除"
                     :action="() => deleteVolume(volumeId)"
                   />
@@ -342,7 +332,12 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               title="网站已撤下中文小说板块，请上传日文生成翻译"
             />
           </template>
-          <n-p v-else>游客无法查看内容，请先登录。</n-p>
+          <p
+            class="my-4 text-sm leading-[1.6] text-ink first:mt-0 last:mb-0"
+            v-else
+          >
+            游客无法查看内容，请先登录。
+          </p>
         </template>
       </NovelBottomTabs>
     </template>
