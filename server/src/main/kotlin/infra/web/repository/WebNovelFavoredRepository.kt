@@ -32,6 +32,7 @@ import org.bson.BsonDocument
 import org.bson.BsonInt32
 import org.bson.BsonString
 import org.bson.Document
+import util.parseSearchQuery
 
 class WebNovelFavoredRepository(
     mongo: MongoClient,
@@ -97,12 +98,13 @@ class WebNovelFavoredRepository(
         if (!queryString.isNullOrBlank()) {
             val allAttentions = WebNovelAttention.entries.map { it.name }
             
-            queryString.split(" ").filter { it.isNotBlank() }.forEach{ token ->
-                if (token.startsWith('>') || token.startsWith('<')) {
-                    val number = token.substring(1).toIntOrNull()
+            parseSearchQuery(queryString).forEach { token ->
+                val rawToken = token.raw
+                if (rawToken.startsWith('>') || rawToken.startsWith('<')) {
+                    val number = rawToken.substring(1).toIntOrNull()
                     if (number != null) {
                         // 使用 $expr 和聚合操作符 $size 来动态比较数组长度
-                        val operator = if (token.startsWith('>')) "\$gt" else "\$lt"
+                        val operator = if (rawToken.startsWith('>')) "\$gt" else "\$lt"
                         val exprFilter = BsonDocument(
                             "\$expr",
                             BsonDocument(
@@ -119,23 +121,21 @@ class WebNovelFavoredRepository(
                         return@forEach
                     }
                 }
-                if (token.endsWith('$')) {
-                    val isExclusion = token.startsWith('-')
-                    val rawToken = token.removePrefix("-").removeSuffix("$")
-                    val field = if (allAttentions.contains(rawToken)) {
+                if (token.tag != null) {
+                    val field = if (allAttentions.contains(token.tag)) {
                         "novel.${WebNovel::attentions.field()}"
                     } else {
                         "novel.${WebNovel::keywords.field()}"
                     }
 
-                    val tagFilter = if (isExclusion) {
-                        Filters.nin(field, rawToken)
+                    val tagFilter = if (token.excluded) {
+                        Filters.nin(field, token.tag)
                     } else {
-                        Filters.eq(field, rawToken)
+                        Filters.eq(field, token.tag)
                     }
                     novelFilters.add(tagFilter)
                 } else {
-                    queryKeywords.add(token)
+                    queryKeywords.add(rawToken)
                 }
             }
         }

@@ -9,6 +9,7 @@ import infra.wenku.WenkuNovel
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import util.parseSearchQuery
 import util.serialName
 
 class WenkuNovelEsDataSource(
@@ -73,15 +74,14 @@ class WenkuNovelEsDataSource(
 
                 // Parse query
                 val queryWords = mutableListOf<String>()
-                userQuery?.split(" ")?.forEach { token ->
-                    if (token.endsWith('$')) {
-                        val rawToken = token.removePrefix("-").removeSuffix("$")
-                        val queries = if (token.startsWith("-")) mustNotQueries
+                userQuery?.let(::parseSearchQuery)?.forEach { token ->
+                    if (token.tag != null) {
+                        val queries = if (token.excluded) mustNotQueries
                         else mustQueries
                         val field = WenkuNovelMetadataEsModel::keywords
-                        queries.add(term(field, rawToken))
+                        queries.add(term(field, token.tag))
                     } else {
-                        queryWords.add(token)
+                        queryWords.add(token.raw)
                     }
                 }
 

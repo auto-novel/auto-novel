@@ -11,7 +11,7 @@ import {
   useWebSearchHistoryStore,
   useWenkuSearchHistoryStore,
 } from '@/stores';
-import { RegexUtil } from '@/util';
+import { convertSearchQuery } from '@/util/search-query';
 import CActionWrapper from '../CActionWrapper.vue';
 import SearchHistoryFooter from './SearchHistoryFooter.vue';
 import type { ListTextOption } from './types';
@@ -97,26 +97,7 @@ function closeSuggestions() {
 
 function processQueryWithLocaleAware(input: string): string {
   const cc = useSettingStore().cc;
-  const queries = input.split(/( |\||\+|\-|\")/);
-  const result: string[] = [];
-  for (const query of queries) {
-    if (
-      !query.includes('$') &&
-      !RegexUtil.hasKanaChars(query) &&
-      !RegexUtil.hasHangulChars(query) &&
-      RegexUtil.hasHanzi(query)
-    ) {
-      const queryData = cc.toData(query);
-      if (queryData === query) {
-        result.push(query);
-      } else {
-        result.push(`(${[query, queryData].join('|')})`);
-      }
-    } else {
-      result.push(query);
-    }
-  }
-  return result.join('');
+  return convertSearchQuery(input, cc.toData);
 }
 
 const confirm = (key: string) => {
