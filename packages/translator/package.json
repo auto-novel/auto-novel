@@ -11,6 +11,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./harness": {
+      "types": "./dist/harness/index.d.ts",
+      "import": "./dist/harness.js"
+    },
+    "./harness/presets": {
+      "types": "./dist/harness/presets.d.ts",
+      "import": "./dist/harness-presets.js"
     }
   },
   "main": "./dist/index.js",
@@ -37,7 +45,7 @@
     "vitest": "^4.0.6"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^1.1.0",
+    "@earendil-works/pi-ai": "^1.4.0",
     "crypto-es": "^2.1.0",
     "lodash-es": "^4.17.21",
     "ky": "^2.1.0"

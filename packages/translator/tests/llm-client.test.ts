@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createPiAiCompletion } from '../src/translator/llm-client';
 
@@ -28,6 +28,55 @@ const toHeadersRecord = (headers?: HeadersInit): Record<string, string> => {
 // createPiAiCompletion 统一模型流式调用测试
 // ============================================================
 describe('createPiAiCompletion', () => {
+  it('reports actual usage and preset costs without changing token accounting', async () => {
+    const onUsage = vi.fn();
+    const result = await createPiAiCompletion({
+      protocol: 'openai-completions',
+      endpoint: 'https://api.example.test',
+      key: 'test-key',
+      model: 'model-1',
+      messages: [{ role: 'user', content: 'source' }],
+      cost: { input: 2, output: 3, cacheRead: 1, cacheWrite: 0 },
+      onUsage,
+      fetch: async () =>
+        response(
+          sse([
+            {
+              data: {
+                id: 'usage-1',
+                choices: [{ index: 0, delta: { content: 'translation' } }],
+              },
+            },
+            {
+              data: {
+                id: 'usage-1',
+                choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+                usage: {
+                  prompt_tokens: 100,
+                  completion_tokens: 20,
+                  total_tokens: 120,
+                  prompt_tokens_details: { cached_tokens: 40 },
+                },
+              },
+            },
+            { data: '[DONE]' },
+          ]),
+        ),
+    });
+
+    expect(onUsage).toHaveBeenCalledOnce();
+    expect(result.usage).toMatchObject({
+      input: 60,
+      output: 20,
+      cacheRead: 40,
+      totalTokens: 120,
+    });
+    expect(onUsage).toHaveBeenCalledWith(result.usage);
+    expect(result.usage.cost.total).toBeCloseTo(0.00022);
+    expect(result.inputTokens).toBe(60);
+    expect(result.outputTokens).toBe(20);
+  });
+
   // --- 场景 1：各协议正常请求与流式解析 ---
   it('应通过 pi-ai 正确发送 OpenAI Chat 请求，并将思考过程与正文内容分离', async () => {
     let request:
