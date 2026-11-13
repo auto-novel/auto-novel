@@ -25,13 +25,44 @@ export function validateTranslationLines(
   assertTranslatedLines(translatedLines, originalLines.length);
 }
 
-/** 恢复原文行首空白，避免翻译器吞掉缩进。 */
+const DIALOGUE_QUOTES: Record<string, string> = {
+  '「': '」',
+  '『': '』',
+  '“': '”',
+  '‘': '’',
+};
+
+/** 按原文匹配的首尾引号补齐非空译文边界，不改内部文本与空白。 */
+export function restoreDialogueQuotes(
+  originalLine: string,
+  translatedLine: string,
+): string {
+  const original = originalLine.trim();
+  const opening = original[0];
+  const closing = DIALOGUE_QUOTES[opening];
+  if (!closing || !original.endsWith(closing) || !translatedLine.trim()) {
+    return translatedLine;
+  }
+
+  let result = translatedLine;
+  if (!result.trimStart().startsWith(opening)) {
+    result = result.replace(/^(\s*)/, `$1${opening}`);
+  }
+  if (!result.trimEnd().endsWith(closing)) {
+    result = result.replace(/(\s*)$/, `${closing}$1`);
+  }
+  return result;
+}
+
+/** 恢复原文行首空白，并补齐对白边界。 */
 export function restoreLineFormatting(
   originalLine: string,
   translatedLine: string,
 ): string {
   const heading = originalLine.match(/^\s*/)?.[0] ?? '';
-  return heading + translatedLine.trimStart();
+  return (
+    heading + restoreDialogueQuotes(originalLine, translatedLine.trimStart())
+  );
 }
 
 /**

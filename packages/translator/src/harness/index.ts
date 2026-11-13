@@ -13,6 +13,7 @@
 import type { Glossary, Logger, LineRange } from '../types';
 import type { Usage } from '@earendil-works/pi-ai';
 import { createPiAiCompletion } from '../translator/llm-client';
+import { restoreDialogueQuotes } from '../pipeline/lines';
 import type { HarnessPreset } from './presets';
 import {
   outputInstructions,
@@ -202,7 +203,8 @@ ${outputInstructions[preset.outputFormat]}
         return lines.map((line) =>
           // 恢复原文的段首空格缩进。
           line.trim()
-            ? line.match(/^\s*/)![0] + translations[index++].trim()
+            ? line.match(/^\s*/)![0] +
+              restoreDialogueQuotes(line, translations[index++].trim())
             : line,
         );
       } catch (error) {
