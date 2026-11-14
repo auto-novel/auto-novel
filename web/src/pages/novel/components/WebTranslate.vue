@@ -135,81 +135,90 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex vertical style="margin-top: 8px">
-    <n-text>
+  <div class="mt-2 flex flex-col gap-y-2">
+    <span class="text-default">
       总计 {{ total }} / 有道 {{ youdao }} / GPT {{ gpt }} / Sakura
       {{ sakura }}
-    </n-text>
+    </span>
 
-    <n-button-group>
-      <c-button
-        label="下载原文"
-        :round="false"
-        tag="a"
+    <UFieldGroup>
+      <UButton
+        color="neutral"
+        variant="outline"
         :href="files.jp.url"
         :download="files.jp.filename"
         target="_blank"
-      />
-      <c-button
-        label="下载机翻"
-        :round="false"
-        tag="a"
+      >
+        下载原文
+      </UButton>
+      <UButton
+        color="neutral"
+        variant="outline"
         :href="files.zh.url"
         :download="files.zh.filename"
         target="_blank"
-      />
+      >
+        下载机翻
+      </UButton>
       <DownloadOptionsButton
-        :round="false"
+        class="rounded-md"
         :show-file-type="true"
         :show-filename-type="true"
       />
-    </n-button-group>
-  </n-flex>
+    </UFieldGroup>
+  </div>
 
-  <div style="margin: 28px" />
+  <div class="m-7" />
 
-  <n-text v-if="!whoami.isSignedIn">游客无法使用翻译功能，请先登录。</n-text>
-  <n-text v-else-if="setting.enabledTranslator.length === 0">
+  <span class="text-default" v-if="!whoami.isSignedIn">
+    游客无法使用翻译功能，请先登录。
+  </span>
+  <span class="text-default" v-else-if="setting.enabledTranslator.length === 0">
     没有翻译器启用。
-  </n-text>
+  </span>
   <TranslateOptions
     v-else
     ref="translateOptions"
     :gnid="GenericNovelId.web(providerId, novelId)"
   />
 
-  <n-flex
+  <div
+    class="mt-4 flex flex-wrap gap-x-3 gap-y-2"
     v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0"
-    style="margin-top: 16px"
   >
-    <c-button label="导入工作区" :round="false" @action="importToWorkspace" />
+    <ActionButton class="rounded-md" :action="importToWorkspace">
+      导入工作区
+    </ActionButton>
 
-    <n-button-group>
-      <c-button
+    <UFieldGroup>
+      <ActionButton
+        class="rounded-md"
         v-if="setting.enabledTranslator.includes('youdao')"
-        label="更新有道"
-        :round="false"
-        @action="startTranslateTask('youdao')"
-      />
-      <c-button
+        :action="() => startTranslateTask('youdao')"
+      >
+        更新有道
+      </ActionButton>
+      <ActionButton
+        class="rounded-md"
         v-if="setting.enabledTranslator.includes('gpt')"
-        label="排队GPT"
-        :round="false"
-        @action="submitJob('gpt')"
-      />
-      <c-button
+        :action="() => submitJob('gpt')"
+      >
+        排队GPT
+      </ActionButton>
+      <ActionButton
+        class="rounded-md"
         v-if="setting.enabledTranslator.includes('sakura')"
-        label="排队Sakura"
-        :round="false"
-        @action="submitJob('sakura')"
-      />
-    </n-button-group>
-  </n-flex>
+        :action="() => submitJob('sakura')"
+      >
+        排队Sakura
+      </ActionButton>
+    </UFieldGroup>
+  </div>
 
   <TranslateTask
     ref="translateTask"
     @update:jp="(zh) => emit('update:jp', zh)"
     @update:youdao="(zh) => emit('update:youdao', zh)"
-    style="margin-top: 20px"
+    class="mt-5"
   />
 </template>

@@ -1,7 +1,7 @@
 import { useQuery } from '@pinia/colada';
 
 import { FavoredApi, WenkuNovelApi } from '@/api';
-import { cache, withOnSuccess } from './cache';
+import { getQueryCache, withOnSuccess } from './cache';
 
 const ItemKey = 'wenku-novel';
 const ListKey = 'wenku-novel-list';
@@ -59,10 +59,10 @@ export const WenkuNovelRepo = {
   useWenkuNovelFavoredList,
 
   createNovel: withOnSuccess(WenkuNovelApi.createNovel, () =>
-    cache.invalidateQueries({ key: [ListKey] }),
+    getQueryCache().invalidateQueries({ key: [ListKey] }),
   ),
   updateNovel: withOnSuccess(WenkuNovelApi.updateNovel, (_, novelId) =>
-    cache.invalidateQueries({
+    getQueryCache().invalidateQueries({
       key: [ItemKey, novelId],
       exact: true,
     }),
@@ -85,7 +85,7 @@ export const WenkuNovelRepo = {
     return <typeof task>{
       abort: task.abort,
       promise: task.promise.then(async (ret) => {
-        await cache.invalidateQueries({
+        await getQueryCache().invalidateQueries({
           key: [ItemKey, novelId],
           exact: true,
         });
@@ -94,7 +94,7 @@ export const WenkuNovelRepo = {
     };
   },
   deleteVolume: withOnSuccess(WenkuNovelApi.deleteVolume, (_, novelId) =>
-    cache.invalidateQueries({
+    getQueryCache().invalidateQueries({
       key: [ItemKey, novelId],
       exact: true,
     }),

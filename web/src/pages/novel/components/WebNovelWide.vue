@@ -22,7 +22,7 @@ const { setting } = storeToRefs(settingStore);
     :novel="novel"
   />
 
-  <n-divider />
+  <USeparator class="my-6" />
 
   <web-translate
     :provider-id="providerId"

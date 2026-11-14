@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, getApiErrorMessage } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XTime } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -132,7 +132,7 @@ const progressFilterFunc = computed(() => {
         :gnid="GenericNovelId.local('')"
         :glossary="{}"
       />
-      <n-divider style="margin: 12px 0" />
+      <USeparator class="mx-0 my-3" />
       <c-action-wrapper title="状态">
         <c-radio-group
           v-model:value="progressFilter"
@@ -151,59 +151,66 @@ const progressFilterFunc = computed(() => {
     </template>
 
     <template #volume="volume">
-      <n-flex :size="4" vertical>
-        <n-text>{{ volume.id }}</n-text>
+      <div class="flex flex-col gap-1">
+        <span class="text-default">{{ volume.id }}</span>
 
-        <n-text depth="3">
-          <n-time :time="volume.createAt" type="relative" />
+        <span class="text-muted">
+          <XTime :time="volume.createAt" preset="relative" />
           / 总计 {{ volume.toc.length }} / 完成
           {{ calculateFinished(volume) }} / 过期
           {{ calculateExpired(volume) }}
-        </n-text>
+        </span>
 
-        <n-flex :size="8">
-          <c-button
-            label="排队"
-            size="tiny"
-            secondary
-            @action="queueVolume(volume.id)"
-          />
+        <div class="flex flex-wrap gap-2">
+          <ActionButton
+            size="xs"
+            variant="soft"
+            :action="() => queueVolume(volume.id)"
+          >
+            排队
+          </ActionButton>
 
-          <router-link
+          <UButton
             v-if="!volume.id.endsWith('.epub')"
             :to="`/workspace/reader/${encodeURIComponent(volume.id)}/0`"
             target="_blank"
+            color="neutral"
+            size="xs"
+            variant="soft"
+            class="rounded-full"
           >
-            <c-button label="阅读" size="tiny" secondary />
-          </router-link>
+            阅读
+          </UButton>
 
-          <c-button
-            label="下载"
-            size="tiny"
-            secondary
-            @action="downloadVolume(volume.id)"
-          />
+          <ActionButton
+            size="xs"
+            variant="soft"
+            :action="() => downloadVolume(volume.id)"
+          >
+            下载
+          </ActionButton>
 
           <glossary-button
             :gnid="GenericNovelId.local(volume.id)"
             :value="volume.glossary"
-            size="tiny"
-            secondary
+            size="xs"
+            variant="soft"
           />
 
-          <div style="flex: 1" />
+          <div class="flex-1" />
 
-          <c-button-confirm
+          <ConfirmActionButton
+            aria-label="删除"
             :hint="`真的要删除《${volume.id}》吗？`"
+            size="xs"
+            color="error"
+            variant="soft"
             :icon="DeleteOutlineOutlined"
-            size="tiny"
-            secondary
-            circle
-            type="error"
-            @action="deleteVolume(volume.id)"
+            square
+            :action="() => deleteVolume(volume.id)"
           />
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
     </template>
   </local-volume-drawer>
 </template>

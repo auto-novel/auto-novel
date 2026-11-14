@@ -21,10 +21,7 @@ vi.mock('vue', async (importOriginal) => {
     ...vue,
     useTemplateRef: () =>
       vue.ref({
-        validate: (done?: (errors?: unknown) => void) => {
-          done?.();
-          return Promise.resolve();
-        },
+        validate: () => Promise.resolve(true),
       }),
     onMounted: vi.fn(),
     onUnmounted: vue.onScopeDispose,
@@ -42,8 +39,6 @@ vi.mock('@novelia/web-kit', () => ({
   useWebKitViewport: () => ({ isMobile: ref(false) }),
   copyToClipboard: vi.fn(),
   getApiErrorMessage: vi.fn(),
-  XDialog: {},
-  XSelect: {},
 }));
 vi.mock('@/stores', () => ({
   useGptPipelineWorkspaceStore: () => mocks.store,

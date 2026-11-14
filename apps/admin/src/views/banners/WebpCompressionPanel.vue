@@ -86,9 +86,9 @@ const savedPercent = computed(() => {
   gap: 12px;
   margin: 12px 0 20px;
   padding: 14px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   border-radius: 8px;
-  background: var(--color-neutral-soft);
+  background: var(--ui-bg-muted);
 }
 .webp-title {
   font-size: 13px;
@@ -97,7 +97,7 @@ const savedPercent = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 12px;
 }
 .quality-field select {
@@ -105,14 +105,14 @@ const savedPercent = computed(() => {
   box-sizing: border-box;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
   background: var(--color-surface);
-  color: var(--color-ink);
+  color: var(--ui-text);
   font-size: 13px;
 }
 .quality-field select:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ui-primary);
   outline-offset: 1px;
 }
 .quality-field select:disabled {
@@ -124,21 +124,21 @@ const savedPercent = computed(() => {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .webp-summary strong {
-  color: var(--color-primary);
+  color: var(--ui-primary);
 }
 .webp-arrow {
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
 }
 .webp-saving {
   padding: 1px 6px;
   border-radius: 20px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: color-mix(in srgb, var(--ui-primary) 10%, transparent);
+  color: var(--ui-primary);
   font-size: 11px;
 }
 .webp-actions {

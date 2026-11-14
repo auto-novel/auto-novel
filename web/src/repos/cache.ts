@@ -1,6 +1,7 @@
 import { useQueryCache } from '@pinia/colada';
 
-export const cache = useQueryCache();
+// 模块会在 app.use(pinia) 前导入，只在实际操作时获取缓存。
+export const getQueryCache = () => useQueryCache();
 
 export function withOnSuccess<TArgs extends unknown[], TReturn>(
   apiCall: (...args: TArgs) => Promise<TReturn>,

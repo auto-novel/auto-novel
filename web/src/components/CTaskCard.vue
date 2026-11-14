@@ -1,7 +1,4 @@
 <script lang="ts" setup>
-import type { ScrollbarInst } from 'naive-ui';
-import { XDialog } from '@novelia/web-kit';
-
 const props = defineProps<{
   title: string;
   running: boolean;
@@ -27,7 +24,7 @@ const pushLog = (line: LogLine) => {
   logs.value.push(line);
 };
 
-const logRef = ref<ScrollbarInst>();
+const logRef = ref<{ $el: HTMLElement }>();
 const enableAutoScroll = ref(true);
 const expandLog = ref(false);
 
@@ -36,7 +33,7 @@ watch(
   () => {
     if (enableAutoScroll.value) {
       nextTick(() => {
-        logRef.value?.scrollBy({ top: 100 });
+        logRef.value?.$el.scrollBy({ top: 100 });
       });
     }
   },
@@ -62,31 +59,47 @@ defineExpose({
 </script>
 
 <template>
-  <n-card
+  <UCard
     v-show="show"
-    :title="`${title} [${running ? '运行中' : '已结束'}]`"
-    embedded
-    :bordered="false"
+    variant="soft"
+    class="divide-y-0 bg-embedded text-sm leading-[1.6] text-default"
+    :ui="{
+      header: 'px-6 pt-5 pb-0 sm:px-6',
+      body: 'px-6 py-5 sm:px-6 sm:py-5',
+    }"
   >
-    <template #header-extra>
-      <n-flex align="center">
-        <c-button
-          :label="enableAutoScroll ? '暂停滚动' : '自动滚动'"
-          size="small"
-          @action="enableAutoScroll = !enableAutoScroll"
-        />
-        <c-button
-          :label="expandLog ? '收起日志' : '展开日志'"
-          size="small"
-          @action="expandLog = !expandLog"
-        />
-      </n-flex>
+    <template #header>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h3 class="min-w-0 flex-1 text-lg font-medium break-words">
+          {{ title }} [{{ running ? '运行中' : '已结束' }}]
+        </h3>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="rounded-full text-sm/4"
+            @click="enableAutoScroll = !enableAutoScroll"
+          >
+            {{ enableAutoScroll ? '暂停滚动' : '自动滚动' }}
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            class="rounded-full text-sm/4"
+            @click="expandLog = !expandLog"
+          >
+            {{ expandLog ? '收起日志' : '展开日志' }}
+          </UButton>
+        </div>
+      </div>
     </template>
-    <n-flex :wrap="false">
-      <n-scrollbar
+    <div class="flex gap-x-3">
+      <UScrollArea
         ref="logRef"
-        style="flex: auto; white-space: pre-wrap"
-        :style="{ height: expandLog ? '540px' : '180px' }"
+        class="min-w-0 flex-auto whitespace-pre-wrap"
+        :class="expandLog ? 'h-[540px]' : 'h-[180px]'"
       >
         <div v-for="log of logs" :key="log.message">
           {{ log.message }}
@@ -94,22 +107,25 @@ defineExpose({
             [详细]
           </span>
         </div>
-      </n-scrollbar>
+      </UScrollArea>
       <slot />
-    </n-flex>
+    </div>
 
-    <XDialog
+    <UModal
+      :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
       v-model:open="showLogDetailModal"
       :title="`日志详情 - ${selectedLogMessage}`"
-      class="w-[600px]"
+      class="w-150"
     >
-      <n-p
-        v-for="line of selectedLogDetail"
-        :key="line"
-        style="white-space: pre-wrap"
-      >
-        {{ line }}
-      </n-p>
-    </XDialog>
-  </n-card>
+      <template #body>
+        <p
+          class="my-4 whitespace-pre-wrap text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+          v-for="line of selectedLogDetail"
+          :key="line"
+        >
+          {{ line }}
+        </p>
+      </template>
+    </UModal>
+  </UCard>
 </template>

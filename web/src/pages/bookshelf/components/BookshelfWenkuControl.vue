@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 
 import type { WenkuNovelOutlineDto } from '@/model/WenkuNovel';
 import { FavoredRepo } from '@/stores';
@@ -81,61 +81,78 @@ const moveToFavored = async () => {
 </script>
 
 <template>
-  <n-list bordered>
-    <n-list-item>
-      <n-flex vertical>
-        <n-flex align="baseline">
-          <n-button-group size="small">
-            <c-button
-              label="全选"
-              :round="false"
-              @action="$emit('selectAll')"
-            />
-            <c-button
-              label="反选"
-              :round="false"
-              @action="$emit('invertSelection')"
-            />
-          </n-button-group>
+  <div
+    class="divide-y divide-default leading-[1.6] text-default text-sm rounded-[3px] border border-default"
+  >
+    <div class="relative min-w-0 py-3 px-5">
+      <div class="flex flex-col gap-y-2">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+          <UFieldGroup size="sm">
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('selectAll')"
+              class="text-sm/4"
+            >
+              全选
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('invertSelection')"
+              class="text-sm/4"
+            >
+              反选
+            </UButton>
+          </UFieldGroup>
 
-          <c-button
-            label="删除"
-            secondary
-            :round="false"
-            size="small"
-            type="error"
+          <UButton
+            size="sm"
+            color="error"
             @click="openDeleteModal"
-          />
-          <XDialog
+            variant="soft"
+            class="text-sm/4"
+          >
+            删除
+          </UButton>
+          <UModal
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
             :title="`确定删除 ${
               selectedNovels.length === 1
                 ? selectedNovels[0].titleZh ?? selectedNovels[0].title
                 : `${selectedNovels.length}本小说`
             }？`"
             v-model:open="showDeleteModal"
-            class="w-[600px]"
+            class="w-150"
           >
             <template #footer>
-              <c-button label="确定" type="primary" @action="deleteSelected" />
+              <ActionButton
+                color="primary"
+                :action="deleteSelected"
+                variant="solid"
+              >
+                确定
+              </ActionButton>
             </template>
-          </XDialog>
-        </n-flex>
-        <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
-      </n-flex>
-    </n-list-item>
+          </UModal>
+        </div>
+        <span class="text-muted">已选择{{ selectedNovels.length }}本小说</span>
+      </div>
+    </div>
 
-    <n-list-item v-if="favoreds.wenku.length > 1">
-      <n-flex vertical>
+    <div class="relative min-w-0 py-3 px-5" v-if="favoreds.wenku.length > 1">
+      <div class="flex flex-col gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
-          <n-flex align="center">
-            <c-button
-              label="移动"
-              size="small"
-              :round="false"
-              @action="moveToFavored"
-            />
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <ActionButton
+              class="rounded-md text-sm/4"
+              size="sm"
+              :action="moveToFavored"
+            >
+              移动
+            </ActionButton>
 
             <n-radio
               v-for="favored in favoreds.wenku"
@@ -144,9 +161,9 @@ const moveToFavored = async () => {
             >
               {{ favored.title }}
             </n-radio>
-          </n-flex>
+          </div>
         </n-radio-group>
-      </n-flex>
-    </n-list-item>
-  </n-list>
+      </div>
+    </div>
+  </div>
 </template>

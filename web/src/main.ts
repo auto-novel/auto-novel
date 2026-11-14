@@ -1,5 +1,6 @@
 import { webKit } from './webKit';
 import { PiniaColada } from '@pinia/colada';
+import ui from '@nuxt/ui/vue-plugin';
 
 import App from './App.vue';
 import router from './router';
@@ -20,4 +21,5 @@ app.use(PiniaColada, {
 
 app.use(webKit);
 app.use(router);
+app.use(ui);
 app.mount('#app');

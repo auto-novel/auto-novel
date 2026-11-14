@@ -18,9 +18,9 @@ const root = ref<HTMLElement>();
 type GroupStatus = 'translating' | 'paused' | 'error';
 const expandedGroups = reactive({ paused: false, error: false });
 const regionClass: Record<GroupStatus, string> = {
-  translating: '[--region-color:var(--color-info)]',
-  paused: '[--region-color:var(--color-warning)]',
-  error: '[--region-color:var(--color-error)]',
+  translating: '[--region-color:var(--ui-info)]',
+  paused: '[--region-color:var(--ui-warning)]',
+  error: '[--region-color:var(--ui-error)]',
 };
 const previewLimit = 6;
 
@@ -197,7 +197,7 @@ watch(
 </script>
 
 <template>
-  <div ref="root" class="relative text-ink tabular-nums" tabindex="-1">
+  <div ref="root" class="relative text-default tabular-nums" tabindex="-1">
     <div
       v-if="groups.length"
       class="grid grid-cols-1 items-stretch gap-2.5 [@media(max-width:480px)]:gap-2"
@@ -226,7 +226,7 @@ watch(
             :class="[
               'box-border inline-flex h-10 w-14 flex-[0_0_56px] cursor-pointer whitespace-nowrap',
               'flex-col items-center justify-center gap-0.75 overflow-hidden',
-              'rounded-[5px] border border-divider bg-transparent p-0.75 text-[11px]',
+              'rounded-[5px] border border-default bg-transparent p-0.75 text-[11px]',
               'transition-[border-color,background-color] duration-150 ease-[ease]',
               'hover:border-(--region-color) hover:bg-hover',
               'focus-visible:outline-2 focus-visible:outline-offset-1',

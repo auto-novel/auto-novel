@@ -2,7 +2,6 @@
 import type { Comment } from '@novelia/web-kit';
 import {
   Toast,
-  XButton,
   XMarkdownHelpDialog,
   XTime,
   getApiErrorMessage,
@@ -93,7 +92,7 @@ watch(
 <template>
   <article :id="`comment-${comment.id}`" class="min-w-0 py-4">
     <header class="flex items-center gap-2 text-xs text-muted">
-      <span class="min-w-0 break-words text-sm font-bold text-ink">
+      <span class="min-w-0 break-words text-sm font-bold text-default">
         {{ comment.authorUsername }}
       </span>
       <XTime class="shrink-0" :time="comment.createdAt" preset="relative" />
@@ -112,7 +111,7 @@ watch(
       v-if="comment.status !== 0"
       class="comment-body mt-0.5 rounded-floating px-4 py-3"
     >
-      <XButton
+      <UButton
         v-if="whoami.asAdmin"
         color="neutral"
         variant="ghost"
@@ -123,7 +122,7 @@ watch(
         @click="showModeratedContent = !showModeratedContent"
       >
         {{ comment.status === 1 ? '该评论已隐藏' : '该评论已删除' }}
-      </XButton>
+      </UButton>
       <p v-else class="text-sm leading-6 text-muted">
         {{ comment.status === 1 ? '该评论已隐藏' : '该评论已删除' }}
       </p>
@@ -149,7 +148,7 @@ watch(
       <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
         <XMarkdownHelpDialog mode="comment" />
         <div class="flex gap-2">
-          <XButton
+          <UButton
             color="neutral"
             variant="ghost"
             size="xs"
@@ -157,10 +156,10 @@ watch(
             @click="editing = false"
           >
             取消
-          </XButton>
-          <XButton type="submit" size="xs" :disabled="!canSave">
+          </UButton>
+          <UButton type="submit" size="xs" :disabled="!canSave">
             {{ submitting ? '保存中…' : '保存' }}
-          </XButton>
+          </UButton>
         </div>
       </div>
     </form>

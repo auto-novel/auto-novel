@@ -1,13 +1,7 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import {
-  XEmpty,
-  XError,
-  XPagination,
-  XSeparator,
-  XPage,
-  XPageHeader,
-} from '@novelia/web-kit';
+import { XPagination, XPage } from '@novelia/web-kit';
 
 import type { ListOptions, ListValue } from '@/components/list/types';
 import { WebNovelRepo } from '@/repos';
@@ -61,7 +55,7 @@ const pageCount = computed<number>(
 
 <template>
   <XPage role="region" aria-label="小说排行榜">
-    <XPageHeader :title="title" />
+    <UPageHeader :title="title" />
 
     <ListFilter
       :options="listOptions"
@@ -78,19 +72,20 @@ const pageCount = computed<number>(
       @update:page="onUpdatePage"
     />
 
-    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+    <USeparator class="mx-0 mb-0" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelListSkeleton v-if="!novelPage && !error" />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novelPage && error"
       title="加载错误"
       :description="error.message"
     />
-    <XEmpty
+    <CEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
       class="mt-3"
       title="空列表"
-      size="compact"
     />
     <template v-else-if="novelPage">
       <NovelListWeb :items="novelPage.items" />

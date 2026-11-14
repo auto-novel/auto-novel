@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
+
 import { Setting, useSettingStore } from '@/stores';
 import {
   BookshelfLocalUtil,
@@ -73,12 +75,12 @@ defineExpose({
 </script>
 
 <template>
-  <n-flex vertical>
+  <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="搜索">
       <search-input
+        class="max-w-[400px]"
         v-model:value="search"
         placeholder="搜索文件名"
-        style="max-width: 400px"
       />
     </c-action-wrapper>
 
@@ -88,33 +90,58 @@ defineExpose({
         :options="Setting.localVolumeOrderOptions"
       />
     </c-action-wrapper>
-  </n-flex>
+  </div>
 
-  <n-divider style="margin: 16px 0 8px" />
+  <USeparator class="mx-0 mt-4 mb-2" />
 
-  <n-spin v-if="loading" description="正在加载" style="margin-top: 20px" />
-
-  <n-alert
-    v-else-if="loadError !== null"
-    type="error"
-    title="加载失败"
-    style="margin-top: 20px"
+  <div
+    v-if="loading"
+    class="mt-5 flex flex-col items-center gap-2 text-primary"
+    role="status"
+    aria-label="正在加载"
   >
-    <n-flex vertical>
-      <span>{{ loadError }}</span>
-      <c-button label="重试" @action="loadVolumes" />
-    </n-flex>
-  </n-alert>
+    <UIcon
+      name="i-lucide-loader-circle"
+      class="size-8 animate-spin"
+      aria-hidden="true"
+    />
+    <span>正在加载</span>
+  </div>
 
-  <n-empty
+  <UAlert
+    class="mt-5"
+    v-else-if="loadError !== null"
+    color="error"
+    variant="subtle"
+    icon="i-lucide-circle-alert"
+    title="加载失败"
+    :ui="{ description: 'break-words' }"
+    role="alert"
+  >
+    <template #description>
+      <div class="flex flex-col gap-y-2">
+        <span>{{ loadError }}</span>
+        <ActionButton :action="loadVolumes">重试</ActionButton>
+      </div>
+    </template>
+  </UAlert>
+
+  <CEmpty
+    class="mt-5"
+    inline
     v-else-if="sortedVolumes.length === 0"
-    description="没有文件"
-    style="margin-top: 20px"
+    title="没有文件"
   />
 
-  <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
-    <n-list style="padding-bottom: 48px; padding-right: 12px">
-      <n-list-item v-for="volume of sortedVolumes" :key="volume.id">
+  <UScrollArea class="flex-auto" v-else>
+    <div
+      class="divide-y divide-default leading-[1.6] text-default text-sm pb-12 pr-3"
+    >
+      <div
+        class="relative min-w-0 py-3"
+        v-for="volume of sortedVolumes"
+        :key="volume.id"
+      >
         <bookshelf-local-list-item :volume="volume" />
         <c-select-overlay
           v-if="selectable"
@@ -123,7 +150,7 @@ defineExpose({
             (checked: boolean) => toggleSelect(volume.id, checked)
           "
         />
-      </n-list-item>
-    </n-list>
-  </n-scrollbar>
+      </div>
+    </div>
+  </UScrollArea>
 </template>

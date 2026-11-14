@@ -39,21 +39,29 @@ const handelClick = (option: Option) => {
 };
 </script>
 <template>
-  <n-button-group size="small">
+  <UFieldGroup size="sm">
     <template v-for="option in options" :key="option.value">
-      <n-button
-        :type="option.value === modelValue.value ? 'success' : 'default'"
+      <UButton
+        :color="option.value === modelValue.value ? 'success' : 'neutral'"
+        :aria-pressed="option.value === modelValue.value"
         @click="handelClick(option)"
-        ghost
+        variant="outline"
+        class="text-sm/4"
       >
-        <template #icon v-if="option.value === modelValue.value">
-          <n-icon>
-            <ArrowDropDownFilled v-if="modelValue.desc" />
-            <ArrowDropUpFilled v-else />
-          </n-icon>
+        <template #leading v-if="option.value === modelValue.value">
+          <ArrowDropDownFilled
+            v-if="modelValue.desc"
+            class="size-4 shrink-0"
+            aria-hidden="true"
+          />
+          <ArrowDropUpFilled
+            v-else
+            class="size-4 shrink-0"
+            aria-hidden="true"
+          />
         </template>
         {{ option.label }}
-      </n-button>
+      </UButton>
     </template>
-  </n-button-group>
+  </UFieldGroup>
 </template>

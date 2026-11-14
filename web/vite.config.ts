@@ -1,4 +1,6 @@
-import tailwindcss from '@tailwindcss/vite';
+import ui from '@nuxt/ui/vite';
+// web-kit 导出 TS 源码；相对路径让 Vite 配置加载器一并转译，避免 Node 外部加载 node_modules 中的 TS。
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/src/ui/nuxt-ui.ts';
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
@@ -6,7 +8,6 @@ import { ProxyAgent } from 'proxy-agent';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
-import Components from 'unplugin-vue-components/vite';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -31,28 +32,40 @@ export default defineConfig(({ command, mode }) => {
       __COMMIT_SHA__: JSON.stringify(env.VITE_COMMIT_SHA || 'unknown'),
     },
     build: {
+      target: 'safari16',
       cssCodeSplit: false,
       rolldownOptions: {
+        preserveEntrySignatures: false,
         output: {
-          // 应用代码自动分包，保留 web-kit 和现有大依赖的独立分包规则。
-          manualChunks(id) {
-            const normalizedId = id.replaceAll('\\', '/');
-            if (normalizedId.includes('/node_modules/@novelia/web-kit/')) {
-              return 'web-kit';
-            }
-            if (normalizedId.includes('/node_modules/')) {
-              if (normalizedId.includes('/node_modules/@zip.js/')) {
-                return 'dep-zip';
-              }
-              if (normalizedId.includes('/node_modules/opencc-js/')) {
-                return 'dep-opencc';
-              }
-              if (normalizedId.includes('/node_modules/naive-ui/')) {
-                return 'dep-naive';
-              }
-              return 'vendor';
-            }
-            return undefined;
+          strictExecutionOrder: true,
+          codeSplitting: {
+            includeDependenciesRecursively: false,
+            groups: [
+              {
+                name: 'web-kit',
+                test: /\/node_modules\/@novelia\/web-kit\//,
+              },
+              {
+                name: 'dep-pi',
+                test: /\/node_modules\/(?:@earendil-works\/pi-ai|@anthropic-ai\/sdk|openai)\//,
+              },
+              {
+                name: 'dep-zip',
+                test: /\/node_modules\/@zip\.js\//,
+              },
+              {
+                name: 'dep-opencc',
+                test: /\/node_modules\/opencc-js\//,
+              },
+              {
+                name: 'dep-naive',
+                test: /\/node_modules\/naive-ui\//,
+              },
+              {
+                name: 'vendor',
+                test: /node_modules/,
+              },
+            ],
           },
         },
       },
@@ -91,29 +104,20 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       vue(),
-      tailwindcss(),
+      ui({
+        ...webKitNuxtUiOptions,
+        // 统一生成组件声明，避免两套组件自动导入插件互相覆盖。
+        components: {
+          dts: 'src/components.d.ts',
+          dirs: ['src/**/components/**'],
+          resolvers: [NaiveUiResolver()],
+        },
+      }),
       htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),
       AutoImport({
         dts: 'src/auto-imports.d.ts',
         ignore: ['h'],
-        imports: [
-          'vue',
-          'vue-router',
-          'pinia',
-          {
-            'naive-ui': [
-              'useDialog',
-              'useNotification',
-              'useLoadingBar',
-              'useThemeVars',
-            ],
-          },
-        ],
-      }),
-      Components({
-        dts: 'src/components.d.ts',
-        dirs: ['src/**/components/**'],
-        resolvers: [NaiveUiResolver()],
+        imports: ['vue', 'vue-router', 'pinia'],
       }),
     ],
   };

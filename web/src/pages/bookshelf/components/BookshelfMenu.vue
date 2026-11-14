@@ -44,7 +44,7 @@ const groups = computed(() => {
     <section
       v-for="group in groups"
       :key="group.type"
-      class="border-divider px-2 py-2 first:pt-0 not-first:border-t"
+      class="border-default px-2 py-2 first:pt-0 not-first:border-t"
     >
       <h2 class="px-3 py-2 text-sm font-normal text-muted">
         {{ group.title }}

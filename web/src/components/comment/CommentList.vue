@@ -1,16 +1,11 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import { CommentOutlined } from '@vicons/material';
-import {
-  XButton,
-  XEmpty,
-  XError,
-  XPagination,
-  XSkeleton,
-} from '@novelia/web-kit';
+import { XPagination } from '@novelia/web-kit';
 
 import { CommentRepo } from '@/repos';
 import type { Comment } from '@novelia/web-kit';
-import { useDraftStore, useWhoamiStore } from '@/stores';
+import { useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
   site: string;
@@ -35,9 +30,6 @@ const pageCount = computed<number>((previous) => {
 const whoamiStore = useWhoamiStore();
 const { whoami } = storeToRefs(whoamiStore);
 
-const draftStore = useDraftStore();
-const draftId = `comment-${props.site}`;
-
 const showInput = ref(false);
 const replyTo = ref<Comment>();
 
@@ -52,8 +44,6 @@ watch(page, () => {
 function onReplied() {
   showInput.value = false;
   replyTo.value = undefined;
-  draftStore.cancelAddDraft();
-  draftStore.removeDraft(draftId);
 }
 
 function toggleInput() {
@@ -82,23 +72,23 @@ const canReply = computed(() => {
     ref="paginationScope"
     tabindex="0"
     aria-label="评论列表"
-    class="comment-list mt-5 border-t border-divider"
+    class="comment-list mt-5 border-t border-default"
   >
     <header
       class="flex items-center justify-between gap-4 py-4"
-      :class="{ 'border-b border-divider': !showInput }"
+      :class="{ 'border-b border-default': !showInput }"
     >
-      <h2 class="text-lg font-semibold text-ink">评论</h2>
-      <XButton
+      <h2 class="text-lg font-semibold text-default">评论</h2>
+      <UButton
+        :icon="CommentOutlined"
         v-if="canReply"
         size="sm"
         aria-controls="comment-composer"
         :aria-expanded="showInput"
         @click="toggleInput()"
       >
-        <CommentOutlined class="size-4" aria-hidden="true" />
         {{ showInput ? '取消评论' : '发表评论' }}
-      </XButton>
+      </UButton>
     </header>
 
     <p v-if="locked" class="py-2 text-sm text-warning">
@@ -109,9 +99,8 @@ const canReply = computed(() => {
       v-if="showInput"
       id="comment-composer"
       :disabled="!canReply"
-      class="border-b border-divider py-4"
+      class="border-b border-default py-4"
       :site="site"
-      :draft-id="draftId"
       placeholder="发表评论"
       @replied="onReplied()"
       @cancel="cancelInput()"
@@ -126,30 +115,33 @@ const canReply = computed(() => {
 
     <div v-if="!commentPage && !error" role="status">
       <span class="sr-only">正在加载评论…</span>
-      <div class="divide-y divide-divider" aria-hidden="true">
+      <div class="divide-y divide-default" aria-hidden="true">
         <div v-for="index in 3" :key="index" class="py-4">
-          <XSkeleton class="h-5 w-28 bg-border" />
+          <USkeleton class="h-5 w-28" />
           <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
-            <XSkeleton class="h-4 w-full" />
-            <XSkeleton class="mt-2 h-4 w-2/3" />
+            <USkeleton class="h-4 w-full" />
+            <USkeleton class="mt-2 h-4 w-2/3" />
           </div>
         </div>
       </div>
     </div>
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!commentPage && error"
       title="加载错误"
       :description="error.message"
     >
-      <XButton @click="refetch()">再试一次</XButton>
-    </XError>
-    <XEmpty
+      <template #actions>
+        <UButton @click="refetch()">再试一次</UButton>
+      </template>
+    </UAlert>
+    <CEmpty
       v-else-if="commentPage?.items.length === 0 && !locked"
       title="暂无评论"
-      size="compact"
     />
     <template v-else-if="commentPage">
-      <div class="divide-y divide-divider">
+      <div class="divide-y divide-default">
         <CommentThread
           v-for="comment in commentPage.items"
           :key="comment.id"
@@ -165,7 +157,6 @@ const canReply = computed(() => {
             :key="replyTo.id"
             class="mt-3 pb-4"
             :site="site"
-            :draft-id="draftId"
             :parent="comment.id"
             :reply-to="replyTo"
             :disabled="!canReply"
@@ -196,10 +187,5 @@ const canReply = computed(() => {
 
 .comment-list :deep(.comment-body) {
   background-color: var(--color-embedded);
-}
-
-.comment-list :deep(.n-pagination) {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--color-divider);
 }
 </style>

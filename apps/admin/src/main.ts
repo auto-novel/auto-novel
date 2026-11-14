@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createWebKit } from '@novelia/web-kit';
+import ui from '@nuxt/ui/vue-plugin';
 import App from './App.vue';
 import router from './router';
 import { bannerApiKey, createBannerApi } from './api';
@@ -27,4 +28,5 @@ createApp(App)
   )
   .use(webKit)
   .use(router)
+  .use(ui)
   .mount('#app');

@@ -1,8 +1,4 @@
 /** 通用 LLM 调用客户端：基于 pi-ai 适配协议，封装 SDK 与网关兼容细节。 */
-import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy';
-import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
-import { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy';
-import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript';
 import { TranslationRejected } from '@/errors';
 import type {
   AssistantMessage,
@@ -59,15 +55,26 @@ export class PiAiRequestError extends Error {
   }
 }
 
-const streams = {
-  'openai-completions': openAICompletionsApi(),
-  'openai-responses': openAIResponsesApi(),
-  'anthropic-messages': anthropicMessagesApi(),
-} as const;
-
 export async function createPiAiCompletion(
   request: PiAiCompletionRequest,
 ): Promise<PiAiCompletionResult> {
+  // 延迟加载 AI 依赖，避免旧版 Safari 的正则解析错误影响阅读。
+  const [
+    { anthropicMessagesApi },
+    { openAICompletionsApi },
+    { openAIResponsesApi },
+    { normalizeContext },
+  ] = await Promise.all([
+    import('@earendil-works/pi-ai/api/anthropic-messages.lazy'),
+    import('@earendil-works/pi-ai/api/openai-completions.lazy'),
+    import('@earendil-works/pi-ai/api/openai-responses.lazy'),
+    import('@earendil-works/pi-ai/utils/transcript'),
+  ]);
+  const streams = {
+    'openai-completions': openAICompletionsApi(),
+    'openai-responses': openAIResponsesApi(),
+    'anthropic-messages': anthropicMessagesApi(),
+  } as const;
   const model = createModel(
     request.protocol,
     request.model,

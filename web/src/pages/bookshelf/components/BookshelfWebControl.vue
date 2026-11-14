@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 
 import { TranslateTaskDescriptor } from '@/domain/translator';
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
@@ -137,62 +137,79 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-list bordered>
-    <n-list-item>
-      <n-flex vertical>
-        <n-flex align="baseline">
-          <n-button-group size="small">
-            <c-button
-              label="全选"
-              :round="false"
-              @action="$emit('selectAll')"
-            />
-            <c-button
-              label="反选"
-              :round="false"
-              @action="$emit('invertSelection')"
-            />
-          </n-button-group>
+  <div
+    class="divide-y divide-default leading-[1.6] text-default text-sm rounded-[3px] border border-default"
+  >
+    <div class="relative min-w-0 py-3 px-5">
+      <div class="flex flex-col gap-y-2">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+          <UFieldGroup size="sm">
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('selectAll')"
+              class="text-sm/4"
+            >
+              全选
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              @click="$emit('invertSelection')"
+              class="text-sm/4"
+            >
+              反选
+            </UButton>
+          </UFieldGroup>
 
-          <c-button
-            label="删除"
-            secondary
-            :round="false"
-            size="small"
-            type="error"
+          <UButton
+            size="sm"
+            color="error"
             @click="openDeleteModal"
-          />
-          <XDialog
+            variant="soft"
+            class="text-sm/4"
+          >
+            删除
+          </UButton>
+          <UModal
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
             :title="`确定删除 ${
               selectedNovels.length === 1
                 ? selectedNovels[0].titleZh ?? selectedNovels[0].titleJp
                 : `${selectedNovels.length}本小说`
             }？`"
             v-model:open="showDeleteModal"
-            class="w-[600px]"
+            class="w-150"
           >
             <template #footer>
-              <c-button label="确定" type="primary" @action="deleteSelected" />
+              <ActionButton
+                color="primary"
+                :action="deleteSelected"
+                variant="solid"
+              >
+                确定
+              </ActionButton>
             </template>
-          </XDialog>
-        </n-flex>
+          </UModal>
+        </div>
 
-        <n-text depth="3">已选择{{ selectedNovels.length }}本小说</n-text>
-      </n-flex>
-    </n-list-item>
+        <span class="text-muted">已选择{{ selectedNovels.length }}本小说</span>
+      </div>
+    </div>
 
-    <n-list-item v-if="favoreds.web.length > 1">
-      <n-flex vertical>
+    <div class="relative min-w-0 py-3 px-5" v-if="favoreds.web.length > 1">
+      <div class="flex flex-col gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
         <n-radio-group v-model:value="targetFavoredId">
-          <n-flex align="center">
-            <c-button
-              label="移动"
-              size="small"
-              :round="false"
-              @action="moveToFavored"
-            />
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <ActionButton
+              class="rounded-md text-sm/4"
+              size="sm"
+              :action="moveToFavored"
+            >
+              移动
+            </ActionButton>
 
             <n-radio
               v-for="favored in favoreds.web"
@@ -201,78 +218,81 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             >
               {{ favored.title }}
             </n-radio>
-          </n-flex>
+          </div>
         </n-radio-group>
-      </n-flex>
-    </n-list-item>
+      </div>
+    </div>
 
-    <n-list-item
+    <div
+      class="relative min-w-0 py-3 px-5"
       v-if="
         setting.enabledTranslator.includes('gpt') ||
         setting.enabledTranslator.includes('sakura')
       "
     >
-      <n-flex vertical>
+      <div class="flex flex-col gap-y-2">
         <b>生成翻译任务</b>
 
-        <n-flex size="small">
-          <n-tooltip trigger="hover">
-            <template #trigger>
-              <n-flex :size="0" :wrap="false">
-                <tag-button
-                  label="常规"
-                  :checked="translateLevel === 'normal'"
-                  @update:checked="translateLevel = 'normal'"
-                />
-                <tag-button
-                  label="过期"
-                  :checked="translateLevel === 'expire'"
-                  @update:checked="translateLevel = 'expire'"
-                />
-                <tag-button
-                  label="重翻"
-                  type="warning"
-                  :checked="translateLevel === 'all'"
-                  @update:checked="translateLevel = 'all'"
-                />
-              </n-flex>
+        <div class="flex flex-wrap gap-x-2 gap-y-1">
+          <UTooltip>
+            <div class="flex">
+              <tag-button
+                label="常规"
+                :checked="translateLevel === 'normal'"
+                @update:checked="translateLevel = 'normal'"
+              />
+              <tag-button
+                label="过期"
+                :checked="translateLevel === 'expire'"
+                @update:checked="translateLevel = 'expire'"
+              />
+              <tag-button
+                label="重翻"
+                type="warning"
+                :checked="translateLevel === 'all'"
+                @update:checked="translateLevel = 'all'"
+              />
+            </div>
+
+            <template #content>
+              常规：只翻译未翻译的章节
+              <br />
+              过期：翻译术语表过期的章节
+              <br />
+              重翻：重翻全部章节
+              <br />
             </template>
-            常规：只翻译未翻译的章节
-            <br />
-            过期：翻译术语表过期的章节
-            <br />
-            重翻：重翻全部章节
-            <br />
-          </n-tooltip>
+          </UTooltip>
 
           <tag-button label="重翻目录" v-model:checked="forceMetadata" />
           <tag-button label="前5话" v-model:checked="first5" />
           <tag-button label="倒序添加" v-model:checked="reverseOrder" />
 
-          <n-text
+          <span
+            class="text-warning basis-full text-[12px]"
             v-if="translateLevel === 'all'"
-            type="warning"
-            style="font-size: 12px; flex-basis: 100%"
           >
             <b>* 请确保你知道自己在干啥，不要随便使用危险功能</b>
-          </n-text>
-        </n-flex>
+          </span>
+        </div>
 
-        <n-button-group size="small">
-          <c-button
+        <UFieldGroup size="sm">
+          <ActionButton
+            class="rounded-md text-sm/4"
             v-if="setting.enabledTranslator.includes('gpt')"
-            label="排队GPT"
-            :round="false"
-            @action="queueJobs('gpt')"
-          />
-          <c-button
+            :action="() => queueJobs('gpt')"
+          >
+            排队GPT
+          </ActionButton>
+          <ActionButton
+            class="rounded-md text-sm/4"
             v-if="setting.enabledTranslator.includes('sakura')"
-            label="排队Sakura"
-            :round="false"
-            @action="queueJobs('sakura')"
-          />
-        </n-button-group>
-      </n-flex>
-    </n-list-item>
-  </n-list>
+            :action="() => queueJobs('sakura')"
+          >
+            排队Sakura
+          </ActionButton>
+        </UFieldGroup>
+      </div>
+    </div>
+  </div>
 </template>

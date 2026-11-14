@@ -1,10 +1,6 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  getApiErrorMessage,
-  XPage,
-  XPageHeader,
-} from '@novelia/web-kit';
+import { useRequireLogin } from '@/util/useRequireLogin';
+import { Toast, getApiErrorMessage, XPage } from '@novelia/web-kit';
 import { UploadOutlined } from '@vicons/material';
 
 import { WebNovelRepo } from '@/repos';
@@ -17,6 +13,15 @@ const { providerId, novelId } = defineProps<{
 
 const router = useRouter();
 const isWideScreen = useIsWideScreen();
+const formFieldProps = computed(() => ({
+  orientation: isWideScreen.value
+    ? ('horizontal' as const)
+    : ('vertical' as const),
+  ui: {
+    wrapper: isWideScreen.value ? 'w-20 shrink-0 pt-1.5' : undefined,
+    container: 'min-w-0 flex-1',
+  },
+}));
 const allowSubmit = ref(false);
 const formValue = ref({
   titleJp: '',
@@ -91,91 +96,107 @@ const submit = async () => {
     })
     .catch(() => {});
 };
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
   <XPage>
-    <XPageHeader title="编辑网络小说" />
+    <UPageHeader title="编辑网络小说" />
 
-    <n-form
-      :model="formValue"
-      :label-placement="isWideScreen ? 'left' : 'top'"
-      label-width="auto"
+    <UForm
+      :state="formValue"
+      class="space-y-5"
+      @submit="requireLogin(submit)()"
     >
-      <n-form-item path="wenkuId" label="文库链接">
-        <n-input-group>
-          <n-input-group-label>wenku/</n-input-group-label>
-          <n-input
-            v-model:value="formValue.wenkuId"
+      <UFormField v-bind="formFieldProps" name="wenkuId" label="文库链接">
+        <UFieldGroup class="w-full">
+          <UBadge
+            color="neutral"
+            variant="outline"
+            label="wenku/"
+            class="shrink-0 rounded-sm px-3 text-sm font-normal"
+          />
+          <UInput
+            class="min-w-0 flex-1"
+            v-model="formValue.wenkuId"
             placeholder="文库版ID"
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
           />
-        </n-input-group>
-      </n-form-item>
+        </UFieldGroup>
+      </UFormField>
 
-      <n-form-item label="日文标题">
+      <UFormField v-bind="formFieldProps" label="日文标题">
         {{ formValue.titleJp }}
-      </n-form-item>
-      <n-form-item path="title" label="中文标题">
-        <n-input
-          v-model:value="formValue.title"
+      </UFormField>
+      <UFormField v-bind="formFieldProps" name="title" label="中文标题">
+        <UInput
+          class="w-full"
+          v-model="formValue.title"
           :placeholder="formValue.titleJp"
-          :input-props="{ spellcheck: false }"
+          :spellcheck="false"
         />
-      </n-form-item>
+      </UFormField>
 
-      <n-form-item label="日文简介">
+      <UFormField v-bind="formFieldProps" label="日文简介">
         {{ formValue.introductionJp }}
-      </n-form-item>
-      <n-form-item path="introduction" label="中文简介">
-        <n-input
-          v-model:value="formValue.introduction"
+      </UFormField>
+      <UFormField v-bind="formFieldProps" name="introduction" label="中文简介">
+        <UTextarea
+          class="w-full"
+          v-model="formValue.introduction"
           :placeholder="formValue.introductionJp"
-          :input-props="{ spellcheck: false }"
-          :autosize="{ minRows: 3, maxRows: 10 }"
-          type="textarea"
+          :spellcheck="false"
+          :rows="3"
+          :maxrows="10"
+          autoresize
         />
-      </n-form-item>
-    </n-form>
+      </UFormField>
+    </UForm>
 
-    <n-h2 prefix="bar">目录</n-h2>
-    <n-p>
-      <n-text type="error">
+    <h2 class="heading-bar">目录</h2>
+    <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+      <span class="text-error">
         注意，手动编辑目录可能会被其他人覆盖。如果你不满意目录的翻译，可以先用翻译器重翻试试。
-      </n-text>
-    </n-p>
-    <n-table :bordered="false" :bottom-bordered="false" style="width: 100%">
-      <tr v-for="token in formValue.toc" :key="token.key">
-        <td style="width: 50%; padding: 4px">
-          {{ token.jp }}
-          <br />
-          <n-input
-            v-if="!isWideScreen"
-            v-model:value="token.zh"
-            :placeholder="token.jp"
-            :input-props="{ spellcheck: false }"
-          />
-        </td>
-        <td v-if="isWideScreen" style="padding: 4px">
-          <n-input
-            v-model:value="token.zh"
-            :placeholder="token.jp"
-            :input-props="{ spellcheck: false }"
-          />
-        </td>
-      </tr>
-    </n-table>
+      </span>
+    </p>
+    <table class="content-table [&>tbody>tr:last-child>td]:border-b-0">
+      <tbody>
+        <tr v-for="token in formValue.toc" :key="token.key">
+          <td class="w-1/2 p-1!">
+            {{ token.jp }}
+            <br />
+            <UInput
+              class="w-full"
+              v-if="!isWideScreen"
+              v-model="token.zh"
+              :placeholder="token.jp"
+              :spellcheck="false"
+            />
+          </td>
+          <td v-if="isWideScreen" class="p-1!">
+            <UInput
+              class="w-full"
+              v-model="token.zh"
+              :placeholder="token.jp"
+              :spellcheck="false"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-    <n-divider />
+    <USeparator class="my-6" />
 
-    <c-button
-      label="提交"
-      :icon="UploadOutlined"
-      require-login
-      size="large"
-      type="primary"
+    <ActionButton
+      size="xl"
+      color="primary"
       class="float"
-      @action="submit"
-    />
+      :action="requireLogin(submit)"
+      variant="solid"
+      :icon="UploadOutlined"
+      :ui="{ leadingIcon: 'size-5' }"
+    >
+      提交
+    </ActionButton>
   </XPage>
 </template>

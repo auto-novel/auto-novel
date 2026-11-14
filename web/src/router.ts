@@ -2,6 +2,24 @@ import { MyStrikeListView, restoreScrollPosition } from '@novelia/web-kit';
 import type { LocationQuery } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
+import MainLayout from './pages/MainLayout.vue';
+import BookshelfView from './pages/bookshelf/BookshelfView.vue';
+import ReadHistoryView from './pages/history/ReadHistoryView.vue';
+import HomeView from './pages/home/HomeView.vue';
+import WebNovelList from './pages/list/WebNovelList.vue';
+import WebNovelRank from './pages/list/WebNovelRank.vue';
+import WenkuNovelList from './pages/list/WenkuNovelList.vue';
+import WebNovel from './pages/novel/WebNovel.vue';
+import WebNovelEdit from './pages/novel/WebNovelEdit.vue';
+import WenkuNovel from './pages/novel/WenkuNovel.vue';
+import WenkuNovelEdit from './pages/novel/WenkuNovelEdit.vue';
+import NotFound from './pages/other/NotFound.vue';
+import Setting from './pages/other/Setting.vue';
+import Reader from './pages/reader/Reader.vue';
+import ReaderLayout from './pages/reader/ReaderLayout.vue';
+import ProcessView from './pages/toolbox/process/ProcessView.vue';
+import WorkspaceView from './pages/workspace/WorkspaceView.vue';
+
 const parseSelected = (q: LocationQuery) => {
   const selected = <number[]>[];
   if (typeof q.selected === 'string') {
@@ -20,18 +38,18 @@ const router = createRouter({
     {
       path: '/*',
       meta: { isReader: true },
-      component: () => import('./pages/reader/ReaderLayout.vue'),
+      component: ReaderLayout,
       children: [
         {
           path: '/novel/:providerId/:novelId/:chapterId',
           components: {
-            reader: () => import('./pages/reader/Reader.vue'),
+            reader: Reader,
           },
         },
         {
           path: '/workspace/reader/:novelId/:chapterId',
           components: {
-            reader: () => import('./pages/reader/Reader.vue'),
+            reader: Reader,
           },
         },
       ],
@@ -39,7 +57,7 @@ const router = createRouter({
 
     {
       path: '/*',
-      component: () => import('./pages/MainLayout.vue'),
+      component: MainLayout,
       children: [
         {
           path: '/strikes',
@@ -50,7 +68,7 @@ const router = createRouter({
         {
           path: '/',
           meta: { title: '首页' },
-          component: () => import('./pages/home/HomeView.vue'),
+          component: HomeView,
         },
 
         {
@@ -59,7 +77,7 @@ const router = createRouter({
         },
         {
           path: '/favorite/:type(web|wenku|local)/:favoredId?',
-          component: () => import('./pages/bookshelf/BookshelfView.vue'),
+          component: BookshelfView,
           meta: { title: '我的收藏' },
           props: (route) => ({
             type: route.params.type,
@@ -73,7 +91,7 @@ const router = createRouter({
         {
           path: '/read-history',
           meta: { title: '阅读历史' },
-          component: () => import('./pages/history/ReadHistoryView.vue'),
+          component: ReadHistoryView,
           props: (route) => ({
             page: Number(route.query.page) || 1,
           }),
@@ -82,7 +100,7 @@ const router = createRouter({
         {
           path: '/novel',
           meta: { title: '网络小说' },
-          component: () => import('./pages/list/WebNovelList.vue'),
+          component: WebNovelList,
           props: (route) => ({
             page: Number(route.query.page) || 1,
             query: route.query.query || '',
@@ -91,7 +109,7 @@ const router = createRouter({
         },
         {
           path: '/novel/:providerId/:novelId',
-          component: () => import('./pages/novel/WebNovel.vue'),
+          component: WebNovel,
           props: (route) => ({
             providerId: route.params.providerId,
             novelId: route.params.novelId,
@@ -101,7 +119,7 @@ const router = createRouter({
         {
           path: '/novel-edit/:providerId/:novelId',
           meta: { title: '编辑网络小说' },
-          component: () => import('./pages/novel/WebNovelEdit.vue'),
+          component: WebNovelEdit,
           props: (route) => ({
             providerId: route.params.providerId,
             novelId: route.params.novelId,
@@ -112,7 +130,7 @@ const router = createRouter({
         {
           path: '/wenku',
           meta: { title: '文库小说' },
-          component: () => import('./pages/list/WenkuNovelList.vue'),
+          component: WenkuNovelList,
           props: (route) => ({
             page: Number(route.query.page) || 1,
             query: route.query.query || '',
@@ -121,7 +139,7 @@ const router = createRouter({
         },
         {
           path: '/wenku/:novelId',
-          component: () => import('./pages/novel/WenkuNovel.vue'),
+          component: WenkuNovel,
           props: (route) => ({
             novelId: route.params.novelId,
             key: route.path,
@@ -130,7 +148,7 @@ const router = createRouter({
         {
           path: '/wenku-edit',
           meta: { title: '新建文库小说' },
-          component: () => import('./pages/novel/WenkuNovelEdit.vue'),
+          component: WenkuNovelEdit,
           props: (route) => ({
             key: route.path,
           }),
@@ -138,7 +156,7 @@ const router = createRouter({
         {
           path: '/wenku-edit/:novelId',
           meta: { title: '编辑文库小说' },
-          component: () => import('./pages/novel/WenkuNovelEdit.vue'),
+          component: WenkuNovelEdit,
           props: (route) => ({
             novelId: route.params.novelId,
             key: route.path,
@@ -148,7 +166,7 @@ const router = createRouter({
         {
           path: '/rank/web/:providerId/:typeId',
           meta: { title: '小说排行' },
-          component: () => import('./pages/list/WebNovelRank.vue'),
+          component: WebNovelRank,
           props: (route) => ({
             providerId: route.params.providerId as string,
             typeId: route.params.typeId as string,
@@ -172,20 +190,19 @@ const router = createRouter({
             {
               path: 'gpt-pipeline',
               meta: { title: 'GPT工作区' },
-              component: () => import('./pages/workspace/WorkspaceView.vue'),
+              component: WorkspaceView,
               props: { translatorId: 'gpt', key: 'gpt-pipeline' },
             },
             {
               path: 'sakura-pipeline',
               meta: { title: 'Sakura工作区' },
-              component: () => import('./pages/workspace/WorkspaceView.vue'),
+              component: WorkspaceView,
               props: { translatorId: 'sakura', key: 'sakura-pipeline' },
             },
             {
               path: 'toolbox',
               meta: { title: '处理' },
-              component: () =>
-                import('./pages/toolbox/process/ProcessView.vue'),
+              component: ProcessView,
             },
           ],
         },
@@ -193,7 +210,7 @@ const router = createRouter({
         {
           path: '/setting',
           meta: { title: '设置' },
-          component: () => import('./pages/other/Setting.vue'),
+          component: Setting,
         },
 
         // 兼容旧路由
@@ -204,7 +221,7 @@ const router = createRouter({
         // 404
         {
           path: '/:pathMatch(.*)',
-          component: () => import('./pages/other/NotFound.vue'),
+          component: NotFound,
         },
       ],
     },

@@ -1,13 +1,15 @@
 <script lang="ts" setup>
+import { useRequireLogin } from '@/util/useRequireLogin';
 import { PlusOutlined } from '@vicons/material';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import { XDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
+import type { Form, FormError, FormSchema } from '@nuxt/ui';
+import { getApiErrorMessage, Toast } from '@novelia/web-kit';
 
 import { FavoredRepo } from '@/stores';
 
 const showAddModal = ref(false);
 
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+
 const formValue = ref<{
   title: string;
   type: 'web' | 'wenku' | 'local';
@@ -15,27 +17,20 @@ const formValue = ref<{
   title: '',
   type: 'web',
 });
-const formRules: FormRules = {
-  title: [
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length > 0,
-      message: '收藏夹标题不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (_rule: FormItemRule, value: string) => value.length <= 20,
-      message: '收藏夹标题至多为20个字符',
-      trigger: 'input',
-    },
-  ],
+const validate = (): FormError[] => {
+  const errors: FormError[] = [];
+  const { title } = formValue.value;
+  if (title.length === 0) {
+    errors.push({ name: 'title', message: '收藏夹标题不能为空' });
+  }
+  if (title.length > 20) {
+    errors.push({ name: 'title', message: '收藏夹标题至多为20个字符' });
+  }
+  return errors;
 };
 
 const addFavorite = async () => {
-  try {
-    await formRef.value?.validate();
-  } catch (e) {
-    return;
-  }
+  if (!(await formRef.value?.validate({ silent: true }))) return;
 
   const { type, title } = formValue.value;
   await Toast.promise(FavoredRepo.createFavored(type, title), {
@@ -47,46 +42,78 @@ const addFavorite = async () => {
     })
     .catch(() => {});
 };
+const requireLogin = useRequireLogin();
 </script>
 
 <template>
-  <c-button label="新建" :icon="PlusOutlined" @action="showAddModal = true" />
+  <UButton
+    :icon="PlusOutlined"
+    color="neutral"
+    variant="outline"
+    class="rounded-full"
+    @click="showAddModal = true"
+  >
+    新建
+  </UButton>
 
-  <XDialog title="新建收藏夹" v-model:open="showAddModal" class="w-[600px]">
-    <n-form
-      ref="form"
-      :model="formValue"
-      :rules="formRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row label="标题" path="title">
-        <n-input
-          v-model:value="formValue.title"
-          placeholder="收藏夹标题"
-          :input-props="{ spellcheck: false }"
-        />
-      </n-form-item-row>
+  <UModal
+    title="新建收藏夹"
+    v-model:open="showAddModal"
+    class="w-150"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+  >
+    <template #body>
+      <UForm
+        ref="form"
+        :state="formValue"
+        :validate="validate"
+        :validate-on="['input']"
+        :validate-on-input-delay="0"
+        class="space-y-6"
+      >
+        <UFormField
+          name="title"
+          label="标题"
+          orientation="horizontal"
+          eager-validation
+          :ui="{ container: 'flex-1' }"
+        >
+          <UInput
+            class="w-full"
+            v-model="formValue.title"
+            placeholder="收藏夹标题"
+            :spellcheck="false"
+          />
+        </UFormField>
 
-      <n-form-item-row label="类型">
-        <c-radio-group
-          v-model:value="formValue.type"
-          :options="[
-            { label: '网页小说', value: 'web' },
-            { label: '文库小说', value: 'wenku' },
-            { label: '本地小说', value: 'local' },
-          ]"
-        />
-      </n-form-item-row>
-    </n-form>
-
-    <template #footer>
-      <c-button
-        label="确定"
-        require-login
-        type="primary"
-        @action="addFavorite"
-      />
+        <UFormField
+          name="type"
+          label="类型"
+          orientation="horizontal"
+          :ui="{ container: 'flex-1' }"
+        >
+          <URadioGroup
+            v-model="formValue.type"
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :items="[
+              { label: '网页小说', value: 'web' },
+              { label: '文库小说', value: 'wenku' },
+              { label: '本地小说', value: 'local' },
+            ]"
+          />
+        </UFormField>
+      </UForm>
     </template>
-  </XDialog>
+    <template #footer>
+      <ActionButton
+        color="primary"
+        :action="requireLogin(addFavorite)"
+        variant="solid"
+      >
+        确定
+      </ActionButton>
+    </template>
+  </UModal>
 </template>

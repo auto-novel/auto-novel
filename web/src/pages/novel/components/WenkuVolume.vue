@@ -79,64 +79,69 @@ const submitJob = (id: 'gpt' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex align="center" justify="space-between" :wrap="false">
-    <n-flex :size="4" vertical>
-      <n-text>{{ volume.volumeId }}</n-text>
+  <div class="flex justify-between items-center gap-x-3">
+    <div class="flex flex-col gap-1">
+      <span class="text-default">{{ volume.volumeId }}</span>
 
-      <n-text depth="3">
+      <span class="text-muted">
         总计 {{ volume.total }} / 有道 {{ volume.youdao }} / GPT
         {{ volume.gpt }} / Sakura {{ volume.sakura }}
-      </n-text>
+      </span>
 
-      <n-flex :size="8">
-        <c-button
+      <div class="flex flex-wrap gap-2">
+        <ActionButton
           v-if="setting.enabledTranslator.includes('youdao')"
-          label="更新有道"
-          size="tiny"
-          secondary
-          @action="startTranslateTask('youdao')"
-        />
+          size="xs"
+          variant="soft"
+          :action="() => startTranslateTask('youdao')"
+        >
+          更新有道
+        </ActionButton>
 
-        <c-button
+        <ActionButton
           v-if="setting.enabledTranslator.includes('gpt')"
-          label="排队GPT"
-          size="tiny"
-          secondary
-          @action="submitJob('gpt')"
-        />
-        <c-button
+          size="xs"
+          variant="soft"
+          :action="() => submitJob('gpt')"
+        >
+          排队GPT
+        </ActionButton>
+        <ActionButton
           v-if="setting.enabledTranslator.includes('sakura')"
-          label="排队Sakura"
-          size="tiny"
-          secondary
-          @action="submitJob('sakura')"
-        />
-        <c-button-confirm
+          size="xs"
+          variant="soft"
+          :action="() => submitJob('sakura')"
+        >
+          排队Sakura
+        </ActionButton>
+        <ConfirmActionButton
           v-if="whoami.asAdmin"
           :hint="`真的要删除《${volume.volumeId}》吗？`"
+          color="error"
+          size="xs"
+          variant="soft"
           label="删除"
-          type="error"
-          size="tiny"
-          secondary
-          @action="emit('delete')"
+          :action="() => emit('delete')"
         />
-      </n-flex>
-    </n-flex>
+      </div>
+    </div>
 
-    <c-button
-      label="下载"
+    <UButton
       :icon="FileDownloadOutlined"
-      tag="a"
+      color="neutral"
+      variant="outline"
       :href="hasTranslation ? file.url : undefined"
       :download="file.filename"
       target="_blank"
-    />
-  </n-flex>
+    >
+      下载
+    </UButton>
+  </div>
 
   <TranslateTask
     ref="translateTask"
     @update:youdao="(zh) => (volume.youdao = zh)"
     @update:sakura="(zh) => (volume.sakura = zh)"
-    style="margin-top: 20px"
+    class="mt-5"
   />
 </template>
