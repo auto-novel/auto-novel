@@ -14,6 +14,11 @@ import GptWorkerDialog from './GptWorkerDialog.vue';
 import TrialTranslationDialog from './TrialTranslationDialog.vue';
 import SakuraWorkerDialog from './SakuraWorkerDialog.vue';
 import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
+import type { TranslationResult } from '@auto-novel/translator';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 import type {
   GptPipelineWorker,
   SakuraWorker,
@@ -63,24 +68,50 @@ const testWorker = async () => {
     '国境の長いトンネルを抜けると雪国であった。夜の底が白くなった。信号所に汽車が止まった。',
   ];
   const reasoningLogs: string[] = [];
-  // 与工作区走同一条流水线，顺带验证重试、校验与降级。
-  const pipeline = new TranslationPipeline({
-    segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
-  });
+  const log = (msg: string) => {
+    if (msg.startsWith('思考：')) reasoningLogs.push(msg);
+  };
+  let pipeline: TranslationPipeline | undefined;
   await Toast.promise(
-    createTranslator({
-      ...toTranslatorConfig(props.translatorId, props.worker),
-      log: (msg) => {
-        if (msg.startsWith('思考：')) reasoningLogs.push(msg);
-      },
-    }).then(async (translator) => {
-      pipeline.registerTranslator(translator, { concurrency: 1 });
-      const { lines, failed } = await pipeline.translate({ lines: textJp });
+    (async () => {
+      const worker = props.worker as GptPipelineWorker;
+      const preset =
+        props.translatorId === 'gpt'
+          ? findHarnessPresetGroup(worker.preset)
+          : undefined;
+      let result: TranslationResult;
+      if (preset) {
+        const { createHarnessMode } = await import(
+          '@/domain/translator/harness/HarnessMode'
+        );
+        const translate = createHarnessMode(
+          getHarnessModelPreset(preset, worker.model),
+          worker.key,
+          worker.id,
+          log,
+        );
+        result = await translate(
+          { lines: textJp },
+          new AbortController().signal,
+        );
+      } else {
+        // 普通模式保留上游的重试、校验与降级路径。
+        pipeline = new TranslationPipeline({
+          segmentLength: props.translatorId === 'sakura' ? 500 : undefined,
+        });
+        const translator = await createTranslator({
+          ...toTranslatorConfig(props.translatorId, props.worker),
+          log,
+        });
+        pipeline.registerTranslator(translator, { concurrency: 1 });
+        result = await pipeline.translate({ lines: textJp });
+      }
+      const { lines, failed } = result;
       if (failed.length > 0) throw failed[0].error;
       const parts = [`原文：${textJp[0]}`, `译文：${lines.join('')}`];
       if (reasoningLogs.length) parts.push(reasoningLogs.join('\n'));
       return parts.join('\n');
-    }),
+    })(),
     {
       loading: '正在测试翻译器…',
       error: (reason) => getApiErrorMessage(reason, '翻译器错误'),
@@ -90,7 +121,7 @@ const testWorker = async () => {
       Toast.success(result);
     })
     .catch(() => {});
-  pipeline.dispose();
+  pipeline?.dispose();
 };
 </script>
 

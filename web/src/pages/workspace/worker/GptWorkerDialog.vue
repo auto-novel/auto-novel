@@ -8,7 +8,7 @@ import {
   validateGptWorkerBatch,
 } from './gptWorkerForm';
 
-import type { GptPipelineWorker } from '@/model/Translator';
+import type { GptPipelineWorker, TranslatorPresetId } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
 import {
   openAiProfiles,
@@ -17,6 +17,10 @@ import {
   type OpenAiProfileSelection,
   type ProfileValues,
 } from '@auto-novel/translator';
+import {
+  harnessPresets,
+  findHarnessPresetGroup,
+} from '@auto-novel/translator/harness/presets';
 
 const props = defineProps<{
   show: boolean;
@@ -38,6 +42,14 @@ const GEMINI_ENDPOINT =
 /** 新建翻译器时默认使用的接口格式 */
 const DEFAULT_PROFILE_ID: openAiProfileId = 'deepseek';
 
+const presetOptions: { label: string; value: TranslatorPresetId }[] = [
+  { label: '通用', value: 'general' },
+  ...harnessPresets.map((preset) => ({
+    label: preset.label,
+    value: preset.id,
+  })),
+];
+
 /**
  * 按接口格式自动填入默认端点：
  * Gemini 用谷歌兼容端点，Anthropic 用 DeepSeek 的 /anthropic，，默认 DeepSeek。
@@ -58,6 +70,7 @@ const initFormValue = (
   concurrency: number;
   profileId: openAiProfileId;
   profileValues: ProfileValues;
+  preset: TranslatorPresetId;
 } => {
   // localStorage 的泛型不校验 JSON；旧非法参数回到默认值，保留可识别的接口格式。
   let profile: OpenAiProfileSelection | undefined;
@@ -74,6 +87,7 @@ const initFormValue = (
   }
   const profileId = profile?.id ?? DEFAULT_PROFILE_ID;
   const defaultValues = defaultProfileValues(profileId);
+  const preset = worker?.preset ?? 'general';
 
   if (worker === undefined) {
     return {
@@ -84,6 +98,7 @@ const initFormValue = (
       concurrency: 1,
       profileId,
       profileValues: defaultValues,
+      preset,
     };
   } else {
     return {
@@ -97,6 +112,7 @@ const initFormValue = (
         ...defaultValues,
         ...(profile?.values ?? {}),
       },
+      preset,
     };
   }
 };
@@ -104,6 +120,21 @@ const initFormValue = (
 const formRef = useTemplateRef<Form<FormSchema>>('form');
 
 const formValue = ref(initFormValue(props.worker));
+const harnessPreset = computed(() =>
+  findHarnessPresetGroup(formValue.value.preset),
+);
+const harnessModel = computed(() =>
+  harnessPreset.value?.models.find(
+    (preset) => preset.model === formValue.value.model,
+  ),
+);
+const harnessModelOptions = computed(
+  () =>
+    harnessPreset.value?.models.map(({ model }) => ({
+      label: model,
+      value: model,
+    })) ?? [],
+);
 
 /** 已保存或手动输入的 API 端点不随接口格式切换而覆盖。 */
 const preserveEndpoint = ref(Boolean(props.worker?.endpoint.trim()));
@@ -136,6 +167,29 @@ const onProfileChange = (value: string) => {
   formValue.value.profileValues = defaultProfileValues(id);
   if (!preserveEndpoint.value) {
     formValue.value.endpoint = defaultEndpoint(id);
+  }
+};
+
+const onHarnessModelChange = (value: string) => {
+  const preset = harnessPreset.value?.models.find(
+    (preset) => preset.model === value,
+  );
+  if (!preset) return;
+  formValue.value.model = preset.model;
+  formValue.value.endpoint = preset.endpoint;
+  modelText.value = preset.model;
+  preserveEndpoint.value = true;
+};
+
+const onPresetChange = (value: string) => {
+  formValue.value.preset = value as TranslatorPresetId;
+  const model = harnessPreset.value?.models[0];
+  if (model) onHarnessModelChange(model.model);
+  else {
+    formValue.value.endpoint = defaultEndpoint(formValue.value.profileId);
+    formValue.value.model = '';
+    modelText.value = '';
+    preserveEndpoint.value = false;
   }
 };
 
@@ -266,6 +320,7 @@ const validateIds = (): string | null => {
 };
 
 const profileForSave = (): OpenAiProfileSelection | undefined => {
+  if (harnessPreset.value) return undefined;
   try {
     return parseOpenAiProfileSelection({
       id: formValue.value.profileId,
@@ -277,7 +332,7 @@ const profileForSave = (): OpenAiProfileSelection | undefined => {
   }
 };
 
-const addWorkers = (profile: OpenAiProfileSelection) => {
+const addWorkers = (profile: OpenAiProfileSelection | undefined) => {
   const endpoint = formValue.value.endpoint.trim();
   for (const w of generatedWorkers.value) {
     workspace.addWorker({
@@ -287,6 +342,7 @@ const addWorkers = (profile: OpenAiProfileSelection) => {
       key: w.key,
       concurrency: workerConcurrencies[w.uid] ?? defaultConcurrency.value,
       profile,
+      preset: formValue.value.preset,
     });
   }
 };
@@ -299,13 +355,13 @@ const save = () => {
       return;
     }
     const profile = profileForSave();
-    if (!profile) return;
+    if (!harnessPreset.value && !profile) return;
     addWorkers(profile);
     Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
     emit('update:show', false);
   } else {
     const profile = profileForSave();
-    if (!profile) return;
+    if (!harnessPreset.value && !profile) return;
     const { id, model, endpoint, key, concurrency } = formValue.value;
     const worker = {
       id: id.trim(),
@@ -314,6 +370,7 @@ const save = () => {
       key: key.trim(),
       concurrency,
       profile,
+      preset: formValue.value.preset,
     };
     const index = workspaceRef.value.workers.findIndex(
       (w) => w.id === props.worker?.id,
@@ -336,7 +393,7 @@ const submitAndContinue = async () => {
     return;
   }
   const profile = profileForSave();
-  if (!profile) return;
+  if (!harnessPreset.value && !profile) return;
   addWorkers(profile);
   Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
 };
@@ -366,9 +423,31 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           orientation="horizontal"
           :ui="{ container: 'flex-1 min-w-0' }"
           eager-validation
-          label="接口格式"
+          label="预设"
         >
           <USelect
+            :model-value="formValue.preset"
+            :items="presetOptions"
+            aria-label="预设"
+            class="w-full"
+            @update:model-value="onPresetChange"
+          />
+        </UFormField>
+
+        <UFormField
+          orientation="horizontal"
+          :ui="{ container: 'flex-1 min-w-0' }"
+          eager-validation
+          label="接口格式"
+        >
+          <UInput
+            v-if="harnessPreset"
+            class="w-full"
+            :model-value="harnessModel?.protocol ?? ''"
+            disabled
+          />
+          <USelect
+            v-else
             :model-value="formValue.profileId"
             :items="
               openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
@@ -379,7 +458,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
           />
         </UFormField>
 
-        <template v-if="currentProfile?.fields.length">
+        <template v-if="!harnessPreset && currentProfile?.fields.length">
           <UFormField
             orientation="horizontal"
             :ui="{ container: 'flex-1 min-w-0' }"
@@ -427,6 +506,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
               class="w-full"
               :model-value="formValue.endpoint"
               :placeholder="defaultEndpoint(formValue.profileId)"
+              :disabled="Boolean(harnessPreset)"
               @update:model-value="onEndpointInput"
             />
           </UFormField>
@@ -438,7 +518,16 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
             name="models"
             label="模型"
           >
+            <USelect
+              v-if="harnessPreset"
+              :model-value="modelText"
+              :items="harnessModelOptions"
+              aria-label="模型"
+              class="w-full"
+              @update:model-value="onHarnessModelChange"
+            />
             <UTextarea
+              v-else
               class="w-full"
               v-model="modelText"
               placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
@@ -562,7 +651,16 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
             name="model"
             label="模型"
           >
+            <USelect
+              v-if="harnessPreset"
+              :model-value="formValue.model"
+              :items="harnessModelOptions"
+              aria-label="模型"
+              class="w-full"
+              @update:model-value="onHarnessModelChange"
+            />
             <UInput
+              v-else
               class="w-full"
               v-model="formValue.model"
               placeholder="deepseek-v4-pro"
@@ -579,6 +677,7 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
               class="w-full"
               :model-value="formValue.endpoint"
               :placeholder="defaultEndpoint(formValue.profileId)"
+              :disabled="Boolean(harnessPreset)"
               @update:model-value="onEndpointInput"
             />
           </UFormField>

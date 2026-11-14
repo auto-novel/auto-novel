@@ -1,4 +1,8 @@
 import type { Segment, SegmentTracker } from '@auto-novel/translator';
+import type {
+  HarnessUsageRecord,
+  HarnessReasoningRecord,
+} from '@auto-novel/translator/harness';
 import type { TaskChapter, TaskMetadataUnit } from './tasks/task';
 
 export type UnitStatus = 'pending' | 'translating' | 'done' | 'error';
@@ -39,6 +43,9 @@ export class UnitDetailState implements SegmentTracker {
   segments: SegmentState[] = [];
   /** 是否完成 Segment 切分 */
   ready = false;
+  harness = false;
+  harnessUsage: HarnessUsageRecord[] = [];
+  reasoning: HarnessReasoningRecord[] = [];
 
   get completedCount(): number {
     return this.segments.filter((s) => s.status === 'done').length;
@@ -53,6 +60,18 @@ export class UnitDetailState implements SegmentTracker {
   constructor(chapterId: string) {
     this.chapterId = chapterId;
     return reactive(this) as UnitDetailState;
+  }
+
+  onHarnessStart(): void {
+    this.harness = true;
+  }
+
+  onHarnessUsage(record: HarnessUsageRecord): void {
+    this.harnessUsage.push(record);
+  }
+
+  onHarnessReasoning(record: HarnessReasoningRecord): void {
+    this.reasoning.push(record);
   }
 
   onSegmentsReady(segments: readonly Segment[]): void {
@@ -195,6 +214,8 @@ export class TaskState {
       if (state) {
         // 预览可能仍持有状态引用，先释放文本，再移除工作区中的状态。
         state.segments = [];
+        state.reasoning = [];
+        state.harnessUsage = [];
         state.ready = false;
       }
       this.unitDetails.delete(chapterId);
