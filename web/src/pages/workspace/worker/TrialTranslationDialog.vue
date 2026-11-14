@@ -1,7 +1,15 @@
 <script lang="ts" setup>
 import { Toast, copyToClipboard, useWebKitViewport } from '@novelia/web-kit';
 import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
-import type { Translator, SegmentTracker } from '@auto-novel/translator';
+import type {
+  Translator,
+  SegmentTracker,
+  TranslationResult,
+} from '@auto-novel/translator';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 
 import TrialGlossaryPanel from './TrialGlossaryPanel.vue';
 
@@ -268,20 +276,41 @@ const translate = async () => {
   };
 
   try {
-    const t = await getTranslator();
+    const worker = props.worker as GptPipelineWorker;
+    const preset = isSakura.value
+      ? undefined
+      : findHarnessPresetGroup(worker.preset);
+    let result: TranslationResult;
+    if (preset) {
+      const { createHarnessMode } = await import(
+        '@/domain/translator/harness/HarnessMode'
+      );
+      if (current !== generation) return;
+      phase.value = 'translating';
+      const translate = createHarnessMode(
+        getHarnessModelPreset(preset, worker.model),
+        worker.key,
+        worker.id,
+      );
+      result = await translate(
+        { lines: source.split('\n'), glossary: glossary.value, tracker },
+        abortController.signal,
+      );
+    } else {
+      const t = await getTranslator();
+      if (current !== generation) return;
+      phase.value = 'translating';
+      pipeline = new TranslationPipeline({
+        segmentLength: isSakura.value ? 500 : undefined,
+      });
+      pipeline.registerTranslator(t, { concurrency: 1 });
+      result = await pipeline.translate(
+        { lines: source.split('\n'), glossary: glossary.value, tracker },
+        abortController.signal,
+      );
+    }
     if (current !== generation) return;
-
-    phase.value = 'translating';
-    pipeline = new TranslationPipeline({
-      segmentLength: isSakura.value ? 500 : undefined,
-    });
-    pipeline.registerTranslator(t, { concurrency: 1 });
-
-    const { lines, failed } = await pipeline.translate(
-      { lines: source.split('\n'), glossary: glossary.value, tracker },
-      abortController.signal,
-    );
-    if (current !== generation) return;
+    const { lines, failed } = result;
 
     textZh.value = lines.join('\n');
     translatedSource.value = sourceSnapshot;
