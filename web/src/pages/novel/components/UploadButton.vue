@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast, XDialog } from '@novelia/web-kit';
+import { Toast } from '@novelia/web-kit';
 
 import { PlusOutlined } from '@vicons/material';
 import type {
@@ -183,12 +183,15 @@ const onRuleModalCloseAutoFocus = async () => {
 </script>
 
 <template>
-  <c-button
-    v-if="!haveReadRule"
-    label="上传"
+  <UButton
     :icon="PlusOutlined"
-    @action="uploadVolumes"
-  />
+    color="neutral"
+    variant="outline"
+    v-if="!haveReadRule"
+    @click="uploadVolumes"
+  >
+    上传
+  </UButton>
   <n-upload
     ref="upload"
     accept=".txt,.epub"
@@ -198,28 +201,43 @@ const onRuleModalCloseAutoFocus = async () => {
     @before-upload="beforeUpload"
     :on-remove="cancelUpload"
   >
-    <c-button label="上传" :icon="PlusOutlined" />
+    <UButton :icon="PlusOutlined" color="neutral" variant="outline">
+      上传
+    </UButton>
   </n-upload>
 
-  <XDialog
+  <UModal
     title="上传须知"
     v-model:open="showRuleModal"
-    @close-auto-focus="onRuleModalCloseAutoFocus"
-    class="w-[600px]"
+    :content="{ onCloseAutoFocus: onRuleModalCloseAutoFocus }"
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+    class="w-150"
   >
-    <n-p>在上传小说之前，请务必遵守以下规则。</n-p>
-    <n-ul>
-      <n-li>
-        日文章节上传前请确定里面有文本，单卷书压缩包超40MB里面大概率只有扫图无文本，这种是无法翻译的。
-      </n-li>
-      <n-li>EPUB文件大小超过40MB无法上传，请压缩里面的图片。</n-li>
-      <n-li>不要上传已存在的分卷，现存的分卷有问题请联系管理员。</n-li>
-      <n-li>分卷文件名应当只包含日文标题、卷数、分卷日文标题。</n-li>
-    </n-ul>
-    <n-p>由于文库小说还在开发中，规则也会变化，务必留意。</n-p>
-
-    <template #footer>
-      <c-button label="确定" type="primary" @action="showRuleModal = false" />
+    <template #body>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        在上传小说之前，请务必遵守以下规则。
+      </p>
+      <ul class="content-list">
+        <li>
+          日文章节上传前请确定里面有文本，单卷书压缩包超40MB里面大概率只有扫图无文本，这种是无法翻译的。
+        </li>
+        <li>EPUB文件大小超过40MB无法上传，请压缩里面的图片。</li>
+        <li>不要上传已存在的分卷，现存的分卷有问题请联系管理员。</li>
+        <li>分卷文件名应当只包含日文标题、卷数、分卷日文标题。</li>
+      </ul>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        由于文库小说还在开发中，规则也会变化，务必留意。
+      </p>
     </template>
-  </XDialog>
+    <template #footer>
+      <UButton
+        variant="solid"
+        color="primary"
+        class="rounded-full"
+        @click="showRuleModal = false"
+      >
+        确定
+      </UButton>
+    </template>
+  </UModal>
 </template>

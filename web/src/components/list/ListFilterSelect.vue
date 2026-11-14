@@ -31,26 +31,28 @@ function invertSelection() {
 </script>
 
 <template>
-  <CActionWrapper :title="label" align="baseline" size="large">
-    <n-flex :size="[16, 4]">
-      <n-text
+  <CActionWrapper :title="label" size="medium">
+    <div class="flex flex-wrap gap-x-4 gap-y-1">
+      <span
         v-for="(tag, index) in option.tags"
         :key="tag"
-        text
-        :type="isSelected(index) ? 'primary' : 'default'"
+        :class="isSelected(index) ? 'text-primary' : 'text-default'"
         @click="updateSelect(index)"
-        style="cursor: pointer"
+        class="cursor-pointer"
       >
         {{ tag }}
-      </n-text>
+      </span>
 
-      <c-button
-        v-if="option.multiple"
+      <UButton
         :icon="SyncAltOutlined"
-        type="primary"
-        text
+        v-if="option.multiple"
+        color="primary"
         @click="invertSelection()"
+        variant="link"
+        square
+        class="rounded-full p-0"
+        aria-label="反选"
       />
-    </n-flex>
+    </div>
   </CActionWrapper>
 </template>

@@ -4,7 +4,6 @@ import {
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
-import { NScrollbar } from 'naive-ui';
 
 import type { WebNovelDto } from '@/model/WebNovel';
 import { useSettingStore } from '@/stores';
@@ -37,27 +36,30 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
 
 <template>
   <section-header title="目录">
-    <c-button
-      v-if="hasSeparators"
-      :label="isAnyExpanded ? '折叠' : '展开'"
+    <UButton
       :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-      quaternary
-      size="small"
-      :round="false"
-      @action="toggleAll"
-      style="margin-right: 8px"
-    />
-    <c-button
-      :label="setting.tocSortReverse ? '倒序' : '正序'"
+      color="neutral"
+      v-if="hasSeparators"
+      size="sm"
+      variant="ghost"
+      class="mr-2 text-sm/4"
+      @click="toggleAll"
+    >
+      {{ isAnyExpanded ? '折叠' : '展开' }}
+    </UButton>
+    <UButton
       :icon="SortOutlined"
-      quaternary
-      size="small"
-      :round="false"
-      @action="setting.tocSortReverse = !setting.tocSortReverse"
-    />
+      color="neutral"
+      size="sm"
+      variant="ghost"
+      class="text-sm/4"
+      @click="setting.tocSortReverse = !setting.tocSortReverse"
+    >
+      {{ setting.tocSortReverse ? '倒序' : '正序' }}
+    </UButton>
   </section-header>
 
-  <n-scrollbar style="flex: 1; min-height: 0; padding: 0 16px 0 0">
+  <UScrollArea class="min-h-0 flex-1 pr-4">
     <ChapterTocList
       :toc-sections="tocSections"
       v-model:expanded-names="expandedNames"
@@ -72,5 +74,5 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
         collapse: false,
       }"
     />
-  </n-scrollbar>
+  </UScrollArea>
 </template>

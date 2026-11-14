@@ -1,13 +1,6 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  XButton,
-  XDropdownMenu,
-  XDropdownMenuItem,
-  XDrawer,
-  XSelect,
-  XDialog,
-} from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+import { Toast } from '@novelia/web-kit';
 import { FileDownloadOutlined, MoreVertOutlined } from '@vicons/material';
 
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
@@ -110,108 +103,142 @@ const sortedVolumes = computed(() => {
 </script>
 
 <template>
-  <XDrawer
+  <USlideover
     v-model:open="show"
     title="本地小说"
-    show-header
+    :close="false"
     side="right"
-    size="clamp(280px, 80vw, 800px)"
-    @open-auto-focus.prevent
+    :content="{ onOpenAutoFocus: (event: Event) => event.preventDefault() }"
+    :ui="{
+      content: 'w-[clamp(280px,80vw,800px)] max-w-[calc(100vw-3rem)]',
+      body: 'flex min-h-0 flex-1 flex-col overflow-hidden p-0 sm:p-0',
+    }"
   >
-    <template #action>
+    <template #actions>
       <bookshelf-local-add-button
         :favored-id="selectedFavored"
         @done="emit('volumeAdd', $event)"
       />
-      <c-button
-        label="下载"
+      <ActionButton
+        :action="downloadVolumes"
         :icon="FileDownloadOutlined"
-        @click="downloadVolumes"
-      />
-      <XDropdownMenu class="w-40">
-        <template #trigger>
-          <XButton
-            color="neutral"
-            variant="ghost"
-            size="icon"
-            aria-label="更多操作"
-            title="更多操作"
-          >
-            <MoreVertOutlined class="size-5" aria-hidden="true" />
-          </XButton>
-        </template>
-        <XDropdownMenuItem
-          v-for="option in options"
-          :key="option.key"
-          @select="handleSelect(option.key)"
-        >
-          {{ option.label }}
-        </XDropdownMenuItem>
-      </XDropdownMenu>
+        :ui="{ leadingIcon: 'size-4.5' }"
+      >
+        下载
+      </ActionButton>
+      <UDropdownMenu
+        :ui="{ content: 'w-40' }"
+        :items="
+          options.map((option) => ({
+            label: option.label,
+            onSelect: () => handleSelect(option.key),
+          }))
+        "
+      >
+        <UButton
+          :icon="MoreVertOutlined"
+          color="neutral"
+          variant="ghost"
+          size="md"
+          square
+          aria-label="更多操作"
+          title="更多操作"
+        />
+      </UDropdownMenu>
     </template>
 
-    <n-scrollbar trigger="none" class="min-h-0 flex-1">
-      <div style="padding: 24px 16px">
-        <n-flex vertical>
-          <c-action-wrapper title="搜索">
-            <search-input
-              v-model:value="search"
-              placeholder="搜索文件名"
-              style="max-width: 400px"
+    <template #body>
+      <UScrollArea class="min-h-0 flex-1">
+        <div class="px-4 py-6">
+          <div class="flex flex-col gap-y-2">
+            <c-action-wrapper title="搜索">
+              <search-input
+                class="max-w-[400px]"
+                v-model:value="search"
+                placeholder="搜索文件名"
+              />
+            </c-action-wrapper>
+
+            <c-action-wrapper v-if="favoreds.local.length > 1" title="收藏">
+              <USelect
+                class="w-full max-w-[400px]"
+                v-model="selectedFavored"
+                :items="favoredsOptions"
+                aria-label="收藏夹"
+              />
+            </c-action-wrapper>
+
+            <c-action-wrapper title="排序" align="center">
+              <order-sort
+                v-model:value="setting.localVolumeOrder"
+                :options="Setting.localVolumeOrderOptions"
+              />
+            </c-action-wrapper>
+            <slot name="extra" />
+          </div>
+
+          <USeparator class="mx-0 mt-4 mb-2" />
+
+          <div
+            v-if="sortedVolumes === undefined"
+            class="mt-5 flex justify-center text-primary"
+            role="status"
+            aria-label="正在加载"
+          >
+            <UIcon
+              name="i-lucide-loader-circle"
+              class="size-8 animate-spin"
+              aria-hidden="true"
             />
-          </c-action-wrapper>
+          </div>
 
-          <c-action-wrapper v-if="favoreds.local.length > 1" title="收藏">
-            <XSelect
-              v-model="selectedFavored"
-              :options="favoredsOptions"
-              aria-label="收藏夹"
-              style="width: 100%; max-width: 400px"
-            />
-          </c-action-wrapper>
+          <CEmpty
+            class="mt-5"
+            inline
+            v-else-if="sortedVolumes.length === 0"
+            title="没有文件"
+          />
 
-          <c-action-wrapper title="排序" align="center">
-            <order-sort
-              v-model:value="setting.localVolumeOrder"
-              :options="Setting.localVolumeOrderOptions"
-            />
-          </c-action-wrapper>
-          <slot name="extra" />
-        </n-flex>
-
-        <n-divider style="margin: 16px 0 8px" />
-
-        <n-spin v-if="sortedVolumes === undefined" style="margin-top: 20px" />
-
-        <n-empty
-          v-else-if="sortedVolumes.length === 0"
-          description="没有文件"
-          style="margin-top: 20px"
-        />
-
-        <n-scrollbar v-else trigger="none" :size="24" style="flex: auto">
-          <n-list style="padding-bottom: 48px; padding-right: 12px">
-            <n-list-item v-for="volume of sortedVolumes ?? []" :key="volume.id">
-              <slot name="volume" v-bind="volume" />
-            </n-list-item>
-          </n-list>
-        </n-scrollbar>
-
-        <XDialog
-          title="清空所有文件"
-          v-model:open="showDeleteModal"
-          class="w-[600px]"
-        >
-          <n-p>
-            这将清空你的浏览器里面保存的所有EPUB/TXT文件，包括已经翻译的章节和术语表，无法恢复。
-            你确定吗？
-          </n-p>
-
-          <template #footer>
-            <c-button label="确定" type="primary" @action="deleteAllVolumes" />
+          <template v-else>
+            <div
+              class="divide-y divide-default leading-[1.6] text-default text-sm pb-12 pr-3"
+            >
+              <div
+                class="relative min-w-0 py-3"
+                v-for="volume of sortedVolumes ?? []"
+                :key="volume.id"
+              >
+                <slot name="volume" v-bind="volume" />
+              </div>
+            </div>
           </template>
-        </XDialog>
-      </div>
-    </n-scrollbar>
-  </XDrawer>
+
+          <UModal
+            title="清空所有文件"
+            v-model:open="showDeleteModal"
+            class="w-150"
+            :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
+          >
+            <template #body>
+              <p
+                class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+              >
+                这将清空你的浏览器里面保存的所有EPUB/TXT文件，包括已经翻译的章节和术语表，无法恢复。
+                你确定吗？
+              </p>
+            </template>
+            <template #footer>
+              <ActionButton
+                color="primary"
+                :action="deleteAllVolumes"
+                variant="solid"
+              >
+                确定
+              </ActionButton>
+            </template>
+          </UModal>
+        </div>
+      </UScrollArea>
+    </template>
+  </USlideover>
 </template>

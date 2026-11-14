@@ -1,6 +1,12 @@
 <script lang="ts" setup>
-import { Toast, XSelect, XDialog } from '@novelia/web-kit';
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
+import { Toast } from '@novelia/web-kit';
+import type { Form, FormSchema } from '@nuxt/ui';
+
+import {
+  parseWorkerLines,
+  validateGptWorker,
+  validateGptWorkerBatch,
+} from './gptWorkerForm';
 
 import type { GptPipelineWorker, TranslatorPresetId } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
@@ -111,7 +117,8 @@ const initFormValue = (
   }
 };
 
-const formRef = useTemplateRef<FormInst>('form');
+const formRef = useTemplateRef<Form<FormSchema>>('form');
+
 const formValue = ref(initFormValue(props.worker));
 const harnessPreset = computed(() =>
   findHarnessPresetGroup(formValue.value.preset),
@@ -186,66 +193,18 @@ const onPresetChange = (value: string) => {
   }
 };
 
-const emptyCheck = (name: string) => ({
-  validator: (rule: FormItemRule, value: string) => value.trim().length > 0,
-  message: name + '不能为空',
-  trigger: 'input',
-});
+const otherWorkers = computed(() =>
+  workspaceRef.value.workers.filter((worker) => worker.id !== props.worker?.id),
+);
+const duplicateKeyWarning = computed(() =>
+  formValue.value.key.trim() &&
+  otherWorkers.value.some((worker) => worker.key === formValue.value.key)
+    ? '有重复的Key，请确保使用的API支持并发'
+    : undefined,
+);
 
-const editFormRules: FormRules = {
-  id: [
-    emptyCheck('名字'),
-    {
-      validator: (rule: FormItemRule, value: string) =>
-        workspaceRef.value.workers
-          .filter((w) => w.id !== props.worker?.id)
-          .find((w) => w.id === value) === undefined,
-      message: '名字不能重复',
-      trigger: 'input',
-    },
-  ],
-  model: [emptyCheck('模型')],
-  endpoint: [
-    emptyCheck('API端点'),
-    {
-      validator: (rule: FormItemRule, value: string) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch (_) {
-          return false;
-        }
-      },
-      message: 'API端点不合法',
-      trigger: 'input',
-    },
-  ],
-  key: [
-    emptyCheck('Key'),
-    {
-      level: 'warning',
-      validator: (rule: FormItemRule, value: string) =>
-        workspaceRef.value.workers
-          .filter((w) => w.id !== props.worker?.id)
-          .find((w) => w.key === value) === undefined,
-      message: '有重复的Key，请确保使用的API支持并发',
-      trigger: 'input',
-    },
-  ],
-  concurrency: [
-    {
-      validator: (rule: FormItemRule, value: number) =>
-        Number.isInteger(value) && value >= 1 && value <= 100,
-      message: '并发数需为 1~100 的整数',
-      trigger: 'input',
-    },
-  ],
-};
-
-const doValidate = () =>
-  new Promise<boolean>((resolve) => {
-    formRef.value?.validate((errors) => resolve(!errors));
-  });
+const doValidate = async () =>
+  Boolean(await formRef.value?.validate({ silent: true }));
 
 const addFormValue = computed(() => ({
   endpoint: formValue.value.endpoint,
@@ -253,71 +212,10 @@ const addFormValue = computed(() => ({
   keys: keyText.value,
 }));
 
-const addFormRules: FormRules = {
-  endpoint: [
-    {
-      validator: (_r: FormItemRule, value: string) => value.trim().length > 0,
-      message: 'API端点不能为空',
-      trigger: 'input',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        try {
-          const url = new URL(value);
-          return url.protocol === 'http:' || url.protocol === 'https:';
-        } catch {
-          return false;
-        }
-      },
-      message: 'API端点不合法',
-      trigger: 'input',
-    },
-  ],
-  models: [
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return items.length > 0;
-      },
-      message: '请至少输入一个模型',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return new Set(items).size === items.length;
-      },
-      message: '存在重复的模型名',
-    },
-  ],
-  keys: [
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return items.length > 0;
-      },
-      message: '请至少输入一个Key',
-    },
-    {
-      validator: (_r: FormItemRule, value: string) => {
-        const items = value
-          .split('\n')
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return new Set(items).size === items.length;
-      },
-      message: '存在重复的Key',
-    },
-  ],
-};
+const validateForm = () =>
+  props.worker === undefined
+    ? validateGptWorkerBatch(addFormValue.value)
+    : validateGptWorker(formValue.value, otherWorkers.value);
 
 const modelText = ref('');
 const keyText = ref('');
@@ -344,21 +242,8 @@ watch(
   },
 );
 
-const models = computed(() => [
-  ...new Set(
-    modelText.value
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  ),
-]);
-
-const keys = computed(() =>
-  keyText.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
+const models = computed(() => [...new Set(parseWorkerLines(modelText.value))]);
+const keys = computed(() => parseWorkerLines(keyText.value));
 
 interface GeneratedWorker {
   uid: string;
@@ -418,10 +303,6 @@ watch(defaultConcurrency, (val) => {
   }
 });
 
-watch([modelText, keyText], () => {
-  nextTick(() => formRef.value?.validate());
-});
-
 const workerName = (worker: GeneratedWorker) =>
   (workerNames[worker.uid] ?? worker.id).trim();
 
@@ -466,9 +347,8 @@ const addWorkers = (profile: OpenAiProfileSelection | undefined) => {
   }
 };
 
-const submit = async () => {
+const save = () => {
   if (props.worker === undefined) {
-    if (!(await doValidate())) return;
     const idError = validateIds();
     if (idError) {
       Toast.warning(idError);
@@ -480,7 +360,6 @@ const submit = async () => {
     Toast.success(`已添加 ${generatedWorkers.value.length} 个翻译器`);
     emit('update:show', false);
   } else {
-    if (!(await doValidate())) return;
     const profile = profileForSave();
     if (!harnessPreset.value && !profile) return;
     const { id, model, endpoint, key, concurrency } = formValue.value;
@@ -502,6 +381,10 @@ const submit = async () => {
   }
 };
 
+const submit = async () => {
+  if (await doValidate()) save();
+};
+
 const submitAndContinue = async () => {
   if (!(await doValidate())) return;
   const idError = validateIds();
@@ -519,226 +402,326 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
 </script>
 
 <template>
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-16px)]' }"
     :open="show"
     @update:open="$emit('update:show', $event)"
     :title="verb + '翻译器'"
     class="w-[min(750px,calc(100%-16px))]"
   >
-    <n-form
-      ref="form"
-      :model="props.worker === undefined ? addFormValue : formValue"
-      :rules="props.worker === undefined ? addFormRules : editFormRules"
-      label-placement="left"
-      label-width="auto"
-    >
-      <n-form-item-row label="预设">
-        <XSelect
-          :model-value="formValue.preset"
-          :options="presetOptions"
-          aria-label="预设"
-          class="w-full"
-          @update:model-value="onPresetChange"
-        />
-      </n-form-item-row>
-      <n-form-item-row label="接口格式">
-        <n-input
-          v-if="harnessPreset"
-          :value="harnessModel?.protocol"
-          disabled
-        />
-        <XSelect
-          v-else
-          :model-value="formValue.profileId"
-          :options="
-            openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
-          "
-          aria-label="接口格式"
-          class="w-full"
-          @update:model-value="onProfileChange"
-        />
-      </n-form-item-row>
-
-      <template v-if="!harnessPreset && currentProfile?.fields.length">
-        <n-form-item-row
-          v-for="field in currentProfile.fields"
-          :key="`${formValue.profileId}-${field.key}`"
-          :label="field.label"
+    <template #body>
+      <UForm
+        ref="form"
+        :state="props.worker === undefined ? addFormValue : formValue"
+        :validate="validateForm"
+        :validate-on="['input', 'change']"
+        :validate-on-input-delay="0"
+        class="space-y-5"
+        @submit="save"
+      >
+        <UFormField
+          orientation="horizontal"
+          :ui="{ container: 'flex-1 min-w-0' }"
+          eager-validation
+          label="预设"
         >
-          <XSelect
-            v-if="field.type === 'select'"
-            :model-value="
-              String(
-                field.options.findIndex(
-                  (option) =>
-                    option.value === formValue.profileValues[field.key],
-                ),
-              )
-            "
-            :options="
-              field.options.map((option, index) => ({
-                label: option.label,
-                value: String(index),
-              }))
-            "
-            :aria-label="field.label"
+          <USelect
+            :model-value="formValue.preset"
+            :items="presetOptions"
+            aria-label="预设"
             class="w-full"
-            @update:model-value="
-              (value) =>
-                (formValue.profileValues[field.key] =
-                  field.options[Number(value)]?.value)
-            "
+            @update:model-value="onPresetChange"
           />
-        </n-form-item-row>
-      </template>
-      <!-- 添加模式：批量 -->
-      <template v-if="props.worker === undefined">
-        <n-form-item-row path="endpoint" label="API端点">
-          <n-input
-            :value="formValue.endpoint"
-            :placeholder="defaultEndpoint(formValue.profileId)"
-            :disabled="Boolean(harnessPreset)"
-            @update:value="onEndpointInput"
-          />
-        </n-form-item-row>
+        </UFormField>
 
-        <n-form-item-row path="models" label="模型">
-          <XSelect
+        <UFormField
+          orientation="horizontal"
+          :ui="{ container: 'flex-1 min-w-0' }"
+          eager-validation
+          label="接口格式"
+        >
+          <UInput
             v-if="harnessPreset"
-            :model-value="modelText"
-            :options="harnessModelOptions"
-            aria-label="模型"
             class="w-full"
-            @update:model-value="onHarnessModelChange"
+            :model-value="harnessModel?.protocol ?? ''"
+            disabled
           />
-          <n-input
+          <USelect
             v-else
-            v-model:value="modelText"
-            type="textarea"
-            placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-          />
-        </n-form-item-row>
-
-        <n-form-item-row path="keys" label="Key">
-          <n-input
-            v-model:value="keyText"
-            type="textarea"
-            placeholder="每行一个Key&#10;sk-xxxxxxxx&#10;sk-yyyyyyyy"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-          />
-        </n-form-item-row>
-
-        <n-form-item-row label="默认并发">
-          <n-input-number
-            v-model:value="defaultConcurrency"
-            :min="1"
-            :max="100"
-          />
-        </n-form-item-row>
-
-        <n-form-item-row v-if="generatedWorkers.length > 0" label="预览">
-          <n-table :single-line="false" size="small">
-            <thead>
-              <tr>
-                <th>显示名称</th>
-                <th>模型</th>
-                <th>Key</th>
-                <th class="w-20">并发</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="w in generatedWorkers" :key="w.uid">
-                <td>
-                  <n-input
-                    :value="workerNames[w.uid] ?? w.id"
-                    :placeholder="w.id"
-                    size="small"
-                    aria-label="翻译器显示名称"
-                    @update:value="workerNames[w.uid] = $event"
-                  />
-                </td>
-                <td>{{ w.model }}</td>
-                <td class="text-[12px] font-[monospace]">
-                  {{ maskKey(w.key) }}
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    :class="[
-                      'w-15 rounded-sm border border-divider px-1 py-0.5 text-center',
-                      'text-[13px] outline-none transition-[border-color] duration-200',
-                      'focus:border-primary [&::-webkit-inner-spin-button]:m-0',
-                      '[&::-webkit-inner-spin-button]:appearance-none',
-                      '[&::-webkit-outer-spin-button]:m-0',
-                      '[&::-webkit-outer-spin-button]:appearance-none',
-                    ]"
-                    :value="workerConcurrencies[w.uid]"
-                    min="1"
-                    max="100"
-                    @input="
-                      workerConcurrencies[w.uid] = Number(
-                        ($event.target as HTMLInputElement).value,
-                      )
-                    "
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </n-table>
-        </n-form-item-row>
-      </template>
-
-      <!-- 编辑模式：单个 -->
-      <template v-else>
-        <n-form-item-row path="id" label="名字">
-          <n-input
-            v-model:value="formValue.id"
-            placeholder="给你的翻译器起个名字"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="model" label="模型">
-          <XSelect
-            v-if="harnessPreset"
-            :model-value="formValue.model"
-            :options="harnessModelOptions"
-            aria-label="模型"
+            :model-value="formValue.profileId"
+            :items="
+              openAiProfiles.map((p) => ({ label: p.label, value: p.id }))
+            "
+            aria-label="接口格式"
             class="w-full"
-            @update:model-value="onHarnessModelChange"
+            @update:model-value="onProfileChange"
           />
-          <n-input
-            v-else
-            v-model:value="formValue.model"
-            placeholder="deepseek-v4-pro"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="endpoint" label="API端点">
-          <n-input
-            :value="formValue.endpoint"
-            :placeholder="defaultEndpoint(formValue.profileId)"
-            :disabled="Boolean(harnessPreset)"
-            @update:value="onEndpointInput"
-          />
-        </n-form-item-row>
-        <n-form-item-row path="key" label="Key">
-          <n-input v-model:value="formValue.key" placeholder="API Key" />
-        </n-form-item-row>
-        <n-form-item-row path="concurrency" label="并发数">
-          <n-input-number
-            v-model:value="formValue.concurrency"
-            :min="1"
-            :max="100"
-          />
-        </n-form-item-row>
-      </template>
-    </n-form>
+        </UFormField>
 
-    <template #footer>
-      <n-flex v-if="props.worker === undefined" :size="12">
-        <c-button label="添加并继续" @action="submitAndContinue" />
-        <c-button label="添加" type="primary" @action="submit" />
-      </n-flex>
-      <c-button v-else label="更新" type="primary" @action="submit" />
+        <template v-if="!harnessPreset && currentProfile?.fields.length">
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            v-for="field in currentProfile.fields"
+            :key="`${formValue.profileId}-${field.key}`"
+            :label="field.label"
+          >
+            <USelect
+              v-if="field.type === 'select'"
+              :model-value="
+                String(
+                  field.options.findIndex(
+                    (option) =>
+                      option.value === formValue.profileValues[field.key],
+                  ),
+                )
+              "
+              :items="
+                field.options.map((option, index) => ({
+                  label: option.label,
+                  value: String(index),
+                }))
+              "
+              :aria-label="field.label"
+              class="w-full"
+              @update:model-value="
+                (value) =>
+                  (formValue.profileValues[field.key] =
+                    field.options[Number(value)]?.value)
+              "
+            />
+          </UFormField>
+        </template>
+        <!-- 添加模式：批量 -->
+        <template v-if="props.worker === undefined">
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="endpoint"
+            label="API端点"
+          >
+            <UInput
+              class="w-full"
+              :model-value="formValue.endpoint"
+              :placeholder="defaultEndpoint(formValue.profileId)"
+              :disabled="Boolean(harnessPreset)"
+              @update:model-value="onEndpointInput"
+            />
+          </UFormField>
+
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="models"
+            label="模型"
+          >
+            <USelect
+              v-if="harnessPreset"
+              :model-value="modelText"
+              :items="harnessModelOptions"
+              aria-label="模型"
+              class="w-full"
+              @update:model-value="onHarnessModelChange"
+            />
+            <UTextarea
+              v-else
+              class="w-full"
+              v-model="modelText"
+              placeholder="每行一个模型名&#10;deepseek-v4-pro&#10;deepseek-v4-flash"
+              autoresize
+              :rows="2"
+              :maxrows="5"
+            />
+          </UFormField>
+
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="keys"
+            label="Key"
+          >
+            <UTextarea
+              class="w-full"
+              v-model="keyText"
+              placeholder="每行一个Key&#10;sk-xxxxxxxx&#10;sk-yyyyyyyy"
+              autoresize
+              :rows="2"
+              :maxrows="5"
+            />
+          </UFormField>
+
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            label="默认并发"
+          >
+            <UInputNumber
+              class="w-full"
+              v-model="defaultConcurrency"
+              :min="1"
+              :max="100"
+            />
+          </UFormField>
+
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            v-if="generatedWorkers.length > 0"
+            label="预览"
+          >
+            <table
+              class="content-table rounded-[3px] border border-default [&>tbody>tr:last-child>td]:border-b-0 [&_tr>:not(:last-child)]:border-r"
+            >
+              <thead>
+                <tr>
+                  <th>显示名称</th>
+                  <th>模型</th>
+                  <th>Key</th>
+                  <th class="w-20">并发</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="w in generatedWorkers" :key="w.uid">
+                  <td>
+                    <UInput
+                      class="w-full"
+                      :model-value="workerNames[w.uid] ?? w.id"
+                      :placeholder="w.id"
+                      size="sm"
+                      aria-label="翻译器显示名称"
+                      @update:model-value="workerNames[w.uid] = $event"
+                    />
+                  </td>
+                  <td>{{ w.model }}</td>
+                  <td class="text-[12px] font-[monospace]">
+                    {{ maskKey(w.key) }}
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      :class="[
+                        'w-15 rounded-sm border border-default px-1 py-0.5 text-center',
+                        'text-[13px] outline-none transition-[border-color] duration-200',
+                        'focus:border-primary [&::-webkit-inner-spin-button]:m-0',
+                        '[&::-webkit-inner-spin-button]:appearance-none',
+                        '[&::-webkit-outer-spin-button]:m-0',
+                        '[&::-webkit-outer-spin-button]:appearance-none',
+                      ]"
+                      :value="workerConcurrencies[w.uid]"
+                      min="1"
+                      max="100"
+                      @input="
+                        workerConcurrencies[w.uid] = Number(
+                          ($event.target as HTMLInputElement).value,
+                        )
+                      "
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </UFormField>
+        </template>
+
+        <!-- 编辑模式：单个 -->
+        <template v-else>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="id"
+            label="名字"
+          >
+            <UInput
+              class="w-full"
+              v-model="formValue.id"
+              placeholder="给你的翻译器起个名字"
+            />
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="model"
+            label="模型"
+          >
+            <USelect
+              v-if="harnessPreset"
+              :model-value="formValue.model"
+              :items="harnessModelOptions"
+              aria-label="模型"
+              class="w-full"
+              @update:model-value="onHarnessModelChange"
+            />
+            <UInput
+              v-else
+              class="w-full"
+              v-model="formValue.model"
+              placeholder="deepseek-v4-pro"
+            />
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="endpoint"
+            label="API端点"
+          >
+            <UInput
+              class="w-full"
+              :model-value="formValue.endpoint"
+              :placeholder="defaultEndpoint(formValue.profileId)"
+              :disabled="Boolean(harnessPreset)"
+              @update:model-value="onEndpointInput"
+            />
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            eager-validation
+            name="key"
+            label="Key"
+            :help="duplicateKeyWarning"
+            :ui="{ container: 'flex-1 min-w-0', help: 'text-warning' }"
+          >
+            <UInput
+              class="w-full"
+              v-model="formValue.key"
+              placeholder="API Key"
+            />
+          </UFormField>
+          <UFormField
+            orientation="horizontal"
+            :ui="{ container: 'flex-1 min-w-0' }"
+            eager-validation
+            name="concurrency"
+            label="并发数"
+          >
+            <UInputNumber
+              class="w-full"
+              v-model="formValue.concurrency"
+              :min="1"
+              :max="100"
+            />
+          </UFormField>
+        </template>
+      </UForm>
     </template>
-  </XDialog>
+    <template #footer>
+      <div class="flex flex-wrap gap-3" v-if="props.worker === undefined">
+        <ActionButton :action="submitAndContinue">添加并继续</ActionButton>
+        <ActionButton color="primary" :action="submit" variant="solid">
+          添加
+        </ActionButton>
+      </div>
+      <ActionButton v-else color="primary" :action="submit" variant="solid">
+        更新
+      </ActionButton>
+    </template>
+  </UModal>
 </template>

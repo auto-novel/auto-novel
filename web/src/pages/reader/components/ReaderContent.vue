@@ -71,32 +71,40 @@ const chapterHref = computed(() => {
 
 <template>
   <div class="chapter" data-chapter :data-id="chapterId">
-    <n-h4 class="chapter-title">
-      <n-a :href="chapterHref">{{ chapter.titleJp }}</n-a>
+    <h4 class="chapter-title">
+      <ULink :href="chapterHref" external>
+        {{ chapter.titleJp }}
+      </ULink>
       <br />
-      <n-text depth="3">{{ chapter.titleZh }}</n-text>
+      <span class="text-muted">{{ chapter.titleZh }}</span>
       <br />
-    </n-h4>
-    <n-divider />
+    </h4>
+    <USeparator class="my-6" />
 
-    <n-alert v-if="emptyHint" type="info" :show-icon="false">
-      {{ emptyHint }}详见
-      <n-a
-        :href="forumPostUrls.usageGuide"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        使用教程
-      </n-a>
-      。
-    </n-alert>
+    <UAlert
+      v-if="emptyHint"
+      color="info"
+      variant="subtle"
+      :ui="{ description: 'break-words' }"
+      role="alert"
+    >
+      <template #description>
+        {{ emptyHint }}详见
+        <ULink :href="forumPostUrls.usageGuide" target="_blank">使用教程</ULink>
+        。
+      </template>
+    </UAlert>
 
     <div class="chapter-content">
       <template
         v-for="(p, index) of paragraphs"
         :key="`${chapter.prevId}/${index}`"
       >
-        <n-p v-if="p && 'text' in p" :aria-hidden="!p.needSpeak">
+        <p
+          class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+          v-if="p && 'text' in p"
+          :aria-hidden="!p.needSpeak"
+        >
           <span
             v-if="readerSetting.enableSourceLabel && p.source"
             class="source"
@@ -109,14 +117,14 @@ const chapterHref = computed(() => {
           <span :class="[p.secondary ? 'second' : 'first', 'text-content']">
             {{ p.text }}
           </span>
-        </n-p>
+        </p>
         <br v-else-if="!p" />
         <details v-else-if="readerSetting.foldImages">
           <summary class="fold-image">插图（点击展开）</summary>
           <img
             :src="p.imageUrl"
             :alt="p.imageUrl"
-            style="max-width: 100%; object-fit: scale-down"
+            class="max-w-full object-scale-down"
             loading="lazy"
           />
         </details>
@@ -124,7 +132,7 @@ const chapterHref = computed(() => {
           v-else
           :src="p.imageUrl"
           :alt="p.imageUrl"
-          style="max-width: 100%; object-fit: scale-down"
+          class="max-w-full object-scale-down"
           loading="lazy"
         />
       </template>
@@ -138,6 +146,9 @@ const chapterHref = computed(() => {
   font-weight: v-bind('readerSetting.fontWeight');
 }
 .chapter-title {
+  color: var(--ui-text);
+  font-size: 16px;
+  font-weight: 500;
   display: inline-block;
   padding: 24px 0 0 0;
   margin: 0;

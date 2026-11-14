@@ -47,19 +47,18 @@ watch(introduction, () => {
       </div>
     </div>
     <div v-if="collapsed" class="introduction-action">
-      <n-button
-        text
-        type="primary"
-        class="introduction-toggle"
+      <UButton
+        :trailing-icon="KeyboardArrowDownRound"
+        :ui="{ trailingIcon: 'ml-1 size-4 shrink-0' }"
+        variant="link"
+        color="primary"
+        class="introduction-toggle gap-0"
         :aria-expanded="expanded"
         :aria-controls="contentId"
         @click="expanded = true"
       >
         展开全部简介
-        <n-icon class="introduction-toggle-icon">
-          <KeyboardArrowDownRound />
-        </n-icon>
-      </n-button>
+      </UButton>
     </div>
   </div>
 </template>
@@ -98,9 +97,5 @@ watch(introduction, () => {
   .introduction-toggle {
     min-height: 44px;
   }
-}
-
-.introduction-toggle-icon {
-  margin-left: 4px;
 }
 </style>

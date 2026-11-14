@@ -8,7 +8,7 @@ import type {
 
 import { CommentApi } from '@/api';
 import { webKit } from '@/webKit';
-import { cache } from './cache';
+import { getQueryCache } from './cache';
 
 const ListKey = 'comment-list';
 const ReplyPageSize = 20;
@@ -22,6 +22,7 @@ watch(
   (_, previous) => {
     viewerRevision++;
     const filter = { key: [ListKey, previous] };
+    const cache = getQueryCache();
     cache.cancelQueries(filter);
     for (const entry of cache.getEntries(filter)) cache.remove(entry);
   },
@@ -61,7 +62,7 @@ const useCommentList = (
       );
       const items = result.items.map(({ replies, ...comment }) => {
         if (replies && !signal.aborted && revision === viewerRevision) {
-          cache.setQueryData<CommentPage>(
+          getQueryCache().setQueryData<CommentPage>(
             replyListKey(requestedSite, comment.id, 1),
             replies,
           );
@@ -108,6 +109,7 @@ const mutateComments = async <T>(
   const result = await action();
   if (revision !== viewerRevision) return result;
   // Stop in-flight pages from restoring pre-mutation content/status.
+  const cache = getQueryCache();
   cache.cancelQueries(filter);
   if (update) {
     const updatePage = (page: CommentPage): CommentPage => ({
@@ -138,6 +140,7 @@ export const CommentRepo = {
     await CommentApi.setUserBlocked(userId, blocked);
     if (revision !== viewerRevision) return;
     const filter = { key: commentsKey() };
+    const cache = getQueryCache();
     // Cancel stale responses before removing blocked authors from cached pages.
     cache.cancelQueries(filter);
     if (blocked) {

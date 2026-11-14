@@ -52,10 +52,13 @@ export async function attemptTranslation(
     return translated;
   }
 
-  log(
-    `翻译失败：${lastError instanceof Error ? lastError.message : lastError}`,
+  const reason =
+    lastError instanceof Error ? lastError.message : String(lastError);
+  log(`翻译失败：${reason}`);
+  throw Object.assign(
+    new Error(`翻译失败：重试次数过多；最后错误：${reason}`),
+    {
+      cause: lastError,
+    },
   );
-  throw Object.assign(new Error('翻译失败：重试次数过多'), {
-    cause: lastError,
-  });
 }

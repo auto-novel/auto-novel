@@ -58,19 +58,23 @@ const query = (url: string) => {
         >
           轻小说机翻机器人
         </h1>
-        <n-input-group>
-          <n-input
-            v-model:value="url"
-            size="large"
+        <UFieldGroup size="xl" class="w-full">
+          <UInput
+            v-model="url"
             placeholder="输入网络小说链接直接跳转，或搜索本站缓存..."
-            :input-props="{ spellcheck: false }"
+            :spellcheck="false"
             @keyup.enter="query(url)"
-            class="bg-body!"
+            class="min-w-0 flex-1"
+            :ui="{ base: 'bg-default' }"
           />
-          <n-button size="large" type="primary" @click="query(url)">
+          <UButton
+            color="primary"
+            class="shrink-0 justify-center"
+            @click="query(url)"
+          >
             搜索
-          </n-button>
-        </n-input-group>
+          </UButton>
+        </UFieldGroup>
       </div>
       <button
         v-if="canSwitch"
@@ -82,9 +86,8 @@ const query = (url: string) => {
         aria-label="切换下一张背景"
         @click="nextBanner"
       >
-        <n-icon
-          :component="RefreshOutlined"
-          :size="18"
+        <RefreshOutlined
+          class="size-4.5 shrink-0"
           :class="{ 'animate-spin motion-reduce:animate-none': switching }"
           aria-hidden="true"
         />

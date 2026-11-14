@@ -23,9 +23,11 @@ const convertAll = () =>
 </script>
 
 <template>
-  <n-flex vertical>
-    <n-flex>
-      <c-button label="转换" size="small" @action="convertAll" />
-    </n-flex>
-  </n-flex>
+  <div class="flex flex-col gap-y-2">
+    <div class="flex flex-wrap gap-x-3 gap-y-2">
+      <ActionButton size="sm" class="text-sm/4" :action="convertAll">
+        转换
+      </ActionButton>
+    </div>
+  </div>
 </template>

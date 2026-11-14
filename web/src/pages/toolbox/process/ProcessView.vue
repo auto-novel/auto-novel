@@ -1,10 +1,5 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  getApiErrorMessage,
-  XPage,
-  XPageHeader,
-} from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XPage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined, PlusOutlined } from '@vicons/material';
 import type { UploadCustomRequestOptions } from 'naive-ui';
 
@@ -18,6 +13,13 @@ import FileCompress from './FileCompress.vue';
 import FileConvert from './FileConvert.vue';
 import FileOcr from './FileOcr.vue';
 import FileGlossary from './FileGlossary.vue';
+
+const tabs = [
+  { label: '术语表', value: 'glossary', slot: 'glossary' },
+  { label: 'EPUB：压缩图片', value: 'compress', slot: 'compress' },
+  { label: 'TXT：修复OCR换行', value: 'ocr', slot: 'ocr' },
+  { label: 'EPUB：转换成TXT', value: 'convert', slot: 'convert' },
+];
 
 const files = shallowRef<ParsedFile[]>([]);
 
@@ -76,9 +78,9 @@ const showListModal = ref(false);
 
 <template>
   <XPage>
-    <XPageHeader title="小说处理" />
+    <UPageHeader title="小说处理" />
 
-    <n-flex>
+    <div class="flex flex-wrap gap-x-3 gap-y-2">
       <div>
         <n-upload
           :show-file-list="false"
@@ -87,42 +89,67 @@ const showListModal = ref(false);
           directory-dnd
           :custom-request="customRequest"
         >
-          <c-button label="加载文件" :icon="PlusOutlined" />
+          <UButton
+            :icon="PlusOutlined"
+            color="neutral"
+            variant="outline"
+            class="rounded-full"
+          >
+            加载文件
+          </UButton>
         </n-upload>
       </div>
 
-      <c-button
-        label="本地书架"
+      <UButton
         :icon="PlusOutlined"
-        @action="showListModal = true"
-      />
-      <c-button
-        label="清空"
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="showListModal = true"
+      >
+        本地书架
+      </UButton>
+      <UButton
         :icon="DeleteOutlineOutlined"
-        @action="clearFile"
-      />
-    </n-flex>
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="clearFile"
+      >
+        清空
+      </UButton>
+    </div>
 
-    <n-flex vertical style="margin-top: 16px">
-      <n-text v-for="file of files" :key="file.name">
+    <div class="mt-4 flex flex-col gap-y-2">
+      <span class="text-default" v-for="file of files" :key="file.name">
         <file-card :file="file" @delete="removeFile(file.name)" />
-      </n-text>
-    </n-flex>
+      </span>
+    </div>
 
-    <n-tabs type="segment" animated style="margin-top: 48px">
-      <n-tab-pane name="0" tab="术语表">
+    <UTabs
+      :items="tabs"
+      default-value="glossary"
+      variant="pill"
+      class="mt-12 min-w-0 w-full"
+      :ui="{
+        list: 'min-w-0 max-w-full flex-nowrap overflow-x-auto',
+        trigger: 'flex-none whitespace-nowrap sm:flex-1',
+        content: 'p-0',
+      }"
+    >
+      <template #glossary>
         <file-glossary :files="files" />
-      </n-tab-pane>
-      <n-tab-pane name="1" tab="EPUB：压缩图片">
+      </template>
+      <template #compress>
         <file-compress :files="files" />
-      </n-tab-pane>
-      <n-tab-pane name="2" tab="TXT：修复OCR换行">
+      </template>
+      <template #ocr>
         <file-ocr :files="files" />
-      </n-tab-pane>
-      <n-tab-pane name="3" tab="EPUB：转换成TXT">
+      </template>
+      <template #convert>
         <file-convert v-model:files="files" />
-      </n-tab-pane>
-    </n-tabs>
+      </template>
+    </UTabs>
 
     <local-volume-picker-drawer
       v-model:show="showListModal"

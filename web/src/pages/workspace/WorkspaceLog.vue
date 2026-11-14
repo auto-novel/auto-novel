@@ -36,10 +36,8 @@ function clear() {
 </script>
 
 <template>
-  <div class="mt-3 overflow-hidden rounded-lg border border-divider text-xs">
-    <div
-      class="flex items-center justify-between gap-2 px-3 py-2 text-ink-soft"
-    >
+  <div class="mt-3 overflow-hidden rounded-lg border border-default text-xs">
+    <div class="flex items-center justify-between gap-2 px-3 py-2 text-muted">
       <button
         type="button"
         class="cursor-pointer hover:text-primary"
@@ -70,7 +68,7 @@ function clear() {
     <div
       v-show="expanded"
       ref="viewport"
-      class="h-52 overflow-auto overscroll-contain border-t border-divider px-3 py-2 font-mono leading-5 [overflow-anchor:none]"
+      class="h-52 overflow-auto overscroll-contain border-t border-default px-3 py-2 font-mono leading-5 [overflow-anchor:none]"
       role="region"
       aria-label="工作区运行日志"
       tabindex="0"
@@ -86,7 +84,7 @@ function clear() {
         :class="
           entry.level === 'warn'
             ? 'text-amber-600 dark:text-amber-400'
-            : 'text-ink-soft'
+            : 'text-muted'
         "
       >
         <span class="opacity-60">{{ entry.time }}</span>

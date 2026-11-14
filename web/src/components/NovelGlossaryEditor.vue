@@ -219,128 +219,161 @@ defineExpose({
 
 <template>
   <div class="novel-glossary-editor">
-    <n-flex vertical size="large" style="max-width: 500px; margin-bottom: 16px">
-      <n-h3 prefix="bar">编辑术语表</n-h3>
+    <div class="mb-4 flex max-w-125 flex-col gap-y-3">
+      <h3 class="heading-bar">编辑术语表</h3>
       <template v-if="gnidHint">
-        <n-text style="font-size: 12px">{{ gnidHint }}</n-text>
+        <span class="text-default text-[12px]">{{ gnidHint }}</span>
 
-        <n-text>
+        <span class="text-default">
           使用前务必先阅读
-          <n-a
-            :href="forumPostUrls.glossaryGuide"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
             术语表使用指南
-          </n-a>
+          </ULink>
           ，不要滥用术语表。
-        </n-text>
+        </span>
       </template>
 
-      <n-input-group>
-        <n-input
-          pair
-          v-model:value="termsToAdd"
-          size="small"
-          separator="=>"
-          :placeholder="['日文', '中文']"
-          :input-props="{ spellcheck: false }"
+      <UFieldGroup size="sm" class="w-full">
+        <UInput
+          v-model="termsToAdd[0]"
+          placeholder="日文"
+          aria-label="日文术语"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
         />
-        <c-button label="添加" :round="false" size="small" @action="addTerm" />
-      </n-input-group>
+        <span
+          class="flex items-center border border-default px-2 text-muted"
+          aria-hidden="true"
+        >
+          =&gt;
+        </span>
+        <UInput
+          v-model="termsToAdd[1]"
+          placeholder="中文"
+          aria-label="中文翻译"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+        />
+        <UButton
+          color="neutral"
+          variant="outline"
+          @click="addTerm"
+          class="shrink-0 justify-center"
+        >
+          添加
+        </UButton>
+      </UFieldGroup>
 
-      <n-input
-        v-model:value="importGlossaryRaw"
-        type="textarea"
-        size="small"
+      <UTextarea
+        v-model="importGlossaryRaw"
+        size="sm"
         placeholder="批量导入术语表"
-        :input-props="{ spellcheck: false }"
+        :spellcheck="false"
         :rows="1"
+        class="w-full"
       />
 
-      <n-flex align="center" :wrap="false">
-        <c-button
-          label="导出"
-          :round="false"
-          size="small"
-          @action="exportGlossary"
-        />
-        <c-button
-          label="导入"
-          :round="false"
-          size="small"
-          @action="importGlossary"
-        />
-        <c-button
-          label="下载json文件"
-          :round="false"
-          size="small"
-          @action="downloadGlossaryAsJsonFile"
-        />
-        <c-button
+      <div class="flex items-center gap-x-3">
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="exportGlossary"
+        >
+          导出
+        </ActionButton>
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="importGlossary"
+        >
+          导入
+        </ActionButton>
+        <ActionButton
+          class="rounded-md text-sm/4"
+          size="sm"
+          :action="downloadGlossaryAsJsonFile"
+        >
+          下载json文件
+        </ActionButton>
+        <UButton
           v-if="whoami.isAdmin"
-          secondary
-          type="error"
-          label="清空"
-          :round="false"
-          size="small"
-          @action="clearTerm"
-        />
-      </n-flex>
+          color="error"
+          size="sm"
+          variant="soft"
+          @click="clearTerm"
+          class="text-sm/4"
+        >
+          清空
+        </UButton>
+      </div>
 
-      <n-flex align="center" :wrap="false">
-        <c-button
+      <div class="flex items-center gap-x-3">
+        <UButton
+          color="neutral"
+          variant="outline"
           :disabled="deletedTerms.length === 0"
-          label="撤销删除"
-          :round="false"
-          size="small"
-          @action="undoDeleteTerm"
-        />
-        <n-text
+          size="sm"
+          @click="undoDeleteTerm"
+          class="text-sm/4"
+        >
+          撤销删除
+        </UButton>
+        <span
+          class="text-muted text-[12px]"
           v-if="lastDeletedTerm !== undefined"
-          depth="3"
-          style="font-size: 12px"
         >
           {{ lastDeletedTerm }}
-        </n-text>
-      </n-flex>
-    </n-flex>
+        </span>
+      </div>
+    </div>
 
-    <n-scrollbar
+    <UScrollArea
       v-if="Object.keys(glossary).length !== 0"
-      style="max-height: 400px; max-width: 500px; margin-bottom: 16px"
+      class="mb-4 max-h-[400px] max-w-[500px]"
     >
-      <n-table striped size="small" style="font-size: 12px; width: 100%">
-        <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
-          <td>
-            <c-button
-              :icon="DeleteOutlineOutlined"
-              text
-              type="error"
-              size="small"
-              @action="deleteTerm(wordJp)"
-            />
-          </td>
-          <td>{{ wordJp }}</td>
-          <td nowrap="nowrap">=></td>
-          <td style="padding-right: 16px">
-            <n-input
-              v-model:value="glossary[wordJp]"
-              size="tiny"
-              placeholder="请输入中文翻译"
-              :theme-overrides="{
-                border: '0',
-                color: 'transparent',
-              }"
-            />
-          </td>
-        </tr>
-      </n-table>
-    </n-scrollbar>
+      <table
+        class="content-table rounded-[3px] border border-default [&>tbody>tr:last-child>td]:border-b-0 [&>tbody>tr:nth-child(even)]:bg-surface text-[12px]"
+      >
+        <tbody>
+          <tr v-for="wordJp in Object.keys(glossary).reverse()" :key="wordJp">
+            <td>
+              <ActionButton
+                color="error"
+                size="sm"
+                variant="link"
+                square
+                class="p-0"
+                :action="() => deleteTerm(wordJp)"
+                aria-label="删除"
+                :icon="DeleteOutlineOutlined"
+                :ui="{ leadingIcon: 'size-4.5' }"
+              />
+            </td>
+            <td>{{ wordJp }}</td>
+            <td class="whitespace-nowrap">=></td>
+            <td class="pr-4!">
+              <UInput
+                v-model="glossary[wordJp]"
+                size="xs"
+                placeholder="请输入中文翻译"
+                variant="none"
+                class="w-full"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </UScrollArea>
 
-    <n-flex justify="end" style="max-width: 500px">
-      <c-button label="提交" type="primary" @action="submitGlossary()" />
-    </n-flex>
+    <div class="flex max-w-125 flex-wrap justify-end gap-x-3 gap-y-2">
+      <ActionButton
+        color="primary"
+        :action="() => submitGlossary()"
+        variant="solid"
+      >
+        提交
+      </ActionButton>
+    </div>
 
     <XConfirmDialog
       :open="showConfirmModal"

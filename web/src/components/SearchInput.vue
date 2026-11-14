@@ -11,15 +11,28 @@ const value = defineModel<{
 const attrs = useAttrs();
 </script>
 <template>
-  <n-input
-    clearable
-    size="small"
-    v-model:value="value.query"
-    type="text"
+  <UInput
+    size="sm"
+    v-model="value.query"
+    class="w-full min-w-0 max-w-100"
+    :ui="{ base: value.query ? 'pe-16' : '', trailing: 'gap-1' }"
     v-bind="attrs"
   >
-    <template #suffix><n-icon :component="SearchOutlined" /></template>
-  </n-input>
+    <template #trailing>
+      <UButton
+        v-if="value.query"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        square
+        icon="i-lucide-x"
+        aria-label="清空搜索"
+        @mousedown.prevent
+        @click="value.query = ''"
+      />
+      <SearchOutlined class="size-4 shrink-0" aria-hidden="true" />
+    </template>
+  </UInput>
 
   <tag-button label="正则" v-model:checked="value.enableRegexMode" />
 </template>

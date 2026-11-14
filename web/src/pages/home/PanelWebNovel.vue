@@ -1,6 +1,6 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
-import { XEmpty, XError } from '@novelia/web-kit';
 
 import type { WebNovelOutlineDto } from '@/model/WebNovel';
 
@@ -12,15 +12,16 @@ defineProps<{
 
 <template>
   <NovelListSkeleton v-if="novels === undefined && !error" panel />
-  <XError
+  <UAlert
+    color="error"
+    variant="soft"
     v-else-if="novels === undefined && error"
     title="加载错误"
     :description="error.message"
   />
-  <XEmpty
+  <CEmpty
     v-else-if="novels !== undefined && novels.length === 0"
     title="空列表"
-    size="compact"
   />
   <template v-else-if="novels !== undefined">
     <div class="@container">
@@ -30,12 +31,12 @@ defineProps<{
           :key="`${item.providerId}/${item.novelId}`"
           class="min-w-0 p-2"
         >
-          <c-a :to="`/novel/${item.providerId}/${item.novelId}`">
-            <span class="text-2line">
+          <ULink :to="`/novel/${item.providerId}/${item.novelId}`">
+            <span class="line-clamp-2">
               {{ item.titleJp }}
             </span>
-          </c-a>
-          <div class="text-2line">{{ item.titleZh }}</div>
+          </ULink>
+          <div class="line-clamp-2">{{ item.titleZh }}</div>
           <span class="text-muted">
             {{ item.type }} / 总计 {{ item.total }} / 有道 {{ item.youdao }}
             <br />

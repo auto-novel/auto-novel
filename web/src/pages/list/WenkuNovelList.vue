@@ -1,14 +1,7 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelGridSkeleton from '@/components/NovelGridSkeleton.vue';
-import {
-  XButton,
-  XEmpty,
-  XError,
-  XPagination,
-  XSeparator,
-  XPage,
-  XPageHeader,
-} from '@novelia/web-kit';
+import { XPagination, XPage } from '@novelia/web-kit';
 import { PlusOutlined } from '@vicons/material';
 
 import { WenkuNovelRepo } from '@/repos';
@@ -67,16 +60,20 @@ watch(novelPage, (novelPage) => {
 
 <template>
   <XPage role="region" aria-label="文库小说列表">
-    <XPageHeader title="文库小说">
-      <template #actions>
-        <router-link v-if="whoami.hasNovelAccess" to="/wenku-edit">
-          <XButton color="neutral" variant="outline" size="sm">
-            <PlusOutlined class="size-4" aria-hidden="true" />
-            新建小说
-          </XButton>
-        </router-link>
+    <UPageHeader title="文库小说">
+      <template #links>
+        <UButton
+          :icon="PlusOutlined"
+          v-if="whoami.hasNovelAccess"
+          to="/wenku-edit"
+          color="neutral"
+          variant="outline"
+          size="md"
+        >
+          新建小说
+        </UButton>
       </template>
-    </XPageHeader>
+    </UPageHeader>
 
     <ListFilter
       :options="listOptions"
@@ -93,20 +90,19 @@ watch(novelPage, (novelPage) => {
       @update:page="onUpdatePage"
     />
 
-    <XSeparator
-      :style="{ margin: pageCount > 1 ? '12px 0 12px' : '24px 0 12px' }"
-    />
+    <USeparator class="mx-0 mb-3" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelGridSkeleton v-if="!novelPage && !error" />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novelPage && error"
       title="加载错误"
       :description="error.message"
     />
-    <XEmpty
+    <CEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
       title="空列表"
-      size="compact"
     />
     <template v-else-if="novelPage">
       <NovelListWenku :items="novelPage.items" />
@@ -122,9 +118,3 @@ watch(novelPage, (novelPage) => {
     />
   </XPage>
 </template>
-
-<style scoped>
-.n-card-header__main {
-  text-overflow: ellipsis;
-}
-</style>

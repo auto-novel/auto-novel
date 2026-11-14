@@ -1,10 +1,5 @@
 <script lang="ts" setup>
-import {
-  copyToClipboard,
-  Toast,
-  XDialog,
-  getApiErrorMessage,
-} from '@novelia/web-kit';
+import { copyToClipboard, Toast, getApiErrorMessage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 
 import type { ParsedFile } from '@/util/file';
@@ -57,7 +52,7 @@ watch(props, async ({ files }) => {
   infos.value = newInfos;
 });
 
-const katakanaThredhold = ref(10);
+const katakanaThredhold = ref<number | undefined>(10);
 
 const katakanaMerged = computed(() => {
   const map = new Map<string, number>();
@@ -83,7 +78,8 @@ const katakanas = computed(() => {
   return new Map(
     [...katakanaMerged.value].filter(
       ([w, c]) =>
-        c > katakanaThredhold.value && !katakanaDeleted.value.includes(w),
+        c > (katakanaThredhold.value ?? 0) &&
+        !katakanaDeleted.value.includes(w),
     ),
   );
 });
@@ -145,132 +141,158 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
 </script>
 
 <template>
-  <n-flex vertical size="large">
+  <div class="flex flex-col gap-y-3">
     <bulletin>
-      <n-p>术语表辅助制作工具正在开发中，当前方案分为识别和翻译两步。</n-p>
-      <n-ul>
-        <n-li>识别阶段：根据片假名词汇出现频率判断可能是术语的词汇。</n-li>
-        <n-li>翻译阶段：直接翻译日语词汇。</n-li>
-      </n-ul>
-      <n-p><b>注意，这是辅助制作，不是全自动生成，使用前务必检查结果。</b></n-p>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        术语表辅助制作工具正在开发中，当前方案分为识别和翻译两步。
+      </p>
+      <ul class="content-list">
+        <li>识别阶段：根据片假名词汇出现频率判断可能是术语的词汇。</li>
+        <li>翻译阶段：直接翻译日语词汇。</li>
+      </ul>
+      <p class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0">
+        <b>注意，这是辅助制作，不是全自动生成，使用前务必检查结果。</b>
+      </p>
     </bulletin>
 
     <c-action-wrapper title="次数下限">
-      <n-input-number
-        v-model:value="katakanaThredhold"
-        clearable
-        size="small"
-        style="width: 16em"
-        min="0"
-      />
+      <div class="flex w-[16em] items-center gap-1">
+        <UInputNumber
+          class="min-w-0 flex-1"
+          v-model.optional="katakanaThredhold"
+          size="sm"
+          :min="0"
+        />
+        <UButton
+          v-if="katakanaThredhold !== undefined"
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          aria-label="清空次数下限"
+          @click="katakanaThredhold = undefined"
+        />
+      </div>
     </c-action-wrapper>
 
     <c-action-wrapper title="操作">
-      <n-flex vertical>
-        <n-button-group size="small">
-          <c-button
-            label="复制术语表"
-            :round="false"
-            @action="copyTranslationJson()"
-          />
-          <c-button
-            label="有道翻译"
-            :round="false"
-            @action="translateKatakanas('youdao')"
-          />
-        </n-button-group>
+      <div class="flex flex-col gap-y-2">
+        <UFieldGroup size="sm">
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => copyTranslationJson()"
+          >
+            复制术语表
+          </ActionButton>
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => translateKatakanas('youdao')"
+          >
+            有道翻译
+          </ActionButton>
+        </UFieldGroup>
 
-        <n-button-group size="small">
-          <c-button
-            :label="`Sakura翻译-${selectedSakuraWorkerId ?? '未选中'}`"
-            :round="false"
-            @action="translateKatakanas('sakura')"
-          />
-          <c-button
-            label="选择翻译器"
-            :round="false"
-            @action="showSakuraSelectModal = true"
-          />
-        </n-button-group>
+        <UFieldGroup size="sm">
+          <ActionButton
+            class="rounded-md text-sm/4"
+            :action="() => translateKatakanas('sakura')"
+          >
+            {{ `Sakura翻译-${selectedSakuraWorkerId ?? '未选中'}` }}
+          </ActionButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            @click="showSakuraSelectModal = true"
+            class="text-sm/4"
+          >
+            选择翻译器
+          </UButton>
+        </UFieldGroup>
 
-        <n-flex align="center" :wrap="false">
-          <c-button
+        <div class="flex items-center gap-x-3">
+          <UButton
+            color="neutral"
+            variant="outline"
             :disabled="katakanaDeleted.length === 0"
-            label="撤销删除"
-            :round="false"
-            size="small"
-            @action="undoDeleteKatakana"
-          />
-          <n-text
+            size="sm"
+            @click="undoDeleteKatakana"
+            class="text-sm/4"
+          >
+            撤销删除
+          </UButton>
+          <span
+            class="text-muted text-[12px]"
             v-if="katakanaDeleted.length > 0"
-            depth="3"
-            style="font-size: 12px"
           >
             {{ lastDeletedHint }}
-          </n-text>
-        </n-flex>
-      </n-flex>
+          </span>
+        </div>
+      </div>
     </c-action-wrapper>
 
-    <n-scrollbar
+    <UScrollArea
+      class="mt-4 ml-8 max-h-[60vh] max-w-150"
       v-if="katakanas.size !== 0"
-      trigger="none"
-      style="
-        max-height: 60vh;
-        max-width: 600px;
-        margin-top: 16px;
-        margin-left: 32px;
-      "
     >
-      <n-table striped size="small" style="font-size: 12px">
-        <tr v-for="[word, number] in katakanas" :key="word">
-          <td>
-            <c-icon-button
-              tooltip="移除"
-              :icon="DeleteOutlineOutlined"
-              text
-              size="small"
-              type="error"
-              @action="katakanaDeleted.push(word)"
-            />
-          </td>
-          <td nowrap="nowrap">{{ number }}</td>
-          <td style="min-width: 100px">{{ word }}</td>
-          <td nowrap="nowrap">=></td>
-          <td style="padding-right: 16px">
-            <n-input
-              v-model:value="katakanaTranslations[word]"
-              size="tiny"
-              placeholder="请输入中文翻译"
-              :theme-overrides="{
-                border: '0',
-                color: 'transprent',
-              }"
-            />
-          </td>
-        </tr>
-      </n-table>
-    </n-scrollbar>
-  </n-flex>
+      <table
+        class="content-table rounded-[3px] border border-default [&>tbody>tr:last-child>td]:border-b-0 [&>tbody>tr:nth-child(even)]:bg-surface text-[12px]"
+      >
+        <tbody>
+          <tr v-for="[word, number] in katakanas" :key="word">
+            <td>
+              <UTooltip text="移除">
+                <ActionButton
+                  square
+                  size="sm"
+                  color="error"
+                  variant="link"
+                  class="p-0"
+                  :action="() => katakanaDeleted.push(word)"
+                  aria-label="移除"
+                  :icon="DeleteOutlineOutlined"
+                  :ui="{ leadingIcon: 'size-4.5' }"
+                />
+              </UTooltip>
+            </td>
+            <td class="whitespace-nowrap">{{ number }}</td>
+            <td class="min-w-[100px]">{{ word }}</td>
+            <td class="whitespace-nowrap">=></td>
+            <td class="pr-4!">
+              <UInput
+                class="w-full"
+                v-model="katakanaTranslations[word]"
+                size="xs"
+                placeholder="请输入中文翻译"
+                variant="none"
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </UScrollArea>
+  </div>
 
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
     title="选择Sakura翻译器"
     v-model:open="showSakuraSelectModal"
-    class="w-[600px]"
+    class="w-150"
   >
-    <n-radio-group v-model:value="selectedSakuraWorkerId">
-      <n-flex vertical>
-        <n-radio
-          v-for="worker of sakuraWorkspace.workers"
-          :key="worker.id"
-          :value="worker.id"
-        >
-          {{ worker.id }}
-          <n-text depth="3">
-            {{ worker.endpoint }}
-          </n-text>
-        </n-radio>
-      </n-flex>
-    </n-radio-group>
-  </XDialog>
+    <template #body>
+      <n-radio-group v-model:value="selectedSakuraWorkerId">
+        <div class="flex flex-col gap-y-2">
+          <n-radio
+            v-for="worker of sakuraWorkspace.workers"
+            :key="worker.id"
+            :value="worker.id"
+          >
+            {{ worker.id }}
+            <span class="text-muted">
+              {{ worker.endpoint }}
+            </span>
+          </n-radio>
+        </div>
+      </n-radio-group>
+    </template>
+  </UModal>
 </template>

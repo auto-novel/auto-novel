@@ -127,14 +127,14 @@ const testWorker = async () => {
 
 <template>
   <div class="flex text-sm/[1.6]">
-    <span class="mt-0.5 mr-3 shrink-0 text-ink">
+    <span class="mt-0.5 mr-3 shrink-0 text-default">
       <DragIndicatorOutlined
         class="drag-trigger inline-block size-4.5 cursor-move align-[-0.125em]"
         aria-hidden="true"
       />
     </span>
     <div class="mb-1 flex grow items-center justify-between">
-      <div class="text-base/[1.6] text-ink">
+      <div class="text-base/[1.6] text-default">
         {{ worker.id }}
         <span class="text-xs/[1.6] text-muted">
           <span class="pl-0.5">
@@ -154,7 +154,7 @@ const testWorker = async () => {
                 'size-2 shrink-0 rounded-full',
                 'transition-[background,box-shadow] duration-300 ease-in-out',
                 isWorkerActive()
-                  ? 'bg-success shadow-[0_0_6px_var(--color-success)]'
+                  ? 'bg-success shadow-[0_0_6px_var(--ui-success)]'
                   : 'bg-current',
               ]"
               aria-hidden="true"
@@ -162,14 +162,14 @@ const testWorker = async () => {
             <span
               v-if="running && !isWorkerActive()"
               :class="statusBadgeClass"
-              class="bg-neutral-soft text-neutral-text"
+              class="bg-muted text-default"
             >
               待机
             </span>
             <span
               v-if="errorCount"
               :class="statusBadgeClass"
-              class="bg-error-soft text-error-text"
+              class="bg-error/10 text-error"
             >
               ✕ {{ errorCount }}
             </span>
@@ -209,7 +209,7 @@ const testWorker = async () => {
           :tooltip="running ? '请先停止翻译器后再删除' : '删除'"
           :icon="DeleteOutlineOutlined"
           :disabled="running"
-          color="danger"
+          color="error"
           icon-only
           @action="emit('delete', worker.id)"
         />
