@@ -1,12 +1,28 @@
 <script lang="ts" setup>
-defineProps<{ title: string; align?: 'baseline' | 'center' }>();
+withDefaults(
+  defineProps<{
+    title: string;
+    align?: 'baseline' | 'center';
+    size?: 'small' | 'medium';
+  }>(),
+  {
+    align: 'baseline',
+    size: 'small',
+  },
+);
 </script>
 
 <template>
-  <n-flex :align="align ?? 'baseline'" :wrap="false">
-    <n-text depth="3" style="white-space: nowrap; font-size: 12px">
+  <div
+    class="flex"
+    :class="[
+      align === 'center' ? 'items-center' : 'items-baseline',
+      size === 'medium' ? 'gap-x-4 gap-y-3' : 'gap-x-3 gap-y-2',
+    ]"
+  >
+    <span class="text-muted text-[12px] whitespace-nowrap">
       {{ title }}
-    </n-text>
+    </span>
     <slot />
-  </n-flex>
+  </div>
 </template>

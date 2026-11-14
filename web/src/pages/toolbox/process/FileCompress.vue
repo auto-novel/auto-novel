@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { Toast, XDialog, XScrollArea } from '@novelia/web-kit';
+import CEmpty from '@/components/CEmpty.vue';
+import { vHorizontalDrag } from '@/util/dragScroll';
+import { Toast } from '@novelia/web-kit';
 import { ImgComparisonSlider } from '@img-comparison-slider/vue';
 
 import { Humanize } from '@/util';
@@ -132,7 +134,7 @@ const showPreview = (image: EpubImage) => {
 </script>
 
 <template>
-  <n-flex vertical>
+  <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="格式">
       <c-radio-group
         v-model:value="imageFormat"
@@ -142,86 +144,90 @@ const showPreview = (image: EpubImage) => {
     </c-action-wrapper>
 
     <c-action-wrapper title="压缩率" align="center">
-      <n-slider
-        v-model:value="quality"
+      <USlider
+        class="max-w-[400px]"
+        :tooltip="{ text: `${(quality * 100).toFixed(0)}%` }"
+        aria-label="压缩率"
+        v-model="quality"
         :max="1"
         :min="0.1"
         :step="0.05"
-        :format-tooltip="(value: number) => `${(value * 100).toFixed(0)}%`"
-        style="max-width: 400px"
       />
-      <n-text style="width: 6em">{{ (quality * 100).toFixed(0) }}%</n-text>
+      <span class="text-default w-[6em]">
+        {{ (quality * 100).toFixed(0) }}%
+      </span>
     </c-action-wrapper>
 
     <c-action-wrapper title="尺寸" align="center">
-      <n-slider
-        v-model:value="scaleRatio"
+      <USlider
+        class="max-w-[400px]"
+        :tooltip="{ text: `${(scaleRatio * 100).toFixed(0)}%` }"
+        aria-label="尺寸"
+        v-model="scaleRatio"
         :max="1"
         :min="0.1"
         :step="0.05"
-        :format-tooltip="(value: number) => `${(value * 100).toFixed(0)}%`"
-        style="max-width: 400px"
       />
-      <n-text style="width: 6em">{{ (scaleRatio * 100).toFixed(0) }}%</n-text>
+      <span class="text-default w-[6em]">
+        {{ (scaleRatio * 100).toFixed(0) }}%
+      </span>
     </c-action-wrapper>
 
-    <n-button-group>
-      <c-button label="压缩" @action="compressImages" />
-      <c-button label="预览效果" @action="toggleShowDetail" />
-    </n-button-group>
+    <UFieldGroup>
+      <ActionButton :action="compressImages">压缩</ActionButton>
+      <ActionButton :action="toggleShowDetail">预览效果</ActionButton>
+    </UFieldGroup>
 
     <template v-if="showDetail">
-      <n-text>点击图片预览压缩效果</n-text>
-      <n-empty v-if="detailList.length === 0" description="未载入文件" />
+      <span class="text-default">点击图片预览压缩效果</span>
+      <CEmpty inline v-if="detailList.length === 0" title="未载入文件" />
       <template v-for="detail of detailList" :key="detail.name">
-        <n-text>
+        <span class="text-default">
           [{{ Humanize.bytes(detail.size) }}
           =>
           {{ Humanize.bytes(detail.sizeCompressed) }}]
           {{ detail.name }}
-        </n-text>
-        <XScrollArea
-          orientation="horizontal"
-          drag-scroll="inertia"
-          class="mt-4"
-        >
+        </span>
+        <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
           <n-image-group show-toolbar-tooltip>
-            <n-flex :size="4" :wrap="false" style="margin-bottom: 16px">
+            <div class="mb-4 flex gap-1">
               <n-image
+                class="rounded-[2px]!"
                 v-for="image of detail.images"
                 :key="image.id"
                 height="150"
                 :src="image.uri"
                 preview-disabled
                 :alt="image.id"
-                style="border-radius: 2px"
                 @click="showPreview(image)"
               />
-            </n-flex>
+            </div>
           </n-image-group>
-        </XScrollArea>
+        </UScrollArea>
       </template>
     </template>
 
-    <XDialog
+    <UModal
       v-model:open="showCompare"
-      aria-label="图片压缩对比"
-      style="width: auto; max-width: 95%"
+      title="图片压缩对比"
+      :ui="{ content: 'w-auto max-w-[95vw]', title: 'sr-only' }"
     >
-      <img-comparison-slider style="outline: none">
-        <!-- eslint-disable -->
-        <img
-          slot="first"
-          style="width: 100%; max-height: 85vh"
-          :src="compareImages.old"
-        />
-        <img
-          slot="second"
-          style="width: 100%; max-height: 85vh"
-          :src="compareImages.new"
-        />
-        <!-- eslint-enable -->
-      </img-comparison-slider>
-    </XDialog>
-  </n-flex>
+      <template #body>
+        <img-comparison-slider class="outline-none">
+          <!-- eslint-disable -->
+          <img
+            class="w-full max-h-[85vh]"
+            slot="first"
+            :src="compareImages.old"
+          />
+          <img
+            class="w-full max-h-[85vh]"
+            slot="second"
+            :src="compareImages.new"
+          />
+          <!-- eslint-enable -->
+        </img-comparison-slider>
+      </template>
+    </UModal>
+  </div>
 </template>

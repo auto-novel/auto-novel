@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XButton, XError, XSkeleton } from '@novelia/web-kit';
+import { XPagination } from '@novelia/web-kit';
 
 import type { Comment } from '@novelia/web-kit';
 import { CommentRepo } from '@/repos';
@@ -53,22 +53,26 @@ const pageCount = computed(() =>
         <span class="sr-only">正在加载回复…</span>
         <div class="space-y-8" aria-hidden="true">
           <div v-for="index in Math.min(comment.replyCount, 3)" :key="index">
-            <XSkeleton class="h-5 w-28 bg-border" />
+            <USkeleton class="h-5 w-28" />
             <div class="mt-0.5 rounded-floating bg-embedded px-4 py-3">
-              <XSkeleton class="h-4 w-full" />
-              <XSkeleton class="mt-2 h-4 w-2/3" />
+              <USkeleton class="h-4 w-full" />
+              <USkeleton class="mt-2 h-4 w-2/3" />
             </div>
           </div>
         </div>
       </div>
-      <XError
+      <UAlert
+        color="error"
+        variant="soft"
         v-else-if="!replyPage && error"
         class="py-4 pl-8"
         title="回复加载错误"
         :description="error.message"
       >
-        <XButton @click="refetch()">再试一次</XButton>
-      </XError>
+        <template #actions>
+          <UButton @click="refetch()">再试一次</UButton>
+        </template>
+      </UAlert>
       <template v-else-if="replyPage">
         <CommentItem
           v-for="reply in replyPage.items"
@@ -83,11 +87,10 @@ const pageCount = computed(() =>
         >
           <slot v-if="replyToId === reply.id" />
         </CommentItem>
-        <n-pagination
+        <XPagination
           v-if="pageCount > 1"
           v-model:page="page"
-          :page-count="pageCount"
-          :page-slot="7"
+          :total-pages="pageCount"
         />
       </template>
     </div>

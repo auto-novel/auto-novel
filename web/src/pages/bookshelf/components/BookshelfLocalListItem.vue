@@ -32,39 +32,40 @@ const startTranslateTask = (translatorId: 'youdao') =>
 </script>
 
 <template>
-  <n-flex :size="4" vertical>
-    <c-a
+  <div class="flex flex-col gap-1">
+    <ULink
       v-if="!volume.id.endsWith('.epub')"
       :to="`/workspace/reader/${encodeURIComponent(volume.id)}/0`"
     >
       {{ volume.id }}
-    </c-a>
-    <n-text v-else>{{ volume.id }}</n-text>
+    </ULink>
+    <span class="text-default" v-else>{{ volume.id }}</span>
 
-    <n-text depth="3">
+    <span class="text-muted">
       总计 {{ volume.toc.length }} / 有道 {{ youdao }} / GPT {{ gpt }} / Sakura
       {{ sakura }}
-    </n-text>
+    </span>
 
-    <n-flex :size="8">
-      <c-button
+    <div class="flex flex-wrap gap-2">
+      <ActionButton
         v-if="setting.enabledTranslator.includes('youdao')"
-        label="更新有道"
-        size="tiny"
-        secondary
-        @action="startTranslateTask('youdao')"
-      />
+        size="xs"
+        variant="soft"
+        :action="() => startTranslateTask('youdao')"
+      >
+        更新有道
+      </ActionButton>
       <glossary-button
         :gnid="GenericNovelId.local(volume.id)"
         :value="volume.glossary"
-        size="tiny"
-        secondary
+        size="xs"
+        variant="soft"
       />
-    </n-flex>
-  </n-flex>
+    </div>
+  </div>
   <TranslateTask
+    class="mt-5"
     ref="translateTask"
-    style="margin-top: 20px"
     @update:youdao="(zh) => (youdao = zh)"
   />
 </template>

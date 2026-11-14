@@ -17,11 +17,9 @@ function changeOptionValue(label: string, val: string | number) {
 </script>
 
 <template>
-  <n-flex
+  <div
     v-if="Object.keys(options).length > 0"
-    size="large"
-    vertical
-    style="width: 100%; margin-top: 8px"
+    class="mt-2 flex w-full flex-col gap-y-3"
   >
     <template v-for="(option, label) in options" :key="label">
       <template v-if="!option.hide">
@@ -41,5 +39,5 @@ function changeOptionValue(label: string, val: string | number) {
         />
       </template>
     </template>
-  </n-flex>
+  </div>
 </template>

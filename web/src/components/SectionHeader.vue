@@ -3,14 +3,12 @@ defineProps<{ title: string }>();
 </script>
 
 <template>
-  <n-flex
-    align="baseline"
-    justify="space-between"
-    style="width: 100%; row-gap: 2px"
+  <div
+    class="flex w-full flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
   >
-    <n-h2 prefix="bar" style="flex-shrink: 0">{{ title }}</n-h2>
-    <n-flex style="flex-shrink: 0">
+    <h2 class="heading-bar shrink-0">{{ title }}</h2>
+    <div class="flex shrink-0 flex-wrap gap-x-3 gap-y-2">
       <slot />
-    </n-flex>
-  </n-flex>
+    </div>
+  </div>
 </template>

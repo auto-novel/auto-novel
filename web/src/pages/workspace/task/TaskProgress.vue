@@ -68,13 +68,13 @@ const progressPercentage = computed(() => {
     class="mt-1 text-xs/4 font-normal text-muted tabular-nums @min-[640px]:contents"
   >
     <div
-      class="mb-1.25 flex flex-wrap items-center justify-start gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-2 @min-[640px]:mt-1 @min-[640px]:mb-0 [&>span]:whitespace-nowrap"
+      class="mb-1.25 flex flex-wrap items-center gap-1 @min-[640px]:col-start-2 @min-[640px]:row-start-2 @min-[640px]:mt-1 @min-[640px]:mb-0 [&>span]:whitespace-nowrap"
     >
       <span
         :class="{
           'text-info': status === 'executing',
           'text-success': status === 'done',
-          'text-error-text': status === 'error',
+          'text-error': status === 'error',
         }"
       >
         {{ statusLabel }}
@@ -106,7 +106,7 @@ const progressPercentage = computed(() => {
           focusable="false"
         >
           <circle
-            class="fill-none stroke-divider stroke-4"
+            class="fill-none stroke-default stroke-4"
             cx="28"
             cy="28"
             r="23"
@@ -162,14 +162,14 @@ const progressPercentage = computed(() => {
             x="28"
             y="28"
             dy=".35em"
-            class="fill-ink text-[11px] font-semibold [text-anchor:middle]"
+            class="fill-(--ui-text) text-[11px] font-semibold [text-anchor:middle]"
           >
             {{ progressPercentage }}%
           </text>
         </svg>
       </div>
       <div
-        class="relative flex h-1 overflow-hidden rounded-xs bg-divider @min-[640px]:hidden"
+        class="relative flex h-1 overflow-hidden rounded-xs bg-accented @min-[640px]:hidden"
         aria-hidden="true"
       >
         <span

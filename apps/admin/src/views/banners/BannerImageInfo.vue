@@ -13,7 +13,7 @@ defineProps<{ image: BannerImage }>();
 <style scoped>
 .image-meta {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 12px;
   line-height: 1.6;
 }

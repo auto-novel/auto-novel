@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { XTime } from '@novelia/web-kit';
 import { StarFilled } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -78,41 +79,42 @@ defineExpose({
 <template>
   <DefineTag v-slot="{ tag, isAttention }">
     <router-link :to="`/novel?query=${tag}\$`">
-      <n-text depth="3">
+      <span class="text-muted">
         <component :is="isAttention ? 'b' : 'span'">
           {{ isAttention ? tag : WebUtil.tryTranslateKeyword(tag) }}
         </component>
-      </n-text>
+      </span>
     </router-link>
     /
   </DefineTag>
 
-  <n-list>
-    <n-list-item
+  <div class="divide-y divide-default leading-[1.6] text-default text-sm">
+    <div
+      class="relative min-w-0 py-3"
       v-for="item of items"
       :key="`${item.providerId}/${item.novelId}`"
     >
-      <n-flex vertical :size="0">
-        <c-a :to="`/novel/${item.providerId}/${item.novelId}`">
+      <div class="flex flex-col">
+        <ULink :to="`/novel/${item.providerId}/${item.novelId}`">
           {{ item.titleJp }}
-        </c-a>
+        </ULink>
 
-        <n-text v-if="item.titleZh">
+        <span v-if="item.titleZh">
           {{ item.titleZh }}
-        </n-text>
+        </span>
 
-        <n-a
+        <ULink
           v-if="!simple"
           :href="WebUtil.buildNovelUrl(item.providerId, item.novelId)"
         >
           {{ item.providerId + '.' + item.novelId }}
-        </n-a>
+        </ULink>
 
-        <n-text v-if="item.extra" depth="3">
+        <span class="text-muted" v-if="item.extra">
           {{ item.extra }}
-        </n-text>
+        </span>
 
-        <n-text v-if="!simple" depth="3">
+        <span class="text-muted" v-if="!simple">
           <ReuseTag
             v-for="attention in item.attentions.sort()"
             :key="attention"
@@ -125,32 +127,35 @@ defineExpose({
             :tag="keyword"
             :is-attention="false"
           />
-        </n-text>
+        </span>
 
-        <n-text v-if="item.total" depth="3">
+        <span class="text-muted" v-if="item.total">
           {{ item.type ? item.type + ' / ' : '' }}
           总计 {{ item.total }} / 有道 {{ item.youdao }} / GPT {{ item.gpt }} /
           Sakura {{ item.sakura }} /
-        </n-text>
+        </span>
 
-        <n-text depth="3">
+        <span class="text-muted">
           <template v-if="item.favored">
-            <n-text type="warning" v-if="item.favored">
-              <n-icon :size="10" :component="StarFilled" />
-            </n-text>
+            <span class="text-warning" v-if="item.favored">
+              <StarFilled
+                class="inline-block size-[10px] align-baseline"
+                aria-hidden="true"
+              />
+            </span>
             收藏于：{{ favoredTitleMap.get(item.favored) || '未知收藏夹' }} /
           </template>
           <template v-if="item.updateAt">
             本站更新于
-            <n-time :time="item.updateAt * 1000" type="relative" />
+            <XTime :time="item.updateAt * 1000" preset="relative" />
             /
           </template>
           <template v-if="item.lastReadAt">
-            <n-time :time="item.lastReadAt * 1000" type="relative" />
+            <XTime :time="item.lastReadAt * 1000" preset="relative" />
             看过 /
           </template>
-        </n-text>
-      </n-flex>
+        </span>
+      </div>
 
       <slot name="action" v-bind="item" />
 
@@ -162,6 +167,6 @@ defineExpose({
             toggleNovelSelect(`${item.providerId}/${item.novelId}`, checked)
         "
       />
-    </n-list-item>
-  </n-list>
+    </div>
+  </div>
 </template>

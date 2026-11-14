@@ -1,7 +1,8 @@
 <script lang="ts" setup>
+import CEmpty from '@/components/CEmpty.vue';
 import NovelListSkeleton from '@/components/NovelListSkeleton.vue';
 import { ChecklistOutlined } from '@vicons/material';
-import { XEmpty, XError, XPagination, XSeparator } from '@novelia/web-kit';
+import { XPagination } from '@novelia/web-kit';
 
 import { WebNovelRepo } from '@/repos';
 import { useSettingStore, useWhoamiStore } from '@/stores';
@@ -74,21 +75,29 @@ const novelListRef = useTemplateRef('novelList');
 <template>
   <div role="region" aria-label="网络小说收藏列表">
     <div class="mb-6">
-      <c-button
-        label="选择"
+      <UButton
         :icon="ChecklistOutlined"
-        @action="showControlPanel = !showControlPanel"
-      />
+        color="neutral"
+        variant="outline"
+        class="rounded-full"
+        @click="showControlPanel = !showControlPanel"
+      >
+        选择
+      </UButton>
     </div>
 
-    <n-collapse-transition :show="showControlPanel" style="margin-bottom: 16px">
-      <bookshelf-web-control
-        :selected-novels="novelListRef?.selectedNovels ?? []"
-        :favored-id="favoredId"
-        @select-all="novelListRef?.selectAll()"
-        @invert-selection="novelListRef?.invertSelection()"
-      />
-    </n-collapse-transition>
+    <UCollapsible v-model:open="showControlPanel">
+      <template #content>
+        <div class="pb-4">
+          <bookshelf-web-control
+            :selected-novels="novelListRef?.selectedNovels ?? []"
+            :favored-id="favoredId"
+            @select-all="novelListRef?.selectAll()"
+            @invert-selection="novelListRef?.invertSelection()"
+          />
+        </div>
+      </template>
+    </UCollapsible>
 
     <ListFilter
       :options="listOptions"
@@ -105,22 +114,23 @@ const novelListRef = useTemplateRef('novelList');
       @update:page="onUpdatePage"
     />
 
-    <XSeparator :style="{ margin: pageCount > 1 ? '12px 0 0' : '24px 0 0' }" />
+    <USeparator class="mx-0 mb-0" :class="pageCount > 1 ? 'mt-3' : 'mt-6'" />
 
     <NovelListSkeleton
       v-if="!novelPage && !error"
       :simple="!setting.showTagInWebFavored"
     />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novelPage && error"
       title="加载错误"
       :description="error.message"
     />
-    <XEmpty
+    <CEmpty
       v-else-if="novelPage && novelPage.items.length === 0"
       class="mt-3"
       title="空列表"
-      size="compact"
     />
     <template v-else-if="novelPage">
       <NovelListWeb

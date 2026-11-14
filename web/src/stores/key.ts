@@ -1,6 +1,5 @@
 export const LSKey = {
   Auth: 'auth',
-  Draft: 'draft',
   Favored: 'favored',
   Notified: 'notified',
   SearchHistoryWeb: 'search-history-web',

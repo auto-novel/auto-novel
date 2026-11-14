@@ -48,30 +48,37 @@ defineExpose({
 </script>
 
 <template>
-  <n-grid :x-gap="12" :y-gap="12" cols="2 500:3 800:4">
-    <n-grid-item v-for="item in items" :key="item.id">
-      <div style="position: relative">
-        <router-link :to="`/wenku/${item.id}`">
-          <ImageCard
-            :src="item.cover"
-            :title="item.titleZh ? item.titleZh : item.title"
-          >
-            <template #prefix>
-              <n-text v-if="item.favored" type="warning">
-                <n-icon :size="16" :component="StarFilled" />
-              </n-text>
-            </template>
-          </ImageCard>
-        </router-link>
+  <div class="@container w-full">
+    <div
+      class="grid grid-cols-2 gap-3 @[500px]:grid-cols-3 @[800px]:grid-cols-4"
+    >
+      <div v-for="item in items" :key="item.id" class="min-w-0">
+        <div class="relative">
+          <router-link :to="`/wenku/${item.id}`">
+            <ImageCard
+              :src="item.cover"
+              :title="item.titleZh ? item.titleZh : item.title"
+            >
+              <template #prefix>
+                <span class="text-warning" v-if="item.favored">
+                  <StarFilled
+                    class="inline-block size-4 align-baseline"
+                    aria-hidden="true"
+                  />
+                </span>
+              </template>
+            </ImageCard>
+          </router-link>
 
-        <c-select-overlay
-          v-if="selectable"
-          :checked="selectedIds.includes(item.id)"
-          @update:checked="
-            (checked: boolean) => toggleNovelSelect(item.id, checked)
-          "
-        />
+          <c-select-overlay
+            v-if="selectable"
+            :checked="selectedIds.includes(item.id)"
+            @update:checked="
+              (checked: boolean) => toggleNovelSelect(item.id, checked)
+            "
+          />
+        </div>
       </div>
-    </n-grid-item>
-  </n-grid>
+    </div>
+  </div>
 </template>

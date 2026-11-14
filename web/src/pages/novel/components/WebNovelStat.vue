@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { XTime } from '@novelia/web-kit';
+
 const props = defineProps<{
   type: string;
   totalCharacters?: number;
@@ -38,10 +40,10 @@ const exactVisited = computed(() =>
 </script>
 
 <template>
-  <n-flex class="metadata-stat" :size="[8, 8]" align="center">
-    <n-text>
+  <div class="metadata-stat flex flex-wrap items-center gap-2">
+    <span class="text-default">
       {{ type }}
-    </n-text>
+    </span>
     <span>/</span>
 
     <n-tooltip
@@ -50,13 +52,13 @@ const exactVisited = computed(() =>
       trigger="click"
     >
       <template #trigger>
-        <n-text>
+        <span class="text-default">
           {{ totalCharacters }}
-        </n-text>
+        </span>
       </template>
       {{ exactTotalCharacters }}
     </n-tooltip>
-    <n-text v-else>NA</n-text>
+    <span class="text-default" v-else>NA</span>
     <span>/</span>
 
     <n-tooltip
@@ -65,20 +67,20 @@ const exactVisited = computed(() =>
       trigger="click"
     >
       <template #trigger>
-        <n-time :time="latestChapterCreateAt * 1000" type="relative" />
+        <XTime :time="latestChapterCreateAt * 1000" preset="relative" />
       </template>
-      <n-time :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
+      <XTime :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
     </n-tooltip>
-    <n-text v-else>NA</n-text>
+    <span class="text-default" v-else>NA</span>
     <span>/</span>
 
     <n-tooltip placement="top-start" trigger="click">
       <template #trigger>
-        <n-text>{{ visited }}</n-text>
+        <span class="text-default">{{ visited }}</span>
       </template>
       {{ exactVisited }}
     </n-tooltip>
-  </n-flex>
+  </div>
 </template>
 
 <style scoped>

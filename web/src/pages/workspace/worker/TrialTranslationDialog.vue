@@ -1,10 +1,5 @@
 <script lang="ts" setup>
-import {
-  Toast,
-  copyToClipboard,
-  XDialog,
-  useWebKitViewport,
-} from '@novelia/web-kit';
+import { Toast, copyToClipboard, useWebKitViewport } from '@novelia/web-kit';
 import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
 import type { Translator, SegmentTracker } from '@auto-novel/translator';
 
@@ -417,7 +412,8 @@ const handleOpenChange = (open: boolean) => {
 </script>
 
 <template>
-  <XDialog
+  <UModal
+    :ui="{ content: 'max-w-[95vw]' }"
     :open="show"
     :title="title"
     class="w-200 max-w-[95vw]"
@@ -428,153 +424,167 @@ const handleOpenChange = (open: boolean) => {
         <span class="min-w-0 flex-1 truncate" :title="workerMeta">
           {{ workerMeta }}
         </span>
-        <c-button
-          class="flex-none whitespace-nowrap"
-          :label="
+        <UButton
+          :color="rightView === 'glossary' ? 'primary' : 'neutral'"
+          size="sm"
+          :disabled="isBusy"
+          variant="soft"
+          class="flex-none whitespace-nowrap text-sm/4"
+          @click="toggleGlossary"
+        >
+          {{
             rightView === 'glossary'
               ? isMobile
                 ? '返回翻译'
                 : '返回译文'
               : `术语表 ${glossaryCount}`
-          "
-          :type="rightView === 'glossary' ? 'primary' : 'default'"
-          secondary
-          :round="false"
-          size="small"
-          :disabled="isBusy"
-          @action="toggleGlossary"
-        />
+          }}
+        </UButton>
       </span>
     </template>
 
-    <div
-      v-if="isMobile && rightView === 'glossary'"
-      class="flex h-[min(56dvh,460px)] min-h-75 flex-col gap-1.5"
-    >
-      <span class="text-xs font-semibold text-ink">术语表</span>
-      <div class="min-h-0 flex-1">
-        <trial-glossary-panel v-model:value="glossary" />
+    <template #body>
+      <div
+        v-if="isMobile && rightView === 'glossary'"
+        class="flex h-[min(56dvh,460px)] min-h-75 flex-col gap-1.5"
+      >
+        <span class="text-xs font-semibold text-default">术语表</span>
+        <div class="min-h-0 flex-1">
+          <trial-glossary-panel v-model:value="glossary" />
+        </div>
       </div>
-    </div>
-    <div
-      v-else
-      class="grid grid-cols-2 items-start gap-3 [@media(max-width:767px)]:grid-cols-1"
-    >
-      <section class="flex min-w-0 flex-col gap-1.5">
-        <div class="flex min-h-6 flex-wrap items-center gap-2">
-          <span class="text-xs font-semibold text-ink">原文</span>
-        </div>
-        <n-input
-          v-model:value="textJp"
-          type="textarea"
-          placeholder="输入需要翻译的文本"
-          :rows="isMobile ? 6 : 14"
-          show-count
-          :maxlength="50000"
-          :readonly="isBusy"
-          :input-props="{
-            spellcheck: false,
-            'aria-label': '原文',
-          }"
-          @keydown="onInputKeydown"
-        />
-      </section>
-
-      <section ref="resultPaneRef" class="flex min-w-0 flex-col gap-1.5">
-        <div class="flex min-h-6 flex-wrap items-center gap-2">
-          <span class="text-xs font-semibold text-ink">
-            {{ rightView === 'glossary' ? '术语表' : '译文' }}
-          </span>
-          <n-tag
-            v-if="rightView === 'result' && isStale"
-            size="tiny"
-            type="warning"
-            :bordered="false"
-          >
-            原文已修改
-          </n-tag>
+      <div
+        v-else
+        class="grid grid-cols-2 items-start gap-3 [@media(max-width:767px)]:grid-cols-1"
+      >
+        <section class="flex min-w-0 flex-col gap-1.5">
+          <div class="flex min-h-6 flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold text-default">原文</span>
+          </div>
+          <UTextarea
+            class="w-full"
+            v-model="textJp"
+            placeholder="输入需要翻译的文本"
+            :rows="isMobile ? 6 : 14"
+            :maxlength="50000"
+            :readonly="isBusy"
+            :spellcheck="false"
+            aria-label="原文"
+            @keydown="onInputKeydown"
+          />
           <span
-            v-if="rightView === 'result' && textZh"
-            class="text-[11px] text-muted tabular-nums"
+            class="text-right text-xs text-muted tabular-nums"
+            aria-live="polite"
           >
-            {{ textZh.length }} 字
+            {{ textJp.length }} / 50000
           </span>
-          <c-button
-            v-if="rightView === 'result'"
-            class="ml-auto"
-            :label="copied ? '已复制' : '复制'"
-            secondary
-            :round="false"
-            :size="isMobile ? 'small' : 'tiny'"
-            :disabled="isBusy || !textZh"
-            @action="copyTranslation"
-          />
-          <c-button
-            v-if="rightView === 'result'"
-            label="下载 TXT"
-            title="下载译文为 txt 文件"
-            secondary
-            :round="false"
-            :size="isMobile ? 'small' : 'tiny'"
-            :disabled="isBusy || !textZh"
-            @action="downloadTranslation"
-          />
-        </div>
-        <div class="flex min-w-0 flex-col gap-1.5">
-          <n-alert
-            v-if="error"
-            type="error"
-            :bordered="false"
-            title="翻译失败"
-            role="alert"
-          >
-            <pre
-              :class="[
-                'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
-                'whitespace-pre-wrap [word-break:break-word]',
-              ]"
-              >{{ error }}</pre
+        </section>
+
+        <section ref="resultPaneRef" class="flex min-w-0 flex-col gap-1.5">
+          <div class="flex min-h-6 flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold text-default">
+              {{ rightView === 'glossary' ? '术语表' : '译文' }}
+            </span>
+            <n-tag
+              v-if="rightView === 'result' && isStale"
+              size="tiny"
+              type="warning"
+              :bordered="false"
             >
-          </n-alert>
-          <n-alert
-            v-else-if="warning"
-            type="warning"
-            :bordered="false"
-            title="部分失败"
-          >
-            <pre
-              :class="[
-                'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
-                'whitespace-pre-wrap [word-break:break-word]',
-              ]"
-              >{{ warning }}</pre
+              原文已修改
+            </n-tag>
+            <span
+              v-if="rightView === 'result' && textZh"
+              class="text-[11px] text-muted tabular-nums"
             >
-          </n-alert>
-          <div class="relative">
-            <n-input
-              v-model:value="textZh"
-              type="textarea"
-              placeholder="译文会显示在这里"
-              :rows="isMobile ? 6 : 14"
-              readonly
-              :class="{ invisible: rightView === 'glossary' }"
-              :input-props="{
-                spellcheck: false,
-                'aria-label': '译文',
-              }"
-              @keydown="onInputKeydown"
-            />
-            <div
-              v-if="!isMobile && rightView === 'glossary'"
-              class="absolute inset-0 z-1 bg-modal"
+              {{ textZh.length }} 字
+            </span>
+            <ActionButton
+              v-if="rightView === 'result'"
+              :size="isMobile ? 'sm' : 'xs'"
+              :disabled="isBusy || !textZh"
+              variant="soft"
+              class="rounded-md ml-auto"
+              :action="copyTranslation"
+              :class="{ 'text-sm/4': isMobile }"
             >
-              <trial-glossary-panel v-model:value="glossary" />
+              {{ copied ? '已复制' : '复制' }}
+            </ActionButton>
+            <ActionButton
+              class="rounded-md"
+              v-if="rightView === 'result'"
+              title="下载译文为 txt 文件"
+              :size="isMobile ? 'sm' : 'xs'"
+              :disabled="isBusy || !textZh"
+              variant="soft"
+              :action="downloadTranslation"
+              :class="{ 'text-sm/4': isMobile }"
+            >
+              下载 TXT
+            </ActionButton>
+          </div>
+          <div class="flex min-w-0 flex-col gap-1.5">
+            <UAlert
+              v-if="error"
+              color="error"
+              variant="soft"
+              icon="i-lucide-circle-alert"
+              title="翻译失败"
+              :ui="{ description: 'break-words' }"
+              role="alert"
+            >
+              <template #description>
+                <pre
+                  :class="[
+                    'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                    'whitespace-pre-wrap [word-break:break-word]',
+                  ]"
+                  >{{ error }}</pre
+                >
+              </template>
+            </UAlert>
+            <UAlert
+              v-else-if="warning"
+              color="warning"
+              variant="soft"
+              icon="i-lucide-triangle-alert"
+              title="部分失败"
+              :ui="{ description: 'break-words' }"
+              role="alert"
+            >
+              <template #description>
+                <pre
+                  :class="[
+                    'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
+                    'whitespace-pre-wrap [word-break:break-word]',
+                  ]"
+                  >{{ warning }}</pre
+                >
+              </template>
+            </UAlert>
+            <div class="relative">
+              <UTextarea
+                class="w-full"
+                v-model="textZh"
+                placeholder="译文会显示在这里"
+                :rows="isMobile ? 6 : 14"
+                readonly
+                :class="{ invisible: rightView === 'glossary' }"
+                :spellcheck="false"
+                aria-label="译文"
+                @keydown="onInputKeydown"
+              />
+              <div
+                v-if="!isMobile && rightView === 'glossary'"
+                class="absolute inset-0 z-1 bg-modal"
+              >
+                <trial-glossary-panel v-model:value="glossary" />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
-    </div>
-
+        </section>
+      </div>
+    </template>
     <template #footer>
       <div
         :class="[
@@ -585,12 +595,17 @@ const handleOpenChange = (open: boolean) => {
         <div
           class="flex min-h-5 flex-wrap items-center gap-1.5 text-xs text-muted"
         >
-          <n-spin v-if="isBusy" :size="12" />
+          <UIcon
+            v-if="isBusy"
+            name="i-lucide-loader-circle"
+            class="size-3 animate-spin"
+            aria-hidden="true"
+          />
           <span
             v-else
             class="size-2 rounded-full"
             :class="{
-              'bg-muted': statusTone === 'idle',
+              'bg-(--ui-text-muted)': statusTone === 'idle',
               'bg-success': statusTone === 'success',
               'bg-warning': statusTone === 'warning',
               'bg-error': statusTone === 'error',
@@ -625,30 +640,32 @@ const handleOpenChange = (open: boolean) => {
             草稿自动保存
           </span>
         </div>
-        <n-flex
-          align="center"
-          :size="8"
-          :wrap="true"
-          :justify="isMobile ? 'start' : 'end'"
+        <div
+          class="flex flex-wrap items-center gap-2"
+          :class="isMobile ? 'justify-start' : 'justify-end'"
         >
-          <c-button
-            label="清空文本"
-            text
-            :round="false"
-            :size="isMobile ? 'medium' : 'small'"
+          <UButton
+            color="neutral"
+            size="md"
             :disabled="isBusy || (!textJp && !textZh)"
-            @action="clear"
-          />
-          <c-button
-            :label="isBusy ? '停止' : '翻译'"
-            :type="isBusy ? 'warning' : 'primary'"
-            :round="false"
-            :size="isMobile ? 'medium' : 'small'"
+            variant="link"
+            class="p-0 leading-none"
+            @click="clear"
+          >
+            清空文本
+          </UButton>
+          <UButton
+            variant="solid"
+            :color="isBusy ? 'warning' : 'primary'"
+            :size="isMobile ? 'md' : 'sm'"
             :disabled="!isBusy && !canTranslate"
-            @action="onTranslateClick"
-          />
-        </n-flex>
+            @click="onTranslateClick"
+            :class="{ 'text-sm/4': !isMobile }"
+          >
+            {{ isBusy ? '停止' : '翻译' }}
+          </UButton>
+        </div>
       </div>
     </template>
-  </XDialog>
+  </UModal>
 </template>

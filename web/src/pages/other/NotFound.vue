@@ -1,14 +1,10 @@
-<script setup lang="ts">
-import { XPage } from '@novelia/web-kit';
-</script>
-
 <template>
-  <XPage>
-    <n-result
-      status="404"
-      title="404 页面不存在"
-      description="怎么回事捏？"
-      style="margin-top: 100px"
-    />
-  </XPage>
+  <UError
+    class="min-h-[calc(100dvh-var(--web-kit-header-height))]"
+    :error="{
+      statusMessage: '404 页面不存在',
+      message: '怎么回事捏？',
+    }"
+    :clear="false"
+  />
 </template>

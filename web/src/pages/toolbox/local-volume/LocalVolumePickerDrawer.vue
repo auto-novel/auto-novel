@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { getApiErrorMessage, Toast } from '@novelia/web-kit';
+import { getApiErrorMessage, Toast, XTime } from '@novelia/web-kit';
 import { DeleteOutlineOutlined } from '@vicons/material';
 import LocalVolumeDrawer from './LocalVolumeDrawer.vue';
 
@@ -23,43 +23,47 @@ const deleteVolume = (volumeId: string) =>
 <template>
   <local-volume-drawer>
     <template #volume="volume">
-      <n-flex :size="4" vertical>
-        <n-text>{{ volume.id }}</n-text>
+      <div class="flex flex-col gap-1">
+        <span class="text-default">{{ volume.id }}</span>
 
-        <n-text depth="3">
-          <n-time :time="volume.createAt" type="relative" />
+        <span class="text-muted">
+          <XTime :time="volume.createAt" preset="relative" />
           / 总计
           {{ volume.toc.length }}
-        </n-text>
+        </span>
 
-        <n-flex :size="8">
-          <c-button
-            label="载入"
-            size="tiny"
-            secondary
-            @action="$emit('volumeLoaded', volume.id)"
-          />
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            color="neutral"
+            size="xs"
+            variant="soft"
+            class="rounded-full"
+            @click="$emit('volumeLoaded', volume.id)"
+          >
+            载入
+          </UButton>
 
           <glossary-button
             :gnid="GenericNovelId.local(volume.id)"
             :value="volume.glossary"
-            size="tiny"
-            secondary
+            size="xs"
+            variant="soft"
           />
 
-          <div style="flex: 1" />
+          <div class="flex-1" />
 
-          <c-button-confirm
+          <ConfirmActionButton
+            aria-label="删除"
             :hint="`真的要删除《${volume.id}》吗？`"
+            size="xs"
+            color="error"
+            variant="soft"
             :icon="DeleteOutlineOutlined"
-            size="tiny"
-            secondary
-            circle
-            type="error"
-            @action="deleteVolume(volume.id)"
+            square
+            :action="() => deleteVolume(volume.id)"
           />
-        </n-flex>
-      </n-flex>
+        </div>
+      </div>
     </template>
   </local-volume-drawer>
 </template>

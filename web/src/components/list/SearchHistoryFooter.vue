@@ -8,16 +8,18 @@ const emits = defineEmits<{
 </script>
 
 <template>
-  <n-flex :size="[4, 4]" align="center" style="width: 100%; padding: 8px 12px">
-    <n-tag
+  <div class="flex w-full flex-wrap items-center gap-1 px-3 py-2">
+    <button
       v-for="tag in tags"
       :key="tag"
-      :type="tag.startsWith('-') ? 'error' : 'success'"
-      size="small"
-      style="cursor: pointer"
+      type="button"
+      class="cursor-pointer rounded-sm border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      @mousedown.prevent
       @click="emits('select', tag)"
     >
-      {{ tag }}
-    </n-tag>
-  </n-flex>
+      <n-tag :type="tag.startsWith('-') ? 'error' : 'success'" size="small">
+        {{ tag }}
+      </n-tag>
+    </button>
+  </div>
 </template>

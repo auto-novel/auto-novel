@@ -4,7 +4,6 @@ import {
   KeyboardArrowUpRound,
   SortOutlined,
 } from '@vicons/material';
-import { XDialog, XError, XSkeleton } from '@novelia/web-kit';
 
 import type { GenericNovelId } from '@/model/Common';
 import type { ReadableTocItem } from '@/pages/novel/components/common';
@@ -107,6 +106,7 @@ watch(
       }
     }
   },
+  { immediate: true },
 );
 
 const currentKey = computed(() => {
@@ -121,93 +121,99 @@ const onTocItemClick = (item: ReadableTocItem) => {
 </script>
 
 <template>
-  <XDialog
+  <UModal
     :open="show"
     @update:open="$emit('update:show', $event)"
-    class="w-[600px]"
-    style="min-height: 30vh; max-height: 80vh"
+    class="w-150"
+    :ui="{ content: 'min-h-[30vh] max-h-[80vh] max-w-[calc(100vw-2rem)]' }"
   >
     <template #title>
-      <div class="pr-2" style="display: flex; align-items: baseline">
+      <div class="flex items-baseline pr-2">
         <span>目录</span>
-        <n-text
+        <span
+          class="ml-3 text-muted text-[12px]"
           v-if="tocNumber !== undefined"
-          depth="3"
-          style="font-size: 12px; margin-left: 12px"
         >
           共{{ tocNumber }}章
-        </n-text>
-        <div style="flex: 1" />
-        <c-button
-          v-if="hasSeparators"
-          :label="isAnyExpanded ? '折叠' : '展开'"
+        </span>
+        <div class="flex-1" />
+        <UButton
           :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-          quaternary
-          size="small"
-          :round="false"
-          @action="toggleAll"
-          style="margin-right: 8px"
-        />
-        <c-button
-          :label="setting.tocSortReverse ? '倒序' : '正序'"
+          color="neutral"
+          v-if="hasSeparators"
+          size="sm"
+          variant="ghost"
+          class="mr-2 text-sm/4"
+          @click="toggleAll"
+        >
+          {{ isAnyExpanded ? '折叠' : '展开' }}
+        </UButton>
+        <UButton
           :icon="SortOutlined"
-          quaternary
-          size="small"
-          :round="false"
-          @action="setting.tocSortReverse = !setting.tocSortReverse"
-        />
+          color="neutral"
+          size="sm"
+          variant="ghost"
+          class="text-sm/4"
+          @click="setting.tocSortReverse = !setting.tocSortReverse"
+        >
+          {{ setting.tocSortReverse ? '倒序' : '正序' }}
+        </UButton>
       </div>
     </template>
 
-    <template v-if="!tocResult">
-      <div role="status">
-        <span class="sr-only">正在加载章节目录…</span>
-        <div aria-hidden="true" class="divide-y divide-divider">
-          <div v-for="index in 8" :key="index" class="py-3">
-            <XSkeleton class="h-5" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
-            <XSkeleton class="mt-2 h-4 w-1/2" />
+    <template #body>
+      <template v-if="!tocResult">
+        <div role="status">
+          <span class="sr-only">正在加载章节目录…</span>
+          <div aria-hidden="true" class="divide-y divide-default">
+            <div v-for="index in 8" :key="index" class="py-3">
+              <USkeleton class="h-5" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
+              <USkeleton class="mt-2 h-4 w-1/2" />
+            </div>
           </div>
         </div>
-      </div>
-    </template>
-    <XError
-      v-else-if="!tocResult.ok"
-      title="加载错误"
-      :description="tocResult.error.message"
-    />
-    <template v-else>
-      <ChapterTocList
-        v-if="gnid.type === 'web' && tocSections"
-        :toc-sections="tocSections"
-        v-model:expanded-names="expandedNames"
-        :last-read-chapter-id="chapterId"
-        :default-scroll-key="currentKey"
-        :provider-id="gnid.providerId"
-        :novel-id="gnid.novelId"
-        :sort-reverse="sortReverse"
-        :mode="{
-          narrow: !isWideScreen,
-          modal: true,
-          collapse: false,
-        }"
-        @item-click="onTocItemClick"
+      </template>
+      <UAlert
+        color="error"
+        variant="soft"
+        v-else-if="!tocResult.ok"
+        title="加载错误"
+        :description="tocResult.error.message"
       />
-      <ChapterTocList
-        v-else-if="gnid.type === 'local' && tocSections"
-        :toc-sections="tocSections"
-        v-model:expanded-names="expandedNames"
-        :last-read-chapter-id="chapterId"
-        :default-scroll-key="currentKey"
-        :provider-id="gnid.volumeId"
-        :novel-id="gnid.volumeId"
-        :sort-reverse="sortReverse"
-        :mode="{
-          narrow: !isWideScreen,
-          modal: true,
-          collapse: false,
-        }"
-        @item-click="onTocItemClick"
-      />
+      <template v-else>
+        <ChapterTocList
+          v-if="gnid.type === 'web' && tocSections"
+          :toc-sections="tocSections"
+          v-model:expanded-names="expandedNames"
+          :last-read-chapter-id="chapterId"
+          :default-scroll-key="currentKey"
+          :provider-id="gnid.providerId"
+          :novel-id="gnid.novelId"
+          :sort-reverse="sortReverse"
+          :mode="{
+            narrow: !isWideScreen,
+            modal: true,
+            collapse: false,
+          }"
+          @item-click="onTocItemClick"
+        />
+        <ChapterTocList
+          v-else-if="gnid.type === 'local' && tocSections"
+          :toc-sections="tocSections"
+          v-model:expanded-names="expandedNames"
+          :last-read-chapter-id="chapterId"
+          :default-scroll-key="currentKey"
+          :provider-id="gnid.volumeId"
+          :novel-id="gnid.volumeId"
+          :sort-reverse="sortReverse"
+          :mode="{
+            narrow: !isWideScreen,
+            modal: true,
+            collapse: false,
+          }"
+          @item-click="onTocItemClick"
+        />
+      </template>
     </template>
-  </XDialog>
+  </UModal>
 </template>

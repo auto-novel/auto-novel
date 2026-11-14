@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { XError, XPage } from '@novelia/web-kit';
+import { XPage } from '@novelia/web-kit';
 import { computedAsync } from '@vueuse/core';
 
 import { formatError } from '@/api';
@@ -62,7 +62,9 @@ watch(formatedError, async (errorMessage) => {
 <template>
   <XPage>
     <NovelDetailSkeleton v-if="!novel && !formatedError" />
-    <XError
+    <UAlert
+      color="error"
+      variant="soft"
       v-else-if="!novel && formatedError"
       title="加载错误"
       :description="formatedError"

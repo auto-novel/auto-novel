@@ -16,12 +16,12 @@
 .filter-tabs button {
   padding: 6px 12px;
   border-radius: 5px;
-  color: var(--color-muted);
+  color: var(--ui-text-muted);
   font-size: 13px;
 }
 .filter-tabs button.selected {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: color-mix(in srgb, var(--ui-primary) 10%, transparent);
+  color: var(--ui-primary);
   font-weight: 600;
 }
 .banner-thumbnails {
@@ -39,7 +39,7 @@
   padding: 8px;
   border: none;
   border-radius: 8px;
-  background: var(--color-neutral-soft);
+  background: var(--ui-bg-muted);
   transition: background 150ms ease;
 }
 .banner-thumbnail img {
@@ -52,7 +52,7 @@
   background: var(--color-hover);
 }
 .banner-thumbnail.selected {
-  background: var(--color-primary-soft);
+  background: color-mix(in srgb, var(--ui-primary) 10%, transparent);
 }
 .banner-thumbnail.selected::after {
   content: '';
@@ -62,7 +62,7 @@
   width: 24px;
   height: 3px;
   border-radius: 3px;
-  background: var(--color-primary);
+  background: var(--ui-primary);
 }
 .banner-thumbnail.has-error::before {
   content: '';
@@ -72,7 +72,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--color-error);
+  background: var(--ui-error);
 }
 .banner-form {
   padding-top: 18px;
@@ -93,7 +93,7 @@
   margin-bottom: 0;
 }
 .banner-form .field > span:first-child {
-  color: var(--color-ink);
+  color: var(--ui-text);
   font-size: 13px;
   font-weight: 600;
 }
@@ -106,9 +106,9 @@
     box-shadow 150ms ease;
 }
 .banner-form .field input:not([type='file']):focus {
-  border-color: var(--color-primary);
+  border-color: var(--ui-primary);
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-primary-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-primary) 10%, transparent);
 }
 @media (max-width: 560px) {
   .banner-form .form-grid {
