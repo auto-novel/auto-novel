@@ -16,6 +16,7 @@ import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 
 export interface LocalTaskOptions {
   autoGlossary?: () => boolean;
+  writeAutoGlossary?: () => boolean;
 }
 
 export class LocalTranslationTask implements TranslationTask {
@@ -114,6 +115,39 @@ export class LocalTranslationTask implements TranslationTask {
             context.onLog(
               `术语分析完成：保留${Object.keys(this.generatedGlossary).length}个关键术语`,
             );
+            if (
+              this.options.writeAutoGlossary?.() === false ||
+              Object.keys(this.generatedGlossary).length === 0
+            )
+              return;
+            try {
+              const { metadata, written } =
+                await this.volumeStore.initializeGlossary(
+                  this.volumeId,
+                  { ...this.generatedGlossary },
+                  () => {
+                    context.signal.throwIfAborted();
+                    if (
+                      !enabled() ||
+                      this.options.writeAutoGlossary?.() === false
+                    )
+                      throw new DOMException('自动写入已关闭', 'AbortError');
+                  },
+                );
+              if (!metadata) throw new Error('小说不存在');
+              this.glossary = metadata.glossary ?? {};
+              this.glossaryId = metadata.glossaryId ?? '';
+              context.onLog(
+                written
+                  ? '关键术语已写入空的本地术语表'
+                  : Object.keys(this.glossary).length > 0
+                    ? '使用已有的本地术语表'
+                    : '保留已有译文的术语版本，本次使用临时术语',
+              );
+            } catch (error) {
+              context.signal.throwIfAborted();
+              context.onLog(`本地术语表写入跳过：${String(error)}`);
+            }
           },
           finalize: (cancelled) => {
             this.preparing = false;

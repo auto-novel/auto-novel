@@ -139,6 +139,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       runtime.task = createTranslationTask(desc, translatorId, params, {
         autoGlossary: () =>
           !isSakura && workerStore.ref.value.autoGlossary === true,
+        writeAutoGlossary: () =>
+          workerStore.ref.value.writeAutoGlossary !== false,
       });
     }
     return runtime.task;

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     getVolume: vi.fn(),
     getChapter: vi.fn(),
     updateTranslation: vi.fn(),
+    initializeGlossary: vi.fn(),
   },
 }));
 vi.mock('@/stores', () => ({ useLocalVolumeStore: async () => mocks.store }));
@@ -45,6 +46,12 @@ beforeEach(() => {
     glossaryId: 'old-version',
   });
   mocks.store.getChapter.mockResolvedValue({ paragraphs: sample });
+  mocks.store.initializeGlossary.mockImplementation(
+    async (_id, _glossary, beforeWrite) => {
+      beforeWrite?.();
+      return { metadata: await mocks.store.getVolume(), written: false };
+    },
+  );
 });
 
 describe('本地自动术语任务', () => {
@@ -98,6 +105,7 @@ describe('本地自动术语任务', () => {
       'getVolume',
       'getChapter',
       'updateTranslation',
+      'initializeGlossary',
     ]);
   });
   it('分析过程中关闭开关丢弃结果，取消则允许下次重试', async () => {
@@ -114,6 +122,109 @@ describe('本地自动术语任务', () => {
     await pending.save([result]);
     pending.finalize?.(false);
     expect((await task.prepareUnit(unit, context())).glossary).toEqual({});
+  });
+});
+
+describe('仅向空的本地表写入关键术语', () => {
+  it('新书默认写入一次，正文保存绑定写入后的新版本', async () => {
+    mocks.store.getVolume.mockResolvedValue({
+      toc: [{ chapterId: '1' }],
+      glossary: {},
+      glossaryId: 'old-version',
+    });
+    mocks.store.initializeGlossary.mockImplementation(
+      async (_id, glossary, beforeWrite) => {
+        beforeWrite();
+        return {
+          metadata: { glossary, glossaryId: 'new-version' },
+          written: true,
+        };
+      },
+    );
+    const task = new LocalTranslationTask('volume', 'gpt', params, {
+      autoGlossary: () => true,
+    });
+    await task.initialize(context());
+    const analysis = await task.prepareUnit(unit, context());
+    await analysis.save([result]);
+    analysis.finalize?.(false);
+    const chapter = await task.prepareUnit(unit, context());
+    await chapter.save(['译文一', '译文二']);
+    expect(mocks.store.initializeGlossary).toHaveBeenCalledOnce();
+    expect(mocks.store.updateTranslation.mock.calls[0][3]).toMatchObject({
+      glossaryId: 'new-version',
+      glossary: { アルテ: '阿尔蒂' },
+    });
+    expect(chapter.purpose).toBeUndefined();
+  });
+  it('关闭写入开关后仅使用临时表，空结果也不写入', async () => {
+    for (const [enabled, output] of [
+      [false, result],
+      [true, '[]'],
+    ] as const) {
+      const task = new LocalTranslationTask('volume', 'gpt', params, {
+        autoGlossary: () => true,
+        writeAutoGlossary: () => enabled,
+      });
+      await task.initialize(context());
+      const analysis = await task.prepareUnit(unit, context());
+      await analysis.save([output]);
+      analysis.finalize?.(false);
+      expect((await task.prepareUnit(unit, context())).purpose).toBeUndefined();
+    }
+    expect(mocks.store.initializeGlossary).not.toHaveBeenCalled();
+  });
+  it('人工术语在分析期间出现时优先使用人工术语及其版本', async () => {
+    const task = new LocalTranslationTask('volume', 'gpt', params, {
+      autoGlossary: () => true,
+    });
+    await task.initialize(context());
+    const analysis = await task.prepareUnit(unit, context());
+    mocks.store.getVolume.mockResolvedValue({
+      glossary: { アルテ: '人工译名' },
+      glossaryId: 'manual-version',
+    });
+    await analysis.save([result]);
+    analysis.finalize?.(false);
+    const chapter = await task.prepareUnit(unit, context());
+    await chapter.save(['译文一', '译文二']);
+    expect(mocks.store.updateTranslation.mock.calls[0][3]).toMatchObject({
+      glossaryId: 'manual-version',
+      glossary: { アルテ: '人工译名' },
+    });
+  });
+  it('写入前关闭开关时取消写入，存储失败仍能继续正文', async () => {
+    let enabled = true;
+    const task = new LocalTranslationTask('volume', 'gpt', params, {
+      autoGlossary: () => true,
+      writeAutoGlossary: () => enabled,
+    });
+    await task.initialize(context());
+    const analysis = await task.prepareUnit(unit, context());
+    mocks.store.initializeGlossary.mockImplementation(
+      async (_id, _glossary, beforeWrite) => {
+        enabled = false;
+        beforeWrite();
+      },
+    );
+    await analysis.save([result]);
+    analysis.finalize?.(false);
+    expect((await task.prepareUnit(unit, context())).glossary).toEqual({
+      アルテ: '阿尔蒂',
+    });
+    enabled = true;
+    mocks.store.initializeGlossary.mockRejectedValue(
+      new Error('storage unavailable'),
+    );
+    const retry = new LocalTranslationTask('other-volume', 'gpt', params, {
+      autoGlossary: () => true,
+    });
+    await retry.initialize(context());
+    const next = await retry.prepareUnit(unit, context());
+    await next.save([result]);
+    next.finalize?.(false);
+    expect((await retry.prepareUnit(unit, context())).purpose).toBeUndefined();
+    expect(mocks.store.initializeGlossary).toHaveBeenCalledTimes(2);
   });
 });
 
