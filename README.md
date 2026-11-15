@@ -12,6 +12,21 @@
 
 请务必在编写代码前阅读 [贡献指南](CONTRIBUTING.md)，感谢所有为本项目做出贡献的人们！
 
+## OpenCode Go
+
+在 GPT 工作区添加翻译器时，选择「OpenCode Go」接口格式，填写 Go API Key 和
+Go 模型 ID。默认端点为 `https://opencode.ai/inference/go/openai/v1`，思考强度
+可留为「默认」或选择该模型支持的值。模型目录和服务使用要求以
+[OpenCode Go 官方文档](https://opencode.ai/docs/console/go/)为准。
+
+官方 Go 接口由本站登录认证后的后端路由转发，浏览器无需扩展。Go Key 随本次请求
+发送到本站服务器，再转发到固定的官方 Chat Completions 地址；后端不保存 Key、
+提示词或模型响应，不跟随重定向。每个翻译器运行实例复用一个会话 ID，并使用
+`AutoNovel/1.0` 标识客户端。服务商仍可按账号、模型和使用要求拒绝请求。
+
+自定义网关和其他服务商仍由浏览器直接连接。个人部署需同时更新前端和 `server`；
+反向代理应保留 SSE 流和客户端断开，并为长时间的模型响应配置足够的读取超时。
+
 ## 部署
 
 > [!WARNING]

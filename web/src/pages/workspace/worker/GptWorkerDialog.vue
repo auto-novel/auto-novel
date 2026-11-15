@@ -12,6 +12,8 @@ import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
 import {
   openAiProfiles,
+  OPEN_CODE_GO_ENDPOINT,
+  isOpenCodeGoEndpoint,
   parseOpenAiProfileSelection,
   type openAiProfileId,
   type OpenAiProfileSelection,
@@ -40,9 +42,10 @@ const DEFAULT_PROFILE_ID: openAiProfileId = 'deepseek';
 
 /**
  * 按接口格式自动填入默认端点：
- * Gemini 用谷歌兼容端点，Anthropic 用 DeepSeek 的 /anthropic，，默认 DeepSeek。
+ * 各预设使用对应兼容端点；手动输入和已保存的端点保持不变。
  */
 const defaultEndpoint = (profileId: openAiProfileId) => {
+  if (profileId === 'opencode-go') return OPEN_CODE_GO_ENDPOINT;
   if (profileId === 'gemini') return GEMINI_ENDPOINT;
   if (profileId === 'anthropic') return DEEPSEEK_ANTHROPIC_ENDPOINT;
   return DEEPSEEK_ENDPOINT;
@@ -115,6 +118,10 @@ const onEndpointInput = (value: string) => {
 
 const currentProfile = computed(() =>
   openAiProfiles.find((p) => p.id === formValue.value.profileId),
+);
+
+const usesOpenCodeGo = computed(() =>
+  isOpenCodeGoEndpoint(formValue.value.endpoint),
 );
 
 function defaultProfileValues(profileId: openAiProfileId): ProfileValues {
@@ -378,6 +385,14 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
             @update:model-value="onProfileChange"
           />
         </UFormField>
+
+        <UAlert
+          v-if="usesOpenCodeGo"
+          color="info"
+          variant="soft"
+          title="OpenCode Go"
+          description="需登录本站。请求经本站服务器转发，Go Key 不写入服务器存储。请填写 Go 模型 ID，并选择该模型支持的思考强度。"
+        />
 
         <template v-if="currentProfile?.fields.length">
           <UFormField

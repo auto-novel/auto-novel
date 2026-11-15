@@ -7,7 +7,11 @@ import type {
 } from '@/types';
 import { detectChinese, getPreviousSource, isAbortError } from '@/utils';
 
-import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
+import {
+  createPiAiCompletion,
+  type PiAiCompletionRequest,
+  type PiAiProtocol,
+} from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
 import { createTranslationCacheKey } from '@/cache';
@@ -23,6 +27,8 @@ export type OpenAiTranslatorConfig = {
   model: string;
   /** 持久化数据未经类型校验，构造时统一校验一次。 */
   profile?: OpenAiProfileSelection;
+  /** 由宿主提供网络传输，例如需要登录认证的同源转发。 */
+  fetch?: PiAiCompletionRequest['fetch'];
   promptBuilder?: PromptBuilder;
   log?: Logger;
 };
@@ -35,6 +41,7 @@ export class OpenAiTranslator implements Translator {
   private model: string;
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
+  private fetch?: PiAiCompletionRequest['fetch'];
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
 
@@ -46,6 +53,7 @@ export class OpenAiTranslator implements Translator {
     this.model = config.model;
     this.profileParams = profile.requestParams;
     this.reasoningEffort = profile.reasoningEffort;
+    this.fetch = config.fetch;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
     this.log(`请求思考强度：${this.reasoningEffort}`);
@@ -121,6 +129,7 @@ export class OpenAiTranslator implements Translator {
       messages,
       requestParams: this.profileParams,
       signal,
+      fetch: this.fetch,
     });
     if (completion.reasoning) {
       this.log(`思考：${completion.reasoning}`);
