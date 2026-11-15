@@ -24,6 +24,103 @@ const toHeadersRecord = (headers?: HeadersInit): Record<string, string> => {
   return result;
 };
 
+const chatResponse = () =>
+  response(
+    sse([
+      { data: { choices: [{ index: 0, delta: { content: '#1:译文' } }] } },
+      {
+        data: {
+          choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+        },
+      },
+      { data: '[DONE]' },
+    ]),
+  );
+
+describe('OpenCode 域名请求头', () => {
+  it.each([
+    'https://opencode.ai/inference/go/openai/v1',
+    'https://opencode.ai/zen/go/v1',
+    'https://opencode.ai/inference/openai/v1/chat/completions',
+    'https://OPENCODE.AI/inference/go/openai/v1/',
+  ])('现有 Chat Completions 请求自动补充 OpenCode 头：%s', async (endpoint) => {
+    let headers: Record<string, string> | undefined;
+    let body: Record<string, unknown> | undefined;
+    const result = await createPiAiCompletion({
+      protocol: 'openai-completions',
+      endpoint,
+      key: 'test-key',
+      model: 'model-1',
+      sessionId: 'stable-session',
+      messages: [{ role: 'user', content: 'source' }],
+      requestParams: { reasoning_effort: 'high' },
+      fetch: async (_input, init) => {
+        headers = toHeadersRecord(init?.headers);
+        body = JSON.parse(String(init?.body));
+        return chatResponse();
+      },
+    });
+    expect(headers).toMatchObject({
+      authorization: 'Bearer test-key',
+      'content-type': 'application/json',
+      'user-agent': 'AutoNovel/1.0',
+      'x-opencode-session': 'stable-session',
+    });
+    expect(
+      Object.keys(headers ?? {}).some((name) =>
+        name.startsWith('x-stainless-'),
+      ),
+    ).toBe(false);
+    expect(body).toMatchObject({
+      model: 'model-1',
+      stream: true,
+      reasoning_effort: 'high',
+    });
+    expect(result.text).toBe('#1:译文');
+  });
+
+  it.each([
+    'https://api.deepseek.com/v1',
+    'http://localhost:8080/v1',
+    'https://opencode.ai.example.test/v1',
+    'https://not-opencode.ai/v1',
+    'https://api.example.test/opencode.ai/v1',
+  ])('其他域名不附加 OpenCode 头：%s', async (endpoint) => {
+    let headers: Record<string, string> | undefined;
+    await createPiAiCompletion({
+      protocol: 'openai-completions',
+      endpoint,
+      key: 'test-key',
+      model: 'model-1',
+      sessionId: 'must-not-send',
+      messages: [{ role: 'user', content: 'source' }],
+      fetch: async (_input, init) => {
+        headers = toHeadersRecord(init?.headers);
+        return chatResponse();
+      },
+    });
+    expect(headers?.authorization).toBe('Bearer test-key');
+    expect(headers).not.toHaveProperty('user-agent');
+    expect(headers).not.toHaveProperty('x-opencode-session');
+  });
+
+  it('直接调用未指定会话时也补充会话 ID', async () => {
+    let session: string | null | undefined;
+    await createPiAiCompletion({
+      protocol: 'openai-completions',
+      endpoint: 'https://opencode.ai/inference/go/openai/v1',
+      key: 'test-key',
+      model: 'model-1',
+      messages: [{ role: 'user', content: 'source' }],
+      fetch: async (_input, init) => {
+        session = new Headers(init?.headers).get('x-opencode-session');
+        return chatResponse();
+      },
+    });
+    expect(session).toMatch(/^[a-f0-9-]{36}$/);
+  });
+});
+
 // ============================================================
 // createPiAiCompletion 统一模型流式调用测试
 // ============================================================

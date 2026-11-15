@@ -1,5 +1,6 @@
 /** 通用 LLM 调用客户端：基于 pi-ai 适配协议，封装 SDK 与网关兼容细节。 */
 import { TranslationRejected } from '@/errors';
+import { randomUUID } from '@/utils';
 import type {
   AssistantMessage,
   FetchFunction,
@@ -26,6 +27,8 @@ export interface PiAiCompletionRequest {
   requestParams?: Record<string, unknown>;
   signal?: AbortSignal;
   fetch?: FetchFunction;
+  /** 同一翻译器的请求、重试和降级共用会话。 */
+  sessionId?: string;
 }
 
 export interface PiAiCompletionResult {
@@ -254,7 +257,7 @@ function normalizeEndpoint(endpoint: string, protocol: PiAiProtocol): string {
 function createPiAiFetch(
   request: Pick<
     PiAiCompletionRequest,
-    'protocol' | 'endpoint' | 'key' | 'fetch'
+    'protocol' | 'endpoint' | 'key' | 'fetch' | 'sessionId'
   >,
 ): FetchFunction {
   const fetch = request.fetch ?? globalThis.fetch;
@@ -274,6 +277,14 @@ function createPiAiFetch(
       }
     });
     for (const name of sdkHeaders) headers.delete(name);
+
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.hostname === 'opencode.ai') {
+      headers.set('user-agent', 'AutoNovel/1.0');
+      if (!headers.get('x-opencode-session')) {
+        headers.set('x-opencode-session', request.sessionId ?? randomUUID());
+      }
+    }
 
     if (isOpenRouterMessages) {
       // OpenRouter requires Bearer auth and does not allow these Anthropic headers.
