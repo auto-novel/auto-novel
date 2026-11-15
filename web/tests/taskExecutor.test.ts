@@ -92,19 +92,6 @@ describe('metadata translation units', () => {
     expect(tracker.state.progress).toEqual({ finished: 0, error: 0, total: 1 });
   });
 
-  it('saves zero-line metadata directly without producing pipeline work', async () => {
-    const task = createMetadataTask([]);
-    const tracker = createTracker(task);
-    const work = await new WorkPreparer(task).prepareUnit(
-      tracker.state.metadataUnit!,
-      tracker,
-      new AbortController().signal,
-    );
-    expect(work).toBeUndefined();
-    expect(task.save).toHaveBeenCalledWith([]);
-    expect(tracker.state.metadataUnit?.status).toBe('done');
-  });
-
   it('keeps failed metadata retryable and never saves original-text fallbacks', async () => {
     const task = createMetadataTask();
     const tracker = createTracker(task);
@@ -185,26 +172,33 @@ describe('WorkPreparer trust requirements', () => {
 });
 
 describe('WorkPreparer prepared units', () => {
-  it('saves empty chapters directly without submitting pipeline work', async () => {
-    const task = createTask('local');
-    task.prepareUnit.mockResolvedValue({
-      lines: [],
-      glossary: {},
-      save: task.save,
-    });
-    const tracker = createTracker(task);
-    const segmentTracker = new UnitDetailState('1');
-    const work = await new WorkPreparer(task).prepareUnit(
-      tracker.state.chapters[0],
-      { ...tracker, segmentTracker },
-      new AbortController().signal,
-    );
-    expect(work).toBeUndefined();
-    expect(task.save).toHaveBeenCalledWith([]);
-    expect(segmentTracker.ready).toBe(true);
-    expect(segmentTracker.segments).toEqual([]);
-    expect(tracker.state.progress.finished).toBe(1);
-  });
+  it.each(['chapter', 'metadata'] as const)(
+    'saves empty %s units directly without submitting pipeline work',
+    async (kind) => {
+      const task = createMetadataTask([]);
+      const tracker = createTracker(task);
+      const unit =
+        kind === 'chapter'
+          ? tracker.state.chapters[0]
+          : tracker.state.metadataUnit!;
+      const segmentTracker = new UnitDetailState(unit.chapterId);
+      const work = await new WorkPreparer(task).prepareUnit(
+        unit,
+        { ...tracker, segmentTracker },
+        new AbortController().signal,
+      );
+      expect(work).toBeUndefined();
+      expect(task.save).toHaveBeenCalledWith([]);
+      expect(unit.status).toBe('done');
+      expect(segmentTracker.ready).toBe(true);
+      expect(segmentTracker.segments).toEqual([]);
+      expect(tracker.state.progress).toEqual({
+        finished: kind === 'chapter' ? 1 : 0,
+        error: 0,
+        total: 1,
+      });
+    },
+  );
 
   it('passes task-provided history through without rebuilding it', async () => {
     const task = createTask('local');

@@ -8,10 +8,7 @@ import {
   postprocessTranslationLines,
 } from '../src/pipeline/lines';
 import { createOpenAiPromptBuilder } from '../src/translator/llm-prompt';
-import {
-  cleanSakuraOutput,
-  createSakuraPromptBuilder,
-} from '../src/translator/sakura-prompt';
+import { createSakuraPromptBuilder } from '../src/translator/sakura-prompt';
 
 describe('translation preprocessing and postprocessing', () => {
   it('识别直通行并恢复原文布局，重复处理不改变结果', () => {
@@ -56,7 +53,7 @@ describe('translation preprocessing and postprocessing', () => {
 
   it('OpenAI 解析按编号取回每一行内容', () => {
     expect(
-      createOpenAiPromptBuilder().parseAnswer('#1:译文\n#2:另一译文', [
+      createOpenAiPromptBuilder().parseAnswer('#2:另一译文\n#1:译文', [
         '原文',
         '另一行',
       ]),
@@ -65,7 +62,6 @@ describe('translation preprocessing and postprocessing', () => {
 
   it('Sakura 清除结束标记并统一换行，批量解析保留行边界', () => {
     const answer = '译文一\r\n译文二\r译文三<|im_end|>';
-    expect(cleanSakuraOutput(answer)).toBe('译文一\n译文二\n译文三');
     expect(createSakuraPromptBuilder('1.0').parseAnswer(answer, [])).toEqual([
       '译文一',
       '译文二',

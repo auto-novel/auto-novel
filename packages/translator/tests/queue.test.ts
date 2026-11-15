@@ -22,33 +22,40 @@ describe('SegmentQueue', () => {
     queue.setHighWaterMark(HWM);
   });
 
-  // --- 场景 1：基础功能 ---
-  it('应该能正常入队和出队 (FIFO)', async () => {
-    await queue.enqueueAll([createTask('1'), createTask('2')]);
-
-    const t1 = await queue.dequeue();
-    const t2 = await queue.dequeue();
-
-    expect(t1.segment.id).toBe('1');
-    expect(t2.segment.id).toBe('2');
-    expect(queue.length).toBe(0);
-  });
-
-  // --- 场景 2：消费者等待 ---
-  it('当队列为空时，dequeue 应该等待直到有新数据', async () => {
-    const dequeuePromise = queue.dequeue();
-
-    // 模拟一段延迟后入队
-    await queue.enqueueAll([createTask('async-1')]);
-
-    const result = await dequeuePromise;
-    expect(result.segment.id).toBe('async-1');
+  it('水位下调只阻止新派发，不取消执行中分段；排队重排可以替换准入者', async () => {
+    queue.setHighWaterMark(2);
+    let priority = 1;
+    const first = createTask('first');
+    const second = createTask('second');
+    const head = { ...createTask('head'), getPriority: () => priority };
+    const admission = queue.enqueueAll([first, second]);
+    await admission;
+    expect(await queue.dequeue()).toBe(first);
+    const newAdmission = queue.enqueueAll([head]);
+    priority = -1;
+    queue.refresh();
+    await newAdmission;
+    queue.setHighWaterMark(1);
+    let dispatched = false;
+    const next = queue.dequeue().then((task) => {
+      dispatched = true;
+      return task;
+    });
+    await Promise.resolve();
+    expect(dispatched).toBe(false);
+    queue.ack(first);
+    expect(await next).toBe(head);
+    queue.ack(head);
+    expect(await queue.dequeue()).toBe(second);
+    queue.ack(second);
+    expect(queue.needsInput()).toBe(true);
   });
 
   it('条件出队跳过不匹配的队首，并在退回时只唤醒匹配消费者', async () => {
     const restricted = { ...createTask('remote'), trustedOnly: true };
     const ordinary = createTask('local');
-    const accepts = (task: SegmentTask) => !task.trustedOnly;
+    const accepts = (task: Pick<SegmentTask, 'trustedOnly'>) =>
+      !task.trustedOnly;
     const controller = new AbortController();
     const local = queue.dequeue(controller.signal, accepts);
     const remote = queue.dequeue();
@@ -70,7 +77,8 @@ describe('SegmentQueue', () => {
     queueMicrotask(() => queue.setHighWaterMark(1));
     await Promise.resolve();
     await Promise.resolve();
-    expect(queue.length).toBe(3);
+    // 未准入分段仍保留在暂存区，降水位不会丢弃输入。
+    expect(queue.length).toBe(5);
 
     const received: string[] = [];
     for (let i = 0; i < 5; i++) {
@@ -83,33 +91,6 @@ describe('SegmentQueue', () => {
     expect(queue.length).toBe(0);
   });
 
-  // --- 场景 3：高水位线背压测试 ---
-  it('当达到高水位线时，waitUntilBelowHighWaterMark 应该阻塞', async () => {
-    // 1. 填满到水位线 (3个)
-    await queue.enqueueAll([createTask('1'), createTask('2'), createTask('3')]);
-
-    let isResolved = false;
-    const waitPromise = queue.waitUntilBelowHighWaterMark().then(() => {
-      isResolved = true;
-    });
-    const secondWait = queue.waitUntilBelowHighWaterMark();
-
-    await Promise.resolve();
-    expect(isResolved).toBe(false);
-
-    // 取走但尚未完成的分段仍计入在途水位。
-    const task = await queue.dequeue();
-    await Promise.resolve();
-    expect(isResolved).toBe(false);
-    queue.ack(task);
-
-    // 消费者完成分段后才释放水位。
-    await Promise.all([waitPromise, secondWait]);
-    expect(isResolved).toBe(true);
-    expect(queue.length).toBe(2);
-  });
-
-  // --- 场景 4：批量入队瞬间唤醒多个消费者 ---
   it('批量入队时，应该同时唤醒多个排队的消费者', async () => {
     const p1 = queue.dequeue();
     const p2 = queue.dequeue();

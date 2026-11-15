@@ -5,8 +5,9 @@ import type { TranslateRequest, TranslationWork } from '../src/types';
 const pipelines: TranslationPipeline[] = [];
 afterEach(() => pipelines.splice(0).forEach((pipeline) => pipeline.dispose()));
 
-function createPipeline() {
+function createPipeline(onSchedulingChange?: () => void) {
   const pipeline = new TranslationPipeline({
+    onSchedulingChange,
     segmenter: {
       segment: (lines) => lines.map((_, start) => ({ start, end: start + 1 })),
     },
@@ -58,6 +59,135 @@ function deferred<T>() {
 }
 
 describe('TranslationPipeline', () => {
+  it('并行 submit 不阻塞新队首，未完成的长输入即时计入水位', async () => {
+    const capacity = vi.fn();
+    const pipeline = createPipeline(capacity);
+    expect(capacity).not.toHaveBeenCalled();
+    expect(pipeline.needsInput()).toBe(false);
+    const first = deferred<string[]>();
+    const started: string[] = [];
+    const translate = vi.fn(async ({ lines }: TranslateRequest) => {
+      started.push(lines[0]);
+      return lines[0] === '甲' ? first.promise : [`译${lines[0]}`];
+    });
+    pipeline.registerTranslator({ trusted: true, translate });
+    expect(pipeline.needsInput()).toBe(true);
+    const long = { ...work('甲\n乙\n丙\n丁'), getPriority: () => 0 };
+    const submittingLong = pipeline.submit(long);
+    expect(pipeline.needsInput()).toBe(false);
+    await vi.waitFor(() => expect(started).toEqual(['甲']));
+    expect(pipeline.needsInput()).toBe(false);
+    expect(pipeline.needsInput(-1)).toBe(true);
+    let priority = 1;
+    const head = { ...work('戊'), getPriority: () => priority };
+    const submittingHead = pipeline.submit(head);
+    priority = -1;
+    capacity.mockClear();
+    pipeline.refreshScheduling();
+    await Promise.resolve();
+    expect(capacity).toHaveBeenCalled();
+    expect(started).toEqual(['甲']);
+    first.resolve(['译甲']);
+    await Promise.all([submittingLong, submittingHead]);
+    await pipeline.drain();
+    expect(started).toEqual(['甲', '戊', '乙', '丙', '丁']);
+    expect(long.onComplete).toHaveBeenCalledOnce();
+    expect(head.onComplete).toHaveBeenCalledOnce();
+    expect(long.onAbort).not.toHaveBeenCalled();
+    expect(pipeline.needsInput()).toBe(true);
+  });
+
+  it('全局水位同时计算执行中和等待分段，相同优先级保持输入与分段顺序', async () => {
+    const pipeline = createPipeline();
+    const gates = Array.from({ length: 4 }, () => deferred<string[]>());
+    const translate = vi.fn(
+      () => gates[translate.mock.calls.length - 1].promise,
+    );
+    pipeline.registerTranslator({ trusted: false, translate });
+    let admitted = false;
+    const submitting = pipeline.submit(work('甲\n乙\n丙')).then(() => {
+      admitted = true;
+    });
+    const submittingLast = pipeline.submit(work('丁'));
+    await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
+    expect(admitted).toBe(false);
+    gates[0].resolve(['译甲']);
+    await submitting;
+    // 甲完成、乙执行中、丙等待；丁尚未准入，不能另开一条水位。
+    expect(pipeline.needsInput()).toBe(false);
+    gates[1].resolve(['译乙']);
+    gates[2].resolve(['译丙']);
+    gates[3].resolve(['译丁']);
+    await submittingLast;
+    await pipeline.drain();
+    expect(translate.mock.calls.map(([{ lines }]) => lines[0])).toEqual([
+      '甲',
+      '乙',
+      '丙',
+      '丁',
+    ]);
+  });
+
+  it('可信翻译器忙碌时，受限等待分段不阻塞空闲的非可信翻译器', async () => {
+    const pipeline = createPipeline();
+    const remoteGate = deferred<void>();
+    const localGate = deferred<string[]>();
+    const trusted = vi.fn(async ({ lines }: TranslateRequest) => {
+      await remoteGate.promise;
+      return lines.map((line) => `译${line}`);
+    });
+    const untrusted = vi.fn(() => localGate.promise);
+    pipeline.registerTranslator({ trusted: true, translate: trusted });
+    pipeline.registerTranslator({ trusted: false, translate: untrusted });
+    const remote = {
+      ...work('甲\n乙\n丙\n丁'),
+      trustedOnly: true,
+      getPriority: () => 0,
+    };
+    await pipeline.submit(remote);
+    await vi.waitFor(() => expect(trusted).toHaveBeenCalledOnce());
+    expect(pipeline.needsInput(1, true)).toBe(false);
+    expect(pipeline.needsInput(1, false)).toBe(true);
+
+    const local = { ...work('戊'), getPriority: () => 1 };
+    await pipeline.submit(local);
+    await vi.waitFor(() => expect(untrusted).toHaveBeenCalledOnce());
+    // 两个翻译器都忙时不能继续拉取低优先级输入；全局水位仍生效。
+    expect(pipeline.needsInput(1, false)).toBe(false);
+    expect(remote.onComplete).not.toHaveBeenCalled();
+    localGate.resolve(['译戊']);
+    await vi.waitFor(() => expect(local.onComplete).toHaveBeenCalledOnce());
+    expect(trusted).toHaveBeenCalledOnce();
+    remoteGate.resolve();
+    await pipeline.drain();
+    expect(remote.onComplete).toHaveBeenCalledOnce();
+    expect(trusted.mock.calls.map(([{ lines }]) => lines[0])).toEqual([
+      '甲',
+      '乙',
+      '丙',
+      '丁',
+    ]);
+  });
+
+  it('没有可信翻译器的远程暂存不占全局水位，恢复能力后继续执行', async () => {
+    const pipeline = createPipeline();
+    const local = vi.fn(async ({ lines }: TranslateRequest) => [...lines]);
+    pipeline.registerTranslator({ trusted: false, translate: local });
+    expect(pipeline.needsInput(Infinity, true)).toBe(false);
+    const remote = { ...work('甲\n乙\n丙\n丁'), trustedOnly: true };
+    const submittingRemote = pipeline.submit(remote);
+    expect(pipeline.needsInput()).toBe(true);
+    const ordinary = work('戊');
+    await pipeline.submit(ordinary);
+    await vi.waitFor(() => expect(ordinary.onComplete).toHaveBeenCalledOnce());
+    expect(remote.onComplete).not.toHaveBeenCalled();
+    expect(local.mock.calls.map(([{ lines }]) => lines)).toEqual([['戊']]);
+    pipeline.registerTranslator({ trusted: true, translate: local });
+    await submittingRemote;
+    await pipeline.drain();
+    expect(remote.onComplete).toHaveBeenCalledOnce();
+  });
+
   it('按水位限制入队，篇目最多领先一篇', async () => {
     const pipeline = createPipeline();
     const gates = Array.from({ length: 4 }, () => deferred<string[]>());
@@ -368,35 +498,6 @@ describe('TranslationPipeline', () => {
     });
   });
 
-  it('受限输入等待可信翻译器，不阻塞普通输入的入队和翻译', async () => {
-    const pipeline = createPipeline();
-    const untrusted = vi.fn(async ({ lines }: TranslateRequest) =>
-      lines.map((line) => `本地${line}`),
-    );
-    pipeline.registerTranslator({ trusted: false, translate: untrusted });
-    const input = { ...work('甲\n乙\n丙\n丁'), trustedOnly: true };
-    const submitting = pipeline.submit(input);
-
-    // 受限输入超过水位且没有匹配消费者；普通输入仍应独立推进。
-    await expect(pipeline.translate({ lines: ['戊'] })).resolves.toEqual({
-      lines: ['本地戊'],
-      failed: [],
-    });
-    expect(input.onComplete).not.toHaveBeenCalled();
-    expect(untrusted.mock.calls.map(([{ lines }]) => lines)).toEqual([['戊']]);
-
-    const trusted = vi.fn(async ({ lines }: TranslateRequest) =>
-      lines.map((line) => `远程${line}`),
-    );
-    pipeline.registerTranslator({ trusted: true, translate: trusted });
-    await submitting;
-    await pipeline.drain();
-    expect(input.onComplete).toHaveBeenCalledWith({
-      lines: ['远程甲', '远程乙', '远程丙', '远程丁'],
-      failed: [],
-    });
-  });
-
   it('可信限定的 translate 可取消，取消后普通输入仍可翻译', async () => {
     const pipeline = createPipeline();
     const translate = vi.fn(async () => ['译文']);
@@ -465,31 +566,5 @@ describe('TranslationPipeline', () => {
     gate.resolve(['译甲']);
     await pipeline.drain();
     expect(onComplete).toHaveBeenCalledWith({ lines: ['译甲'], failed: [] });
-  });
-
-  it('submit 在队列满时等待，段完成后才返回', async () => {
-    const pipeline = createPipeline();
-    const gates = [1, 2, 3, 4].map(() => deferred<string[]>());
-    let call = 0;
-    pipeline.registerTranslator({
-      trusted: false,
-      translate: () => gates[call++].promise,
-    });
-
-    let submitted = false;
-    const submitting = pipeline.submit(work('甲\n乙\n丙\n丁')).then(() => {
-      submitted = true;
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    // 4 段、水位 2：还剩两段没位置。
-    expect(submitted).toBe(false);
-
-    gates[0].resolve(['一']);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(submitted).toBe(false);
-
-    gates[1].resolve(['二']);
-    await submitting;
-    expect(submitted).toBe(true);
   });
 });

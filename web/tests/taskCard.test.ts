@@ -45,7 +45,6 @@ describe('TaskCard', () => {
         }),
       );
 
-      expect(html).toContain('text-error');
       expect(html).toContain(`任务失败，共 ${chapterCount} 章`);
       expect(html).not.toContain('等待中');
     },

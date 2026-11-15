@@ -103,6 +103,8 @@ export interface SegmentTracker {
 
 /** 一篇完整原文；切分和队列背压由流水线负责，输入按只读借用。 */
 export interface TranslationInput {
+  /** 调度和需求查询时反复读取，须同步、无副作用且开销小；越小越优先，同值按输入、分段顺序。 */
+  readonly getPriority?: () => number;
   /** 只交给可信翻译器；缺省不限制，无匹配翻译器时等待，可取消。 */
   readonly trustedOnly?: boolean;
   /** 原文行；行内不应包含换行。 */

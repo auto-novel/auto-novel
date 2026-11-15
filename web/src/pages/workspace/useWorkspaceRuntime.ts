@@ -57,10 +57,11 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   const segmentCache = new IndexedDbSegmentCache(segCacheName);
   const clearTranslationCache = (): Promise<void> => segmentCache.clear();
 
-  /** 每类输入的队列水位跟随已注册翻译器总并发，预留一倍缓冲，独立背压。 */
+  /** 调度变化后重新检查上游输入需求。 */
   const pipeline = new TranslationPipeline({
     segmentLength: isSakura ? 500 : undefined,
     cache: segmentCache,
+    onSchedulingChange: () => runProcessLoop(),
   });
 
   // ========== 任务状态管理 ==========
@@ -115,9 +116,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   });
   let trustedInputsController = new AbortController();
 
-  // 目录窗口包含当前任务；原文槽位同时计入加载中和已就绪的输入。
-  const taskPrefetchWindow = 3;
-  const unitPrefetchLimit = 3;
+  // 当前原文需求之外，只提前准备一个任务目录；同时最多获取一份原文。
+  const taskPrefetchWindow = 2;
   let refillPrefetch: (() => void) | undefined;
   let processLoopAbortController: AbortController | null = null;
   let disposed = false;
@@ -181,23 +181,12 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     }
   }
 
-  /** 串行加载目录，但允许当前任务之外保留两个待执行任务的快照。 */
+  /** 串行加载目录，已交给流水线的任务不占上游目录窗口。 */
   function initializeNextTask(): void {
     if ([...taskRuntimes.values()].some((runtime) => runtime.initializing))
       return;
-    // 先统计所有可执行快照，队列重排也不能不断额外加载目录。
-    const activeTasks = jobs.value.filter((job) => {
-      const runtime = taskRuntimes.get(job.task);
-      return (
-        !job.finishAt &&
-        runtime?.task &&
-        canRunTask(runtime.task) &&
-        runtime.state?.units.some(
-          (unit) => unit.status === 'pending' || unit.status === 'translating',
-        )
-      );
-    }).length;
-    if (activeTasks >= taskPrefetchWindow) return;
+    // 窗口跟随当前顺序；低优先级的已有快照不能挡住新队首。
+    let activeTasks = 0;
     for (const job of jobs.value) {
       const runtime = taskRuntimes.get(job.task);
       if (!runtime || job.finishAt || runtime.initializationError !== undefined)
@@ -210,7 +199,19 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         continue;
       }
       if (!canRunTask(task)) continue;
-      if (runtime.state?.initialized) continue;
+      if (runtime.state?.initialized) {
+        if (
+          runtime.state.units.some(
+            (unit) =>
+              unit.status === 'pending' ||
+              (unit.status === 'translating' &&
+                !runtime.state!.unitDetails.get(unit.chapterId)?.ready),
+          ) &&
+          ++activeTasks >= taskPrefetchWindow
+        )
+          return;
+        continue;
+      }
       const controller = new AbortController();
       runtime.initializing = controller;
       void initializeTask(job, runtime, controller);
@@ -338,6 +339,10 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           signal: inputSignal,
           work: {
             ...work,
+            getPriority: () => {
+              const index = jobs.value.findIndex((it) => it.task === job.task);
+              return index < 0 ? Infinity : index;
+            },
             onComplete: async (result) => {
               await work.onComplete(result);
               if (isCurrentTask()) updateJobCompletion(job, runtime, state);
@@ -365,32 +370,39 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     const ready: { preparation: Preparation; result: Awaited<Preparation> }[] =
       [];
     let wakePrefetch: (() => void) | undefined;
+    const priorityOf = (result: Awaited<Preparation>) =>
+      result.input?.work.getPriority?.() ?? -Infinity;
     const fillPrefetch = () => {
-      while (
-        !signal.aborted &&
-        hasRunningWorker() &&
-        prefetched.size < unitPrefetchLimit &&
-        !schedulableUnits().next().done
-      ) {
-        // nextWork 同步认领单元，避免并发加载同一章；提前接住异常防止悬空拒绝。
-        const preparation: Preparation = nextWork().then(
-          (input) => ({ input }),
-          (error: unknown) => ({ error }),
-        );
-        prefetched.add(preparation);
-        // 每次准备仅注册一个通知，慢请求不会积累其他章节的等待回调。
-        void preparation.then((result) => {
-          ready.push({ preparation, result });
-          wakePrefetch?.();
-        });
+      if (
+        signal.aborted ||
+        !hasRunningWorker() ||
+        prefetched.size > ready.length
+      )
+        return;
+      const next = schedulableUnits().next().value;
+      if (!next) return;
+      const priority = jobs.value.indexOf(next.job);
+      // 常态只保留一份额外原文。重排后已有低优先级原文留作缓存，
+      // 允许新队首准备，不丢弃旧原文，也不等待整个流水线清空。
+      if (ready.some(({ result }) => priorityOf(result) <= priority)) return;
+      const preparation: Preparation = nextWork().then(
+        (input) => ({ input }),
+        (error: unknown) => ({ error }),
+      );
+      prefetched.add(preparation);
+      void preparation.then((result) => {
+        ready.push({ preparation, result });
         wakePrefetch?.();
-      }
+      });
     };
     const waitForPrefetch = () =>
       new Promise<undefined>((resolve) => {
         wakePrefetch = () => resolve(undefined);
       });
-    refillPrefetch = fillPrefetch;
+    refillPrefetch = () => {
+      fillPrefetch();
+      wakePrefetch?.();
+    };
     type Settlement = {
       version: number;
       result?: { error?: never } | { error: unknown };
@@ -432,8 +444,17 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             wakePrefetch = undefined;
             continue;
           }
-          // 完成通知按就绪顺序入队，不等待队首慢请求。
-          const selected = ready.shift();
+          ready.sort((a, b) => priorityOf(a.result) - priorityOf(b.result));
+          const index = ready.findIndex(
+            ({ result }) =>
+              !result.input ||
+              result.input.signal.aborted ||
+              pipeline.needsInput(
+                priorityOf(result),
+                result.input.work.trustedOnly,
+              ),
+          );
+          const selected = index < 0 ? undefined : ready.splice(index, 1)[0];
           if (!selected) {
             await waitForPrefetch();
             wakePrefetch = undefined;
@@ -448,15 +469,9 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
               await input.work.onAbort();
               continue;
             }
-            try {
-              // 在投递前更新代际，不依赖旧 drain 的完成通知是否已经到达。
-              submissionVersion++;
-              // 投递仍串行，保留分段队列的背压；等待期间可准备其他槽位。
-              await pipeline.submit(input.work, input.signal);
-            } catch (error) {
-              // 唯一可信翻译器停止只取消受限输入，不能连带中断本地章节。
-              if (!input.signal.aborted || signal.aborted) throw error;
-            }
+            // 不等待整章准入；submit 仅因取消拒绝，结算与回调错误统一交给 drain。
+            submissionVersion++;
+            void pipeline.submit(input.work, input.signal).catch(() => {});
           } finally {
             prefetched.delete(preparation);
           }
@@ -718,6 +733,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           );
         }
       }
+      pipeline.refreshScheduling();
       runProcessLoop();
     },
     // 删除／替换同步终止旧版本，不能等下一次渲染才阻止保存。

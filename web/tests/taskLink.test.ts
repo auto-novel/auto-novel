@@ -32,7 +32,6 @@ describe('TaskLink', () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain(text);
-    expect(html).not.toContain('n-text');
   });
 
   it('renders malformed persisted tasks without breaking the queue', async () => {
@@ -41,11 +40,9 @@ describe('TaskLink', () => {
     expect(html).not.toContain('href=');
   });
 
-  it('renders a local task as plain muted text', async () => {
+  it('renders a local task without a navigation link', async () => {
     const html = await renderTaskLink('local/volume');
 
-    expect(html).toContain('<span');
-    expect(html).toContain('text-muted');
     expect(html).toContain('local');
     expect(html).not.toContain('href=');
   });

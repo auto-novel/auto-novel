@@ -6,12 +6,13 @@ describe('createGlossaryCodec', () => {
   it('按最长术语优先替换，并在译文中还原', () => {
     const codec = createGlossaryCodec({
       太郎: '小太郎',
+      山田太郎: '山田君',
       花子: '小花',
     });
-    const encoded = codec.encode(['太郎と花子']);
+    const encoded = codec.encode(['山田太郎と太郎と花子']);
     expect(encoded[0]).not.toContain('太郎');
     expect(encoded[0]).not.toContain('花子');
-    expect(codec.decode(encoded)).toEqual(['小太郎と小花']);
+    expect(codec.decode(encoded)).toEqual(['山田君と小太郎と小花']);
   });
 
   it('还原时去掉术语值里的备注', () => {

@@ -49,19 +49,24 @@ export class TranslationPipeline {
   private readonly pendingSettlements = new Set<Promise<void>>();
   private settlementError: unknown;
 
-  /**
-   * 每类输入的队列水位跟随已注册翻译器的总并发；构造时尚未注册翻译器，
-   * 因此从 1 开始，注册后由 _updateHighWaterMark 上调。
-   */
+  /** 执行中与准入等待分段共享总并发两倍的水位；其余输入只暂存。 */
   constructor(
     options: {
       segmenter?: LineSegmenter;
       segmentLength?: number;
       cache?: SegmentCache;
+      /** 提醒上游重新检查输入需求；微任务合并调用，不保证容量实际变化。 */
+      onSchedulingChange?: () => void;
     } = {},
   ) {
     this.translatorLoops = new Map();
-    this.queue = new SegmentQueue();
+    this.queue = new SegmentQueue(options.onSchedulingChange);
+    this.queue.setExecutable((task) =>
+      [...this.translatorLoops.values()].some(
+        (loop) => !task.trustedOnly || loop.trusted,
+      ),
+    );
+    this.queue.setHighWaterMark(0);
     this.segmenter =
       options.segmenter ??
       createLineSegmenter(options.segmentLength ?? 1500, 30);
@@ -86,18 +91,26 @@ export class TranslationPipeline {
     // dispose 也要能取消未完成的输入，避免入队被背压卡住或结算悬空。
     const inputSignal =
       anySignal([signal, this.lifecycle.signal]) ?? this.lifecycle.signal;
-    // 同步准备错误也进入结果通道，由同一处负责结算回调。
-    const prepared = Promise.resolve().then(() =>
-      this.prepareInput(input, inputSignal),
-    );
-    const enqueued = prepared.then(({ tasks }) =>
-      this.queue.enqueueAll(tasks, inputSignal),
-    );
+    // 同步登记分段，让并行 submit 之后的容量查询立即看到本次输入。
+    // 准备错误仍进入结果通道，不绕过统一结算回调。
+    let prepared: PreparedInput;
+    try {
+      prepared = this.prepareInput(input, inputSignal);
+    } catch (error) {
+      const failed = Promise.reject<never>(error);
+      void failed.catch(() => {});
+      return { enqueued: failed, result: failed, signal: inputSignal };
+    }
+    let enqueued: Promise<void>;
+    try {
+      enqueued = this.queue.enqueueAll(prepared.tasks, inputSignal);
+    } catch (error) {
+      enqueued = Promise.reject(error);
+    }
     // 投递失败同样是输入失败，不能只等待分段结果而悬空。
-    const result = Promise.all([
-      enqueued,
-      prepared.then(({ result }) => result),
-    ]).then(([, result]) => result);
+    const result = Promise.all([enqueued, prepared.result]).then(
+      ([, result]) => result,
+    );
     // translate 可能仍在等待入队，提前接住结果的拒绝。
     void result.catch(() => {});
     return { enqueued, result, signal: inputSignal };
@@ -124,6 +137,16 @@ export class TranslationPipeline {
       // 回调只走结算通道；投递路径只负责把取消继续上抛。
       inputSignal.throwIfAborted();
     }
+  }
+
+  /** 是否需要指定优先级、可信约束的输入；也考虑无法消费现有分段的空闲翻译器。 */
+  needsInput(priority = Infinity, trustedOnly = false): boolean {
+    return this.queue.needsInput(priority, trustedOnly);
+  }
+
+  /** 优先级变化后重新调度等待分段，并通知上游检查输入需求。 */
+  refreshScheduling(): void {
+    this.queue.refresh();
   }
 
   /** 等待已投递输入全部结算；结算回调抛错时在这里上抛。 */
@@ -182,6 +205,7 @@ export class TranslationPipeline {
           tasks.push({
             segment,
             trustedOnly: input.trustedOnly,
+            getPriority: input.getPriority,
             observer,
             signal,
             resolve,
@@ -393,7 +417,7 @@ export class TranslationPipeline {
     for (const loop of this.translatorLoops.values()) {
       totalConcurrency += loop.concurrency;
     }
-    // 每类输入独立使用配置容量；降低阈值不移除已在途的分段。
-    this.queue.setHighWaterMark(Math.max(1, totalConcurrency * 2));
+    // 降低水位只减少等待准入，不取消执行中的分段。
+    this.queue.setHighWaterMark(totalConcurrency * 2);
   }
 }

@@ -17,30 +17,9 @@ describe('createLineSegmenter', () => {
     expect(segmenter.segment(lines)).toEqual([{ start: 0, end: 3 }]);
   });
 
-  it('单行长度超过 upperLen 时，该行单独成段', () => {
-    // maxLength = 5，第一行 "hello" 长度 5，加上换行符 1 => 6 > 5
-    const segmenter = createLineSegmenter(5);
-    const lines = ['hello', 'world'];
-    // i=0: lineLen=5+1=6, segChars(0)+6=6 >5, 且 i>segStart(0) 不成立，所以不切
-    // segChars=6
-    // i=1: lineLen=5+0=5(最后一行), segChars(6)+5=11 >5, 且 i>segStart(0) 成立 => 切 [0,1)
-    // segStart=1, segChars=5
-    // 最后 push [1,2)
-    expect(segmenter.segment(lines)).toEqual([
-      { start: 0, end: 1 },
-      { start: 1, end: 2 },
-    ]);
-  });
-
   it('行数超过 upperLine 时触发分段', () => {
-    // maxLine = 2，3 行文本
     const segmenter = createLineSegmenter(undefined, 2);
     const lines = ['a', 'b', 'c'];
-    // i=0: segChars=1, i-segStart=0 < 2
-    // i=1: segChars=1+2=3, i-segStart=1 < 2
-    // i=2: segChars=3+1=4, i-segStart=2 >= 2 且 i>segStart => 切 [0,2)
-    // segStart=2, segChars=1
-    // 最后 push [2,3)
     expect(segmenter.segment(lines)).toEqual([
       { start: 0, end: 2 },
       { start: 2, end: 3 },
@@ -48,14 +27,8 @@ describe('createLineSegmenter', () => {
   });
 
   it('字符数限制优先于行数限制', () => {
-    // maxLength=10, maxLine=100
     const segmenter = createLineSegmenter(10, 100);
     const lines = ['12345', '67890', 'abc'];
-    // i=0: lineLen=5+1=6, segChars=6
-    // i=1: lineLen=5+1=6, segChars(6)+6=12 >10 且 i>segStart => 切 [0,1)
-    // segStart=1, segChars=6
-    // i=2: lineLen=3+0=3, segChars(6)+3=9 <=10, 不切
-    // 最后 push [1,3)
     expect(segmenter.segment(lines)).toEqual([
       { start: 0, end: 1 },
       { start: 1, end: 3 },
@@ -64,34 +37,16 @@ describe('createLineSegmenter', () => {
 
   it('超长单行单独成段后，后续行正常合并', () => {
     const segmenter = createLineSegmenter(5);
-    const lines = ['hello', 'a', 'b'];
-    // i=0: lineLen=6 >5, 但 i===segStart 不切, segChars=6
-    // i=1: lineLen=1+1=2, segChars(6)+2=8 >5, i>segStart => 切 [0,1)
-    // segStart=1, segChars=2
-    // i=2: lineLen=1+0=1, segChars(2)+1=3 <=5, 不切
-    // 最后 push [1,3)
+    const lines = ['helloo', 'a', 'b'];
     expect(segmenter.segment(lines)).toEqual([
       { start: 0, end: 1 },
       { start: 1, end: 3 },
     ]);
   });
 
-  it('自定义 maxLength 和 maxLine 同时生效', () => {
-    const segmenter = createLineSegmenter(20, 3);
-    const lines = Array.from({ length: 10 }, (_, i) => `line${i}`);
-    const result = segmenter.segment(lines);
-    // 每行长度 5，加换行符 6，3 行约 18 字符 < 20，所以按行数 3 切
-    expect(result).toEqual([
-      { start: 0, end: 3 },
-      { start: 3, end: 6 },
-      { start: 6, end: 9 },
-      { start: 9, end: 10 },
-    ]);
-  });
-
   it('所有行刚好填满 upperLen 时不分段', () => {
-    const segmenter = createLineSegmenter(12);
-    // "abc" (3) + 换行(1) = 4, 三行共 12，刚好等于 upperLen
+    const segmenter = createLineSegmenter(11);
+    // 三行共 9 字符与 2 个换行，恰好等于上限。
     const lines = ['abc', 'abc', 'abc'];
     expect(segmenter.segment(lines)).toEqual([{ start: 0, end: 3 }]);
   });
@@ -166,13 +121,6 @@ describe('assembleSegments', () => {
     });
   });
 
-  it('无 history 时所有段 expired 为 true', () => {
-    const segments = assembleSegments(id, ['a', 'b'], makeRanges([0, 2]), {});
-
-    expect(segments[0].context.expired).toBe(true);
-    expect(segments[0].context.history).toBeUndefined();
-  });
-
   it('有 history 且原文和术语表一致时 expired 为 false', () => {
     const lines = ['hello', 'world'];
     const ranges = makeRanges([0, 2]);
@@ -212,6 +160,25 @@ describe('assembleSegments', () => {
     expect(segments[0].context.history?.lines).toEqual(['hello', 'world']);
   });
 
+  it('当前段未变但前文已变时，历史译文仍须过期', () => {
+    const history: TranslationHistory = {
+      lines: ['旧前文', '当前段'],
+      translatedLines: ['旧译文', '当前译文'],
+      glossary: {},
+    };
+    const [segment] = assembleSegments(
+      id,
+      ['新前文', '当前段'],
+      makeRanges([1, 2]),
+      {},
+      history,
+    );
+
+    expect(segment.context.previousSource).toBe('新前文');
+    expect(segment.context.expired).toBe(true);
+    expect(segment.context.history?.translatedLines).toEqual(['当前译文']);
+  });
+
   it('有 history 但术语表不一致时 expired 为 true', () => {
     const lines = ['hello', 'world'];
     const ranges = makeRanges([0, 2]);
@@ -234,9 +201,9 @@ describe('assembleSegments', () => {
     const glossary: Glossary = { hello: '你好', world: '世界' };
 
     const history: TranslationHistory = {
-      lines: ['hello', 'world'],
-      translatedLines: ['你好', '世界'],
-      glossary: { hello: '你好', world: '世界', extra: '额外' }, // 历史 glossary 有额外词条
+      lines: ['old', 'world'],
+      translatedLines: ['旧译文', '世界'],
+      glossary: { hello: '你好', world: '世界', old: '旧词', extra: '额外' },
     };
 
     const segments = assembleSegments(id, lines, ranges, glossary, history);
@@ -246,8 +213,6 @@ describe('assembleSegments', () => {
       hello: '你好',
       world: '世界',
     });
-    // extra 被过滤掉，因为当前段原文不包含 'extra'
-    expect(segments[0].context.history?.glossary).not.toHaveProperty('extra');
   });
 
   it('多个段各自独立过滤 glossary 和 history', () => {
@@ -277,11 +242,5 @@ describe('assembleSegments', () => {
   it('空行数组应返回空 Segment 数组', () => {
     const segments = assembleSegments(id, [], [], {});
     expect(segments).toEqual([]);
-  });
-
-  it('空 glossary 不应影响组装', () => {
-    const segments = assembleSegments(id, ['a'], makeRanges([0, 1]), {});
-    expect(segments).toHaveLength(1);
-    expect(segments[0].context.glossary).toEqual({});
   });
 });

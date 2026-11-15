@@ -64,18 +64,41 @@ vi.mock('@auto-novel/translator', async (importOriginal) => {
       translate: mocks.translate,
     }),
     TranslationPipeline: class {
+      private pending = new Map<TranslationWork, Promise<void>>();
       constructor(
-        options: ConstructorParameters<typeof actual.TranslationPipeline>[0],
+        private options: ConstructorParameters<
+          typeof actual.TranslationPipeline
+        >[0],
       ) {
         if (mocks.translate) return new actual.TranslationPipeline(options);
       }
       registerTranslator(_translator: Translator) {}
       unregisterTranslator(_id: string) {}
       dispose() {}
-      async drain() {
-        await mocks.drain?.();
+      refreshScheduling() {}
+      needsInput(priority = Infinity, _trustedOnly = false) {
+        return (
+          [...this.pending.keys()].filter(
+            (work) => (work.getPriority?.() ?? 0) <= priority,
+          ).length < 2
+        );
       }
       async submit(work: TranslationWork, signal: AbortSignal) {
+        const submitting = this.execute(work, signal);
+        const settled = submitting
+          .catch(() => {})
+          .finally(() => {
+            this.pending.delete(work);
+            this.options?.onSchedulingChange?.();
+          });
+        this.pending.set(work, settled);
+        await submitting;
+      }
+      async drain() {
+        while (this.pending.size) await Promise.all(this.pending.values());
+        await mocks.drain?.();
+      }
+      private async execute(work: TranslationWork, signal: AbortSignal) {
         mocks.submitted.push(work);
         if (mocks.blockRemote && work.trustedOnly) {
           await new Promise<void>((resolve) => {
@@ -181,7 +204,9 @@ it.each(['sakura', 'gpt'] as const)(
 
 function setupLifecycleRuntime(
   tasks: Record<string, TranslationTask>,
-  workers = [{ id: 'trusted', trusted: true }],
+  workers: { id: string; trusted: boolean; concurrency?: number }[] = [
+    { id: 'trusted', trusted: true },
+  ],
 ) {
   mocks.tasks = new Map(Object.entries(tasks));
   mocks.submitted = [];
@@ -267,7 +292,7 @@ describe('workspace task version lifecycle', () => {
     const { runtime, store } = setupLifecycleRuntime({ old, other });
     mocks.blockRemote = true;
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(mocks.submitted).toHaveLength(1));
+    await vi.waitFor(() => expect(mocks.submitted[0]).toBeDefined());
     const oldWork = mocks.submitted[0];
     const signal = vi.mocked(old.prepareUnit).mock.calls[0][1]!.signal;
     const oldState = runtime.taskStates.value.get('old');
@@ -380,6 +405,52 @@ describe('workspace trusted worker scheduling', () => {
       true,
     ]);
   });
+  it('runs lower-priority local work on an untrusted worker while trusted remote segments are blocked', async () => {
+    const remote = task('wenku');
+    const local = task('local');
+    vi.mocked(remote.prepareUnit).mockResolvedValue({
+      // 四个分段足以占满两个单并发翻译器的旧全局水位。
+      lines: Array(4).fill(`remote:${'あ'.repeat(500)}`),
+      glossary: {},
+      save: remote.chapterSave,
+    });
+    vi.mocked(local.prepareUnit).mockResolvedValue({
+      lines: ['local'],
+      glossary: {},
+      save: local.chapterSave,
+    });
+    const translating = deferred<void>();
+    const started: string[] = [];
+    mocks.translate = vi.fn<Translator['translate']>(async ({ lines }) => {
+      const name = lines[0].split(':')[0];
+      started.push(name);
+      if (name === 'remote') await translating.promise;
+      return lines.map(() => '译文');
+    });
+    const { runtime } = setupLifecycleRuntime({ remote, local }, [
+      { id: 'trusted', trusted: true, concurrency: 1 },
+      { id: 'untrusted', trusted: false, concurrency: 1 },
+    ]);
+
+    await runtime.startWorker('trusted');
+    await vi.waitFor(() => expect(started).toEqual(['remote']));
+    await runtime.startWorker('untrusted');
+    await vi.waitFor(() => expect(local.chapterSave).toHaveBeenCalledOnce());
+    expect(started).toEqual(['remote', 'local']);
+    expect(remote.chapterSave).not.toHaveBeenCalled();
+    expect(runtime.workerStates.value.get('trusted')?.currentConcurrency).toBe(
+      1,
+    );
+    expect(
+      runtime.taskStates.value.get('remote')?.unitDetails.get('1')?.segments,
+    ).toHaveLength(4);
+
+    translating.resolve();
+    await vi.waitFor(() => expect(remote.chapterSave).toHaveBeenCalledOnce());
+    expect(started).toEqual(['remote', 'local', 'remote', 'remote', 'remote']);
+    expect(local.prepareUnit).toHaveBeenCalledOnce();
+    expect(remote.prepareUnit).toHaveBeenCalledOnce();
+  });
   it('cancels a blocked remote input when the last trusted worker stops and continues local work', async () => {
     const remote = task('wenku');
     const local = task('local');
@@ -391,7 +462,7 @@ describe('workspace trusted worker scheduling', () => {
 
     await runtime.startWorker('trusted');
     await runtime.startWorker('untrusted');
-    await vi.waitFor(() => expect(mocks.submitted).toHaveLength(1));
+    await vi.waitFor(() => expect(mocks.submitted[0]).toBeDefined());
     expect(mocks.submitted[0].trustedOnly).toBe(true);
     runtime.stopWorker('trusted');
 
@@ -443,25 +514,20 @@ describe('bounded source prefetch', () => {
     vi.useFakeTimers();
     try {
       const blocked = task('local');
-      blocked.chapters = Array.from({ length: 3 }, (_, index) => ({
-        ...blocked.chapters[0],
-        chapterId: String(index + 1),
-        order: index,
-      }));
       const source = deferred<PreparedUnit>();
       vi.mocked(blocked.prepareUnit).mockReturnValue(source.promise);
       const healthy = task('local');
       const { runtime, store } = setupLifecycleRuntime({ blocked, healthy });
       await runtime.startWorker('trusted');
       await vi.advanceTimersByTimeAsync(0);
-      expect(blocked.prepareUnit).toHaveBeenCalledTimes(3);
+      expect(blocked.prepareUnit).toHaveBeenCalledOnce();
       expect(healthy.prepareUnit).not.toHaveBeenCalled();
 
       await vi.advanceTimersByTimeAsync(120_000);
       expect(
         runtime.taskStates.value.get('blocked')!.chapters.map((c) => c.status),
-      ).toEqual(['error', 'error', 'error']);
-      expect(blocked.prepareUnit).toHaveBeenCalledTimes(3);
+      ).toEqual(['error']);
+      expect(blocked.prepareUnit).toHaveBeenCalledOnce();
       expect(healthy.chapterSave).toHaveBeenCalledOnce();
       expect(store.ref.value.jobs[1]).toHaveProperty('finishAt');
       for (const [, context] of vi.mocked(blocked.prepareUnit).mock.calls) {
@@ -545,12 +611,13 @@ describe('bounded source prefetch', () => {
 
   it('cancels a ready prefetched unit when its task is deleted', async () => {
     const first = task('wenku');
+    first.chapters.push({ ...first.chapters[0], chapterId: '2', order: 1 });
     const buffered = task('local');
     const { runtime } = setupLifecycleRuntime({ first, buffered });
     mocks.blockRemote = true;
     await runtime.startWorker('trusted');
     await vi.waitFor(() => {
-      expect(mocks.submitted).toHaveLength(1);
+      expect(mocks.submitted).toHaveLength(2);
       expect(buffered.prepareUnit).toHaveBeenCalledOnce();
     });
     const signal = vi.mocked(buffered.prepareUnit).mock.calls[0][1].signal;
@@ -559,49 +626,36 @@ describe('bounded source prefetch', () => {
     runtime.stopWorker('trusted');
     mocks.blockRemote = false;
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(first.chapterSave).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(first.chapterSave).toHaveBeenCalledTimes(2));
     expect(buffered.chapterSave).not.toHaveBeenCalled();
     expect(runtime.taskStates.value.has('buffered')).toBe(false);
     expect(mocks.submitted.every((work) => work.trustedOnly)).toBe(true);
   });
 
-  it.each(['source', 'settlement'] as const)(
-    'wakes the consumer for a later initialized task while an old %s is blocked',
-    async (phase) => {
-      const first = task('local');
-      const second = task('local');
-      const pending = deferred<void>();
-      const directory = deferred<void>();
-      vi.mocked(second.initialize).mockImplementation(async () => {
-        await directory.promise;
-        second.initialized = true;
-      });
-      if (phase === 'source') {
-        vi.mocked(first.prepareUnit).mockImplementation(async () => {
-          await pending.promise;
-          return { lines: ['原文'], glossary: {}, save: first.chapterSave };
-        });
-      } else {
-        mocks.drain = vi.fn(() => pending.promise);
-      }
-      const { runtime } = setupLifecycleRuntime({ first, second });
-      await runtime.startWorker('trusted');
-      await vi.waitFor(() => {
-        expect(second.initialize).toHaveBeenCalledOnce();
-        if (phase === 'source')
-          expect(first.prepareUnit).toHaveBeenCalledOnce();
-        else expect(mocks.drain).toHaveBeenCalledOnce();
-      });
-      directory.resolve();
-      await vi.waitFor(() => expect(second.chapterSave).toHaveBeenCalledOnce());
-      if (phase === 'source') expect(first.chapterSave).not.toHaveBeenCalled();
-      else expect(mocks.drain).toHaveBeenCalledOnce();
-      pending.resolve();
-      await vi.waitFor(() => expect(first.chapterSave).toHaveBeenCalledOnce());
-    },
-  );
+  it('wakes the consumer for a later initialized task while an old settlement is blocked', async () => {
+    const first = task('local');
+    const second = task('local');
+    const pending = deferred<void>();
+    const directory = deferred<void>();
+    vi.mocked(second.initialize).mockImplementation(async () => {
+      await directory.promise;
+      second.initialized = true;
+    });
+    mocks.drain = vi.fn(() => pending.promise);
+    const { runtime } = setupLifecycleRuntime({ first, second });
+    await runtime.startWorker('trusted');
+    await vi.waitFor(() => {
+      expect(second.initialize).toHaveBeenCalledOnce();
+      expect(mocks.drain).toHaveBeenCalledOnce();
+    });
+    directory.resolve();
+    await vi.waitFor(() => expect(second.chapterSave).toHaveBeenCalledOnce());
+    expect(mocks.drain).toHaveBeenCalledOnce();
+    pending.resolve();
+    await vi.waitFor(() => expect(first.chapterSave).toHaveBeenCalledOnce());
+  });
 
-  it('loads up to three units concurrently and submits ready units without waiting for a slow source', async () => {
+  it('fetches one source at a time and releases its slot after cancellation', async () => {
     const local = task('local');
     local.chapters = Array.from({ length: 6 }, (_, index) => ({
       ...local.chapters[0],
@@ -615,15 +669,15 @@ describe('bounded source prefetch', () => {
     });
     const { runtime } = setupLifecycleRuntime({ local });
     await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(local.prepareUnit).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(local.prepareUnit).toHaveBeenCalledOnce());
     expect(mocks.submitted).toHaveLength(0);
-    sources[1].resolve({
-      lines: ['第二章'],
+    sources[0].resolve({
+      lines: ['第一章'],
       glossary: {},
       save: local.chapterSave,
     });
-    await vi.waitFor(() => expect(local.prepareUnit).toHaveBeenCalledTimes(4));
-    expect(mocks.submitted.map((work) => work.lines)).toEqual([['第二章']]);
+    await vi.waitFor(() => expect(local.prepareUnit).toHaveBeenCalledTimes(2));
+    expect(mocks.submitted.map((work) => work.lines)).toEqual([['第一章']]);
     expect(local.chapterSave).toHaveBeenCalledOnce();
 
     runtime.stopWorker('trusted');
@@ -631,8 +685,8 @@ describe('bounded source prefetch', () => {
       expect(
         runtime.taskStates.value.get('local')?.chapters.map((c) => c.status),
       ).toEqual([
-        'pending',
         'done',
+        'pending',
         'pending',
         'pending',
         'pending',
@@ -642,7 +696,7 @@ describe('bounded source prefetch', () => {
     for (const [unit, context] of vi.mocked(local.prepareUnit).mock.calls) {
       // 已保存章节已释放父信号监听；其余准备/执行中的章节必须取消。
       expect(context.signal.aborted).toBe(
-        unit.kind !== 'chapter' || unit.chapterId !== '2',
+        unit.kind !== 'chapter' || unit.chapterId !== '1',
       );
     }
     for (const source of sources) {
@@ -691,49 +745,113 @@ describe('lazy task loading and metadata units', () => {
     },
   );
 
-  it('loads no directories on mount and prefetches only two tasks ahead after starting', async () => {
-    const first = task('wenku');
-    const second = task('wenku');
-    const third = task('wenku');
-    const fourth = task('wenku');
-    const { runtime, store } = setupLifecycleRuntime({
-      first,
-      second,
-      third,
-      fourth,
-    });
-    for (const item of [first, second, third, fourth]) {
-      expect(item.initialize).not.toHaveBeenCalled();
-    }
-    mocks.blockRemote = true;
-    await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(third.prepareUnit).toHaveBeenCalledOnce());
-    expect(mocks.submitted).toHaveLength(1);
-    expect(first.initialize).toHaveBeenCalledOnce();
-    expect(second.initialize).toHaveBeenCalledOnce();
-    expect(third.initialize).toHaveBeenCalledOnce();
-    expect(fourth.initialize).not.toHaveBeenCalled();
-    store.ref.value.jobs = [...store.ref.value.jobs].reverse();
-    runtime.runProcessLoop();
-    expect(fourth.initialize).not.toHaveBeenCalled();
-    runtime.stopWorker('trusted');
-    await vi.waitFor(() => {
-      for (const name of ['first', 'second', 'third']) {
-        expect(runtime.taskStates.value.get(name)?.chapters[0].status).toBe(
-          'pending',
-        );
+  it.each(['top', 'bottom'] as const)(
+    'reprioritizes waiting segments after moving a task to the %s without refetching raw units',
+    async (direction) => {
+      const first = task('wenku');
+      const second = task('wenku');
+      const third = task('wenku');
+      const fourth = task('wenku');
+      for (const [name, item] of Object.entries({
+        first,
+        second,
+        third,
+        fourth,
+      })) {
+        vi.mocked(item.prepareUnit).mockResolvedValue({
+          // 三个分段超过单并发的流水线水位，保证首章投递被背压阻塞。
+          lines:
+            name === 'first'
+              ? Array(3).fill(`first:${'あ'.repeat(500)}`)
+              : [name],
+          glossary: {},
+          save: item.chapterSave,
+        });
       }
-    });
-    expect(second.chapterSave).not.toHaveBeenCalled();
-    expect(third.chapterSave).not.toHaveBeenCalled();
-    mocks.blockRemote = false;
-    await runtime.startWorker('trusted');
-    await vi.waitFor(() => expect(fourth.chapterSave).toHaveBeenCalledOnce());
-    for (const item of [first, second, third]) {
-      expect(item.chapterSave).toHaveBeenCalledOnce();
-      expect(item.initialize).toHaveBeenCalledOnce();
-    }
-  });
+      const submitted = deferred<void>();
+      const saving = deferred<void>();
+      first.chapterSave.mockImplementation(() => saving.promise);
+      const started: string[] = [];
+      mocks.translate = vi.fn<Translator['translate']>(async ({ lines }) => {
+        const name = lines[0].split(':')[0];
+        started.push(name);
+        if (name === 'first') await submitted.promise;
+        return lines.map(() => '译文');
+      });
+      const { runtime, store } = setupLifecycleRuntime({
+        first,
+        second,
+        third,
+        fourth,
+      });
+      await runtime.startWorker('trusted');
+      await vi.waitFor(() => {
+        expect(second.prepareUnit).toHaveBeenCalledOnce();
+        expect(third.initialize).toHaveBeenCalledOnce();
+        expect(started).toEqual(['first']);
+      });
+      const activeSignal = vi.mocked(first.prepareUnit).mock.calls[0][1].signal;
+      const firstState = runtime.taskStates.value.get('first');
+      const ordered = store.ref.value.jobs;
+      store.ref.value.jobs =
+        direction === 'top'
+          ? [ordered[3], ...ordered.slice(0, 3)]
+          : [...ordered.slice(1), ordered[0]];
+      await vi.waitFor(() => expect(fourth.prepareUnit).toHaveBeenCalledOnce());
+      expect(activeSignal.aborted).toBe(false);
+      expect(first.chapterSave).not.toHaveBeenCalled();
+      submitted.resolve();
+      await vi.waitFor(() => expect(first.chapterSave).toHaveBeenCalledOnce());
+      expect(activeSignal.aborted).toBe(false);
+      await vi.waitFor(() => expect(fourth.chapterSave).toHaveBeenCalledOnce());
+      saving.resolve();
+      await vi.waitFor(() => {
+        for (const item of [first, second, third, fourth]) {
+          expect(item.chapterSave).toHaveBeenCalledOnce();
+        }
+      });
+      expect(started).toEqual(
+        direction === 'top'
+          ? ['first', 'fourth', 'first', 'first', 'second', 'third']
+          : ['first', 'second', 'third', 'fourth', 'first', 'first'],
+      );
+      expect(runtime.taskStates.value.get('first')).toBe(firstState);
+      for (const item of [first, second, third, fourth]) {
+        expect(item.chapterSave).toHaveBeenCalledOnce();
+        expect(item.initialize).toHaveBeenCalledOnce();
+        expect(item.prepareUnit).toHaveBeenCalledOnce();
+      }
+    },
+  );
+
+  it.each([1, 4])(
+    'fills 2C segments plus one raw unit and one directory for concurrency %i',
+    async (concurrency) => {
+      const tasks = Array.from({ length: concurrency * 2 + 4 }, () =>
+        task('wenku'),
+      );
+      const translating = deferred<string[]>();
+      mocks.translate = vi.fn(() => translating.promise);
+      const { runtime } = setupLifecycleRuntime(
+        Object.fromEntries(tasks.map((item, index) => [String(index), item])),
+        [{ id: 'trusted', trusted: true, concurrency }],
+      );
+      for (const item of tasks) expect(item.initialize).not.toHaveBeenCalled();
+      await runtime.startWorker('trusted');
+      await vi.waitFor(() => {
+        expect(mocks.translate).toHaveBeenCalledTimes(concurrency);
+        expect(tasks[concurrency * 2].prepareUnit).toHaveBeenCalledOnce();
+        expect(tasks[concurrency * 2 + 1].initialize).toHaveBeenCalledOnce();
+      });
+      expect(tasks[concurrency * 2 + 1].prepareUnit).not.toHaveBeenCalled();
+      expect(tasks[concurrency * 2 + 2].initialize).not.toHaveBeenCalled();
+      translating.resolve(['译文']);
+      await vi.waitFor(() => {
+        for (const item of tasks)
+          expect(item.chapterSave).toHaveBeenCalledOnce();
+      });
+    },
+  );
 
   it.each(['pending', 'completed'] as const)(
     'ignores cancelled initialization when its replacement is %s',
