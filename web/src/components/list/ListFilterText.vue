@@ -1,12 +1,5 @@
 <script lang="ts" setup>
 import {
-  PopoverAnchor,
-  PopoverContent,
-  PopoverPortal,
-  PopoverRoot,
-} from 'reka-ui';
-
-import {
   useSettingStore,
   useWebSearchHistoryStore,
   useWenkuSearchHistoryStore,
@@ -95,6 +88,15 @@ function closeSuggestions() {
   input.value?.inputRef?.focus();
 }
 
+const popoverContent = computed(() => ({
+  'aria-label': `${props.label}搜索历史`,
+  align: 'start' as const,
+  onOpenAutoFocus: (event: Event) => event.preventDefault(),
+  onCloseAutoFocus: (event: Event) => event.preventDefault(),
+  onInteractOutside,
+  onEscapeKeyDown: closeSuggestions,
+}));
+
 function processQueryWithLocaleAware(input: string): string {
   const cc = useSettingStore().cc;
   const queries = input.split(/( |\||\+|\-|\")/);
@@ -131,8 +133,12 @@ const confirm = (key: string) => {
 
 <template>
   <CActionWrapper :title="label" size="medium">
-    <PopoverRoot v-model:open="suggestionsOpen" :modal="false">
-      <PopoverAnchor as-child>
+    <UPopover
+      v-model:open="suggestionsOpen"
+      :content="popoverContent"
+      class="max-h-(--reka-popover-content-available-height) w-(--reka-popover-trigger-width) overflow-y-auto p-1"
+    >
+      <template #anchor>
         <div ref="anchor" class="mr-2 min-w-0 flex-[0_1_400px]">
           <UInput
             ref="input"
@@ -164,43 +170,31 @@ const confirm = (key: string) => {
             </template>
           </UInput>
         </div>
-      </PopoverAnchor>
-      <PopoverPortal>
-        <PopoverContent
-          :aria-label="`${label}搜索历史`"
-          align="start"
-          :side-offset="6"
-          :collision-padding="8"
-          class="floating-panel z-50 max-h-(--reka-popover-content-available-height) w-(--reka-popover-trigger-width) overflow-y-auto p-1 text-default outline-none"
-          @open-auto-focus.prevent
-          @close-auto-focus.prevent
-          @interact-outside="onInteractOutside"
-          @escape-key-down="closeSuggestions"
-        >
-          <div ref="suggestions">
-            <button
-              v-for="query in historyQueries"
-              :key="query"
-              type="button"
-              class="block w-full cursor-pointer truncate rounded-sm px-3 py-2 text-left text-sm text-default hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
-              :title="query"
-              @mousedown.prevent
-              @click="confirm(query)"
-            >
-              {{ query }}
-            </button>
-            <USeparator
-              v-if="historyQueries.length && historyTags.length"
-              class="my-1"
-            />
-            <SearchHistoryFooter
-              v-if="historyTags.length"
-              :tags="historyTags"
-              @select="appendTag"
-            />
-          </div>
-        </PopoverContent>
-      </PopoverPortal>
-    </PopoverRoot>
+      </template>
+      <template #content>
+        <div ref="suggestions">
+          <button
+            v-for="query in historyQueries"
+            :key="query"
+            type="button"
+            class="block w-full cursor-pointer truncate rounded-sm px-3 py-2 text-left text-sm text-default hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+            :title="query"
+            @mousedown.prevent
+            @click="confirm(query)"
+          >
+            {{ query }}
+          </button>
+          <USeparator
+            v-if="historyQueries.length && historyTags.length"
+            class="my-1"
+          />
+          <SearchHistoryFooter
+            v-if="historyTags.length"
+            :tags="historyTags"
+            @select="appendTag"
+          />
+        </div>
+      </template>
+    </UPopover>
   </CActionWrapper>
 </template>

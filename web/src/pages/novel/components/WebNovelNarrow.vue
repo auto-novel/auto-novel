@@ -79,15 +79,18 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
       :is-separator="false"
       :is-special-chapter="true"
     />
-    <UButton
-      color="neutral"
-      v-if="novel.toc.length > 1"
-      variant="soft"
-      class="w-full"
-      @click="showCatalogDrawer = true"
-    >
-      展开目录
-    </UButton>
+    <div v-if="novel.toc.length > 1" class="flex justify-center">
+      <UButton
+        :trailing-icon="KeyboardArrowDownRound"
+        :ui="{ trailingIcon: 'ml-1 size-4 shrink-0' }"
+        variant="link"
+        color="primary"
+        class="min-h-7 gap-0 px-3 py-0 pointer-coarse:min-h-11"
+        @click="showCatalogDrawer = true"
+      >
+        展开目录
+      </UButton>
+    </div>
   </template>
   <template v-else>
     <div class="mb-4 flex items-center justify-between">
