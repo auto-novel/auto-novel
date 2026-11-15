@@ -33,6 +33,9 @@ export interface ChapterSaveResult {
 
 /** 本次执行的原文与保存快照；保存闭包绑定准备时的版本和取消信号。 */
 export interface PreparedUnit {
+  readonly purpose?: TranslationInput['purpose'];
+  /** 准备单元结算后释放任务；取消后允许下次重新准备。 */
+  finalize?(cancelled: boolean): void;
   readonly lines: readonly string[];
   readonly glossary: Glossary;
   readonly history?: TranslationInput['history'];
@@ -40,6 +43,7 @@ export interface PreparedUnit {
 }
 
 export interface TranslationTask {
+  readonly preparing?: boolean;
   readonly type: 'local' | 'web' | 'wenku';
   readonly chapters: readonly TaskChapter[];
   /** initialize 完成后为 true；调度层负责串行初始化同一任务版本。 */

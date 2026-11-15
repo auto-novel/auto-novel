@@ -12,6 +12,7 @@ import { LSKey } from './key';
 import { addWorkspaceJob } from './workspaceJob';
 
 interface Workspace<T> {
+  autoGlossary?: boolean;
   workers: T[];
   jobs: TranslateJob[];
   // 为了兼容性，仍使用 uncompletedJobs

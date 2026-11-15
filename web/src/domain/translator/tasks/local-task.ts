@@ -1,4 +1,5 @@
 import type { Glossary } from '@auto-novel/translator';
+import { createGlossarySample, readAutoGlossary } from '@auto-novel/translator';
 import type { TranslatorId } from '@/model/Translator';
 import type { TranslateTaskParams } from './task-descriptor';
 import type { LocalVolumeMetadata } from '@/model/LocalVolume';
@@ -13,6 +14,10 @@ import type { LocalVolumeStore } from '@/stores/local/LocalVolumeRepository';
 import { useLocalVolumeStore } from '@/stores';
 import { buildChapterList, prepareChapterInput } from './chapter-preparation';
 
+export interface LocalTaskOptions {
+  autoGlossary?: () => boolean;
+}
+
 export class LocalTranslationTask implements TranslationTask {
   readonly type = 'local' as const;
   private readonly level: TranslateTaskParams['level'];
@@ -22,11 +27,15 @@ export class LocalTranslationTask implements TranslationTask {
   initialized = false;
   private volumeStore!: LocalVolumeStore;
   private storeLoaded = false;
+  preparing = false;
+  private glossaryAnalyzed = false;
+  private generatedGlossary: Glossary = {};
 
   constructor(
     private volumeId: string,
     private translatorId: TranslatorId,
     private params: TranslateTaskParams,
+    private options: LocalTaskOptions = {},
   ) {
     this.level = params.level;
   }
@@ -84,8 +93,41 @@ export class LocalTranslationTask implements TranslationTask {
     const chapter = await this.volumeStore.getChapter(this.volumeId, chapterId);
     context.signal.throwIfAborted();
     if (!chapter) throw new Error('章节不存在');
+    const enabled = () =>
+      this.translatorId === 'gpt' && this.options.autoGlossary?.() === true;
+    if (
+      enabled() &&
+      !this.glossaryAnalyzed &&
+      Object.keys(this.glossary).length === 0
+    ) {
+      const sample = createGlossarySample(chapter.paragraphs);
+      if (sample.length > 0) {
+        this.preparing = true;
+        return {
+          lines: [JSON.stringify(sample)],
+          glossary: {},
+          purpose: 'glossary',
+          save: async (translated) => {
+            context.signal.throwIfAborted();
+            if (!enabled()) return;
+            this.generatedGlossary = readAutoGlossary(translated[0], sample);
+            context.onLog(
+              `术语分析完成：保留${Object.keys(this.generatedGlossary).length}个关键术语`,
+            );
+          },
+          finalize: (cancelled) => {
+            this.preparing = false;
+            this.glossaryAnalyzed = !cancelled;
+          },
+        };
+      }
+      this.glossaryAnalyzed = true;
+    }
     const oldTranslation = chapter[this.translatorId];
-    const glossary = this.glossary;
+    const glossary =
+      enabled() && Object.keys(this.glossary).length === 0
+        ? this.generatedGlossary
+        : this.glossary;
     const glossaryId = this.glossaryId;
     return {
       ...prepareChapterInput(

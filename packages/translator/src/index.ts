@@ -1,6 +1,10 @@
 // 用户入口：流水线 + 工厂。
 export { TranslationPipeline } from './pipeline/pipeline';
 export { createTranslator } from './factory';
+export {
+  createGlossarySample,
+  readAutoGlossary,
+} from './translator/llm-glossary';
 export type { TranslatorConfig } from './factory';
 export {
   openAiProfiles,
