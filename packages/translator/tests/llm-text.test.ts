@@ -179,7 +179,7 @@ describe('GPT 文本保护', () => {
       createOpenAiPromptBuilder(),
       true,
     );
-    expect(translator.getCacheKey(input)).toBe(`gpt-text:v1:${oldKey}`);
+    expect(translator.getCacheKey(input)).toBe(`gpt-text:v2:${oldKey}`);
     expect(translator.getCacheKey(input)).not.toBe(
       translator.getCacheKey({ lines: ['本文', 'F I N'] }),
     );
