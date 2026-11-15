@@ -71,14 +71,13 @@ export class WebTranslationTask implements TranslationTask {
       isExpired,
       toMeta,
     );
-    this.metadataUnit =
-      this.translatorId !== 'gpt' &&
-      createWebMetadataCoder(task, this.params.forceMetadata).needUpload
-        ? {
-            kind: 'metadata',
-            title: '小说信息',
-          }
-        : undefined;
+    this.metadataUnit = createWebMetadataCoder(task, this.params.forceMetadata)
+      .needUpload
+      ? {
+          kind: 'metadata',
+          title: '小说信息',
+        }
+      : undefined;
     this.initialized = true;
   }
 

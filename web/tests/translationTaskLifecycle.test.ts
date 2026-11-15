@@ -170,43 +170,69 @@ describe('web task initialization', () => {
 });
 
 describe('web metadata units', () => {
-  it('creates metadata only when needed, excludes GPT, and preserves force-directory semantics', async () => {
-    mocks.getTranslateTask.mockResolvedValue(snapshot);
-    const normal = new WebTranslationTask(
+  it.each(['sakura', 'gpt'] as const)(
+    'creates %s metadata only when needed and preserves force-directory semantics',
+    async (translatorId) => {
+      mocks.getTranslateTask.mockResolvedValue(snapshot);
+      const normal = new WebTranslationTask(
+        'provider',
+        'novel',
+        translatorId,
+        params,
+      );
+      await normal.initialize(context());
+      expect(normal.metadataUnit).toBeUndefined();
+      expect(normal.chapters).toHaveLength(1);
+      expect(mocks.getTranslateTask).toHaveBeenCalledOnce();
+      expect(mocks.getNovel).not.toHaveBeenCalled();
+      expect(mocks.updateWebNovel).not.toHaveBeenCalled();
+
+      const forced = new WebTranslationTask('provider', 'novel', translatorId, {
+        ...params,
+        forceMetadata: true,
+      });
+      await forced.initialize(context());
+      expect(forced.metadataUnit).toEqual({
+        kind: 'metadata',
+        title: '小说信息',
+      });
+      const prepared = await forced.prepareUnit(
+        { kind: 'metadata' },
+        context(),
+      );
+      expect(prepared.lines).toEqual([]);
+      await prepared.save([]);
+      expect(mocks.updateMetadata).toHaveBeenCalledWith({
+        toc: { 閑話: '闲话' },
+      });
+    },
+  );
+
+  it('translates missing GPT directory titles and uploads through the GPT API', async () => {
+    mocks.getTranslateTask.mockResolvedValue({
+      ...snapshot,
+      toc: [
+        { chapterId: '1', titleJp: '出会い' },
+        { chapterId: '2', titleJp: '再会', titleZh: '重逢' },
+      ],
+    });
+    const task = new WebTranslationTask('provider', 'novel', 'gpt', params);
+    const execution = context();
+    await task.initialize(execution);
+    expect(task.metadataUnit).toEqual({ kind: 'metadata', title: '小说信息' });
+    const prepared = await task.prepareUnit({ kind: 'metadata' }, execution);
+    expect(prepared.lines).toEqual(['出会い']);
+    await prepared.save(['相遇']);
+    expect(mocks.updateMetadata).toHaveBeenCalledWith({
+      toc: { 出会い: '相遇' },
+    });
+    expect(mocks.createApi).toHaveBeenLastCalledWith(
       'provider',
       'novel',
-      'sakura',
-      params,
+      'gpt',
+      false,
+      execution.signal,
     );
-    await normal.initialize(context());
-    expect(normal.metadataUnit).toBeUndefined();
-    expect(normal.chapters).toHaveLength(1);
-    expect(mocks.getTranslateTask).toHaveBeenCalledOnce();
-    expect(mocks.getNovel).not.toHaveBeenCalled();
-    expect(mocks.updateWebNovel).not.toHaveBeenCalled();
-
-    const forced = new WebTranslationTask('provider', 'novel', 'sakura', {
-      ...params,
-      forceMetadata: true,
-    });
-    await forced.initialize(context());
-    expect(forced.metadataUnit).toEqual({
-      kind: 'metadata',
-      title: '小说信息',
-    });
-    const prepared = await forced.prepareUnit({ kind: 'metadata' }, context());
-    expect(prepared.lines).toEqual([]);
-    await prepared.save([]);
-    expect(mocks.updateMetadata).toHaveBeenCalledWith({
-      toc: { 閑話: '闲话' },
-    });
-
-    const gpt = new WebTranslationTask('provider', 'novel', 'gpt', {
-      ...params,
-      forceMetadata: true,
-    });
-    await gpt.initialize(context());
-    expect(gpt.metadataUnit).toBeUndefined();
   });
 
   it('retains field boundaries/newlines, validates results, and uploads with the execution signal', async () => {
