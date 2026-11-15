@@ -45,7 +45,7 @@ const confirm = async () => {
   <UButton
     color="neutral"
     variant="outline"
-    class="group rounded-full"
+    class="group"
     v-bind="$attrs"
     :label="label"
     :icon="icon"

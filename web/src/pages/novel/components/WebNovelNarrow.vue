@@ -83,7 +83,7 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
       color="neutral"
       v-if="novel.toc.length > 1"
       variant="soft"
-      class="w-full rounded-full"
+      class="w-full"
       @click="showCatalogDrawer = true"
     >
       展开目录

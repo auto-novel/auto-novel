@@ -413,7 +413,6 @@ const handleOpenChange = (open: boolean) => {
 
 <template>
   <UModal
-    :ui="{ content: 'max-w-[95vw]' }"
     :open="show"
     :title="title"
     class="w-200 max-w-[95vw]"
@@ -485,14 +484,15 @@ const handleOpenChange = (open: boolean) => {
             <span class="text-xs font-semibold text-default">
               {{ rightView === 'glossary' ? '术语表' : '译文' }}
             </span>
-            <n-tag
+            <UBadge
               v-if="rightView === 'result' && isStale"
-              size="tiny"
-              type="warning"
-              :bordered="false"
+              size="md"
+              color="warning"
+              variant="soft"
+              class="font-normal"
             >
               原文已修改
-            </n-tag>
+            </UBadge>
             <span
               v-if="rightView === 'result' && textZh"
               class="text-[11px] text-muted tabular-nums"
@@ -504,14 +504,13 @@ const handleOpenChange = (open: boolean) => {
               :size="isMobile ? 'sm' : 'xs'"
               :disabled="isBusy || !textZh"
               variant="soft"
-              class="rounded-md ml-auto"
+              class="ml-auto"
               :action="copyTranslation"
               :class="{ 'text-sm/4': isMobile }"
             >
               {{ copied ? '已复制' : '复制' }}
             </ActionButton>
             <ActionButton
-              class="rounded-md"
               v-if="rightView === 'result'"
               title="下载译文为 txt 文件"
               :size="isMobile ? 'sm' : 'xs'"
@@ -530,7 +529,6 @@ const handleOpenChange = (open: boolean) => {
               variant="soft"
               icon="i-lucide-circle-alert"
               title="翻译失败"
-              :ui="{ description: 'break-words' }"
               role="alert"
             >
               <template #description>
@@ -549,7 +547,6 @@ const handleOpenChange = (open: boolean) => {
               variant="soft"
               icon="i-lucide-triangle-alert"
               title="部分失败"
-              :ui="{ description: 'break-words' }"
               role="alert"
             >
               <template #description>
@@ -619,12 +616,11 @@ const handleOpenChange = (open: boolean) => {
             <span class="tabular-nums">
               {{ progress.done }} / {{ progress.total }} 段
             </span>
-            <n-progress
+            <UProgress
               class="w-18 flex-none"
-              type="line"
-              :percentage="progressPercentage"
-              :height="4"
-              :show-indicator="false"
+              :model-value="progressPercentage"
+              size="sm"
+              aria-label="试译进度"
             />
           </template>
           <span

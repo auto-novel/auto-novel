@@ -46,40 +46,31 @@ const exactVisited = computed(() =>
     </span>
     <span>/</span>
 
-    <n-tooltip
+    <UTooltip
       v-if="exactTotalCharacters"
-      placement="top-start"
-      trigger="click"
+      :text="exactTotalCharacters"
+      :disabled="totalCharacters === exactTotalCharacters"
     >
-      <template #trigger>
-        <span class="text-default">
-          {{ totalCharacters }}
-        </span>
-      </template>
-      {{ exactTotalCharacters }}
-    </n-tooltip>
+      <span class="text-default">
+        {{ totalCharacters }}
+      </span>
+    </UTooltip>
     <span class="text-default" v-else>NA</span>
     <span>/</span>
 
-    <n-tooltip
+    <XTime
       v-if="latestChapterCreateAt"
-      placement="top-start"
-      trigger="click"
-    >
-      <template #trigger>
-        <XTime :time="latestChapterCreateAt * 1000" preset="relative" />
-      </template>
-      <XTime :time="latestChapterCreateAt * 1000" format="yyyy-MM-dd HH:mm" />
-    </n-tooltip>
+      :time="latestChapterCreateAt * 1000"
+      preset="relative"
+    />
     <span class="text-default" v-else>NA</span>
     <span>/</span>
 
-    <n-tooltip placement="top-start" trigger="click">
-      <template #trigger>
-        <span class="text-default">{{ visited }}</span>
-      </template>
-      {{ exactVisited }}
-    </n-tooltip>
+    <UTooltip :text="exactVisited" :disabled="visited === exactVisited">
+      <span class="text-default">
+        {{ visited }}
+      </span>
+    </UTooltip>
   </div>
 </template>
 

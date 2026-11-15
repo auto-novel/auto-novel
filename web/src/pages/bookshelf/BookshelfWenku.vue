@@ -61,7 +61,6 @@ const novelListRef = useTemplateRef('novelList');
         :icon="ChecklistOutlined"
         color="neutral"
         variant="outline"
-        class="rounded-full"
         @click="showControlPanel = !showControlPanel"
       >
         选择

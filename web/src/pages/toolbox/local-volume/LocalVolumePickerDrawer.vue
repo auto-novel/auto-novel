@@ -37,7 +37,6 @@ const deleteVolume = (volumeId: string) =>
             color="neutral"
             size="xs"
             variant="soft"
-            class="rounded-full"
             @click="$emit('volumeLoaded', volume.id)"
           >
             载入

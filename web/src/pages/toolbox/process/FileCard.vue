@@ -23,7 +23,7 @@ const showPreviewModal = ref(false);
         size="sm"
         color="primary"
         variant="link"
-        class="rounded-full p-0"
+        class="p-0"
         @click="showPreviewModal = true"
         aria-label="预览"
       />
@@ -35,7 +35,7 @@ const showPreviewModal = ref(false);
         size="sm"
         color="error"
         variant="link"
-        class="rounded-full p-0"
+        class="p-0"
         @click="emit('delete')"
         aria-label="移除"
       />

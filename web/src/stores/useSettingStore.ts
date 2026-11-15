@@ -138,11 +138,14 @@ export namespace Setting {
     { label: '中文', value: 'zh' },
     { label: '中日', value: 'zh-jp' },
     { label: '日中', value: 'jp-zh' },
-  ];
+  ] satisfies { label: string; value: Setting['downloadFormat']['mode'] }[];
   export const downloadTranslationModeOptions = [
     { label: '优先', value: 'priority' },
     { label: '并列', value: 'parallel' },
-  ];
+  ] satisfies {
+    label: string;
+    value: Setting['downloadFormat']['translationsMode'];
+  }[];
   export const downloadTypeOptions = [
     { label: 'EPUB', value: 'epub' },
     { label: 'TXT', value: 'txt' },
@@ -152,11 +155,11 @@ export namespace Setting {
     { label: '亮色主题', value: 'light' },
     { label: '暗色主题', value: 'dark' },
     { label: '跟随系统', value: 'system' },
-  ];
+  ] satisfies { label: string; value: Setting['theme'] }[];
   export const paginationModeOptions = [
     { label: '分页', value: 'pagination' },
     { label: '滚动', value: 'scroll' },
-  ];
+  ] satisfies { label: string; value: Setting['paginationMode'] }[];
   export const localVolumeOrderOptions = [
     { value: 'byCreateAt', label: '添加时间' },
     { value: 'byReadAt', label: '阅读时间' },
@@ -166,7 +169,7 @@ export namespace Setting {
     { label: '原文', value: 'origin' },
     { label: '简体中文', value: 'zh-cn' },
     { label: '繁體中文', value: 'zh-tw' },
-  ];
+  ] satisfies { label: string; value: Setting['locale'] }[];
 }
 
 export interface ReaderSetting {
@@ -265,18 +268,18 @@ export namespace ReaderSetting {
     { label: '中文', value: 'zh' },
     { label: '中日', value: 'zh-jp' },
     { label: '日中', value: 'jp-zh' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['mode'] }[];
   export const translationModeOptions = [
     { label: '优先', value: 'priority' },
     { label: '并列', value: 'parallel' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['translationsMode'] }[];
 
   export const clickAreaOptions = [
     { label: '默认', value: 'default' },
     { label: '左右', value: 'left-right' },
     { label: '上下', value: 'up-down' },
     { label: '关闭', value: 'none' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['clickArea'] }[];
 
   export const speakLanguagesOptions = [
     { label: '中文', value: 'zh' },
@@ -286,7 +289,7 @@ export namespace ReaderSetting {
   export const pageTurnModeOptions = [
     { label: '章节翻页', value: 'page' },
     { label: '滚动翻页', value: 'scroll' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['pageTurnMode'] }[];
 
   export const fontWeightOptions = [
     { label: '正常', value: 400 },
@@ -298,14 +301,14 @@ export namespace ReaderSetting {
     { label: '实线', value: 'solid' },
     { label: '虚线', value: 'dashed' },
     { label: '点状', value: 'dotted' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['textUnderline'] }[];
 
   export const themeModeOptions = [
     { label: '浅色', value: 'light' },
     { label: '深色', value: 'dark' },
     { label: '跟随系统', value: 'system' },
     { label: '自定义', value: 'custom' },
-  ];
+  ] satisfies { label: string; value: ReaderSetting['theme']['mode'] }[];
   export const themeOptions = [
     { bodyColor: '#FFFFFF', fontColor: '#000000' },
     { bodyColor: '#FFF2E2', fontColor: '#000000' },

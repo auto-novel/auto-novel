@@ -161,7 +161,6 @@ const submitJob = (id: 'gpt' | 'sakura') => {
         下载机翻
       </UButton>
       <DownloadOptionsButton
-        class="rounded-md"
         :show-file-type="true"
         :show-filename-type="true"
       />
@@ -186,27 +185,22 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     class="mt-4 flex flex-wrap gap-x-3 gap-y-2"
     v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0"
   >
-    <ActionButton class="rounded-md" :action="importToWorkspace">
-      导入工作区
-    </ActionButton>
+    <ActionButton :action="importToWorkspace">导入工作区</ActionButton>
 
     <UFieldGroup>
       <ActionButton
-        class="rounded-md"
         v-if="setting.enabledTranslator.includes('youdao')"
         :action="() => startTranslateTask('youdao')"
       >
         更新有道
       </ActionButton>
       <ActionButton
-        class="rounded-md"
         v-if="setting.enabledTranslator.includes('gpt')"
         :action="() => submitJob('gpt')"
       >
         排队GPT
       </ActionButton>
       <ActionButton
-        class="rounded-md"
         v-if="setting.enabledTranslator.includes('sakura')"
         :action="() => submitJob('sakura')"
       >

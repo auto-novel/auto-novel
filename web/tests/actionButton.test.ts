@@ -110,13 +110,13 @@ describe('ActionButton', () => {
       label: '保存',
       color: 'primary',
     });
-    // Call sites rely on these shared defaults after removing duplicate classes.
+    // Keep the shared group marker without overriding the button's default radius.
     expect(host.querySelector('button')!.classList.contains('group')).toBe(
       true,
     );
     expect(
       host.querySelector('button')!.classList.contains('rounded-full'),
-    ).toBe(true);
+    ).toBe(false);
     click();
     click();
     expect(action).toHaveBeenCalledTimes(1);

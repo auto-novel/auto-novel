@@ -177,7 +177,6 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
   <UButton
     color="neutral"
     variant="outline"
-    class="rounded-full"
     v-bind="$attrs"
     @click="toggleGlossaryModal"
   >
@@ -247,22 +246,14 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
           />
 
           <div class="flex items-center gap-x-3">
-            <ActionButton
-              class="rounded-md text-sm/4"
-              size="sm"
-              :action="exportGlossary"
-            >
+            <ActionButton class="text-sm/4" size="sm" :action="exportGlossary">
               导出
             </ActionButton>
-            <ActionButton
-              class="rounded-md text-sm/4"
-              size="sm"
-              :action="importGlossary"
-            >
+            <ActionButton class="text-sm/4" size="sm" :action="importGlossary">
               导入
             </ActionButton>
             <ActionButton
-              class="rounded-md text-sm/4"
+              class="text-sm/4"
               size="sm"
               :action="downloadGlossaryAsJsonFile"
             >
@@ -356,7 +347,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
               variant="solid"
               color="warning"
               size="sm"
-              class="rounded-full text-sm/4"
+              class="text-sm/4"
               @click="handleConfirmClose"
             >
               确认
@@ -365,7 +356,7 @@ const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
               color="neutral"
               size="sm"
               variant="soft"
-              class="rounded-full text-sm/4"
+              class="text-sm/4"
               @click="handleConfirmCancel"
             >
               取消

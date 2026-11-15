@@ -16,15 +16,8 @@ const translationOptions: { label: string; value: TranslatorId }[] = [
   { label: 'Sakura', value: 'sakura' },
 ];
 
-const toggleTranslator = (id: TranslatorId) => {
-  if (props.value.includes(id)) {
-    emit(
-      'update:value',
-      props.value.filter((it) => it !== id),
-    );
-  } else {
-    props.value.push(id);
-  }
+const updateValue = (value: TranslatorId[]) => {
+  emit('update:value', value);
 };
 
 const calculateTranslatorOrderLabel = (id: TranslatorId) => {
@@ -38,25 +31,24 @@ const calculateTranslatorOrderLabel = (id: TranslatorId) => {
 </script>
 
 <template>
-  <UFieldGroup>
-    <UButton
-      v-for="option in translationOptions"
-      :key="option.value"
-      :tabindex="-1"
-      variant="outline"
-      :color="value.includes(option.value) ? 'primary' : 'neutral'"
-      :aria-pressed="value.includes(option.value)"
-      :value="option.value"
-      @click="toggleTranslator(option.value)"
-      :class="{ 'h-12': twoLine }"
-    >
-      <span>
-        {{ option.label }}
-        <template v-if="showOrder === true">
-          <br v-if="twoLine" />
-          {{ calculateTranslatorOrderLabel(option.value) }}
-        </template>
-      </span>
-    </UButton>
-  </UFieldGroup>
+  <UCheckboxGroup
+    :model-value="value"
+    :items="translationOptions"
+    orientation="horizontal"
+    variant="table"
+    indicator="hidden"
+    :ui="{
+      fieldset: 'flex-wrap',
+      item: twoLine ? 'px-2 py-1 h-12 items-center' : 'px-2 py-1',
+    }"
+    @update:model-value="updateValue"
+  >
+    <template #label="{ item }">
+      {{ item.label }}
+      <template v-if="showOrder">
+        <br v-if="twoLine" />
+        {{ calculateTranslatorOrderLabel(item.value) }}
+      </template>
+    </template>
+  </UCheckboxGroup>
 </template>

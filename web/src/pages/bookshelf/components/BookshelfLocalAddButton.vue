@@ -41,7 +41,6 @@ const handleDropError = (error: unknown) => {
       :icon="PlusOutlined"
       color="neutral"
       variant="outline"
-      class="rounded-full"
       :loading="running"
       :disabled="running"
       @click="!running && openFiles()"

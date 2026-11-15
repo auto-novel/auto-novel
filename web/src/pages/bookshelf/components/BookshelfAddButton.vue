@@ -50,7 +50,6 @@ const requireLogin = useRequireLogin();
     :icon="PlusOutlined"
     color="neutral"
     variant="outline"
-    class="rounded-full"
     @click="showAddModal = true"
   >
     新建
@@ -97,6 +96,7 @@ const requireLogin = useRequireLogin();
             orientation="horizontal"
             variant="table"
             indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
             :items="[
               { label: '网页小说', value: 'web' },
               { label: '文库小说', value: 'wenku' },

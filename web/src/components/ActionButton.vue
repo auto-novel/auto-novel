@@ -24,7 +24,7 @@ const execute = async (event: MouseEvent) => {
   <UButton
     color="neutral"
     variant="outline"
-    class="group rounded-full"
+    class="group"
     v-bind="$attrs"
     :loading="running || loading"
     :aria-busy="running || loading"

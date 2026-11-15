@@ -51,19 +51,15 @@ const requireLogin = useRequireLogin();
   <template v-if="favoreds.length <= 1">
     <ActionButton
       v-if="favored && favoredTitle"
-      class="rounded-md"
       :action="requireLogin(unfavoriteNovel)"
       :icon="FavoriteOutlined"
-      :ui="{ leadingIcon: 'size-4.5' }"
     >
       已收藏
     </ActionButton>
     <ActionButton
       v-else
-      class="rounded-md"
       :action="requireLogin(() => favoriteNovel(favoreds[0].id))"
       :icon="FavoriteBorderOutlined"
-      :ui="{ leadingIcon: 'size-4.5' }"
     >
       收藏
     </ActionButton>
@@ -87,18 +83,14 @@ const requireLogin = useRequireLogin();
     :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
   >
     <template #body>
-      <n-radio-group v-model:value="selectedFavoredId">
-        <div class="flex flex-col gap-y-3">
-          <n-radio
-            v-for="favoredItem in favoreds"
-            :key="favoredItem.id"
-            :value="favoredItem.id"
-          >
-            {{ favoredItem.title }}
-          </n-radio>
-          <n-radio key="deleted" value="deleted">取消收藏</n-radio>
-        </div>
-      </n-radio-group>
+      <URadioGroup
+        v-model="selectedFavoredId"
+        :items="[...favoreds, { id: 'deleted', title: '取消收藏' }]"
+        value-key="id"
+        label-key="title"
+        :ui="{ fieldset: 'gap-y-3' }"
+        aria-label="收藏到"
+      />
     </template>
     <template #footer>
       <ActionButton

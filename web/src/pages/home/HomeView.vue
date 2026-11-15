@@ -182,7 +182,6 @@ const showQQModal = ref(false);
           to="/favorite/web"
           color="neutral"
           variant="outline"
-          class="rounded-full"
         >
           更多
         </UButton>
@@ -200,7 +199,6 @@ const showQQModal = ref(false);
         to="/novel"
         color="neutral"
         variant="outline"
-        class="rounded-full"
       >
         更多
       </UButton>
@@ -217,7 +215,6 @@ const showQQModal = ref(false);
         to="/wenku"
         color="neutral"
         variant="outline"
-        class="rounded-full"
       >
         更多
       </UButton>

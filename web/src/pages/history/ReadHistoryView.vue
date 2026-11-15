@@ -224,7 +224,7 @@ const deleteHistory = async (providerId: string, novelId: string) => {
             color="error"
             variant="ghost"
             size="xs"
-            class="-my-1 h-auto rounded px-1 py-1 text-xs font-normal leading-4 text-error hover:bg-transparent hover:underline active:bg-transparent"
+            class="-my-1 h-auto px-1 py-1 text-xs font-normal leading-4 text-error hover:bg-transparent hover:underline active:bg-transparent"
             :aria-label="`删除《${item.titleZh || item.titleJp}》的阅读记录`"
             :disabled="isDeletingHistory(item.providerId, item.novelId)"
             @click="deleteHistory(item.providerId, item.novelId)"

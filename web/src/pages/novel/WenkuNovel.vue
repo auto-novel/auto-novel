@@ -73,9 +73,14 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
 <template>
   <DefineTagGroup v-slot="{ label, tags }">
     <div class="flex gap-x-3" v-if="tags.length > 0">
-      <n-tag :bordered="false" size="small">
+      <UBadge
+        color="neutral"
+        variant="soft"
+        size="md"
+        class="shrink-0 self-start font-normal"
+      >
         {{ label }}
-      </n-tag>
+      </UBadge>
       <div class="flex flex-wrap gap-1">
         <router-link v-for="tag of tags" :key="tag" :to="buildSearchLink(tag)">
           <novel-tag :tag="tag" />
@@ -250,7 +255,6 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
             variant="soft"
             icon="i-lucide-triangle-alert"
             title="公告"
-            :ui="{ description: 'break-words' }"
             role="alert"
             class="mb-3"
           >
@@ -271,7 +275,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
               class="mt-4"
             />
             <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2">
-              <DownloadOptionsButton class="rounded-md" />
+              <DownloadOptionsButton />
             </div>
             <USeparator class="mx-0 mt-4 mb-0" />
 

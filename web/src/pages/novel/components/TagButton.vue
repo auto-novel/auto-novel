@@ -11,13 +11,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <n-tag
-    role="button"
-    :type="checked ? type ?? 'success' : 'default'"
+  <UButton
+    type="button"
+    :color="checked ? type ?? 'success' : 'neutral'"
+    variant="subtle"
+    :aria-pressed="checked"
     @click="emit('update:checked', !checked)"
-    class="cursor-pointer! rounded-none!"
-    size="small"
+    size="xs"
   >
     {{ label }}
-  </n-tag>
+  </UButton>
 </template>

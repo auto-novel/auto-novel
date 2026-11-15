@@ -78,7 +78,7 @@ defineExpose({
             color="neutral"
             variant="outline"
             size="sm"
-            class="rounded-full text-sm/4"
+            class="text-sm/4"
             @click="enableAutoScroll = !enableAutoScroll"
           >
             {{ enableAutoScroll ? '暂停滚动' : '自动滚动' }}
@@ -87,7 +87,7 @@ defineExpose({
             color="neutral"
             variant="outline"
             size="sm"
-            class="rounded-full text-sm/4"
+            class="text-sm/4"
             @click="expandLog = !expandLog"
           >
             {{ expandLog ? '收起日志' : '展开日志' }}

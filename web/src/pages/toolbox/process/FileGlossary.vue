@@ -178,14 +178,11 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     <c-action-wrapper title="操作">
       <div class="flex flex-col gap-y-2">
         <UFieldGroup size="sm">
-          <ActionButton
-            class="rounded-md text-sm/4"
-            :action="() => copyTranslationJson()"
-          >
+          <ActionButton class="text-sm/4" :action="() => copyTranslationJson()">
             复制术语表
           </ActionButton>
           <ActionButton
-            class="rounded-md text-sm/4"
+            class="text-sm/4"
             :action="() => translateKatakanas('youdao')"
           >
             有道翻译
@@ -194,7 +191,7 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
 
         <UFieldGroup size="sm">
           <ActionButton
-            class="rounded-md text-sm/4"
+            class="text-sm/4"
             :action="() => translateKatakanas('sakura')"
           >
             {{ `Sakura翻译-${selectedSakuraWorkerId ?? '未选中'}` }}
@@ -250,7 +247,6 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
                   :action="() => katakanaDeleted.push(word)"
                   aria-label="移除"
                   :icon="DeleteOutlineOutlined"
-                  :ui="{ leadingIcon: 'size-4.5' }"
                 />
               </UTooltip>
             </td>
@@ -279,20 +275,15 @@ const translateKatakanas = async (id: 'youdao' | 'sakura') => {
     class="w-150"
   >
     <template #body>
-      <n-radio-group v-model:value="selectedSakuraWorkerId">
-        <div class="flex flex-col gap-y-2">
-          <n-radio
-            v-for="worker of sakuraWorkspace.workers"
-            :key="worker.id"
-            :value="worker.id"
-          >
-            {{ worker.id }}
-            <span class="text-muted">
-              {{ worker.endpoint }}
-            </span>
-          </n-radio>
-        </div>
-      </n-radio-group>
+      <URadioGroup
+        v-model="selectedSakuraWorkerId"
+        :items="sakuraWorkspace.workers"
+        value-key="id"
+        label-key="id"
+        description-key="endpoint"
+        :ui="{ fieldset: 'gap-y-2' }"
+        aria-label="Sakura翻译器"
+      />
     </template>
   </UModal>
 </template>

@@ -19,6 +19,13 @@ const isWideScreen = useIsWideScreen(600);
 const readerSettingStore = useReaderSettingStore();
 const { readerSetting } = storeToRefs(readerSettingStore);
 
+const selectTheme = (bodyColor: string) => {
+  const theme = ReaderSetting.themeOptions.find(
+    (theme) => theme.bodyColor === bodyColor,
+  );
+  if (theme) readerSetting.value.theme = { mode: 'custom', ...theme };
+};
+
 const setIndentSize = (diff: number) => {
   readerSetting.value.indentSize = Math.min(
     Math.max(readerSetting.value.indentSize! + diff, 0),
@@ -34,9 +41,9 @@ const setIndentSize = (diff: number) => {
     class="w-150"
     :ui="{
       content: 'max-w-[calc(100vw-2rem)] overflow-visible',
-      body: 'flex min-h-0 flex-1 flex-col p-0 sm:p-0 overflow-visible',
+      body: 'flex min-h-0 flex-col p-0 sm:p-0 overflow-visible',
       title: 'sr-only',
-      header: 'absolute top-0 right-0 z-10 min-h-0 p-0 sm:p-0 border-0',
+      header: 'absolute top-0 right-0 z-10 p-0 sm:p-0 border-0',
     }"
   >
     <template #body>
@@ -53,24 +60,30 @@ const setIndentSize = (diff: number) => {
             :ui="{
               root: 'gap-0',
               list: 'mx-5 w-auto self-stretch pr-10',
-              trigger: 'flex-none',
-              content: 'p-0',
             }"
           >
             <template #content>
               <div class="box-border flex w-full flex-col gap-y-3 p-5">
                 <c-action-wrapper title="语言">
-                  <c-radio-group
-                    v-model:value="readerSetting.mode"
-                    :options="ReaderSetting.modeOptions"
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    v-model="readerSetting.mode"
+                    :items="ReaderSetting.modeOptions"
                   />
                 </c-action-wrapper>
 
                 <c-action-wrapper title="翻译">
                   <div class="flex flex-wrap gap-x-4 gap-y-3">
-                    <c-radio-group
-                      v-model:value="readerSetting.translationsMode"
-                      :options="ReaderSetting.translationModeOptions"
+                    <URadioGroup
+                      orientation="horizontal"
+                      variant="table"
+                      indicator="hidden"
+                      :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                      v-model="readerSetting.translationsMode"
+                      :items="ReaderSetting.translationModeOptions"
                     />
                     <translator-check
                       v-model:value="readerSetting.translations"
@@ -81,28 +94,37 @@ const setIndentSize = (diff: number) => {
                 </c-action-wrapper>
 
                 <c-action-wrapper v-if="isMobile" title="点按区域">
-                  <c-radio-group
-                    v-model:value="readerSetting.clickArea"
-                    :options="ReaderSetting.clickAreaOptions"
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    v-model="readerSetting.clickArea"
+                    :items="ReaderSetting.clickAreaOptions"
                   />
                 </c-action-wrapper>
 
                 <c-action-wrapper title="朗读语言">
-                  <c-radio-group
-                    :value="readerSetting.speakLanguages[0]"
-                    @update-value="
-                      (it: any) => (readerSetting.speakLanguages = [it])
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    :model-value="readerSetting.speakLanguages[0]"
+                    @update:model-value="
+                      readerSetting.speakLanguages = [$event]
                     "
-                    :options="ReaderSetting.speakLanguagesOptions"
+                    :items="ReaderSetting.speakLanguagesOptions"
                   />
                 </c-action-wrapper>
                 <c-action-wrapper title="翻页模式">
-                  <c-radio-group
-                    :value="readerSetting.pageTurnMode"
-                    @update-value="
-                      (it: any) => (readerSetting.pageTurnMode = it)
-                    "
-                    :options="ReaderSetting.pageTurnModeOptions"
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    v-model="readerSetting.pageTurnMode"
+                    :items="ReaderSetting.pageTurnModeOptions"
                   />
                 </c-action-wrapper>
                 <c-action-wrapper
@@ -192,9 +214,13 @@ const setIndentSize = (diff: number) => {
             <template #appearance>
               <div class="flex w-full flex-col gap-y-3 p-5">
                 <c-action-wrapper title="字重">
-                  <c-radio-group
-                    v-model:value="readerSetting.fontWeight"
-                    :options="ReaderSetting.fontWeightOptions"
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    v-model="readerSetting.fontWeight"
+                    :items="ReaderSetting.fontWeightOptions"
                   />
                 </c-action-wrapper>
 
@@ -252,41 +278,50 @@ const setIndentSize = (diff: number) => {
                 </c-action-wrapper>
 
                 <c-action-wrapper title="下划线">
-                  <c-radio-group
-                    v-model:value="readerSetting.textUnderline"
-                    :options="ReaderSetting.textUnderlineOptions"
+                  <URadioGroup
+                    orientation="horizontal"
+                    variant="table"
+                    indicator="hidden"
+                    :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                    v-model="readerSetting.textUnderline"
+                    :items="ReaderSetting.textUnderlineOptions"
                   />
                 </c-action-wrapper>
 
                 <c-action-wrapper title="主题">
                   <div class="flex flex-col gap-y-3">
-                    <c-radio-group
-                      v-model:value="readerSetting.theme.mode"
-                      :options="ReaderSetting.themeModeOptions"
+                    <URadioGroup
+                      orientation="horizontal"
+                      variant="table"
+                      indicator="hidden"
+                      :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+                      v-model="readerSetting.theme.mode"
+                      :items="ReaderSetting.themeModeOptions"
                     />
                     <template v-if="readerSetting.theme.mode === 'custom'">
-                      <div class="flex flex-wrap gap-x-3 gap-y-2">
-                        <n-radio
-                          v-for="theme of ReaderSetting.themeOptions"
-                          :key="theme.bodyColor"
-                          :checked="
-                            theme.bodyColor == readerSetting.theme.bodyColor
-                          "
-                          @update:checked="
-                            readerSetting.theme = { mode: 'custom', ...theme }
-                          "
-                        >
-                          <n-tag
-                            :color="{
-                              color: theme.bodyColor,
-                              textColor: theme.fontColor,
-                            }"
+                      <URadioGroup
+                        :model-value="readerSetting.theme.bodyColor"
+                        :items="ReaderSetting.themeOptions"
+                        value-key="bodyColor"
+                        label-key="bodyColor"
+                        orientation="horizontal"
+                        :ui="{ fieldset: 'gap-x-3 gap-y-2' }"
+                        aria-label="预设阅读配色"
+                        @update:model-value="selectTheme"
+                      >
+                        <template #label="{ item }">
+                          <span
+                            class="inline-block rounded px-1.5 py-0.5 text-center font-normal"
                             :class="isWideScreen ? 'w-[5.5em]' : 'w-[2em]'"
+                            :style="{
+                              backgroundColor: item.bodyColor,
+                              color: item.fontColor,
+                            }"
                           >
-                            {{ isWideScreen ? theme.bodyColor : '#' }}
-                          </n-tag>
-                        </n-radio>
-                      </div>
+                            {{ isWideScreen ? item.bodyColor : '#' }}
+                          </span>
+                        </template>
+                      </URadioGroup>
                       <USeparator class="m-0" />
                       <div class="flex flex-wrap gap-x-3 gap-y-2">
                         <n-color-picker

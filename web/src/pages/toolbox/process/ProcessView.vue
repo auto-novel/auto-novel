@@ -89,12 +89,7 @@ const showListModal = ref(false);
           directory-dnd
           :custom-request="customRequest"
         >
-          <UButton
-            :icon="PlusOutlined"
-            color="neutral"
-            variant="outline"
-            class="rounded-full"
-          >
+          <UButton :icon="PlusOutlined" color="neutral" variant="outline">
             加载文件
           </UButton>
         </n-upload>
@@ -104,7 +99,6 @@ const showListModal = ref(false);
         :icon="PlusOutlined"
         color="neutral"
         variant="outline"
-        class="rounded-full"
         @click="showListModal = true"
       >
         本地书架
@@ -113,7 +107,6 @@ const showListModal = ref(false);
         :icon="DeleteOutlineOutlined"
         color="neutral"
         variant="outline"
-        class="rounded-full"
         @click="clearFile"
       >
         清空

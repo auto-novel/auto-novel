@@ -144,25 +144,21 @@ const moveToFavored = async () => {
       <div class="flex flex-col gap-y-2">
         <b>移动小说（低配版，很慢，等到显示移动完成）</b>
 
-        <n-radio-group v-model:value="targetFavoredId">
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <ActionButton
-              class="rounded-md text-sm/4"
-              size="sm"
-              :action="moveToFavored"
-            >
-              移动
-            </ActionButton>
-
-            <n-radio
-              v-for="favored in favoreds.wenku"
-              :key="favored.id"
-              :value="favored.id"
-            >
-              {{ favored.title }}
-            </n-radio>
-          </div>
-        </n-radio-group>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <ActionButton class="text-sm/4" size="sm" :action="moveToFavored">
+            移动
+          </ActionButton>
+          <URadioGroup
+            v-model="targetFavoredId"
+            :items="favoreds.wenku"
+            value-key="id"
+            label-key="title"
+            orientation="horizontal"
+            class="contents"
+            :ui="{ fieldset: 'contents' }"
+            aria-label="移动到收藏夹"
+          />
+        </div>
       </div>
     </div>
   </div>

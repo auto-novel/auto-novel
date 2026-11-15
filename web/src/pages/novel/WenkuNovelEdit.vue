@@ -373,7 +373,7 @@ const levelOptions = [
     <UCard
       variant="soft"
       class="mb-5 bg-embedded text-sm leading-[1.6] text-default"
-      :ui="{ body: 'px-6 py-5 sm:px-6 sm:py-5' }"
+      :ui="{ body: 'px-6 py-5 sm:py-5' }"
     >
       <span class="text-error">
         <b>创建文库小说注意事项：</b>
@@ -416,7 +416,7 @@ const levelOptions = [
             :spellcheck="false"
           />
           <ActionButton
-            class="shrink-0 justify-center rounded-sm"
+            class="shrink-0 justify-center"
             color="primary"
             :action="() => populateNovelFromAmazon(amazonUrl, false)"
             variant="solid"
@@ -432,7 +432,6 @@ const levelOptions = [
             )}&i=stripbooks`"
             target="_blank"
             variant="soft"
-            class="rounded-full"
           >
             在亚马逊搜索
           </UButton>
@@ -548,8 +547,8 @@ const levelOptions = [
           variant="card"
           indicator="hidden"
           :ui="{
-            fieldset: 'flex flex-wrap gap-1',
-            item: 'flex-none px-3 py-1.5',
+            fieldset: 'gap-1',
+            item: 'px-2 py-1',
           }"
         />
       </UFormField>
@@ -586,7 +585,7 @@ const levelOptions = [
               v-if="presetKeywords.groups.length > 0"
               color="error"
               variant="link"
-              class="rounded-full p-0 leading-none"
+              class="p-0 leading-none"
               @click="showKeywordsModal = true"
             >
               用前必读
@@ -604,21 +603,28 @@ const levelOptions = [
             :key="group.title"
           >
             <div class="flex flex-wrap gap-x-2 gap-y-1">
-              <n-tag :bordered="false" size="small">
+              <UBadge color="neutral" variant="soft" size="md">
                 <b>{{ group.title }}</b>
-              </n-tag>
-              <n-tag
+              </UBadge>
+              <UButton
                 v-for="keyword of group.presetKeywords"
                 :key="keyword"
-                size="small"
-                checkable
-                :checked="formValue.keywords.includes(keyword)"
-                @update:checked="
-                  (checked: boolean) => togglePresetKeyword(checked, keyword)
+                type="button"
+                size="xs"
+                :color="
+                  formValue.keywords.includes(keyword) ? 'primary' : 'neutral'
+                "
+                variant="soft"
+                :aria-pressed="formValue.keywords.includes(keyword)"
+                @click="
+                  togglePresetKeyword(
+                    !formValue.keywords.includes(keyword),
+                    keyword,
+                  )
                 "
               >
                 {{ keyword }}
-              </n-tag>
+              </UButton>
             </div>
           </div>
         </div>
@@ -678,7 +684,6 @@ const levelOptions = [
                           size="xs"
                           variant="soft"
                           square
-                          class="rounded-full"
                           @click="topVolume(volume.asin)"
                           aria-label="置顶"
                         />
@@ -691,7 +696,6 @@ const levelOptions = [
                           size="xs"
                           variant="soft"
                           square
-                          class="rounded-full"
                           @click="bottomVolume(volume.asin)"
                           aria-label="置底"
                         />
@@ -704,7 +708,6 @@ const levelOptions = [
                           variant="soft"
                           square
                           color="error"
-                          class="rounded-full"
                           @click="deleteVolume(volume.asin)"
                           aria-label="删除"
                         />
@@ -723,7 +726,7 @@ const levelOptions = [
                         placeholder="标题"
                         :spellcheck="false"
                         size="sm"
-                        :ui="{ base: 'text-[12px]!' }"
+                        :ui="{ base: 'text-xs' }"
                       />
                     </div>
                     <span class="text-[12px] text-default">
@@ -756,7 +759,7 @@ const levelOptions = [
     <div v-if="novelId" class="submit-action">
       <UButton
         :icon="UploadOutlined"
-        class="min-h-11 rounded-full"
+        class="min-h-11"
         :loading="submitting"
         @click="submit"
       >
@@ -915,8 +918,8 @@ const levelOptions = [
 /* 定位外层容器，避免与按钮组件自身的 position 样式竞争。 */
 .submit-action {
   position: fixed;
-  right: max(40px, env(safe-area-inset-right, 0px));
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: 40px;
+  bottom: 20px;
   z-index: 20;
   border-radius: 9999px;
   box-shadow: rgb(0 0 0 / 40%) 2px 2px 8px 0px;
@@ -924,7 +927,7 @@ const levelOptions = [
 
 @media (max-width: 600px) {
   .submit-action {
-    right: calc(12px + env(safe-area-inset-right, 0px));
+    right: 12px;
   }
 }
 </style>

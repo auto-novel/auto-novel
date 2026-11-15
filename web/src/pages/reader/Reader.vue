@@ -292,7 +292,6 @@ onKeyDown(['Enter'], (e) => {
       :tabindex="-1"
       :color="id ? 'primary' : 'neutral'"
       variant="ghost"
-      class="rounded-full"
       @click.stop="
         () => {
           navToChapter(id!);

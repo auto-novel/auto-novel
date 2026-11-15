@@ -50,7 +50,7 @@ function invertSelection() {
         @click="invertSelection()"
         variant="link"
         square
-        class="rounded-full p-0"
+        class="p-0"
         aria-label="反选"
       />
     </div>

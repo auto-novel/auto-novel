@@ -230,12 +230,7 @@ const onRuleModalCloseAutoFocus = async () => {
       </p>
     </template>
     <template #footer>
-      <UButton
-        variant="solid"
-        color="primary"
-        class="rounded-full"
-        @click="showRuleModal = false"
-      >
+      <UButton variant="solid" color="primary" @click="showRuleModal = false">
         确定
       </UButton>
     </template>

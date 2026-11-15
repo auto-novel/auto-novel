@@ -134,18 +134,26 @@ const progressFilterFunc = computed(() => {
       />
       <USeparator class="mx-0 my-3" />
       <c-action-wrapper title="状态">
-        <c-radio-group
-          v-model:value="progressFilter"
-          :options="progressFilterOptions"
-          size="small"
+        <URadioGroup
+          orientation="horizontal"
+          variant="table"
+          indicator="hidden"
+          :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+          v-model="progressFilter"
+          :items="progressFilterOptions"
+          size="sm"
         />
       </c-action-wrapper>
 
       <c-action-wrapper title="语言">
-        <c-radio-group
-          v-model:value="setting.downloadFormat.mode"
-          :options="Setting.downloadModeOptions"
-          size="small"
+        <URadioGroup
+          orientation="horizontal"
+          variant="table"
+          indicator="hidden"
+          :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+          v-model="setting.downloadFormat.mode"
+          :items="Setting.downloadModeOptions"
+          size="sm"
         />
       </c-action-wrapper>
     </template>
@@ -177,7 +185,6 @@ const progressFilterFunc = computed(() => {
             color="neutral"
             size="xs"
             variant="soft"
-            class="rounded-full"
           >
             阅读
           </UButton>

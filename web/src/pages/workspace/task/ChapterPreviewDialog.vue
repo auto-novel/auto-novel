@@ -98,7 +98,6 @@ const onUpdateShow = (val: boolean) => {
         variant="soft"
         icon="i-lucide-circle-alert"
         title="章节处理失败"
-        :ui="{ description: 'break-words' }"
         role="alert"
       >
         <template #description>
@@ -110,18 +109,18 @@ const onUpdateShow = (val: boolean) => {
       </UAlert>
       <div>
         <div v-if="previewState.previewProgressStatus" class="flex gap-2">
-          <n-tag size="small" :bordered="false">
+          <UBadge size="md" variant="soft" color="neutral" class="font-normal">
             共 {{ previewState.previewProgressStatus.total }}
-          </n-tag>
-          <n-tag size="small" :bordered="false" type="success">
+          </UBadge>
+          <UBadge size="md" variant="soft" color="success" class="font-normal">
             ✓ {{ previewState.previewProgressStatus.success }}
-          </n-tag>
-          <n-tag size="small" :bordered="false" type="info">
+          </UBadge>
+          <UBadge size="md" variant="soft" color="info" class="font-normal">
             ● {{ previewState.previewProgressStatus.processing }}
-          </n-tag>
-          <n-tag size="small" :bordered="false" type="error">
+          </UBadge>
+          <UBadge size="md" variant="soft" color="error" class="font-normal">
             ✕ {{ previewState.previewProgressStatus.failed }}
-          </n-tag>
+          </UBadge>
         </div>
         <USeparator class="my-1" />
       </div>
@@ -159,7 +158,6 @@ const onUpdateShow = (val: boolean) => {
         variant="soft"
         icon="i-lucide-circle-alert"
         title="翻译出错"
-        :ui="{ description: 'break-words' }"
         role="alert"
       >
         <template #description>

@@ -274,22 +274,14 @@ defineExpose({
       />
 
       <div class="flex items-center gap-x-3">
-        <ActionButton
-          class="rounded-md text-sm/4"
-          size="sm"
-          :action="exportGlossary"
-        >
+        <ActionButton class="text-sm/4" size="sm" :action="exportGlossary">
           导出
         </ActionButton>
-        <ActionButton
-          class="rounded-md text-sm/4"
-          size="sm"
-          :action="importGlossary"
-        >
+        <ActionButton class="text-sm/4" size="sm" :action="importGlossary">
           导入
         </ActionButton>
         <ActionButton
-          class="rounded-md text-sm/4"
+          class="text-sm/4"
           size="sm"
           :action="downloadGlossaryAsJsonFile"
         >

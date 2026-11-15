@@ -27,7 +27,6 @@ const showDownloadModal = ref(false);
   <UButton
     color="neutral"
     variant="outline"
-    class="rounded-full"
     v-bind="$attrs"
     @click="showDownloadModal = true"
   >
@@ -43,17 +42,25 @@ const showDownloadModal = ref(false);
     <template #body>
       <div class="flex flex-col gap-y-3">
         <c-action-wrapper title="语言">
-          <c-radio-group
-            v-model:value="setting.downloadFormat.mode"
-            :options="Setting.downloadModeOptions"
+          <URadioGroup
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            v-model="setting.downloadFormat.mode"
+            :items="Setting.downloadModeOptions"
           />
         </c-action-wrapper>
 
         <c-action-wrapper title="翻译">
           <div class="flex flex-wrap gap-x-3 gap-y-2">
-            <c-radio-group
-              v-model:value="setting.downloadFormat.translationsMode"
-              :options="Setting.downloadTranslationModeOptions"
+            <URadioGroup
+              orientation="horizontal"
+              variant="table"
+              indicator="hidden"
+              :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+              v-model="setting.downloadFormat.translationsMode"
+              :items="Setting.downloadTranslationModeOptions"
             />
             <translator-check
               v-model:value="setting.downloadFormat.translations"
@@ -64,9 +71,13 @@ const showDownloadModal = ref(false);
         </c-action-wrapper>
 
         <c-action-wrapper v-if="showFileType" title="文件">
-          <c-radio-group
-            v-model:value="setting.downloadFormat.type"
-            :options="Setting.downloadTypeOptions"
+          <URadioGroup
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            v-model="setting.downloadFormat.type"
+            :items="Setting.downloadTypeOptions"
           />
         </c-action-wrapper>
 

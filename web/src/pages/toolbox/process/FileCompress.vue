@@ -136,10 +136,14 @@ const showPreview = (image: EpubImage) => {
 <template>
   <div class="flex flex-col gap-y-2">
     <c-action-wrapper title="格式">
-      <c-radio-group
-        v-model:value="imageFormat"
-        :options="imageFormatOptions"
-        size="small"
+      <URadioGroup
+        orientation="horizontal"
+        variant="table"
+        indicator="hidden"
+        :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+        v-model="imageFormat"
+        :items="imageFormatOptions"
+        size="sm"
       />
     </c-action-wrapper>
 
@@ -189,20 +193,23 @@ const showPreview = (image: EpubImage) => {
           {{ detail.name }}
         </span>
         <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
-          <n-image-group show-toolbar-tooltip>
-            <div class="mb-4 flex gap-1">
-              <n-image
-                class="rounded-[2px]!"
-                v-for="image of detail.images"
-                :key="image.id"
+          <div class="mb-4 flex gap-1">
+            <button
+              v-for="image of detail.images"
+              :key="image.id"
+              type="button"
+              class="shrink-0 cursor-pointer rounded-[2px] border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-primary"
+              :aria-label="`预览 ${image.id} 的压缩效果`"
+              @click="showPreview(image)"
+            >
+              <img
+                class="h-37.5 w-auto max-w-none rounded-[2px]"
                 height="150"
                 :src="image.uri"
-                preview-disabled
                 :alt="image.id"
-                @click="showPreview(image)"
               />
-            </div>
-          </n-image-group>
+            </button>
+          </div>
         </UScrollArea>
       </template>
     </template>

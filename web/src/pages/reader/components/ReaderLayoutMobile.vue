@@ -85,7 +85,7 @@ const onGlobalClick = (event: MouseEvent) => {
     :ui="{ content: 'h-auto max-h-[calc(100dvh-3rem)]' }"
   >
     <template #content>
-      <div class="my-1 flex w-full flex-wrap pb-[env(safe-area-inset-bottom)]">
+      <div class="my-1 flex w-full flex-wrap">
         <div class="flex-[1_1_0px]">
           <side-button
             variant="ghost"

@@ -38,11 +38,15 @@ const { theme } = useWebKit();
       <div class="relative min-w-0 py-3 px-5">
         <div class="flex flex-col gap-y-2">
           <b>主题</b>
-          <c-radio-group
-            :value="theme.preference.value"
-            @update:value="theme.setPreference($event)"
-            :options="Setting.themeOptions"
-            size="small"
+          <URadioGroup
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            :model-value="theme.preference.value"
+            @update:model-value="theme.setPreference($event)"
+            :items="Setting.themeOptions"
+            size="sm"
           />
         </div>
       </div>
@@ -131,10 +135,14 @@ const { theme } = useWebKit();
       <div class="relative min-w-0 py-3 px-5">
         <div class="flex flex-col gap-y-2">
           <b>列表分页方式</b>
-          <c-radio-group
-            v-model:value="setting.paginationMode"
-            :options="Setting.paginationModeOptions"
-            size="small"
+          <URadioGroup
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            v-model="setting.paginationMode"
+            :items="Setting.paginationModeOptions"
+            size="sm"
           />
         </div>
       </div>
@@ -178,7 +186,7 @@ const { theme } = useWebKit();
               color="neutral"
               variant="outline"
               size="sm"
-              class="rounded-full text-sm/4"
+              class="text-sm/4"
               @click="clearWebSearchHistory"
             >
               清空网络搜索历史
@@ -187,7 +195,7 @@ const { theme } = useWebKit();
               color="neutral"
               variant="outline"
               size="sm"
-              class="rounded-full text-sm/4"
+              class="text-sm/4"
               @click="clearWenkuSearchHistory"
             >
               清空文库搜索历史
@@ -200,10 +208,14 @@ const { theme } = useWebKit();
         <div class="flex flex-col gap-y-2">
           <b>语言</b>
           简繁转换目前只覆盖web章节内容。
-          <c-radio-group
-            v-model:value="setting.locale"
-            :options="Setting.localeOptions"
-            size="small"
+          <URadioGroup
+            orientation="horizontal"
+            variant="table"
+            indicator="hidden"
+            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            v-model="setting.locale"
+            :items="Setting.localeOptions"
+            size="sm"
           />
           <UCheckbox
             v-model="setting.searchLocaleAware"

@@ -137,7 +137,7 @@ const importGlossary = () => {
         class="min-w-0 flex-1"
       />
       <ActionButton
-        class="rounded-md text-sm/4"
+        class="text-sm/4"
         size="sm"
         :disabled="!importRaw.trim()"
         :action="importGlossary"

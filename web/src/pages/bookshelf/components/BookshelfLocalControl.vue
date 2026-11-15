@@ -151,19 +151,13 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
           </UFieldGroup>
 
           <UFieldGroup size="sm">
-            <ActionButton
-              class="rounded-md text-sm/4"
-              :action="downloadRawSelected"
-            >
+            <ActionButton class="text-sm/4" :action="downloadRawSelected">
               下载原文
             </ActionButton>
-            <ActionButton
-              class="rounded-md text-sm/4"
-              :action="downloadSelected"
-            >
+            <ActionButton class="text-sm/4" :action="downloadSelected">
               下载机翻
             </ActionButton>
-            <DownloadOptionsButton size="sm" class="rounded-md text-sm/4" />
+            <DownloadOptionsButton size="sm" class="text-sm/4" />
           </UFieldGroup>
 
           <UButton
@@ -205,25 +199,21 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
       <div class="flex flex-col gap-y-2">
         <b>移动小说</b>
 
-        <n-radio-group v-model:value="targetFavoredId">
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <ActionButton
-              class="rounded-md text-sm/4"
-              size="sm"
-              :action="moveToFavored"
-            >
-              移动
-            </ActionButton>
-
-            <n-radio
-              v-for="favored in favoreds.local"
-              :key="favored.id"
-              :value="favored.id"
-            >
-              {{ favored.title }}
-            </n-radio>
-          </div>
-        </n-radio-group>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <ActionButton class="text-sm/4" size="sm" :action="moveToFavored">
+            移动
+          </ActionButton>
+          <URadioGroup
+            v-model="targetFavoredId"
+            :items="favoreds.local"
+            value-key="id"
+            label-key="title"
+            orientation="horizontal"
+            class="contents"
+            :ui="{ fieldset: 'contents' }"
+            aria-label="移动到收藏夹"
+          />
+        </div>
       </div>
     </div>
 
@@ -269,14 +259,14 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
         <c-action-wrapper title="操作">
           <UFieldGroup size="sm">
             <ActionButton
-              class="rounded-md text-sm/4"
+              class="text-sm/4"
               v-if="setting.enabledTranslator.includes('gpt')"
               :action="() => queueJobs('gpt')"
             >
               排队GPT
             </ActionButton>
             <ActionButton
-              class="rounded-md text-sm/4"
+              class="text-sm/4"
               v-if="setting.enabledTranslator.includes('sakura')"
               :action="() => queueJobs('sakura')"
             >
