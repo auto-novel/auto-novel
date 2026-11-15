@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  detectChinese,
-  filterGlossaryForLines,
-  hasLinguisticChars,
-  hasUrlToken,
-  stripUrlTokens,
-} from '../src/utils';
+import { detectChinese, filterGlossaryForLines } from '../src/utils';
 import {
   isPassthroughLine,
   mergeTranslatedLines,
@@ -57,35 +51,6 @@ describe('translation preprocessing and postprocessing', () => {
     expect(() => mergeTranslatedLines(lines, indexes, [])).toThrow('行数');
   });
 
-  it('纯 URL 与纯符号行透传，不送入翻译器', () => {
-    const lines = [
-      '正文还在。',
-      'https://www.dlsite.com/maniax/announce/=/product_id/RJ01222590.html',
-      'ttps://example.invalid/a',
-      'www.example.invalid/path',
-      '＊＊＊',
-      '　◇◇◇',
-      '……',
-      'RJ01222590',
-    ];
-    expect(lines.map(isPassthroughLine)).toEqual([
-      false,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      false, // 拉丁+数字仍视为可检语言，不透传
-    ]);
-    const { indexes, content } = splitPassthroughLines(lines);
-    expect(content).toEqual(['正文还在。', 'RJ01222590']);
-    expect(indexes).toEqual([0, 7]);
-    expect(
-      mergeTranslatedLines(lines, indexes, ['正文还在。', 'RJ01222590']),
-    ).toEqual(lines);
-  });
-
   it('OpenAI 解析按编号取回每一行内容', () => {
     expect(
       createOpenAiPromptBuilder().parseAnswer('#2:另一译文\n#1:译文', [
@@ -102,20 +67,6 @@ describe('translation preprocessing and postprocessing', () => {
       '译文二',
       '译文三',
     ]);
-  });
-});
-
-describe('URL helpers', () => {
-  it.each([
-    'https://example.invalid/path',
-    'http://example.invalid/path',
-    'ttps://example.invalid/path',
-    'ttp://example.invalid/path',
-    'www.example.invalid/path',
-  ])('识别并剥离 URL %s', (url) => {
-    expect(hasUrlToken(url)).toBe(true);
-    expect(stripUrlTokens(`前${url}后`).trim()).toBe('前后');
-    expect(hasLinguisticChars(stripUrlTokens(url))).toBe(false);
   });
 });
 

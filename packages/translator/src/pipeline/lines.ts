@@ -1,13 +1,6 @@
-import { hasLinguisticChars, stripUrlTokens } from '@/utils';
-
-/**
- * 空行、图片、纯 URL、纯符号分隔行不需要翻译，始终保留原文。
- * 「纯 URL / 纯符号」= 剥掉 URL 后不再含汉字、假名或拉丁字母。
- */
+/** 空行和图片不需要翻译，始终保留原文。 */
 export const isPassthroughLine = (line: string): boolean =>
-  line.trim().length === 0 ||
-  line.startsWith('<图片>') ||
-  !hasLinguisticChars(stripUrlTokens(line));
+  line.trim().length === 0 || line.startsWith('<图片>');
 
 /** 校验译文的行数与行内结构；不修改输入。 */
 function assertTranslatedLines(

@@ -64,42 +64,17 @@ export namespace RegexUtil {
 }
 
 /**
- * 日站常见缺 h 的 ttps/ttp，以及 www. 无协议链接。
- * 字符集限定为 URL 合法字符，避免吞掉紧挨其后的汉字。
- */
-const URL_CHAR = String.raw`[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]`;
-const URL_TOKEN_SOURCE = String.raw`h?ttps?:\/\/${URL_CHAR}+|\bwww\.${URL_CHAR}+`;
-
-export const stripUrlTokens = (text: string): string =>
-  text.replace(new RegExp(URL_TOKEN_SOURCE, 'gi'), '');
-
-export const hasUrlToken = (text: string): boolean =>
-  new RegExp(URL_TOKEN_SOURCE, 'i').test(text);
-
-const isHanzi = (c: string) => /[\u4e00-\u9fa5]/.test(c);
-
-/** 是否含需做语言判断的字符（汉字 / 假名 / 拉丁字母）。 */
-export const hasLinguisticChars = (text: string): boolean => {
-  for (const c of text) {
-    if (
-      isHanzi(c) ||
-      RegexUtil.hasKanaChars(c) ||
-      RegexUtil.hasEnglishChars(c)
-    ) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
  * 判断译文是否主要为中文。
  * 只对语言字符计数，避免标点/URL 稀释比例；剥 URL 后若无可检语言，
  * 有 URL 或仍有非空白符号则通过，全空则失败（防止模型交白卷）。
  */
 export const detectChinese = (text: string) => {
-  const hadUrl = hasUrlToken(text);
-  const cleaned = stripUrlTokens(text);
+  // 支持缺 h 的 ttps/ttp 和 www.，且不吞掉紧邻 URL 的汉字。
+  const urlChar = String.raw`[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]`;
+  const urlTokenSource = String.raw`h?ttps?:\/\/${urlChar}+|\bwww\.${urlChar}+`;
+  const hadUrl = new RegExp(urlTokenSource, 'i').test(text);
+  const cleaned = text.replace(new RegExp(urlTokenSource, 'gi'), '');
+  const isHanzi = (c: string) => /[\u4e00-\u9fa5]/.test(c);
 
   let zh = 0,
     jp = 0,
