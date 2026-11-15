@@ -40,10 +40,10 @@ const updateOpen = async (value: boolean) => {
   <USlideover
     :open="open"
     title="术语表"
-    description="查看和编辑本书的翻译术语"
     side="right"
     :ui="{
       content: 'w-full max-w-none sm:max-w-2xl',
+      body: 'flex min-h-0 flex-col overflow-hidden p-0 sm:p-0',
     }"
     @update:open="updateOpen"
   >
