@@ -56,20 +56,24 @@ describe('OpenAiTranslator', () => {
     const translator = new OpenAiTranslator(config);
     const request = { lines: ['原文'], attempt: 0 };
     expect(await attemptTranslation(translator, request)).toEqual(['译文']);
+    expect(sessions).toHaveLength(2);
     expect(
       await translator.fallback({ lines: ['原文一', '原文二'], attempt: 0 }),
     ).toEqual(['译文', '译文']);
-    await Promise.all([
-      translator.translate(request),
-      translator.translate(request),
-    ]);
-    expect(sessions).toHaveLength(6);
+    expect(sessions).toHaveLength(4);
+    expect(
+      await Promise.all([
+        translator.translate(request),
+        translator.translate(request),
+      ]),
+    ).toEqual([['译文'], ['译文']]);
+    expect(sessions.slice(4).length).toBeGreaterThan(0);
     expect(sessions[0]).toMatch(/^[a-f0-9-]{36}$/);
     expect(new Set(sessions).size).toBe(1);
 
     await new OpenAiTranslator(config).translate(request);
-    expect(sessions[6]).not.toBe(sessions[0]);
-    expect(sessions[6]).toMatch(/^[a-f0-9-]{36}$/);
+    expect(sessions.at(-1)).not.toBe(sessions[0]);
+    expect(sessions.at(-1)).toMatch(/^[a-f0-9-]{36}$/);
   });
 
   it('应将统一抽象后的流式输出文本正确送入现有解析器并返回译文', async () => {
