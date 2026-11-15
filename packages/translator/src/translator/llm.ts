@@ -7,7 +7,12 @@ import type {
 } from '@/types';
 import { detectChinese, getPreviousSource, isAbortError } from '@/utils';
 
-import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
+import {
+  createPiAiCompletion,
+  type PiAiCompletionResult,
+  type PiAiProtocol,
+} from './llm-client';
+import { InFlightRequests } from './llm-requests';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
 import { createTranslationCacheKey } from '@/cache';
@@ -28,6 +33,7 @@ export type OpenAiTranslatorConfig = {
 };
 
 export class OpenAiTranslator implements Translator {
+  private readonly requests = new InFlightRequests<PiAiCompletionResult>();
   readonly trusted = true;
   private endpoint: string;
   private key: string;
@@ -112,8 +118,9 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
+    signal?.throwIfAborted();
     const messages = this.promptBuilder.build(lines, context);
-    const completion = await createPiAiCompletion({
+    const request = {
       protocol: this.protocol,
       endpoint: this.endpoint,
       key: this.key,
@@ -121,7 +128,14 @@ export class OpenAiTranslator implements Translator {
       messages,
       requestParams: this.profileParams,
       signal,
-    });
+    };
+    // 配置由翻译器实例隔离；按实际提示词与原文合并，解析仍由各调用方执行。
+    const completion = await this.requests.run(
+      JSON.stringify({ messages, lines }),
+      (signal) => createPiAiCompletion({ ...request, signal }),
+      signal,
+    );
+    signal?.throwIfAborted();
     if (completion.reasoning) {
       this.log(`思考：${completion.reasoning}`);
     }
