@@ -220,18 +220,13 @@ defineExpose({
 <template>
   <div class="novel-glossary-editor">
     <div class="mb-4 flex max-w-125 flex-col gap-y-3">
-      <h3 class="heading-bar">编辑术语表</h3>
-      <template v-if="gnidHint">
-        <span class="text-default text-[12px]">{{ gnidHint }}</span>
-
-        <span class="text-default">
-          使用前务必先阅读
-          <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
-            术语表使用指南
-          </ULink>
-          ，不要滥用术语表。
-        </span>
-      </template>
+      <span v-if="gnidHint" class="text-default py-4">
+        使用前务必先阅读
+        <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
+          术语表使用指南
+        </ULink>
+        ，不要滥用术语表。
+      </span>
 
       <UFieldGroup size="sm" class="w-full">
         <UInput
