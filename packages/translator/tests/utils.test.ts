@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectChinese, filterGlossaryForLines } from '../src/utils';
+import { filterGlossaryForLines } from '../src/utils';
 import {
   isPassthroughLine,
   mergeTranslatedLines,
@@ -67,50 +67,5 @@ describe('translation preprocessing and postprocessing', () => {
       '译文二',
       '译文三',
     ]);
-  });
-});
-
-describe('detectChinese', () => {
-  it.each([
-    'https://example.invalid/path',
-    'http://example.invalid/path',
-    'ttps://example.invalid/path',
-    'ttp://example.invalid/path',
-    'www.example.invalid/path',
-  ])('中文夹杂 URL %s 时仍判定为中文', (url) => {
-    const text = `这是一段足够长的中文翻译，检查译文语言识别。\n${url}`;
-    expect(detectChinese(text)).toBe(true);
-  });
-
-  it('纯 URL 输出通过（#515）', () => {
-    expect(
-      detectChinese(
-        'https://www.dlsite.com/maniax/announce/=/product_id/RJ01222590.html',
-      ),
-    ).toBe(true);
-    expect(detectChinese('ttps://example.invalid/a')).toBe(true);
-  });
-
-  it('多行 ttps 作者注样例通过（#478）', () => {
-    const text = [
-      '在宅邸前院，被这样划分出来的主屋里，我接受着小末的照顾生活。',
-      '大致都齐了，所以我先整理一下目前的情况和印象图。',
-      '宿祢一族　妻子　真雪　ttps://example.invalid/a',
-      '　　　　　下忍　亮妈妈　ttps://example.invalid/b',
-      '如果有喜欢的，请告诉我。',
-    ].join(' ');
-    expect(detectChinese(text)).toBe(true);
-  });
-
-  it('纯符号输出通过；空译文失败', () => {
-    expect(detectChinese('＊＊＊')).toBe(true);
-    expect(detectChinese('　◇◇◇')).toBe(true);
-    expect(detectChinese('')).toBe(false);
-    expect(detectChinese('   ')).toBe(false);
-  });
-
-  it('假名为主的输出失败；中文为主通过', () => {
-    expect(detectChinese('これは日本語のままです')).toBe(false);
-    expect(detectChinese('这是一段合格的简体中文译文。')).toBe(true);
   });
 });

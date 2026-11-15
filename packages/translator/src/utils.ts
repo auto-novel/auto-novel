@@ -63,43 +63,6 @@ export namespace RegexUtil {
     hangulHalfWidth.test(str);
 }
 
-/**
- * 判断译文是否主要为中文。
- * 只对语言字符计数，避免标点/URL 稀释比例；剥 URL 后若无可检语言，
- * 有 URL 或仍有非空白符号则通过，全空则失败（防止模型交白卷）。
- */
-export const detectChinese = (text: string) => {
-  // 支持缺 h 的 ttps/ttp 和 www.，且不吞掉紧邻 URL 的汉字。
-  const urlChar = String.raw`[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]`;
-  const urlTokenSource = String.raw`h?ttps?:\/\/${urlChar}+|\bwww\.${urlChar}+`;
-  const hadUrl = new RegExp(urlTokenSource, 'i').test(text);
-  const cleaned = text.replace(new RegExp(urlTokenSource, 'gi'), '');
-  const isHanzi = (c: string) => /[\u4e00-\u9fa5]/.test(c);
-
-  let zh = 0,
-    jp = 0,
-    en = 0;
-  for (const c of cleaned) {
-    if (isHanzi(c)) {
-      zh++;
-    } else if (RegexUtil.hasKanaChars(c)) {
-      jp++;
-    } else if (RegexUtil.hasEnglishChars(c)) {
-      en++;
-    }
-  }
-
-  const linguistic = zh + jp + en;
-  if (linguistic === 0) {
-    return hadUrl || cleaned.trim().length > 0;
-  }
-
-  const pZh = zh / linguistic;
-  const pJp = jp / linguistic;
-  const pEn = en / linguistic;
-  return pZh > 0.75 || (pZh > pJp && pZh > pEn * 2 && pJp < 0.1);
-};
-
 export const safeJson = <T extends object>(text: string) => {
   try {
     return JSON.parse(text) as T;
