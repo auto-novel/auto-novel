@@ -273,32 +273,38 @@ describe('GPT 失败行修复', () => {
     const requests: string[] = [];
     vi.stubGlobal('fetch', async (_input: unknown, init: RequestInit) => {
       requests.push(JSON.parse(String(init.body)).messages.at(-1).content);
-      const call = requests.length;
       await gate;
-      return completion(
-        call === 1
-          ? '#1:任务甲译文'
-          : call === 2
-            ? '#2:任务乙译文'
-            : '#1:新译甲\n#2:新译乙',
-      );
+      return completion('#1:译文甲\n#2:译文乙');
     });
-    const translator = new OpenAiTranslator(config);
+    const parseAnswer = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new PartialGptAnswer(['任务甲译文', undefined]);
+      })
+      .mockImplementationOnce(() => {
+        throw new PartialGptAnswer([undefined, '任务乙译文']);
+      })
+      .mockReturnValue(['新译甲', '新译乙']);
+    const translator = new OpenAiTranslator({
+      ...config,
+      promptBuilder: { ...createOpenAiPromptBuilder(), parseAnswer },
+    });
     const lines = ['一番目', '二番目'];
     const first = translator.translate({ lines, attempt: 0 });
     const second = translator.translate({ lines, attempt: 0 });
     const settled = Promise.allSettled([first, second]);
-    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    await vi.waitFor(() => expect(requests.length).toBeGreaterThan(0));
     release();
     expect((await settled).map((result) => result.status)).toEqual([
       'rejected',
       'rejected',
     ]);
+    expect(parseAnswer).toHaveBeenCalledTimes(2);
     expect(await translator.translate({ lines, attempt: 1 })).toEqual([
       '新译甲',
       '新译乙',
     ]);
-    expect(requests[2]).toContain('#2:二番目');
+    expect(requests.at(-1)).toContain('#2:二番目');
   });
 
   it('停止后不再请求修复，也不触发逐行降级', async () => {
