@@ -76,7 +76,7 @@ const glossary = ref<Glossary>({});
 const originalGlossary = ref<Glossary>({});
 const termsToAdd = ref<[string, string]>(['', '']);
 
-// 将操作区也作为虚拟项，整个侧栏只保留一个滚动容器。
+// 低频操作随术语列表滚动，添加、撤销和提交保留在滚动区外。
 type EditorItem =
   | { type: 'controls'; id: string }
   | { type: 'term'; id: string; wordJp: string };
@@ -87,7 +87,7 @@ const editorItems = computed<EditorItem[]>(() => [
     .map((wordJp) => ({ type: 'term' as const, id: `term:${wordJp}`, wordJp })),
 ]);
 const virtualize = {
-  estimateSize: (index: number) => (index === 0 ? 280 : 44),
+  estimateSize: (index: number) => (index === 0 ? 120 : 44),
   getItemKey: (index: number) => editorItems.value[index].id,
   overscan: 8,
 };
@@ -167,11 +167,13 @@ const importGlossaryRaw = ref('');
 
 const deletedTerms = ref<[string, string][]>([]);
 
-const lastDeletedTerm = computed(() => {
-  const last = deletedTerms.value[deletedTerms.value.length - 1];
-  if (last === undefined) return undefined;
-  return `${last[0]} => ${last[1]}`;
-});
+const lastDeletedTerm = computed(
+  () => deletedTerms.value[deletedTerms.value.length - 1],
+);
+
+const canAddTerm = computed(() =>
+  termsToAdd.value.every((term) => term.trim() !== ''),
+);
 
 const clearTerm = () => {
   glossary.value = {};
@@ -191,9 +193,9 @@ const deleteTerm = (jp: string) => {
 };
 
 const addTerm = () => {
-  const [jp, zh] = termsToAdd.value;
+  const [jp, zh] = termsToAdd.value.map((term) => term.trim());
   if (jp && zh) {
-    glossary.value[jp.trim()] = zh.trim();
+    glossary.value[jp] = zh;
     termsToAdd.value = ['', ''];
   }
 };
@@ -235,6 +237,72 @@ defineExpose({
 
 <template>
   <div class="novel-glossary-editor flex min-h-0 flex-1 flex-col">
+    <div
+      class="flex shrink-0 flex-col gap-y-3 border-b border-default bg-default px-4 py-4 sm:px-6"
+    >
+      <UFieldGroup size="sm" class="w-full">
+        <UInput
+          v-model="termsToAdd[0]"
+          placeholder="日文"
+          aria-label="日文术语"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+        />
+        <span
+          class="flex items-center border border-default px-2 text-muted"
+          aria-hidden="true"
+        >
+          =&gt;
+        </span>
+        <UInput
+          v-model="termsToAdd[1]"
+          placeholder="中文"
+          aria-label="中文翻译"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+        />
+        <UButton
+          color="primary"
+          variant="soft"
+          :disabled="!canAddTerm"
+          @click="addTerm"
+          class="shrink-0 justify-center"
+        >
+          添加
+        </UButton>
+      </UFieldGroup>
+
+      <div
+        v-if="lastDeletedTerm"
+        class="flex min-w-0 items-center gap-x-3 rounded-md bg-elevated px-3 py-1.5"
+        role="status"
+      >
+        <span
+          class="min-w-0 flex-1 truncate text-xs text-muted"
+          :title="`${lastDeletedTerm[0]} => ${lastDeletedTerm[1]}`"
+        >
+          <template v-if="deletedTerms.length > 1">
+            已删除 {{ deletedTerms.length }} 项 · 最近：{{
+              lastDeletedTerm[0]
+            }}
+            =&gt; {{ lastDeletedTerm[1] }}
+          </template>
+          <template v-else>
+            已删除「{{ lastDeletedTerm[0] }} =&gt; {{ lastDeletedTerm[1] }}」
+          </template>
+        </span>
+        <UButton
+          color="primary"
+          variant="link"
+          size="sm"
+          @click="undoDeleteTerm"
+          class="shrink-0 text-sm/4"
+        >
+          {{ deletedTerms.length > 1 ? '撤销上一项' : '撤销' }}
+        </UButton>
+      </div>
+    </div>
+
     <UScrollArea
       :items="editorItems"
       :virtualize="virtualize"
@@ -246,52 +314,6 @@ defineExpose({
           v-if="item.type === 'controls'"
           class="flex flex-col gap-y-3 pt-4 pb-4 sm:pt-6"
         >
-          <UAlert
-            v-if="gnidHint"
-            color="warning"
-            variant="soft"
-            icon="i-lucide-triangle-alert"
-          >
-            <template #description>
-              使用前务必先阅读
-              <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
-                术语表使用指南
-              </ULink>
-              ，不要滥用术语表。
-            </template>
-          </UAlert>
-
-          <UFieldGroup size="sm" class="w-full">
-            <UInput
-              v-model="termsToAdd[0]"
-              placeholder="日文"
-              aria-label="日文术语"
-              :spellcheck="false"
-              class="min-w-0 flex-1"
-            />
-            <span
-              class="flex items-center border border-default px-2 text-muted"
-              aria-hidden="true"
-            >
-              =&gt;
-            </span>
-            <UInput
-              v-model="termsToAdd[1]"
-              placeholder="中文"
-              aria-label="中文翻译"
-              :spellcheck="false"
-              class="min-w-0 flex-1"
-            />
-            <UButton
-              color="neutral"
-              variant="outline"
-              @click="addTerm"
-              class="shrink-0 justify-center"
-            >
-              添加
-            </UButton>
-          </UFieldGroup>
-
           <UTextarea
             v-model="importGlossaryRaw"
             size="sm"
@@ -326,25 +348,6 @@ defineExpose({
               清空
             </UButton>
           </div>
-
-          <div class="flex items-center gap-x-3">
-            <UButton
-              color="neutral"
-              variant="outline"
-              :disabled="deletedTerms.length === 0"
-              size="sm"
-              @click="undoDeleteTerm"
-              class="text-sm/4"
-            >
-              撤销删除
-            </UButton>
-            <span
-              class="text-muted text-[12px]"
-              v-if="lastDeletedTerm !== undefined"
-            >
-              {{ lastDeletedTerm }}
-            </span>
-          </div>
         </div>
 
         <div
@@ -378,9 +381,24 @@ defineExpose({
     </UScrollArea>
 
     <div
-      class="flex shrink-0 justify-end border-t border-default bg-default px-4 py-4 sm:px-6"
+      class="flex shrink-0 items-center justify-end gap-3 border-t border-default bg-default px-4 py-4 sm:px-6"
     >
+      <div v-if="gnidHint" class="flex min-w-0 flex-1 items-start gap-1.5">
+        <UIcon
+          name="i-lucide-triangle-alert"
+          class="mt-0.5 size-4 shrink-0 text-warning"
+          aria-hidden="true"
+        />
+        <p class="min-w-0 text-xs/5 text-muted">
+          请先阅读
+          <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
+            术语表使用指南
+          </ULink>
+          ，勿滥用。
+        </p>
+      </div>
       <ActionButton
+        class="shrink-0"
         color="primary"
         :action="() => submitGlossary()"
         variant="solid"
