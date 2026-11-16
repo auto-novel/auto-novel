@@ -30,7 +30,7 @@ describe('OpenAiTranslator', () => {
     vi.stubGlobal('fetch', async (_input: unknown, init: RequestInit) => {
       const headers = new Headers(init.headers);
       sessions.push(headers.get('x-opencode-session') ?? '');
-      expect(headers.get('user-agent')).toBe('AutoNovel/1.0');
+      expect(headers.has('user-agent')).toBe(false);
       expect(headers.get('authorization')).toBe('Bearer test-key');
       expect(JSON.parse(String(init.body))).toMatchObject({
         model: 'model-1',

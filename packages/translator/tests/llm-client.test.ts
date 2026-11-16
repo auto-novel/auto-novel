@@ -43,7 +43,7 @@ describe('OpenCode 域名请求头', () => {
     'https://opencode.ai/zen/go/v1',
     'https://opencode.ai/inference/openai/v1/chat/completions',
     'https://OPENCODE.AI/inference/go/openai/v1/',
-  ])('现有 Chat Completions 请求自动补充 OpenCode 头：%s', async (endpoint) => {
+  ])('OpenCode 请求仅补充会话头：%s', async (endpoint) => {
     let headers: Record<string, string> | undefined;
     let body: Record<string, unknown> | undefined;
     const result = await createPiAiCompletion({
@@ -63,9 +63,9 @@ describe('OpenCode 域名请求头', () => {
     expect(headers).toMatchObject({
       authorization: 'Bearer test-key',
       'content-type': 'application/json',
-      'user-agent': 'AutoNovel/1.0',
       'x-opencode-session': 'stable-session',
     });
+    expect(headers).not.toHaveProperty('user-agent');
     expect(
       Object.keys(headers ?? {}).some((name) =>
         name.startsWith('x-stainless-'),
