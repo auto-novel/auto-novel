@@ -9,7 +9,7 @@ import { externalImageUrls } from '@/config';
 import { subjectKeys } from '@/api/commentSubject';
 import { GenericNovelId } from '@/model/Common';
 import type { VolumeJpDto } from '@/model/WenkuNovel';
-import NovelBottomTabs from '@/pages/novel/components/NovelBottomTabs.vue';
+import NovelGlossaryButton from './components/NovelGlossaryButton.vue';
 import { useIsWideScreen } from '@/pages/util';
 import { WenkuNovelRepo } from '@/repos';
 import { useSettingStore, useWhoamiStore } from '@/stores';
@@ -242,111 +242,102 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         </UScrollArea>
       </template>
 
-      <NovelBottomTabs
-        :gnid="GenericNovelId.wenku(novelId)"
-        :glossary="novel.glossary"
-        :site="subjectKeys.novel.wenku(novelId)"
-        :hide-comment="setting.hideCommmentWenkuNovel"
-        :locked="false"
-      >
-        <template #commentNotice>
-          <UAlert
-            color="warning"
-            variant="soft"
-            icon="i-lucide-triangle-alert"
-            title="公告"
-            role="alert"
-            class="mb-3"
+      <section class="mt-6">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <NovelGlossaryButton
+            :gnid="GenericNovelId.wenku(novelId)"
+            :glossary="novel.glossary"
+          />
+          <DownloadOptionsButton v-if="whoami.isSignedIn" />
+          <upload-button
+            v-if="whoami.isSignedIn"
+            :allow-zh="whoami.isAdmin"
+            :novel-id="novelId"
+          />
+        </div>
+
+        <template v-if="whoami.isSignedIn">
+          <TranslateOptions
+            ref="translateOptions"
+            :gnid="GenericNovelId.wenku(novelId)"
+            class="mt-4"
+          />
+          <USeparator class="mx-0 mt-4 mb-0" />
+
+          <div
+            class="divide-y divide-default leading-[1.6] text-default text-sm"
           >
-            <template #description>
-              近期有人在评论区到处冒充文库本的上传者，请勿相信此类评论（世界很奇妙吧，啥人都有）
-            </template>
-          </UAlert>
-        </template>
-
-        <template #wenkuToc>
-          <template v-if="whoami.isSignedIn">
-            <br />
-            <upload-button :allow-zh="whoami.isAdmin" :novel-id="novelId" />
-
-            <TranslateOptions
-              ref="translateOptions"
-              :gnid="GenericNovelId.wenku(novelId)"
-              class="mt-4"
-            />
-            <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2">
-              <DownloadOptionsButton />
-            </div>
-            <USeparator class="mx-0 mt-4 mb-0" />
-
             <div
-              class="divide-y divide-default leading-[1.6] text-default text-sm"
+              class="relative min-w-0 py-3"
+              v-for="volume of sortJpVolumes(novel.volumeJp)"
+              :key="volume.volumeId"
             >
-              <div
-                class="relative min-w-0 py-3"
-                v-for="volume of sortJpVolumes(novel.volumeJp)"
-                :key="volume.volumeId"
-              >
-                <WenkuVolume
-                  :novel-id="novelId"
-                  :volume="volume"
-                  :get-params="() => translateOptions!.getTranslateTaskParams()"
-                  @delete="deleteVolume(volume.volumeId)"
-                />
-              </div>
+              <WenkuVolume
+                :novel-id="novelId"
+                :volume="volume"
+                :get-params="() => translateOptions!.getTranslateTaskParams()"
+                @delete="deleteVolume(volume.volumeId)"
+              />
             </div>
+          </div>
 
-            <template v-if="whoami.isAdmin">
-              <USeparator class="m-0" />
+          <template v-if="whoami.isAdmin">
+            <USeparator class="m-0" />
 
-              <ul class="content-list">
-                <li v-for="volumeId in novel.volumeZh" :key="volumeId">
-                  <ULink
-                    :href="`/files-wenku/${novelId}/${encodeURIComponent(volumeId)}`"
-                    target="_blank"
-                    :download="volumeId"
-                    external
-                  >
-                    {{ volumeId }}
-                  </ULink>
+            <ul class="content-list">
+              <li v-for="volumeId in novel.volumeZh" :key="volumeId">
+                <ULink
+                  :href="`/files-wenku/${novelId}/${encodeURIComponent(volumeId)}`"
+                  target="_blank"
+                  :download="volumeId"
+                  external
+                >
+                  {{ volumeId }}
+                </ULink>
 
-                  <ConfirmActionButton
-                    v-if="whoami.asAdmin"
-                    :hint="`真的要删除《${volumeId}》吗？`"
-                    color="error"
-                    variant="link"
-                    class="ml-4 p-0 leading-none"
-                    label="删除"
-                    :action="() => deleteVolume(volumeId)"
-                  />
-                </li>
-              </ul>
-            </template>
-
-            <CEmpty
-              inline
-              v-if="novel.volumeJp.length === 0 && novel.volumeZh.length === 0"
-              title="请不要创建一个空页面"
-            />
-
-            <CEmpty
-              inline
-              v-if="
-                !whoami.isAdmin &&
-                novel.volumeJp.length === 0 &&
-                novel.volumeZh.length > 0
-              "
-              title="网站已撤下中文小说板块，请上传日文生成翻译"
-            />
+                <ConfirmActionButton
+                  v-if="whoami.asAdmin"
+                  :hint="`真的要删除《${volumeId}》吗？`"
+                  color="error"
+                  variant="link"
+                  class="ml-4 p-0 leading-none"
+                  label="删除"
+                  :action="() => deleteVolume(volumeId)"
+                />
+              </li>
+            </ul>
           </template>
-          <p
-            class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
-            v-else
-          >
-            游客无法查看内容，请先登录。
-          </p>
+
+          <CEmpty
+            inline
+            v-if="novel.volumeJp.length === 0 && novel.volumeZh.length === 0"
+            title="请不要创建一个空页面"
+          />
+
+          <CEmpty
+            inline
+            v-if="
+              !whoami.isAdmin &&
+              novel.volumeJp.length === 0 &&
+              novel.volumeZh.length > 0
+            "
+            title="网站已撤下中文小说板块，请上传日文生成翻译"
+          />
         </template>
-      </NovelBottomTabs>
+        <p
+          class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+          v-else
+        >
+          游客无法查看内容，请先登录。
+        </p>
+      </section>
+
+      <section v-if="!setting.hideCommmentWenkuNovel" class="mt-6">
+        <comment-list
+          :site="subjectKeys.novel.wenku(novelId)"
+          warning="请勿相信任何自称上传者的言论"
+        />
+      </section>
     </template>
   </XPage>
 </template>

@@ -2,7 +2,6 @@
  * 单次翻译尝试的软失败：流水线据此重试，`kind` 决定是否触发降级。
  * - `request`：网络/超时等可重试的传输错误；
  * - `lines`：输出行数或行内结构不符合要求；
- * - `language`：输出语言不是目标语言；
  * - `degraded`：输出退化（如触达 token 上限）。
  */
 export class TranslationRejected extends Error {
@@ -21,11 +20,7 @@ export class TranslationRejected extends Error {
   }
 }
 
-export type TranslationRejectionKind =
-  | 'request'
-  | 'lines'
-  | 'language'
-  | 'degraded';
+export type TranslationRejectionKind = 'request' | 'lines' | 'degraded';
 
 /** 只有内容形状问题才值得换一种拆分方式重试。 */
 export const isContentRejection = (error: unknown): boolean =>
