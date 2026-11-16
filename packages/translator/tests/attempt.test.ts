@@ -27,18 +27,6 @@ describe('attemptTranslation', () => {
     expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
   });
 
-  it('语言失败只重试，不触发降级', async () => {
-    const translate = vi.fn(async () => {
-      throw new TranslationRejected('language', '输出语言不是中文');
-    });
-    const fallback = vi.fn(async ({ lines }: { lines: string[] }) => lines);
-    await expect(
-      attemptTranslation({ trusted: false, translate, fallback }, request),
-    ).rejects.toThrow('重试次数过多');
-    expect(translate).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
-    expect(fallback).not.toHaveBeenCalled();
-  });
-
   it('传输失败重试耗尽后抛错，不触发降级', async () => {
     const error = new TranslationRejected('request', '请求超时');
     const translate = vi.fn(async () => {
