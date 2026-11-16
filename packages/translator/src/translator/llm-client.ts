@@ -280,7 +280,6 @@ function createPiAiFetch(
 
     const url = new URL(input instanceof Request ? input.url : String(input));
     if (url.hostname === 'opencode.ai') {
-      headers.set('user-agent', 'AutoNovel/1.0');
       if (!headers.get('x-opencode-session')) {
         headers.set('x-opencode-session', request.sessionId ?? randomUUID());
       }
