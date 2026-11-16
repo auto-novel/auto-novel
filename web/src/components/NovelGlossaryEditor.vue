@@ -78,18 +78,16 @@ const termsToAdd = ref<[string, string]>(['', '']);
 
 // 将操作区也作为虚拟项，整个侧栏只保留一个滚动容器。
 type EditorItem =
-  | { type: 'controls' | 'submit'; id: string }
+  | { type: 'controls'; id: string }
   | { type: 'term'; id: string; wordJp: string };
 const editorItems = computed<EditorItem[]>(() => [
   { type: 'controls', id: 'controls' },
   ...Object.keys(glossary.value)
     .reverse()
     .map((wordJp) => ({ type: 'term' as const, id: `term:${wordJp}`, wordJp })),
-  { type: 'submit', id: 'submit' },
 ]);
 const virtualize = {
-  estimateSize: (index: number) =>
-    index === 0 ? 280 : index === editorItems.value.length - 1 ? 56 : 44,
+  estimateSize: (index: number) => (index === 0 ? 280 : 44),
   getItemKey: (index: number) => editorItems.value[index].id,
   overscan: 8,
 };
@@ -376,21 +374,20 @@ defineExpose({
             class="min-w-0 w-full"
           />
         </div>
-
-        <div
-          v-else
-          class="flex flex-wrap justify-end gap-x-3 gap-y-2 pt-4 pb-4 sm:pb-6"
-        >
-          <ActionButton
-            color="primary"
-            :action="() => submitGlossary()"
-            variant="solid"
-          >
-            提交
-          </ActionButton>
-        </div>
       </template>
     </UScrollArea>
+
+    <div
+      class="flex shrink-0 justify-end border-t border-default bg-default px-4 py-4 sm:px-6"
+    >
+      <ActionButton
+        color="primary"
+        :action="() => submitGlossary()"
+        variant="solid"
+      >
+        提交
+      </ActionButton>
+    </div>
 
     <XConfirmDialog
       :open="showConfirmModal"
