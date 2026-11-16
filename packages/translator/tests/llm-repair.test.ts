@@ -109,17 +109,17 @@ describe('GPT 失败行修复', () => {
     expect(requests.map((lines) => lines.length)).toEqual([2, 1]);
   });
 
-  it('语言失败和空译文按行修复，不重发其他有效译文', async () => {
+  it('保留非中文译文，仅修复空译文而不重发有效行', async () => {
     const { requests } = mockAnswers([
       '#1:有效译文\n#2:日本語です\n#3:',
-      '#1:第二译文\n#2:第三译文',
+      '#1:第三译文',
     ]);
     expect(
       await attemptTranslation(new OpenAiTranslator(config), {
         lines: ['一番目', '二番目', '三番目'],
       }),
-    ).toEqual(['有效译文', '第二译文', '第三译文']);
-    expect(requests[1]).toEqual(['#1:二番目', '#2:三番目']);
+    ).toEqual(['有效译文', '日本語です', '第三译文']);
+    expect(requests[1]).toEqual(['#1:三番目']);
   });
 
   it('三次尝试后只逐行降级剩余失败行', async () => {
