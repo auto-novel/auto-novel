@@ -14,6 +14,7 @@ import {
   useWorkspaceStore,
 } from '@/stores';
 import { useShouldTopJob } from '@/util';
+import NovelGlossaryButton from './NovelGlossaryButton.vue';
 
 const props = defineProps<{
   providerId: string;
@@ -181,32 +182,36 @@ const submitJob = (id: 'gpt' | 'sakura') => {
     :gnid="GenericNovelId.web(providerId, novelId)"
   />
 
-  <div
-    class="mt-4 flex flex-wrap gap-x-3 gap-y-2"
-    v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0"
-  >
-    <ActionButton :action="importToWorkspace">导入工作区</ActionButton>
+  <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2">
+    <NovelGlossaryButton
+      :gnid="GenericNovelId.web(providerId, novelId)"
+      :glossary="glossary"
+    />
 
-    <UFieldGroup>
-      <ActionButton
-        v-if="setting.enabledTranslator.includes('youdao')"
-        :action="() => startTranslateTask('youdao')"
-      >
-        更新有道
-      </ActionButton>
-      <ActionButton
-        v-if="setting.enabledTranslator.includes('gpt')"
-        :action="() => submitJob('gpt')"
-      >
-        排队GPT
-      </ActionButton>
-      <ActionButton
-        v-if="setting.enabledTranslator.includes('sakura')"
-        :action="() => submitJob('sakura')"
-      >
-        排队Sakura
-      </ActionButton>
-    </UFieldGroup>
+    <template v-if="whoami.isSignedIn && setting.enabledTranslator.length > 0">
+      <ActionButton :action="importToWorkspace">导入工作区</ActionButton>
+
+      <UFieldGroup>
+        <ActionButton
+          v-if="setting.enabledTranslator.includes('youdao')"
+          :action="() => startTranslateTask('youdao')"
+        >
+          更新有道
+        </ActionButton>
+        <ActionButton
+          v-if="setting.enabledTranslator.includes('gpt')"
+          :action="() => submitJob('gpt')"
+        >
+          排队GPT
+        </ActionButton>
+        <ActionButton
+          v-if="setting.enabledTranslator.includes('sakura')"
+          :action="() => submitJob('sakura')"
+        >
+          排队Sakura
+        </ActionButton>
+      </UFieldGroup>
+    </template>
   </div>
 
   <TranslateTask

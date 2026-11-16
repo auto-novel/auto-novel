@@ -9,7 +9,7 @@ import { useWhoamiStore } from '@/stores';
 
 const props = defineProps<{
   site: string;
-  locked: boolean;
+  warning?: string;
 }>();
 
 const paginationScope = useTemplateRef<HTMLElement>('paginationScope');
@@ -61,9 +61,7 @@ function cancelInput() {
   replyTo.value = undefined;
 }
 
-const canReply = computed(() => {
-  return whoami.value.hasNovelAccess && !props.locked;
-});
+const canReply = computed(() => whoami.value.hasNovelAccess);
 </script>
 
 <template>
@@ -91,10 +89,6 @@ const canReply = computed(() => {
       </UButton>
     </header>
 
-    <p v-if="locked" class="py-2 text-sm text-warning">
-      评论区已锁定，不能再回复。
-    </p>
-
     <CommentEditor
       v-if="showInput"
       id="comment-composer"
@@ -106,11 +100,14 @@ const canReply = computed(() => {
       @cancel="cancelInput()"
     />
 
-    <XPagination
-      v-if="pageCount > 1"
-      v-model:page="page"
-      :total-pages="pageCount"
-      :ui="{ root: 'border-t-0 border-b' }"
+    <UAlert
+      v-if="warning"
+      color="warning"
+      variant="soft"
+      icon="i-lucide-triangle-alert"
+      role="alert"
+      class="my-3"
+      :description="warning"
     />
 
     <div v-if="!commentPage && !error" role="status">
@@ -136,10 +133,7 @@ const canReply = computed(() => {
         <UButton @click="refetch()">再试一次</UButton>
       </template>
     </UAlert>
-    <CEmpty
-      v-else-if="commentPage?.items.length === 0 && !locked"
-      title="暂无评论"
-    />
+    <CEmpty v-else-if="commentPage?.items.length === 0" title="暂无评论" />
     <template v-else-if="commentPage">
       <div class="divide-y divide-default">
         <CommentThread
