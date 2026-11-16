@@ -23,10 +23,14 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-const completion = (text = '#1:译文') =>
+const completion = (text = '#1:译文', reasoning?: string) =>
   new Response(
     [
-      { choices: [{ index: 0, delta: { content: text } }] },
+      {
+        choices: [
+          { index: 0, delta: { content: text, reasoning_content: reasoning } },
+        ],
+      },
       { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
     ]
       .map((event) => `data: ${JSON.stringify(event)}\n\n`)
@@ -37,17 +41,19 @@ const completion = (text = '#1:译文') =>
 afterEach(() => vi.unstubAllGlobals());
 
 describe('GPT 进行中请求合并', () => {
-  it('相同提示词只调用一次模型，每个调用方独立解析并持有结果', async () => {
+  it('相同提示词只调用并记录一次模型结果，各调用方独立解析', async () => {
     const gate = deferred<void>();
     const fetch = vi.fn(async () => {
       await gate.promise;
-      return completion();
+      return completion('#1:译文', '共享思考');
     });
     vi.stubGlobal('fetch', fetch);
     const promptBuilder = createOpenAiPromptBuilder();
     const parseAnswer = vi.fn(promptBuilder.parseAnswer);
+    const log = vi.fn();
     const translator = new OpenAiTranslator({
       ...config,
+      log,
       promptBuilder: { ...promptBuilder, parseAnswer },
     });
     const running = Array.from({ length: 8 }, () =>
@@ -58,6 +64,9 @@ describe('GPT 进行中请求合并', () => {
     const results = await Promise.all(running);
     expect(fetch).toHaveBeenCalledOnce();
     expect(parseAnswer).toHaveBeenCalledTimes(8);
+    expect(
+      log.mock.calls.filter(([message]) => message.startsWith('思考：')),
+    ).toEqual([['思考：共享思考']]);
     expect(results.every((result) => result[0] === '译文')).toBe(true);
     results[0][0] = '调用方修改';
     expect(results[1]).toEqual(['译文']);
@@ -242,7 +251,13 @@ describe('GPT 进行中请求合并', () => {
   });
 
   it('重复的失败尝试复用 HTTP，耗尽原有预算后仍正常报错', async () => {
-    const fetch = vi.fn(async () => completion('#1:Untranslated source.'));
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ error: { message: 'service unavailable' } }),
+          { status: 503, headers: { 'content-type': 'application/json' } },
+        ),
+    );
     vi.stubGlobal('fetch', fetch);
     const translator = new OpenAiTranslator(config);
     const results = await Promise.allSettled(
@@ -252,6 +267,21 @@ describe('GPT 进行中请求合并', () => {
     );
     expect(results.every((result) => result.status === 'rejected')).toBe(true);
     expect(fetch).toHaveBeenCalledTimes(TRANSLATION_RETRIES);
+  });
+
+  it('发起前全部取消立即释放请求，同键新调用不等待旧请求清理', async () => {
+    const requests = new InFlightRequests<string>();
+    const controller = new AbortController();
+    const cancelled = vi.fn(async () => '旧结果');
+    const create = vi.fn(async () => '新结果');
+    const first = requests.run('same', cancelled, controller.signal);
+    const stopped = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort();
+    const second = requests.run('same', create);
+    await stopped;
+    expect(await second).toBe('新结果');
+    expect(cancelled).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledOnce();
   });
 
   it('旧请求迟到的完成不能清除同键的新请求', async () => {
