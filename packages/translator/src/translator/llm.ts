@@ -5,12 +5,7 @@ import type {
   TranslateRequest,
   Translator,
 } from '@/types';
-import {
-  detectChinese,
-  getPreviousSource,
-  isAbortError,
-  randomUUID,
-} from '@/utils';
+import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
 
 import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
@@ -75,8 +70,8 @@ export class OpenAiTranslator implements Translator {
     if (lines.length === 0) return [];
 
     const result = await this.translateLines(lines, context, signal);
-    if (!detectChinese(result.join(' '))) {
-      throw new TranslationRejected('language', '输出语言不是中文');
+    if (result.every((line) => line.trim().length === 0)) {
+      throw new TranslationRejected('lines', '译文为空');
     }
     return result;
   }
