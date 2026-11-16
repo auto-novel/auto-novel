@@ -143,20 +143,26 @@ describe('GPT 文本保护', () => {
     expect(prepareGptText(['本文'], context).context).toBe(context);
   });
 
-  it('长链接不影响正文的中文检测，返回结果保留链接原文', async () => {
-    const link = `https://example.test/${'a'.repeat(500)}`;
-    vi.stubGlobal('fetch', async (_input: unknown, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
-      const prompt = body.messages.at(-1).content as string;
-      expect(prompt).not.toContain(link);
-      const token = prompt.match(/__AN_KEEP_\d+__/g)![0];
-      return completion(`#1:请访问 ${token}。`);
-    });
-    const translator = new OpenAiTranslator(config);
-    expect(
-      await translator.translate({ lines: [`ここを参照 ${link}`], attempt: 0 }),
-    ).toEqual([`请访问 ${link}。`]);
-  });
+  it.each(['请访问', 'Please visit'])(
+    '长链接随正文正确还原，不限制译文语言：%s',
+    async (prefix) => {
+      const link = `https://example.test/${'a'.repeat(500)}`;
+      vi.stubGlobal('fetch', async (_input: unknown, init: RequestInit) => {
+        const body = JSON.parse(String(init.body));
+        const prompt = body.messages.at(-1).content as string;
+        expect(prompt).not.toContain(link);
+        const token = prompt.match(/__AN_KEEP_\d+__/g)![0];
+        return completion(`#1:${prefix} ${token}。`);
+      });
+      const translator = new OpenAiTranslator(config);
+      expect(
+        await translator.translate({
+          lines: [`ここを参照 ${link}`],
+          attempt: 0,
+        }),
+      ).toEqual([`${prefix} ${link}。`]);
+    },
+  );
 
   it('停止后即使全为保留行也不返回成功', async () => {
     const controller = new AbortController();
