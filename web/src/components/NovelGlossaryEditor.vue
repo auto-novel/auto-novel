@@ -21,6 +21,10 @@ const props = defineProps<{
   value: Glossary;
 }>();
 
+const emit = defineEmits<{
+  glossaryChange: [count: number];
+}>();
+
 const showConfirmModal = ref(false);
 const pendingConfirmResolve = ref<((value: boolean) => void) | null>(null);
 
@@ -154,6 +158,8 @@ const submitGlossary = () => {
     error: (reason) => getApiErrorMessage(reason, '术语表提交失败'),
   })
     .then(() => {
+      // 就地更新术语表本体。注意该对象来自 query 缓存，不是深层响应式的，
+      // 所以额外通知外界条目数变化。
       for (const key in props.value) {
         delete props.value[key];
       }
@@ -161,6 +167,7 @@ const submitGlossary = () => {
         props.value[key] = submittedGlossary[key];
       }
       originalGlossary.value = { ...submittedGlossary };
+      emit('glossaryChange', Object.keys(submittedGlossary).length);
     })
     .catch(() => {});
 };

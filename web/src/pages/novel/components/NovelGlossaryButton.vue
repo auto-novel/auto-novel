@@ -10,7 +10,21 @@ const props = defineProps<{
 
 const open = ref(false);
 const closing = ref(false);
-const glossaryCount = computed(() => Object.keys(props.glossary).length);
+const glossaryCount = ref(Object.keys(props.glossary).length);
+
+// 术语表对象不是深层响应式的，就地修改不会引起引用变化，
+// 因此由编辑器在提交后回传条目数。
+watch(
+  () => props.glossary,
+  (glossary) => {
+    glossaryCount.value = Object.keys(glossary).length;
+  },
+);
+
+const handleGlossaryChange = (count: number) => {
+  glossaryCount.value = count;
+};
+
 const editorRef =
   useTemplateRef<InstanceType<typeof NovelGlossaryEditor>>('editorRef');
 
@@ -53,6 +67,7 @@ const updateOpen = async (value: boolean) => {
         ref="editorRef"
         :gnid="gnid"
         :value="glossary"
+        @glossary-change="handleGlossaryChange"
       />
     </template>
   </USlideover>
