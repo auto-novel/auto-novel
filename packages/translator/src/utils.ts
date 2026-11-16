@@ -63,31 +63,6 @@ export namespace RegexUtil {
     hangulHalfWidth.test(str);
 }
 
-export const detectChinese = (text: string) => {
-  const reChinese =
-    /[:|#| |0-9|\u4e00-\u9fa5|\u3002|\uff1f|\uff01|\uff0c|\u3001|\uff1b|\uff1a|\u201c|\u201d|\u2018|\u2019|\uff08|\uff09|\u300a|\u300b|\u3008|\u3009|\u3010|\u3011|\u300e|\u300f|\u300c|\u300d|\ufe43|\ufe44|\u3014|\u3015|\u2026|\u2014|\uff5e|\ufe4f|\uffe5]/;
-
-  // not calculate url
-  text = text.replace(/(h?ttps?:\/\/[^\s]+)/gi, '');
-
-  let zh = 0,
-    jp = 0,
-    en = 0;
-  for (const c of text) {
-    if (reChinese.test(c)) {
-      zh++;
-    } else if (RegexUtil.hasKanaChars(c)) {
-      jp++;
-    } else if (RegexUtil.hasEnglishChars(c)) {
-      en++;
-    }
-  }
-  const pZh = zh / text.length,
-    pJp = jp / text.length,
-    pEn = en / text.length;
-  return pZh > 0.75 || (pZh > pJp && pZh > pEn * 2 && pJp < 0.1);
-};
-
 export const safeJson = <T extends object>(text: string) => {
   try {
     return JSON.parse(text) as T;
