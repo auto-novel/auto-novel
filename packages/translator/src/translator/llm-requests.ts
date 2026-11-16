@@ -2,7 +2,6 @@ type SharedRequest<T> = {
   controller: AbortController;
   promise: Promise<T>;
   users: number;
-  settled: boolean;
 };
 
 /** 仅合并进行中的同一请求；每个调用方保留独立的取消信号。 */
@@ -25,12 +24,10 @@ export class InFlightRequests<T> {
           return request(controller.signal);
         }),
         users: 0,
-        settled: false,
       };
       this.entries.set(key, entry);
       const shared = entry;
       const settle = () => {
-        shared.settled = true;
         if (this.entries.get(key) === shared) this.entries.delete(key);
       };
       void shared.promise.then(settle, settle);
@@ -44,8 +41,8 @@ export class InFlightRequests<T> {
         finished = true;
         signal?.removeEventListener('abort', abort);
         shared.users--;
-        if (shared.users === 0 && !shared.settled) {
-          if (this.entries.get(key) === shared) this.entries.delete(key);
+        if (shared.users === 0 && this.entries.get(key) === shared) {
+          this.entries.delete(key);
           shared.controller.abort();
         }
         return true;

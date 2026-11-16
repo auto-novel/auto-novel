@@ -120,25 +120,28 @@ export class OpenAiTranslator implements Translator {
   ): Promise<string[]> {
     signal?.throwIfAborted();
     const messages = this.promptBuilder.build(lines, context);
-    const request = {
-      protocol: this.protocol,
-      endpoint: this.endpoint,
-      key: this.key,
-      model: this.model,
-      messages,
-      requestParams: this.profileParams,
-      signal,
-    };
     // 配置由翻译器实例隔离；按实际提示词与原文合并，解析仍由各调用方执行。
     const completion = await this.requests.run(
       JSON.stringify({ messages, lines }),
-      (signal) => createPiAiCompletion({ ...request, signal }),
+      async (signal) => {
+        const completion = await createPiAiCompletion({
+          protocol: this.protocol,
+          endpoint: this.endpoint,
+          key: this.key,
+          model: this.model,
+          messages,
+          requestParams: this.profileParams,
+          signal,
+        });
+        // 思考日志属于这次模型调用，不能按等待任务的数量重复输出。
+        if (completion.reasoning) {
+          this.log(`思考：${completion.reasoning}`);
+        }
+        return completion;
+      },
       signal,
     );
     signal?.throwIfAborted();
-    if (completion.reasoning) {
-      this.log(`思考：${completion.reasoning}`);
-    }
 
     try {
       return this.promptBuilder.parseAnswer(completion.text, lines);
