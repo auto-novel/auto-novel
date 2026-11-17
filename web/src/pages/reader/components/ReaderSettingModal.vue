@@ -64,7 +64,11 @@ const setIndentSize = (diff: number) => {
           >
             <template #content>
               <div class="box-border flex w-full flex-col gap-y-3 p-5">
-                <c-action-wrapper title="语言">
+                <c-action-wrapper
+                  title="语言"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -75,8 +79,12 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="翻译">
-                  <div class="flex flex-wrap gap-x-4 gap-y-3">
+                <c-action-wrapper
+                  title="翻译"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
+                  <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
                     <URadioGroup
                       orientation="horizontal"
                       variant="table"
@@ -93,7 +101,12 @@ const setIndentSize = (diff: number) => {
                   </div>
                 </c-action-wrapper>
 
-                <c-action-wrapper v-if="isMobile" title="点按区域">
+                <c-action-wrapper
+                  v-if="isMobile"
+                  title="点按区域"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -104,7 +117,11 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="朗读语言">
+                <c-action-wrapper
+                  title="朗读语言"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -117,7 +134,11 @@ const setIndentSize = (diff: number) => {
                     :items="ReaderSetting.speakLanguagesOptions"
                   />
                 </c-action-wrapper>
-                <c-action-wrapper title="翻页模式">
+                <c-action-wrapper
+                  title="翻页模式"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -213,7 +234,11 @@ const setIndentSize = (diff: number) => {
 
             <template #appearance>
               <div class="flex w-full flex-col gap-y-3 p-5">
-                <c-action-wrapper title="字重">
+                <c-action-wrapper
+                  title="字重"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -277,7 +302,11 @@ const setIndentSize = (diff: number) => {
                   </span>
                 </c-action-wrapper>
 
-                <c-action-wrapper title="下划线">
+                <c-action-wrapper
+                  title="下划线"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -288,7 +317,11 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="主题">
+                <c-action-wrapper
+                  title="主题"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <div class="flex flex-col gap-y-3">
                     <URadioGroup
                       orientation="horizontal"
