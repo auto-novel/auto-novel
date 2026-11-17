@@ -58,13 +58,59 @@ describe('classifyTocUpdate', () => {
     ).toBe('existing-updated');
   });
 
-  it('rejects replacing an existing chapter with a new chapter', () => {
+  it('allows deleting a chapter while adding a new chapter', () => {
     expect(
       classifyTocUpdate(current, [
         section('第一卷'),
         chapter('1'),
         chapter('3'),
       ]),
+    ).toBe('chapters-deleted');
+  });
+
+  it.each([1, 2, 3])(
+    'allows deleting %i chapters without additions',
+    (count) => {
+      const chapters = ['1', '2', '3', '4'].map((id) => chapter(id));
+      expect(
+        classifyTocUpdate(
+          [section('第一卷'), ...chapters],
+          [section('第一卷'), ...chapters.slice(count)],
+        ),
+      ).toBe('chapters-deleted');
+    },
+  );
+
+  it('rejects deleting more than three chapters even with additions', () => {
+    expect(
+      classifyTocUpdate(
+        [section('第一卷'), ...['1', '2', '3', '4'].map((id) => chapter(id))],
+        [section('第一卷'), chapter('5')],
+      ),
+    ).toBe('existing-updated');
+  });
+
+  it('rejects updating a remaining chapter after a deletion', () => {
+    expect(
+      classifyTocUpdate(current, [
+        section('第一卷'),
+        chapter('1', '修改后的标题'),
+      ]),
+    ).toBe('existing-updated');
+  });
+
+  it('rejects reordering remaining chapters after a deletion', () => {
+    expect(
+      classifyTocUpdate(
+        [...current, chapter('3')],
+        [section('第一卷'), chapter('2'), chapter('1')],
+      ),
+    ).toBe('existing-updated');
+  });
+
+  it('rejects deleting an existing section along with its chapter', () => {
+    expect(
+      classifyTocUpdate([...current, section('第二卷'), chapter('3')], current),
     ).toBe('existing-updated');
   });
 
