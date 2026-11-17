@@ -2,7 +2,9 @@
 withDefaults(
   defineProps<{
     title: string;
-    align?: 'baseline' | 'center';
+    align?: 'baseline' | 'center' | 'start';
+    /** 顶部对齐时，默认按单选项的 20px 行高对齐；可覆盖以适配带内边距的控件。 */
+    titleClass?: string;
     size?: 'small' | 'medium';
   }>(),
   {
@@ -16,11 +18,18 @@ withDefaults(
   <div
     class="flex"
     :class="[
-      align === 'center' ? 'items-center' : 'items-baseline',
+      {
+        'items-baseline': align === 'baseline',
+        'items-center': align === 'center',
+        'items-start': align === 'start',
+      },
       size === 'medium' ? 'gap-x-4 gap-y-3' : 'gap-x-3 gap-y-2',
     ]"
   >
-    <span class="text-muted text-[12px] whitespace-nowrap">
+    <span
+      class="shrink-0 text-muted text-[12px] whitespace-nowrap"
+      :class="titleClass ?? (align === 'start' ? 'leading-5' : undefined)"
+    >
       {{ title }}
     </span>
     <slot />

@@ -41,7 +41,11 @@ const showDownloadModal = ref(false);
   >
     <template #body>
       <div class="flex flex-col gap-y-3">
-        <c-action-wrapper title="语言">
+        <c-action-wrapper
+          title="语言"
+          align="start"
+          title-class="leading-[30px]"
+        >
           <URadioGroup
             orientation="horizontal"
             variant="table"
@@ -52,8 +56,12 @@ const showDownloadModal = ref(false);
           />
         </c-action-wrapper>
 
-        <c-action-wrapper title="翻译">
-          <div class="flex flex-wrap gap-x-3 gap-y-2">
+        <c-action-wrapper
+          title="翻译"
+          align="start"
+          title-class="leading-[30px]"
+        >
+          <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
             <URadioGroup
               orientation="horizontal"
               variant="table"
@@ -70,7 +78,12 @@ const showDownloadModal = ref(false);
           </div>
         </c-action-wrapper>
 
-        <c-action-wrapper v-if="showFileType" title="文件">
+        <c-action-wrapper
+          v-if="showFileType"
+          title="文件"
+          align="start"
+          title-class="leading-[30px]"
+        >
           <URadioGroup
             orientation="horizontal"
             variant="table"

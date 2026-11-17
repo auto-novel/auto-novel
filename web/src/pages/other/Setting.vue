@@ -35,23 +35,20 @@ const { theme } = useWebKit();
     <div
       class="divide-y divide-default leading-[1.6] text-default text-sm rounded-[3px] border border-default"
     >
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>主题</b>
           <URadioGroup
             orientation="horizontal"
-            variant="table"
-            indicator="hidden"
-            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            :ui="{ fieldset: 'flex-wrap gap-x-4 gap-y-2' }"
             :model-value="theme.preference.value"
             @update:model-value="theme.setPreference($event)"
             :items="Setting.themeOptions"
-            size="sm"
           />
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>快捷键说明</b>
           <ul class="content-list">
@@ -69,7 +66,7 @@ const { theme } = useWebKit();
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>网络小说目录</b>
           <UCheckbox
@@ -101,6 +98,11 @@ const { theme } = useWebKit();
               </template>
             </UTooltip>
           </div>
+        </div>
+      </div>
+
+      <div class="relative min-w-0 py-4 px-5">
+        <div class="flex flex-col gap-y-2">
           <b>评论</b>
           <UCheckbox
             v-model="setting.hideCommmentWebNovel"
@@ -110,6 +112,11 @@ const { theme } = useWebKit();
             v-model="setting.hideCommmentWenkuNovel"
             label="隐藏文库小说评论"
           />
+        </div>
+      </div>
+
+      <div class="relative min-w-0 py-4 px-5">
+        <div class="flex flex-col gap-y-2">
           <b>收藏夹</b>
           <UCheckbox
             v-model="setting.showTagInWebFavored"
@@ -122,7 +129,7 @@ const { theme } = useWebKit();
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>工作区</b>
           <UCheckbox
@@ -132,53 +139,53 @@ const { theme } = useWebKit();
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>列表分页方式</b>
           <URadioGroup
             orientation="horizontal"
-            variant="table"
-            indicator="hidden"
-            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            :ui="{ fieldset: 'flex-wrap gap-x-4 gap-y-2' }"
             v-model="setting.paginationMode"
             :items="Setting.paginationModeOptions"
-            size="sm"
           />
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>显示的翻译按钮</b>
           <translator-check
             v-model:value="setting.enabledTranslator"
-            size="sm"
+            variant="list"
+            :ui="{ fieldset: 'flex-wrap gap-x-4 gap-y-2' }"
             class="self-start"
           />
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>工作区语音提醒</b>
-          <div class="flex">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
             <UCheckbox v-model="setting.workspaceSound" label="任务全部完成" />
 
-            [
-            <ActionButton
-              color="primary"
-              variant="link"
-              class="p-0 leading-none"
-              :action="() => playSound(SoundAllTaskCompleted)"
-            >
-              点击播放
-            </ActionButton>
-            ]
+            <span class="inline-flex items-center gap-1">
+              [
+              <ActionButton
+                color="primary"
+                variant="link"
+                class="p-0 leading-none"
+                :action="() => playSound(SoundAllTaskCompleted)"
+              >
+                点击播放
+              </ActionButton>
+              ]
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col items-start gap-y-2">
           <b>清空搜索历史</b>
           <div class="flex flex-wrap gap-x-3 gap-y-2">
@@ -204,18 +211,15 @@ const { theme } = useWebKit();
         </div>
       </div>
 
-      <div class="relative min-w-0 py-3 px-5">
+      <div class="relative min-w-0 py-4 px-5">
         <div class="flex flex-col gap-y-2">
           <b>语言</b>
           简繁转换目前只覆盖web章节内容。
           <URadioGroup
             orientation="horizontal"
-            variant="table"
-            indicator="hidden"
-            :ui="{ fieldset: 'flex-wrap', item: 'px-2 py-1' }"
+            :ui="{ fieldset: 'flex-wrap gap-x-4 gap-y-2' }"
             v-model="setting.locale"
             :items="Setting.localeOptions"
-            size="sm"
           />
           <UCheckbox
             v-model="setting.searchLocaleAware"
