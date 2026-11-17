@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useOsTheme } from 'naive-ui';
+import { usePreferredDark } from '@vueuse/core';
 
 import type { GenericNovelId } from '@/model/Common';
 import type { ReaderChapter } from '../ReaderStore';
@@ -14,7 +14,7 @@ const props = defineProps<{
   chapter: ReaderChapter;
 }>();
 
-const osThemeRef = useOsTheme();
+const prefersDark = usePreferredDark();
 
 const paragraphs = computed(() => buildParagraphs(props.gnid, props.chapter));
 
@@ -37,15 +37,10 @@ const fontColor = computed(() => {
   const theme = readerSetting.value.theme;
   if (theme.mode === 'custom') {
     return theme.fontColor;
-  } else {
-    let specificTheme: 'light' | 'dark' = 'light';
-    if (theme.mode !== 'system') {
-      specificTheme = theme.mode;
-    } else if (osThemeRef.value) {
-      specificTheme = osThemeRef.value;
-    }
-    return specificTheme === 'light' ? '#000000' : '#FFFFFF';
   }
+  const isDark =
+    theme.mode === 'system' ? prefersDark.value : theme.mode === 'dark';
+  return isDark ? '#FFFFFF' : '#000000';
 });
 
 const underlineColor = computed(() => `${fontColor.value}80`);
