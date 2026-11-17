@@ -127,14 +127,10 @@ li {
 @supports (-webkit-touch-callout: none) {
   /* 仅在支持 -webkit-touch-callout 的设备上生效（iOS 特有） */
 
-  .v-vl:not(.v-vl--show-scrollbar),
   .n-scrollbar > .n-scrollbar-container {
     scrollbar-width: unset;
   }
 
-  .v-vl:not(.v-vl--show-scrollbar)::-webkit-scrollbar,
-  .v-vl:not(.v-vl--show-scrollbar)::-webkit-scrollbar-track-piece,
-  .v-vl:not(.v-vl--show-scrollbar)::-webkit-scrollbar-thumb,
   .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar,
   .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar-track-piece,
   .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar-thumb {

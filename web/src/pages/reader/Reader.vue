@@ -107,11 +107,12 @@ const updateChapter = (
     prefix = `/workspace/reader/${encodeURIComponent(gnid.volumeId)}`;
   }
   currentChapterId.value = chapterId;
+  const path = `${prefix}/${gnid.type === 'local' ? encodeURIComponent(chapterId) : chapterId}`;
 
   if (replace) {
-    router.replace(`${prefix}/${chapterId}`);
+    router.replace(path);
   } else {
-    router.push(`${prefix}/${chapterId}`);
+    router.push(path);
   }
 };
 
@@ -277,7 +278,15 @@ const showSettingModal = ref(false);
 const showCatalogModal = ref(false);
 
 onKeyDown(['Enter'], (e) => {
-  if (showSettingModal.value) {
+  // 不拦截目录分卷按钮、章节链接等控件的原生键盘操作。
+  if (
+    showSettingModal.value ||
+    e.defaultPrevented ||
+    (e.target instanceof Element &&
+      e.target.closest(
+        'button, a, input, select, textarea, [contenteditable="true"]',
+      ))
+  ) {
     return;
   }
   showCatalogModal.value = !showCatalogModal.value;

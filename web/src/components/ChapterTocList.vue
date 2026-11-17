@@ -1,183 +1,131 @@
 <script lang="ts" setup>
+import UScrollArea from '@nuxt/ui/components/ScrollArea.vue';
 import { KeyboardArrowDownRound } from '@vicons/material';
 import { useResizeObserver } from '@vueuse/core';
-import { NVirtualList } from 'naive-ui';
-import type { ReadableTocItem } from '@/pages/novel/components/common';
+import { computed, nextTick, ref, watch } from 'vue';
 
-interface TocSection {
-  separator: ReadableTocItem | null;
-  chapters: ReadableTocItem[];
-}
+import type { TocChapter, TocItem } from './useChapterToc';
 
-const props = defineProps<{
-  tocSections: TocSection[];
-  expandedNames: string[];
-  lastReadChapterId?: string;
-  defaultScrollKey?: number;
-  providerId: string;
-  novelId: string;
-  sortReverse: boolean;
-  mode: {
-    narrow: boolean;
-    modal: boolean;
-    collapse: boolean;
+const props = withDefaults(
+  defineProps<{
+    items: TocItem[];
+    chapterTo: (chapter: TocChapter) => string;
+    currentChapterId?: string;
+    initialChapterId?: string;
+    virtual?: boolean;
+    padded?: boolean;
+  }>(),
+  {
+    virtual: true,
+    padded: false,
+  },
+);
+const emit = defineEmits<{
+  toggleSection: [key: string];
+  select: [chapter: TocChapter];
+}>();
+
+// 只使用 UScrollArea 公开的实例接口，不再访问滚动条内部实现。
+const listRef = ref<{
+  $el: HTMLElement;
+  virtualizer?: {
+    measure: () => void;
+    scrollToIndex: (index: number, options: { align: 'auto' }) => void;
   };
 }>();
+let initiallyPositioned = false;
 
-const emit = defineEmits<{
-  'update:expandedNames': [string[]];
-  itemClick: [ReadableTocItem];
-}>();
+const virtualOptions = computed(() => ({
+  estimateSize: 76,
+  // 留白属于滚动内容，必须计入虚拟列表的偏移和总高度。
+  paddingStart: props.padded ? 16 : 0,
+  paddingEnd: 24,
+  getItemKey: (index: number) => props.items[index]!.key,
+}));
 
-const handleItemClick = (item: ReadableTocItem) => {
-  if (item.chapterId !== undefined) {
-    emit('itemClick', item);
+const positionInitially = () => {
+  const list = listRef.value;
+  if (
+    initiallyPositioned ||
+    !list?.virtualizer ||
+    !list.$el.clientHeight ||
+    props.initialChapterId === undefined
+  ) {
+    return;
   }
-};
-
-const expandedSet = computed(() => new Set(props.expandedNames));
-
-const toggleSection = (name: string) => {
-  const names = props.expandedNames;
-  emit(
-    'update:expandedNames',
-    expandedSet.value.has(name)
-      ? names.filter((it) => it !== name)
-      : [...names, name],
+  const index = props.items.findIndex(
+    (item) =>
+      item.kind === 'chapter' && item.chapterId === props.initialChapterId,
   );
+  if (index < 0) return;
+  list.virtualizer.scrollToIndex(index, { align: 'auto' });
+  initiallyPositioned = true;
 };
 
-// 展平为单个虚拟列表，折叠的分卷不放入章节，只渲染可见部分
-const flatItems = computed(() => {
-  const reverse = props.sortReverse;
-  const sections = reverse
-    ? props.tocSections.slice().reverse()
-    : props.tocSections;
-  const items: ReadableTocItem[] = [];
-  for (const { separator, chapters } of sections) {
-    if (separator) {
-      items.push(separator);
-      if (!expandedSet.value.has(separator.titleJp)) continue;
-    }
-    if (reverse) {
-      for (let i = chapters.length - 1; i >= 0; i--) items.push(chapters[i]);
-    } else {
-      items.push(...chapters);
-    }
-  }
-  return items;
+watch(listRef, () => {
+  initiallyPositioned = false;
+  positionInitially();
 });
-
-// vueuc 的 itemSize 是行高下限：可见行数按 视口高度/itemSize 计算，
-// 若有行比它矮（如分卷行），渲染行数不足，列表底部会出现空白
-const ITEM_MIN_HEIGHT = 56;
-
-// NVirtualList 只在滚动/容器尺寸变化时同步滚动条，行被测量后内容变高
-// 不会触发同步，导致初次加载时滑块比例偏大。这里监听内容高度并手动同步。
-// naive-ui 2.45 起把 scrollbarInstRef 的类型放宽为 unknown，
-// 但运行时仍是内部 Scrollbar 实例（暴露 sync()），故显式声明所需方法。
-type ScrollbarSyncInst = { sync: () => void };
-
-const listRef = ref<InstanceType<typeof NVirtualList>>();
-useResizeObserver(
-  computed(() => listRef.value?.getScrollContent()),
-  () =>
-    (listRef.value?.scrollbarInstRef as ScrollbarSyncInst | undefined)?.sync(),
+watch(
+  () => props.items,
+  async () => {
+    // 等长倒序也必须失效缓存，不能只依赖 count 或 getItemKey 的闭包变化。
+    listRef.value?.virtualizer?.measure();
+    await nextTick();
+    positionInitially();
+  },
+  { flush: 'post' },
 );
-
-const virtualListClass = computed(() => {
-  if (props.mode.modal) {
-    return 'modal-virtual-list';
-  }
-  if (!props.mode.narrow) {
-    return 'wide-virtual-list';
-  }
-  if (props.mode.collapse) {
-    return 'collapse-virtual-list';
-  }
-  return 'nocollapse-virtual-list';
-});
+watch(() => props.initialChapterId, positionInitially, { flush: 'post' });
+useResizeObserver(() => listRef.value?.$el, positionInitially);
 </script>
 
 <template>
-  <n-virtual-list
+  <UScrollArea
+    :key="virtual ? 'virtual' : 'flow'"
     ref="listRef"
-    :items="flatItems"
-    :item-size="ITEM_MIN_HEIGHT"
-    :default-scroll-key="defaultScrollKey"
-    class="overflow-auto!"
-    :class="virtualListClass"
-    :scrollbar-props="{ trigger: 'none' }"
-    item-resizable
+    as="nav"
+    aria-label="章节目录"
+    :items="items"
+    :virtualize="virtual ? virtualOptions : false"
+    :class="{ 'overflow-visible': !virtual }"
+    :ui="{
+      viewport: virtual ? '' : padded ? 'pt-4 pb-6' : 'pb-6',
+      item: [
+        padded && 'pl-2 pr-4',
+        !virtual &&
+          '[content-visibility:auto] [contain-intrinsic-size:auto_76px]',
+      ],
+    }"
   >
     <template #default="{ item, index }">
-      <div
-        v-if="item.order === undefined"
-        class="toc-separator-row"
-        :class="{ 'toc-separator-divider': index > 0 }"
-        @click="toggleSection(item.titleJp)"
+      <button
+        v-if="item.kind === 'section'"
+        type="button"
+        class="flex min-h-14 w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-[12px] text-default focus-visible:outline-2 focus-visible:outline-primary"
+        :class="{ 'border-t border-default': index > 0 }"
+        :aria-expanded="item.expanded"
+        @click="emit('toggleSection', item.key)"
       >
-        <ChapterTocItem
-          :provider-id="providerId"
-          :novel-id="novelId"
-          :toc-item="item"
-          :is-separator="true"
-          class="flex-1"
-        />
+        <span class="min-w-0 flex-1 break-words">
+          {{ item.titleJp }}
+          <span v-if="item.titleZh" class="block text-muted">
+            {{ item.titleZh }}
+          </span>
+        </span>
         <KeyboardArrowDownRound
           class="size-4.5 shrink-0"
           aria-hidden="true"
-          :class="{ 'rotate-180': expandedSet.has(item.titleJp) }"
+          :class="{ 'rotate-180': item.expanded }"
         />
-      </div>
+      </button>
       <ChapterTocItem
         v-else
-        :provider-id="providerId"
-        :novel-id="novelId"
-        :toc-item="item"
-        :last-read="lastReadChapterId"
-        :is-separator="false"
-        @click="handleItemClick(item)"
+        :item="item"
+        :to="chapterTo(item)"
+        :current-chapter-id="currentChapterId"
+        @click="emit('select', item)"
       />
     </template>
-  </n-virtual-list>
+  </UScrollArea>
 </template>
-<style scoped>
-.toc-separator-row {
-  box-sizing: border-box;
-  min-height: v-bind('ITEM_MIN_HEIGHT + "px"');
-  display: flex;
-  align-items: center;
-  /* 与章节行 calc(100% - 24px) 一致，避免被滚动条遮挡 */
-  padding: 8px 12px 8px 0;
-  cursor: pointer;
-}
-.toc-separator-divider {
-  border-top: 1px solid var(--ui-border);
-}
-@supports (height: 100dvh) {
-  .modal-virtual-list {
-    height: max(56px, calc(80dvh - 200px));
-  }
-  .wide-virtual-list {
-    max-height: calc(100dvh - 150px);
-  }
-  .collapse-virtual-list {
-    max-height: calc(100dvh - 100px);
-  }
-}
-@supports not (height: 100dvh) {
-  .modal-virtual-list {
-    height: max(56px, calc(80vh - 200px));
-  }
-  .wide-virtual-list {
-    max-height: calc(100vh - 150px);
-  }
-  .collapse-virtual-list {
-    max-height: calc(100vh - 100px);
-  }
-}
-.nocollapse-virtual-list {
-  max-height: auto;
-}
-</style>
