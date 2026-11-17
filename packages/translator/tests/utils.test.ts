@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterGlossaryForLines } from '../src/utils';
+import { filterGlossaryForLines, getPreviousSource } from '../src/utils';
 import {
   isPassthroughLine,
   mergeTranslatedLines,
@@ -9,6 +9,17 @@ import {
 } from '../src/pipeline/lines';
 import { createOpenAiPromptBuilder } from '../src/translator/llm-prompt';
 import { createSakuraPromptBuilder } from '../src/translator/sakura-prompt';
+
+describe('getPreviousSource', () => {
+  it('截取前文时不拆开代理对，也不超过长度上限', () => {
+    const tail = 'あ'.repeat(499);
+    expect(getPreviousSource(['🎟' + tail], 1)).toBe(tail);
+    expect(getPreviousSource(['前🎟' + tail], 1, 501)).toBe('🎟' + tail);
+    expect(getPreviousSource(['前🎟'], 1, 1)).toBe('');
+    expect(getPreviousSource(['前文', '当前行'], 1, 0)).toBe('');
+    expect(getPreviousSource(['前文', '当前行'], 1)).toBe('前文');
+  });
+});
 
 describe('translation preprocessing and postprocessing', () => {
   it('识别直通行并恢复原文布局，重复处理不改变结果', () => {

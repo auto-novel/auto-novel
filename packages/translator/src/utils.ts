@@ -23,7 +23,10 @@ export function getPreviousSource(
   let source = '';
   for (let i = end - 1; i >= 0; i--) {
     source = lines[i] + (i < end - 1 ? '\n' : '') + source;
-    if (source.length >= maxLength) return source.slice(-maxLength);
+    if (source.length >= maxLength) {
+      // 截断点可能落在代理对中间，跳过残留的低代理项。
+      return source.slice(-maxLength).replace(/^[\uDC00-\uDFFF]/, '');
+    }
   }
   return source;
 }
