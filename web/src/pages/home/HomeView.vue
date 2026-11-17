@@ -265,8 +265,6 @@ const showQQModal = ref(false);
         交流群：
         <ULink :href="siteUrls.qqGroup" target="_blank">1131569744</ULink>
         ，验证答案是“绿色”。
-        <br />
-        <n-qr-code :size="150" :value="siteUrls.qqGroup" />
       </p>
     </template>
   </UModal>

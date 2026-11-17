@@ -36,7 +36,7 @@ pnpm build   # 构建工作区包和前端
 
 ## 前端开发
 
-基于 Vue 3 / TypeScript / Vite / [Naive UI](https://www.naiveui.com/zh-CN) 构建。
+基于 Vue 3 / TypeScript / Vite / [Nuxt UI](https://ui.nuxt.com) 构建，共享组件来自 `@novelia/web-kit`。
 
 在仓库根目录执行：
 

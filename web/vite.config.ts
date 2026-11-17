@@ -7,7 +7,6 @@ import { fileURLToPath, URL } from 'node:url';
 import { ProxyAgent } from 'proxy-agent';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
-import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
 import type { UserConfig } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -58,10 +57,6 @@ export default defineConfig(({ command, mode }) => {
                 test: /\/node_modules\/opencc-js\//,
               },
               {
-                name: 'dep-naive',
-                test: /\/node_modules\/naive-ui\//,
-              },
-              {
                 name: 'vendor',
                 test: /node_modules/,
               },
@@ -106,11 +101,10 @@ export default defineConfig(({ command, mode }) => {
       vue(),
       ui({
         ...webKitNuxtUiOptions,
-        // 统一生成组件声明，避免两套组件自动导入插件互相覆盖。
+        // 统一生成 Nuxt UI 和本地组件声明。
         components: {
           dts: 'src/components.d.ts',
           dirs: ['src/**/components/**'],
-          resolvers: [NaiveUiResolver()],
         },
       }),
       htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),

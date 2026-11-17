@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { darkTheme, dateZhCN, zhCN } from 'naive-ui';
 import { WebKitApp, useWebKit } from '@novelia/web-kit';
 
 import {
@@ -58,13 +57,6 @@ watch(
   },
   { immediate: true, deep: true },
 );
-const theme = computed(() => ({
-  isDark: webTheme.isDark.value,
-  bodyColor:
-    route.meta.isReader && readerSetting.value.theme.mode === 'custom'
-      ? readerSetting.value.theme.bodyColor
-      : undefined,
-}));
 onUnmounted(() => webTheme.clearOverride());
 
 // 处理Safari的奇妙问题
@@ -82,26 +74,11 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
 
 <template>
   <WebKitApp>
-    <n-config-provider
-      :theme="theme.isDark ? darkTheme : null"
-      :locale="zhCN"
-      :date-locale="dateZhCN"
-      inline-theme-disabled
-      :theme-overrides="{
-        common: {
-          ...(theme.bodyColor === undefined
-            ? undefined
-            : { bodyColor: theme.bodyColor }),
-        },
-      }"
-    >
-      <n-global-style />
-      <router-view v-slot="{ Component }">
-        <keep-alive :include="['MainLayout']">
-          <component :is="Component" />
-        </keep-alive>
-      </router-view>
-    </n-config-provider>
+    <RouterView v-slot="{ Component }">
+      <KeepAlive :include="['MainLayout']">
+        <component :is="Component" />
+      </KeepAlive>
+    </RouterView>
   </WebKitApp>
 </template>
 

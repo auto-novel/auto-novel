@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { XImageCompare } from '@novelia/web-kit';
 import { bannerFocalPosition } from './bannerFocal';
-import ImageCompare from './ImageCompare.vue';
 
 const props = defineProps<{
   src: string;
@@ -77,6 +77,31 @@ const focalPosition = computed(() =>
     focalY.value,
   ),
 );
+const measuredCompareAspect = ref<number>();
+const compareRatio = computed(() =>
+  props.compareAspect &&
+  Number.isFinite(props.compareAspect) &&
+  props.compareAspect > 0
+    ? props.compareAspect
+    : measuredCompareAspect.value ?? 16 / 9,
+);
+watch(
+  () => props.compareBefore,
+  () => {
+    measuredCompareAspect.value = undefined;
+  },
+);
+function compareImageLoaded(event: Event) {
+  const image = event.target;
+  if (
+    image instanceof HTMLImageElement &&
+    image.getAttribute('src') === props.compareBefore &&
+    image.naturalWidth > 0 &&
+    image.naturalHeight > 0
+  ) {
+    measuredCompareAspect.value = image.naturalWidth / image.naturalHeight;
+  }
+}
 const canCompare = computed(
   () => !!props.compareBefore && !!props.compareAfter,
 );
@@ -155,12 +180,18 @@ watch(canCompare, (available) => {
           :src="src"
           :alt="alt"
         />
-        <ImageCompare
+        <XImageCompare
           v-else-if="mode === 'compare' && compareBefore && compareAfter"
+          class="image-compare"
+          :style="{ '--compare-ratio': compareRatio }"
           :before="compareBefore"
           :after="compareAfter"
           :alt="alt"
-          :aspect="compareAspect"
+          :aspect="compareRatio"
+          before-label="压缩前"
+          after-label="压缩后"
+          label="拖动对比压缩前后"
+          @load.capture="compareImageLoaded"
         />
         <div
           v-else
@@ -335,6 +366,12 @@ watch(canCompare, (available) => {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.image-compare {
+  width: 100%;
+  max-width: calc(520px * var(--compare-ratio));
+  overflow: hidden;
+  border-radius: 8px;
 }
 .device-preview {
   display: flex;

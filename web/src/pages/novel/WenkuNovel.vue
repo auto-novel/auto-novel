@@ -1,7 +1,14 @@
 <script lang="ts" setup>
 import CEmpty from '@/components/CEmpty.vue';
 import { vHorizontalDrag } from '@/util/dragScroll';
-import { getApiErrorMessage, Toast, XPage, XTime } from '@novelia/web-kit';
+import {
+  getApiErrorMessage,
+  Toast,
+  XImage,
+  XImageGroup,
+  XPage,
+  XTime,
+} from '@novelia/web-kit';
 import { EditNoteOutlined, LanguageOutlined } from '@vicons/material';
 import { createReusableTemplate } from '@vueuse/core';
 
@@ -94,7 +101,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
     :style="{
       backgroundImage: `url(${novel.cover})`,
     }"
-    class="w-full bg-cover bg-position-[center_15%] [clip:rect(0,auto,auto,0)]"
+    class="w-full bg-cover bg-position-[center_15%]"
   >
     <div class="relative isolate h-full w-full backdrop-blur-sm">
       <!-- 渐变遮罩固定透明度，背景色沿用全局主题过渡。 -->
@@ -105,7 +112,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
       <div class="mx-auto w-full max-w-5xl px-3 sm:px-8">
         <div class="flex gap-x-3 pt-5 pb-5.25">
           <div class="flex-[0_0_160px]">
-            <n-image
+            <XImage
               width="160"
               :src="
                 novel.cover
@@ -113,7 +120,6 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
                   : externalImageUrls.wenkuCoverPlaceholder
               "
               alt="cover"
-              show-toolbar-tooltip
               class="rounded-[2px]"
             />
           </div>
@@ -225,9 +231,9 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
 
       <template v-if="novel.volumes.length">
         <UScrollArea orientation="horizontal" v-horizontal-drag class="mt-4">
-          <n-image-group show-toolbar-tooltip>
+          <XImageGroup>
             <div class="mb-4 flex gap-1">
-              <n-image
+              <XImage
                 v-for="volume of novel.volumes"
                 :key="volume.asin"
                 width="104"
@@ -238,7 +244,7 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
                 class="w-[104px] flex-[0_0_104px] rounded-[2px]"
               />
             </div>
-          </n-image-group>
+          </XImageGroup>
         </UScrollArea>
       </template>
 

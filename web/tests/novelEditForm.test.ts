@@ -53,9 +53,6 @@ vi.mock('@novelia/web-kit', () => ({
     promise: (promise: Promise<unknown>) => promise,
   },
 }));
-vi.mock('naive-ui', () => ({
-  NImage: passthrough,
-}));
 vi.mock('@nuxt/ui/components/Badge.vue', () => ({ default: passthrough }));
 vi.mock('@nuxt/ui/components/PageHeader.vue', () => ({
   default: { render: () => null },

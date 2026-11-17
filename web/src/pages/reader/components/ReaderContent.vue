@@ -96,7 +96,7 @@ const chapterHref = computed(() => {
         :key="`${chapter.prevId}/${index}`"
       >
         <p
-          class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
+          class="leading-[1.6]"
           v-if="p && 'text' in p"
           :aria-hidden="!p.needSpeak"
         >

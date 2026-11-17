@@ -5,7 +5,10 @@ import { renderToString } from 'vue/server-renderer';
 import { TaskState } from '../src/domain/translator/task-state';
 import TaskCard from '../src/pages/workspace/task/TaskCard.vue';
 
-vi.mock('@novelia/web-kit', () => ({ Toast: { info: vi.fn() } }));
+vi.mock('@novelia/web-kit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@novelia/web-kit')>()),
+  Toast: { info: vi.fn() },
+}));
 vi.mock('@/pages/workspace/task/ChapterGrid.vue', () => ({
   default: { render: () => null },
 }));
