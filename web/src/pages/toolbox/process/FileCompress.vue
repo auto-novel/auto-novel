@@ -135,7 +135,7 @@ const showPreview = (image: EpubImage) => {
 
 <template>
   <div class="flex flex-col gap-y-2">
-    <c-action-wrapper title="格式">
+    <c-action-wrapper title="格式" align="start" title-class="leading-[26px]">
       <URadioGroup
         orientation="horizontal"
         variant="table"
