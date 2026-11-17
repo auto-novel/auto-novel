@@ -106,37 +106,9 @@ if (RegexUtil.isSafari(navigator.userAgent)) {
 </template>
 
 <style>
-a {
-  text-decoration: none;
-}
 p,
 li {
   overflow-wrap: break-word;
   word-break: break-word;
-}
-.float {
-  position: fixed;
-  right: 40px;
-  bottom: 20px;
-  box-shadow: rgb(0 0 0 / 40%) 2px 2px 8px 0px;
-}
-.sortable-ghost {
-  opacity: 0.7;
-}
-
-@supports (-webkit-touch-callout: none) {
-  /* 仅在支持 -webkit-touch-callout 的设备上生效（iOS 特有） */
-
-  .n-scrollbar > .n-scrollbar-container {
-    scrollbar-width: unset;
-  }
-
-  .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar,
-  .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar-track-piece,
-  .n-scrollbar > .n-scrollbar-container::-webkit-scrollbar-thumb {
-    width: unset;
-    height: unset;
-    display: unset;
-  }
 }
 </style>
