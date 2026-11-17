@@ -46,7 +46,7 @@
     "@auto-novel/crawler": "workspace:*",
     "@auto-novel/translator": "workspace:*",
     "@img-comparison-slider/vue": "^8.0.0",
-    "@novelia/web-kit": "github:auto-novel/web-kit#bb3db58adc1caf75ff9254ff0eeed47a53b85467",
+    "@novelia/web-kit": "github:auto-novel/web-kit#726305d7c57e8686fe1f6a345749b95cf13480f3",
     "@nuxt/ui": "^4.12.0",
     "@pinia/colada": "^1.2.0",
     "@types/lodash-es": "^4.17.12",

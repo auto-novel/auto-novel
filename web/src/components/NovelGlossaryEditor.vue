@@ -76,25 +76,26 @@ const glossary = ref<Glossary>({});
 const originalGlossary = ref<Glossary>({});
 const termsToAdd = ref<[string, string]>(['', '']);
 
-// 将操作区也作为虚拟项，整个侧栏只保留一个滚动容器。
-type EditorItem =
-  | { type: 'controls' | 'submit'; id: string }
-  | { type: 'term'; id: string; wordJp: string };
-const editorItems = computed<EditorItem[]>(() => [
-  { type: 'controls', id: 'controls' },
-  ...Object.keys(glossary.value)
-    .reverse()
-    .map((wordJp) => ({ type: 'term' as const, id: `term:${wordJp}`, wordJp })),
-  { type: 'submit', id: 'submit' },
-]);
-const virtualize = {
-  estimateSize: (index: number) =>
-    index === 0 ? 280 : index === editorItems.value.length - 1 ? 56 : 44,
-  getItemKey: (index: number) => editorItems.value[index].id,
-  overscan: 8,
+const termChunkSize = 50;
+const termChunks = computed(() => {
+  const words = Object.keys(glossary.value).reverse();
+  const chunks: string[][] = [];
+  for (let index = 0; index < words.length; index += termChunkSize) {
+    chunks.push(words.slice(index, index + termChunkSize));
+  }
+  return chunks;
+});
+
+const editingWord = ref<string | null>(null);
+const vFocus = {
+  mounted: (el: HTMLInputElement) => el.focus(),
+};
+const finishEditing = (event: KeyboardEvent) => {
+  if (!event.isComposing) editingWord.value = null;
 };
 
 const syncGlossary = () => {
+  editingWord.value = null;
   glossary.value = { ...props.value };
   originalGlossary.value = { ...props.value };
 };
@@ -169,13 +170,16 @@ const importGlossaryRaw = ref('');
 
 const deletedTerms = ref<[string, string][]>([]);
 
-const lastDeletedTerm = computed(() => {
-  const last = deletedTerms.value[deletedTerms.value.length - 1];
-  if (last === undefined) return undefined;
-  return `${last[0]} => ${last[1]}`;
-});
+const lastDeletedTerm = computed(
+  () => deletedTerms.value[deletedTerms.value.length - 1],
+);
+
+const canAddTerm = computed(() =>
+  termsToAdd.value.every((term) => term.trim() !== ''),
+);
 
 const clearTerm = () => {
+  editingWord.value = null;
   glossary.value = {};
 };
 
@@ -186,6 +190,7 @@ const undoDeleteTerm = () => {
 };
 
 const deleteTerm = (jp: string) => {
+  if (editingWord.value === jp) editingWord.value = null;
   if (jp in glossary.value) {
     deletedTerms.value.push([jp, glossary.value[jp]]);
     delete glossary.value[jp];
@@ -193,9 +198,9 @@ const deleteTerm = (jp: string) => {
 };
 
 const addTerm = () => {
-  const [jp, zh] = termsToAdd.value;
+  const [jp, zh] = termsToAdd.value.map((term) => term.trim());
   if (jp && zh) {
-    glossary.value[jp.trim()] = zh.trim();
+    glossary.value[jp] = zh;
     termsToAdd.value = ['', ''];
   }
 };
@@ -237,122 +242,125 @@ defineExpose({
 
 <template>
   <div class="novel-glossary-editor flex min-h-0 flex-1 flex-col">
-    <UScrollArea
-      :items="editorItems"
-      :virtualize="virtualize"
-      :ui="{ item: 'px-4 sm:px-6' }"
-      class="min-h-0 flex-1"
+    <div
+      class="flex shrink-0 flex-col gap-y-3 border-b border-default bg-default px-4 py-4 sm:px-6"
     >
-      <template #default="{ item, index }">
-        <div
-          v-if="item.type === 'controls'"
-          class="flex flex-col gap-y-3 pt-4 pb-4 sm:pt-6"
+      <UFieldGroup size="sm" class="w-full">
+        <UInput
+          v-model="termsToAdd[0]"
+          placeholder="日文"
+          aria-label="日文术语"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+        />
+        <span
+          class="flex items-center border border-default px-2 text-muted"
+          aria-hidden="true"
         >
-          <UAlert
-            v-if="gnidHint"
-            color="warning"
-            variant="soft"
-            icon="i-lucide-triangle-alert"
-          >
-            <template #description>
-              使用前务必先阅读
-              <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
-                术语表使用指南
-              </ULink>
-              ，不要滥用术语表。
-            </template>
-          </UAlert>
+          =&gt;
+        </span>
+        <UInput
+          v-model="termsToAdd[1]"
+          placeholder="中文"
+          aria-label="中文翻译"
+          :spellcheck="false"
+          class="min-w-0 flex-1"
+        />
+        <UButton
+          color="primary"
+          variant="soft"
+          :disabled="!canAddTerm"
+          @click="addTerm"
+          class="shrink-0 justify-center"
+        >
+          添加
+        </UButton>
+      </UFieldGroup>
 
-          <UFieldGroup size="sm" class="w-full">
-            <UInput
-              v-model="termsToAdd[0]"
-              placeholder="日文"
-              aria-label="日文术语"
-              :spellcheck="false"
-              class="min-w-0 flex-1"
-            />
-            <span
-              class="flex items-center border border-default px-2 text-muted"
-              aria-hidden="true"
-            >
-              =&gt;
-            </span>
-            <UInput
-              v-model="termsToAdd[1]"
-              placeholder="中文"
-              aria-label="中文翻译"
-              :spellcheck="false"
-              class="min-w-0 flex-1"
-            />
-            <UButton
-              color="neutral"
-              variant="outline"
-              @click="addTerm"
-              class="shrink-0 justify-center"
-            >
-              添加
-            </UButton>
-          </UFieldGroup>
+      <div
+        v-if="lastDeletedTerm"
+        class="flex min-w-0 items-center gap-x-3 rounded-md bg-elevated px-3 py-1.5"
+        role="status"
+      >
+        <span
+          class="min-w-0 flex-1 truncate text-xs text-muted"
+          :title="`${lastDeletedTerm[0]} => ${lastDeletedTerm[1]}`"
+        >
+          <template v-if="deletedTerms.length > 1">
+            已删除 {{ deletedTerms.length }} 项 · 最近：{{
+              lastDeletedTerm[0]
+            }}
+            =&gt; {{ lastDeletedTerm[1] }}
+          </template>
+          <template v-else>
+            已删除「{{ lastDeletedTerm[0] }} =&gt; {{ lastDeletedTerm[1] }}」
+          </template>
+        </span>
+        <UButton
+          color="primary"
+          variant="link"
+          size="sm"
+          @click="undoDeleteTerm"
+          class="shrink-0 text-sm/4"
+        >
+          {{ deletedTerms.length > 1 ? '撤销上一项' : '撤销' }}
+        </UButton>
+      </div>
+    </div>
 
-          <UTextarea
-            v-model="importGlossaryRaw"
+    <div class="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
+      <div class="flex flex-col gap-y-3 pt-4 pb-4 sm:pt-6">
+        <UTextarea
+          v-model="importGlossaryRaw"
+          size="sm"
+          placeholder="批量导入术语表"
+          :spellcheck="false"
+          :rows="1"
+          class="w-full"
+        />
+
+        <div class="flex items-center gap-x-3">
+          <ActionButton class="text-sm/4" size="sm" :action="exportGlossary">
+            导出
+          </ActionButton>
+          <ActionButton class="text-sm/4" size="sm" :action="importGlossary">
+            导入
+          </ActionButton>
+          <ActionButton
+            class="text-sm/4"
             size="sm"
-            placeholder="批量导入术语表"
-            :spellcheck="false"
-            :rows="1"
-            class="w-full"
-          />
-
-          <div class="flex items-center gap-x-3">
-            <ActionButton class="text-sm/4" size="sm" :action="exportGlossary">
-              导出
-            </ActionButton>
-            <ActionButton class="text-sm/4" size="sm" :action="importGlossary">
-              导入
-            </ActionButton>
-            <ActionButton
-              class="text-sm/4"
-              size="sm"
-              :action="downloadGlossaryAsJsonFile"
-            >
-              下载json文件
-            </ActionButton>
-            <UButton
-              v-if="whoami.isAdmin"
-              color="error"
-              size="sm"
-              variant="soft"
-              @click="clearTerm"
-              class="text-sm/4"
-            >
-              清空
-            </UButton>
-          </div>
-
-          <div class="flex items-center gap-x-3">
-            <UButton
-              color="neutral"
-              variant="outline"
-              :disabled="deletedTerms.length === 0"
-              size="sm"
-              @click="undoDeleteTerm"
-              class="text-sm/4"
-            >
-              撤销删除
-            </UButton>
-            <span
-              class="text-muted text-[12px]"
-              v-if="lastDeletedTerm !== undefined"
-            >
-              {{ lastDeletedTerm }}
-            </span>
-          </div>
+            :action="downloadGlossaryAsJsonFile"
+          >
+            下载json文件
+          </ActionButton>
+          <UButton
+            v-if="whoami.isAdmin"
+            color="error"
+            size="sm"
+            variant="soft"
+            @click="clearTerm"
+            class="text-sm/4"
+          >
+            清空
+          </UButton>
         </div>
+      </div>
 
+      <div
+        v-for="(chunk, chunkIndex) in termChunks"
+        :key="chunkIndex"
+        class="glossary-chunk"
+        :style="{ containIntrinsicSize: `auto ${chunk.length * 44}px` }"
+      >
         <div
-          v-else-if="item.type === 'term'"
-          class="grid min-h-11 grid-cols-[24px_minmax(0,1fr)_20px_minmax(0,1fr)] items-center gap-2 border-b border-default px-1.5 py-1.5 text-xs"
-          :class="index % 2 === 0 ? 'bg-surface' : 'bg-default'"
+          v-for="(wordJp, index) in chunk"
+          :key="wordJp"
+          class="glossary-term grid min-h-11 grid-cols-[24px_minmax(0,1fr)_20px_minmax(0,1fr)] items-center gap-2 border-b border-default px-1.5 py-1.5 text-xs"
+          :class="
+            (chunkIndex * termChunkSize + index) % 2 === 1
+              ? 'bg-surface'
+              : 'bg-default'
+          "
         >
           <UButton
             color="error"
@@ -360,37 +368,64 @@ defineExpose({
             variant="link"
             square
             class="p-0"
-            @click="deleteTerm(item.wordJp)"
-            :aria-label="`删除 ${item.wordJp}`"
+            @click="deleteTerm(wordJp)"
+            :aria-label="`删除 ${wordJp}`"
             :icon="DeleteOutlineOutlined"
             :ui="{ leadingIcon: 'size-4.5' }"
           />
-          <span class="min-w-0 break-all">{{ item.wordJp }}</span>
+          <span class="min-w-0 break-all">{{ wordJp }}</span>
           <span aria-hidden="true">=&gt;</span>
-          <UInput
-            v-model="glossary[item.wordJp]"
-            size="xs"
+          <input
+            v-if="editingWord === wordJp"
+            v-focus
+            v-model="glossary[wordJp]"
+            :aria-label="`${wordJp} 的中文翻译`"
             placeholder="请输入中文翻译"
-            :aria-label="`${item.wordJp} 的中文翻译`"
-            variant="none"
-            class="min-w-0 w-full"
+            class="min-w-0 w-full rounded bg-transparent px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary"
+            @blur="editingWord = null"
+            @keydown.enter="finishEditing"
+            @keydown.esc="finishEditing"
           />
-        </div>
-
-        <div
-          v-else
-          class="flex flex-wrap justify-end gap-x-3 gap-y-2 pt-4 pb-4 sm:pb-6"
-        >
-          <ActionButton
-            color="primary"
-            :action="() => submitGlossary()"
-            variant="solid"
+          <button
+            v-else
+            type="button"
+            :aria-label="`编辑 ${wordJp} 的中文翻译`"
+            class="min-w-0 w-full cursor-text rounded px-2 py-1 text-left break-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            :class="{ 'text-muted': !glossary[wordJp] }"
+            @click="editingWord = wordJp"
           >
-            提交
-          </ActionButton>
+            {{ glossary[wordJp] || '请输入中文翻译' }}
+          </button>
         </div>
-      </template>
-    </UScrollArea>
+      </div>
+    </div>
+
+    <div
+      class="flex shrink-0 items-center justify-end gap-3 border-t border-default bg-default px-4 py-4 sm:px-6"
+    >
+      <div v-if="gnidHint" class="flex min-w-0 flex-1 items-start gap-1.5">
+        <UIcon
+          name="i-lucide-triangle-alert"
+          class="mt-0.5 size-4 shrink-0 text-warning"
+          aria-hidden="true"
+        />
+        <p class="min-w-0 text-xs/5 text-muted">
+          请先阅读
+          <ULink :href="forumPostUrls.glossaryGuide" target="_blank">
+            术语表使用指南
+          </ULink>
+          ，勿滥用。
+        </p>
+      </div>
+      <ActionButton
+        class="shrink-0"
+        color="primary"
+        :action="() => submitGlossary()"
+        variant="solid"
+      >
+        提交
+      </ActionButton>
+    </div>
 
     <XConfirmDialog
       :open="showConfirmModal"
@@ -401,3 +436,9 @@ defineExpose({
     />
   </div>
 </template>
+
+<style scoped>
+.glossary-chunk {
+  content-visibility: auto;
+}
+</style>
