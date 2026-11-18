@@ -70,6 +70,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     lifecycle: TaskLifecycle;
     task?: TranslationTask;
     state?: TaskState;
+    resumeCompletedChapters?: boolean;
     initializing?: AbortController;
     initializationError?: string;
   }
@@ -137,6 +138,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     if (!runtime.task) {
       const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
       runtime.task = createTranslationTask(desc, translatorId, params);
+      runtime.resumeCompletedChapters =
+        translatorId === 'gpt' && params.level === 'all';
     }
     return runtime.task;
   }
@@ -257,6 +260,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       state.units.every((unit) => unit.status === 'done')
     ) {
       currentJob.finishAt = Date.now();
+      delete currentJob.completedChapterIds;
     }
     runProcessLoop();
   }
@@ -296,11 +300,11 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
         const { job, unit, state, task, runtime } = item;
         const { chapterId } = unit;
         state.updateStatus(chapterId, 'translating');
-        const isCurrentTask = () =>
-          !disposed &&
-          taskRuntimes.get(job.task) === runtime &&
-          !!findCurrentJob(job);
-        if (!isCurrentTask()) continue;
+        const getCurrentJob = () =>
+          !disposed && taskRuntimes.get(job.task) === runtime
+            ? findCurrentJob(job)
+            : undefined;
+        if (!getCurrentJob()) continue;
         if (signal.aborted || !canRunTask(task)) {
           state.updateStatus(chapterId, 'pending');
           if (signal.aborted) return undefined;
@@ -320,19 +324,29 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
           unit,
           {
             onUnitStatus: (cid: string, st: UnitStatus) => {
-              if (!isCurrentTask()) return;
+              const currentJob = getCurrentJob();
+              if (!currentJob) return;
               state.updateStatus(cid, st);
-              findCurrentJob(job)!.progress = state.progress;
+              if (
+                runtime.resumeCompletedChapters &&
+                unit.kind === 'chapter' &&
+                st === 'done'
+              ) {
+                currentJob.completedChapterIds ??= [];
+                if (!currentJob.completedChapterIds.includes(cid))
+                  currentJob.completedChapterIds.push(cid);
+              }
+              currentJob.progress = state.progress;
             },
             onLog: (msg: string) => {
-              if (isCurrentTask()) logTask(job.task, msg);
+              if (getCurrentJob()) logTask(job.task, msg);
             },
             segmentTracker,
           },
           inputSignal,
         );
         if (!work) {
-          if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+          updateJobCompletion(job, runtime, state);
           continue;
         }
         return {
@@ -345,15 +359,15 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             },
             onComplete: async (result) => {
               await work.onComplete(result);
-              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+              updateJobCompletion(job, runtime, state);
             },
             onError: async (error) => {
               await work.onError(error);
-              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+              updateJobCompletion(job, runtime, state);
             },
             onAbort: async () => {
               await work.onAbort();
-              if (isCurrentTask()) updateJobCompletion(job, runtime, state);
+              updateJobCompletion(job, runtime, state);
             },
           },
         };
@@ -693,7 +707,13 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       const currentJob = findCurrentJob(job);
       if (!currentJob) return;
       const state = reactive(new TaskState()) as TaskState;
-      state.initialize(task.chapters, task.metadataUnit);
+      state.initialize(
+        task.chapters,
+        task.metadataUnit,
+        runtime.resumeCompletedChapters
+          ? new Set(currentJob.completedChapterIds)
+          : undefined,
+      );
       runtime.state = state;
       runtime.initializationError = undefined;
       currentJob.progress = state.progress;
