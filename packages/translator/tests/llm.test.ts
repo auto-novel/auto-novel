@@ -24,6 +24,146 @@ describe('OpenAiTranslator', () => {
       },
     );
 
+  const reply = (content: string) =>
+    mockStreamResponse([
+      { choices: [{ index: 0, delta: { content } }] },
+      { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+    ]);
+
+  const config = {
+    endpoint: 'https://api.example.test',
+    key: 'test-key',
+    model: 'model-1',
+  };
+
+  it('只复核译文中疑似漏翻的英文词，并放回原句', async () => {
+    const requests: Array<{ messages: Array<{ content: string }> }> = [];
+    const fetch = vi.fn(async (_input: unknown, init: RequestInit) => {
+      requests.push(JSON.parse(String(init.body)));
+      return requests.length === 1
+        ? reply('#1:他开始 viewing 展品，并用hands触摸它。\n#2:他走了。')
+        : reply('#1:查看\n#2:双手');
+    });
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator(config);
+    await expect(
+      attemptTranslation(translator, {
+        lines: ['彼は展示品を見て、両手で触るようになった。', '彼は去った。'],
+      }),
+    ).resolves.toEqual(['他开始查看展品，并用双手触摸它。', '他走了。']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(requests[0].messages[0].content).toContain('普通词');
+    expect(JSON.parse(requests[1].messages[1].content)).toMatchObject({
+      rows: [{ line: 1, source: '彼は展示品を見て、両手で触るようになった。' }],
+      review: [{ word: 'viewing' }, { word: 'hands' }],
+    });
+  });
+
+  it('原文和术语表中的英文、缩写、链接和代码不触发复核', async () => {
+    const lines = [
+      'この viewing 機能を開く。',
+      '星月を呼ぼう。',
+      '体力が戻った。',
+      'この記法を見せる。',
+      'https://example.test/a',
+    ];
+    const translations = [
+      '请打开 viewing 功能。',
+      '现在召唤 luna 试试。',
+      '现在恢复 HP 数值。',
+      '这是 `中文 viewing 中文` 示例。',
+      'https://example.test/a',
+    ];
+    const fetch = vi.fn(async () =>
+      reply(
+        translations.map((line, index) => `#${index + 1}:${line}`).join('\n'),
+      ),
+    );
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator(config);
+    await expect(
+      attemptTranslation(translator, {
+        lines,
+        context: { glossary: { 星月: 'luna' } },
+      }),
+    ).resolves.toEqual(translations);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each(['#1:viewing', '缺少编号', null])(
+    '复核无可用修正结果时接受原译：%s',
+    async (review) => {
+      const original = '他开始 viewing 展品了。';
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(reply(`#1:${original}`))
+        .mockImplementationOnce(async () =>
+          review === null
+            ? new Response(
+                JSON.stringify({ error: { message: 'unavailable' } }),
+                { status: 500 },
+              )
+            : reply(review),
+        );
+      vi.stubGlobal('fetch', fetch);
+      const translator = new OpenAiTranslator(config);
+      await expect(
+        attemptTranslation(translator, { lines: ['彼は展示品を見始めた。'] }),
+      ).resolves.toEqual([original]);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('复核请求超时后仍能返回第一次译文', async () => {
+    vi.useFakeTimers();
+    try {
+      const original = '他开始 viewing 展品了。';
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(reply(`#1:${original}`))
+        .mockImplementationOnce(
+          (_input: unknown, init: RequestInit) =>
+            new Promise((_resolve, reject) => {
+              init.signal?.addEventListener(
+                'abort',
+                () => reject(init.signal?.reason),
+                { once: true },
+              );
+            }),
+        );
+      vi.stubGlobal('fetch', fetch);
+      const pending = attemptTranslation(new OpenAiTranslator(config), {
+        lines: ['彼は展示品を見始めた。'],
+      });
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(pending).resolves.toEqual([original]);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('复核期间取消时不返回原译文', async () => {
+    const controller = new AbortController();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(reply('#1:他开始 viewing 展品了。'))
+      .mockImplementationOnce(async () => {
+        controller.abort();
+        return reply('#1:查看');
+      });
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator(config);
+    await expect(
+      attemptTranslation(translator, {
+        lines: ['彼は展示品を見始めた。'],
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   // --- 场景 1：正常翻译与解析 ---
   it('应将统一抽象后的流式输出文本正确送入现有解析器并返回译文', async () => {
     let requestBody: Record<string, unknown> | undefined;
