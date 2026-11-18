@@ -116,6 +116,7 @@ export class TaskState {
   initialize(
     chapters: readonly TaskChapter[],
     metadataUnit?: TaskMetadataUnit,
+    completedChapterIds?: ReadonlySet<string>,
   ): void {
     this.unitDetails.clear();
     this.chapters = chapters.map((chapter) => ({
@@ -123,7 +124,10 @@ export class TaskState {
       chapterId: chapter.chapterId,
       title: chapter.title,
       order: chapter.order,
-      status: chapter.completed ? 'done' : 'pending',
+      status:
+        chapter.completed || completedChapterIds?.has(chapter.chapterId)
+          ? 'done'
+          : 'pending',
     }));
     // 仅供 UI 跟踪使用；不限制真实章节 ID，也不把此键传给 Task。
     const chapterIds = new Set(chapters.map((chapter) => chapter.chapterId));
