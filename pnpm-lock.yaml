@@ -207,24 +207,9 @@ importers:
       '@pinia/colada':
         specifier: ^1.4.4
         version: 1.4.8(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3))
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
-      '@types/opencc-js':
-        specifier: ^1.0.3
-        version: 1.0.3
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
       '@vicons/material':
         specifier: ^0.13.0
         version: 0.13.0
-      '@vitejs/plugin-vue':
-        specifier: ^6.0.8
-        version: 6.0.10(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3))
-      '@vue/tsconfig':
-        specifier: ^0.9.1
-        version: 0.9.1(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
       '@vueuse/core':
         specifier: ^14.4.0
         version: 14.4.0(vue@3.5.44(typescript@6.0.3))
@@ -240,18 +225,49 @@ importers:
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
-      markdown-it-anchor:
-        specifier: ^10.0.0
-        version: 10.1.0(@types/markdown-it@14.2.0)(markdown-it@15.0.3)
-      nanoid:
-        specifier: ^5.1.5
-        version: 5.1.16
       opencc-js:
-        specifier: ^1.0.5
+        specifier: ^1.4.2
         version: 1.4.2
       pinia:
         specifier: ^4.0.3
         version: 4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
+      vue:
+        specifier: ^3.5.41
+        version: 3.5.44(typescript@6.0.3)
+      vue-draggable-plus:
+        specifier: ^0.5.6
+        version: 0.5.6(@types/sortablejs@1.15.9)
+      vue-router:
+        specifier: ^5.2.0
+        version: 5.4.0(@pinia/colada@1.4.8(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(rolldown@1.2.13)(rollup@4.64.6)(vue@3.5.44(typescript@6.0.3))
+    devDependencies:
+      '@iconify-json/lucide':
+        specifier: ^1.2.153
+        version: 1.2.153
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.8
+        version: 6.0.10(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3))
+      '@vue/tsconfig':
+        specifier: ^0.9.1
+        version: 0.9.1(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
+      cross-env:
+        specifier: ^10.1.0
+        version: 10.1.0
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0(supports-color@7.2.0)
       sonda:
         specifier: ^0.7.1
         version: 0.7.1
@@ -264,40 +280,15 @@ importers:
       unplugin-auto-import:
         specifier: ^21.1.0
         version: 21.1.0(@nuxt/kit@4.6.4(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.13)(unplugin@3.4.0(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(@vueuse/core@14.4.0(vue@3.5.44(typescript@6.0.3)))(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.6)
-      uuid:
-        specifier: ^10.0.0
-        version: 10.0.0
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))'
-      vue:
-        specifier: ^3.5.41
-        version: 3.5.44(typescript@6.0.3)
-      vue-draggable-plus:
-        specifier: ^0.5.6
-        version: 0.5.6(@types/sortablejs@1.15.9)
-      vue-router:
-        specifier: ^5.2.0
-        version: 5.4.0(@pinia/colada@1.4.8(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(vue@3.5.44(typescript@6.0.3)))(@rsbuild/core@1.7.6)(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3)))(@vue/compiler-sfc@3.5.44)(esbuild@0.28.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3)))(rolldown@1.2.13)(rollup@4.64.6)(vue@3.5.44(typescript@6.0.3))
-      vue-tsc:
-        specifier: ^3.3.10
-        version: 3.3.11(typescript@6.0.3)
-    devDependencies:
-      '@iconify-json/lucide':
-        specifier: ^1.2.153
-        version: 1.2.153
-      '@types/node':
-        specifier: 'catalog:'
-        version: 24.19.2
-      cross-env:
-        specifier: ^10.1.0
-        version: 10.1.0
-      jsdom:
-        specifier: ^26.1.0
-        version: 26.1.0(supports-color@7.2.0)
       vite-plus:
         specifier: 'catalog:'
         version: 1.7.0(@types/node@24.19.2)(@vitest/ui@5.1.0)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      vue-tsc:
+        specifier: ^3.3.10
+        version: 3.3.11(typescript@6.0.3)
 
 packages:
 
@@ -2211,26 +2202,14 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
-  '@types/linkify-it@5.0.0':
-    resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
-
   '@types/lodash-es@4.17.12':
     resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
 
   '@types/lodash@4.17.26':
     resolution: {integrity: sha512-48NWfiY6oNcKOh47Z4h+sIvwcQR91h6KPhaYKgeMIrkT2jV82Gy90SErj60vW8jQbeMSOSbhIv3bZ7JoqPPVhA==}
 
-  '@types/markdown-it@14.2.0':
-    resolution: {integrity: sha512-NoQ2yGlLWj4wpxMs+TYmRKk3thDrQ97agr7sFqfLsAlvoS8SNQuTrlObhFqG9iugdTtgOE9jpJ6FNM4ZGsa5xQ==}
-
-  '@types/mdurl@2.0.0':
-    resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==}
-
   '@types/node@24.19.2':
     resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
-
-  '@types/opencc-js@1.0.3':
-    resolution: {integrity: sha512-TENp7YkI2hNlc4dplhivSHj0hU4DORCK56VY7rniaSfA5f87uD3uv+kPIRuH9h64TGv976iVFi4gEHZZtS2y8Q==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -3678,15 +3657,6 @@ packages:
   magic-string@1.4.3:
     resolution: {integrity: sha512-z12OxmaPGE0F4xlpGdjuAUckipLpQlTAuAmyGhNoD7ODpYUzvDfvtxUbjM/jwznyP178oju/KDdyi220wNJ0RQ==}
 
-  markdown-it-anchor@10.1.0:
-    resolution: {integrity: sha512-htMTOUnoGqoWguddWO+NBrOEdh3dt9k1RIhTlr2CQTJOPiLZglDDGADu+Ch+47roTO6nxl2aJfSYykmOhdJCew==}
-    peerDependencies:
-      '@types/markdown-it': '*'
-      markdown-it: '*'
-    peerDependenciesMeta:
-      '@types/markdown-it':
-        optional: true
-
   markdown-it@15.0.3:
     resolution: {integrity: sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==}
     hasBin: true
@@ -3760,11 +3730,6 @@ packages:
   nanoid@3.3.20:
     resolution: {integrity: sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@5.1.16:
-    resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
-    engines: {node: ^18 || >=20}
     hasBin: true
 
   negotiator@1.1.0:
@@ -6567,29 +6532,15 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
-  '@types/linkify-it@5.0.0':
-    optional: true
-
   '@types/lodash-es@4.17.12':
     dependencies:
       '@types/lodash': 4.17.26
 
   '@types/lodash@4.17.26': {}
 
-  '@types/markdown-it@14.2.0':
-    dependencies:
-      '@types/linkify-it': 5.0.0
-      '@types/mdurl': 2.0.0
-    optional: true
-
-  '@types/mdurl@2.0.0':
-    optional: true
-
   '@types/node@24.19.2':
     dependencies:
       undici-types: 7.24.6
-
-  '@types/opencc-js@1.0.3': {}
 
   '@types/qs@6.15.1': {}
 
@@ -8060,12 +8011,6 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  markdown-it-anchor@10.1.0(@types/markdown-it@14.2.0)(markdown-it@15.0.3):
-    dependencies:
-      markdown-it: 15.0.3
-    optionalDependencies:
-      '@types/markdown-it': 14.2.0
-
   markdown-it@15.0.3:
     dependencies:
       argparse: 3.0.3
@@ -8132,8 +8077,6 @@ snapshots:
   muggle-string@0.4.1: {}
 
   nanoid@3.3.20: {}
-
-  nanoid@5.1.16: {}
 
   negotiator@1.1.0:
     dependencies:
