@@ -3,9 +3,9 @@ import type { Glossary, SegmentContext } from '@/types';
 // 这些片段属于格式或地址，模型应逐字保留。正则只匹配单行，避免吞掉正文。
 const protectedPattern = new RegExp(
   [
-    /https?:\/\/[^\s<>"'「」『』【】\u3000、。，！？]+/u,
+    /https?:\/\/[^\s<>"'「」『』【】（）［］《》〈〉、。，！？；：]+/u,
     /[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,63}/u,
-    /<\/?[A-Za-z][^<>\r\n]*>/u,
+    /<\/?[A-Za-z](?:[^<>"'\r\n]|"[^"\r\n]*"|'[^'\r\n]*')*>/u,
     /\$\{[^{}\r\n]+\}|\{\{[^{}\r\n]+\}\}|\{(?:[A-Za-z_][\w.]*|\d+)\}/u,
     /%%|%(?:\d+\$)?[-+#0 ]*(?:\d+|\*)?(?:\.(?:\d+|\*))?[diuoxXfFeEgGaAcspn](?![A-Za-z])/u,
     /\\[nrt]/u,
@@ -17,6 +17,33 @@ const protectedPattern = new RegExp(
 
 const hasLetter = (text: string) => /\p{L}/u.test(text);
 
+function urlLength(url: string): number {
+  let parentheses = 0;
+  for (let index = 0; index < url.length; index++) {
+    if (url[index] === '(') parentheses++;
+    if (url[index] === ')' && --parentheses < 0) return index;
+  }
+  return url.length;
+}
+
+function replaceProtectedParts(
+  text: string,
+  replace: (part: string) => string,
+): string {
+  const pattern = new RegExp(protectedPattern);
+  let end = 0;
+  let result = '';
+  for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+    const part = match[0];
+    const length = /^https?:\/\//.test(part) ? urlLength(part) : part.length;
+    result += text.slice(end, match.index) + replace(part.slice(0, length));
+    end = match.index + length;
+    // 右括号后的正文还可能包含需要保护的另一个链接。
+    pattern.lastIndex = end;
+  }
+  return result + text.slice(end);
+}
+
 /** 只跳过明确的非正文；普通英文和纯汉字仍交给模型。 */
 export function isGptPassthroughLine(
   line: string,
@@ -24,7 +51,7 @@ export function isGptPassthroughLine(
 ): boolean {
   const text = line.trim();
   if (!text || line.startsWith('<图片>')) return true;
-  const natural = text.replace(protectedPattern, '').trim();
+  const natural = replaceProtectedParts(text, () => '').trim();
   if (!hasLetter(natural)) return true;
   if (
     !glossary?.[text]?.trim() &&
@@ -55,7 +82,7 @@ export function prepareGptText(
   const rows = original.flatMap((source, index) => {
     if (isGptPassthroughLine(source, context?.glossary)) return [];
     const parts: ProtectedPart[] = [];
-    const text = source.replace(protectedPattern, (value) => {
+    const text = replaceProtectedParts(source, (value) => {
       const token = `${prefix}${sequence++}__`;
       parts.push({ token, value });
       return token;
