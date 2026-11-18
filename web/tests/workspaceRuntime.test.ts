@@ -7,6 +7,7 @@ import type {
   TranslationTask,
 } from '../src/domain/translator/tasks/task';
 import type { TranslationWork, Translator } from '@auto-novel/translator';
+import type { GptPipelineWorker } from '../src/model/Translator';
 import { useWorkspaceRuntime } from '../src/pages/workspace/useWorkspaceRuntime';
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +21,11 @@ const mocks = vi.hoisted(() => ({
   translate: null as Translator['translate'] | null,
   parseTask: vi.fn((desc: string) => ({ desc, params: {} })),
   clearCache: vi.fn<(storeName: string) => Promise<void>>(),
+  translateChapter: vi.fn(),
+}));
+
+vi.mock('@auto-novel/translator/harness', () => ({
+  translateChapter: mocks.translateChapter,
 }));
 
 vi.mock('vue', async (importOriginal) => {
@@ -176,6 +182,7 @@ afterEach(() => {
   mocks.failMetadata = false;
   mocks.drain = null;
   mocks.translate = null;
+  mocks.translateChapter.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -204,9 +211,10 @@ it.each(['sakura', 'gpt'] as const)(
 
 function setupLifecycleRuntime(
   tasks: Record<string, TranslationTask>,
-  workers: { id: string; trusted: boolean; concurrency?: number }[] = [
+  workers: ({ id: string; trusted: boolean } & Partial<GptPipelineWorker>)[] = [
     { id: 'trusted', trusted: true },
   ],
+  translatorId: 'sakura' | 'gpt' = 'sakura',
 ) {
   mocks.tasks = new Map(Object.entries(tasks));
   mocks.submitted = [];
@@ -227,7 +235,7 @@ function setupLifecycleRuntime(
     },
   };
   mocks.store = store;
-  const runtime = createRuntime();
+  const runtime = createRuntime(translatorId);
   return { runtime, store };
 }
 
@@ -238,6 +246,158 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
+
+describe('Harness workspace integration', () => {
+  const harnessWorker = {
+    id: 'harness',
+    trusted: true,
+    preset: 'deepseek' as const,
+    model: 'deepseek-v4-pro',
+    key: 'test-key',
+    concurrency: 1,
+  };
+
+  it('saves metadata and whole chapters through the upstream task callbacks', async () => {
+    // 使用真实流水线：没有普通翻译器时 needsInput 为 false。
+    mocks.translate = vi.fn();
+    const web = task('web');
+    mocks.translateChapter.mockImplementation(async (input) =>
+      input.source.map(() => '译文'),
+    );
+    const { runtime, store } = setupLifecycleRuntime(
+      { web },
+      [harnessWorker],
+      'gpt',
+    );
+    await runtime.startWorker('harness');
+    await vi.waitFor(() =>
+      expect(store.ref.value.jobs[0]).toHaveProperty('finishAt'),
+    );
+    expect(web.metadataSave).toHaveBeenCalledExactlyOnceWith(['译文']);
+    expect(web.chapterSave).toHaveBeenCalledExactlyOnceWith(['译文']);
+    expect(mocks.translateChapter).toHaveBeenCalledTimes(2);
+    expect(mocks.submitted).toHaveLength(0);
+  });
+
+  it('selects the latest top job when a Harness slot becomes free', async () => {
+    mocks.translate = vi.fn();
+    const first = task('local');
+    const second = task('local');
+    const top = task('local');
+    const pending = deferred<string[]>();
+    mocks.translateChapter
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValue(['译文']);
+    const { runtime, store } = setupLifecycleRuntime(
+      { first, second, top },
+      [harnessWorker],
+      'gpt',
+    );
+    await runtime.startWorker('harness');
+    await vi.waitFor(() => {
+      expect(mocks.translateChapter).toHaveBeenCalledOnce();
+      expect(second.prepareUnit).toHaveBeenCalledOnce();
+    });
+    store.ref.value.jobs = [
+      store.ref.value.jobs[2],
+      ...store.ref.value.jobs.slice(0, 2),
+    ];
+    await vi.waitFor(() => expect(top.prepareUnit).toHaveBeenCalledOnce());
+    pending.resolve(['译文']);
+    await vi.waitFor(() => expect(second.chapterSave).toHaveBeenCalledOnce());
+    expect(top.chapterSave).toHaveBeenCalledOnce();
+    expect(top.chapterSave.mock.invocationCallOrder[0]).toBeLessThan(
+      second.chapterSave.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('hands cancelled Harness work back to the normal pipeline and ignores late results', async () => {
+    const local = task('local');
+    const pending = deferred<string[]>();
+    mocks.translateChapter.mockReturnValueOnce(pending.promise);
+    const { runtime } = setupLifecycleRuntime(
+      { local },
+      [harnessWorker, { id: 'general', trusted: true }],
+      'gpt',
+    );
+    await runtime.startWorker('harness');
+    await vi.waitFor(() =>
+      expect(mocks.translateChapter).toHaveBeenCalledOnce(),
+    );
+    await runtime.startWorker('general');
+    runtime.stopWorker('harness');
+    await vi.waitFor(() => expect(local.chapterSave).toHaveBeenCalledOnce());
+    expect(mocks.submitted).toHaveLength(1);
+    pending.resolve(['迟到译文']);
+    await pending.promise;
+    await Promise.resolve();
+    expect(local.chapterSave).toHaveBeenCalledExactlyOnceWith(['译文']);
+    expect(runtime.workerStates.value.get('general')?.running).toBe(true);
+  });
+
+  it('leaves failed metadata retryable without blocking chapters', async () => {
+    const web = task('web');
+    mocks.translateChapter
+      .mockRejectedValueOnce(new Error('metadata failed'))
+      .mockResolvedValue(['译文']);
+    const { runtime, store } = setupLifecycleRuntime(
+      { web },
+      [harnessWorker],
+      'gpt',
+    );
+    await runtime.startWorker('harness');
+    await vi.waitFor(() => expect(web.chapterSave).toHaveBeenCalledOnce());
+    expect(store.ref.value.jobs[0]).not.toHaveProperty('finishAt');
+    expect(runtime.taskStates.value.get('web')?.metadataUnit?.status).toBe(
+      'error',
+    );
+    runtime.retryTask('web');
+    await vi.waitFor(() => expect(web.metadataSave).toHaveBeenCalledOnce());
+    expect(web.chapterSave).toHaveBeenCalledOnce();
+    expect(store.ref.value.jobs[0]).toHaveProperty('finishAt');
+  });
+
+  it('returns every prepared chapter to pending when stopped while waiting for a Harness slot', async () => {
+    mocks.translate = vi.fn();
+    const local = task('local');
+    local.chapters = Array.from({ length: 3 }, (_, index) => ({
+      ...local.chapters[0],
+      chapterId: String(index + 1),
+      order: index,
+    }));
+    const pending = deferred<string[]>();
+    mocks.translateChapter.mockReturnValueOnce(pending.promise);
+    const { runtime, store } = setupLifecycleRuntime(
+      { local },
+      [harnessWorker],
+      'gpt',
+    );
+    await runtime.startWorker('harness');
+    await vi.waitFor(() => {
+      // 一个执行中章节加一份预取原文，不为等待 Harness 槽位额外取章。
+      expect(local.prepareUnit).toHaveBeenCalledTimes(2);
+      expect(mocks.translateChapter).toHaveBeenCalledOnce();
+    });
+    runtime.stopAllWorkers();
+    await vi.waitFor(() =>
+      expect(
+        runtime.taskStates.value
+          .get('local')
+          ?.chapters.map((unit) => unit.status),
+      ).toEqual(['pending', 'pending', 'pending']),
+    );
+    mocks.translateChapter.mockResolvedValue(['译文']);
+    await runtime.startWorker('harness');
+    await vi.waitFor(() =>
+      expect(store.ref.value.jobs[0]).toHaveProperty('finishAt'),
+    );
+    expect(local.chapterSave).toHaveBeenCalledTimes(3);
+    pending.resolve(['迟到译文']);
+    await pending.promise;
+    await Promise.resolve();
+    expect(local.chapterSave).toHaveBeenCalledTimes(3);
+  });
+});
 
 describe('workspace task version lifecycle', () => {
   it('cancels initialization when disposed without eagerly loading the next task', async () => {

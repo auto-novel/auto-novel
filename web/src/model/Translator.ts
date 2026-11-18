@@ -1,4 +1,5 @@
 import type { Glossary } from './Glossary';
+import type { HarnessPresetId } from '@auto-novel/translator/harness/presets';
 import type {
   OpenAiProfileSelection,
   TranslatorConfig,
@@ -20,7 +21,10 @@ export interface GptWorker {
 export interface GptPipelineWorker extends GptWorker {
   concurrency: number;
   profile?: OpenAiProfileSelection;
+  preset?: TranslatorPresetId;
 }
+
+export type TranslatorPresetId = 'general' | HarnessPresetId;
 
 export interface SakuraWorker {
   id: string;

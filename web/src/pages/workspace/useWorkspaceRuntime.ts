@@ -9,6 +9,10 @@ import {
 import { Toast } from '@novelia/web-kit';
 import { createTranslator, TranslationPipeline } from '@auto-novel/translator';
 import type { TranslationWork } from '@auto-novel/translator';
+import {
+  findHarnessPresetGroup,
+  getHarnessModelPreset,
+} from '@auto-novel/translator/harness/presets';
 
 import { useWorkspaceStore } from '@/stores';
 import {
@@ -21,11 +25,13 @@ import {
   awaitWithSignal,
 } from '@/domain/translator';
 import type { TranslationTask, UnitStatus } from '@/domain/translator';
+import { HarnessPool } from '@/domain/translator/harness/HarnessPool';
 import { toTranslatorConfig } from '@/model/Translator';
 import type {
   TranslateJob,
   TranslateJobRecord,
   WorkspaceTranslatorId,
+  GptPipelineWorker,
 } from '@/model/Translator';
 
 import { useWorkspaceLog } from './useWorkspaceLog';
@@ -63,6 +69,9 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     cache: segmentCache,
     onSchedulingChange: () => runProcessLoop(),
   });
+  const harnessPool = new HarnessPool(() => runProcessLoop());
+  const drainTranslations = () =>
+    Promise.all([pipeline.drain(), harnessPool.drain()]).then(() => {});
 
   // ========== 任务状态管理 ==========
 
@@ -127,6 +136,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     for (const key of taskRuntimes.keys()) clearTaskRuntimeState(key);
     processLoopAbortController?.abort();
     pipeline.dispose();
+    harnessPool.dispose();
     workerStates.value.clear();
   });
 
@@ -370,6 +380,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     const ready: { preparation: Preparation; result: Awaited<Preparation> }[] =
       [];
     let wakePrefetch: (() => void) | undefined;
+    signal.addEventListener('abort', () => wakePrefetch?.(), { once: true });
     const priorityOf = (result: Awaited<Preparation>) =>
       result.input?.work.getPriority?.() ?? -Infinity;
     const fillPrefetch = () => {
@@ -398,6 +409,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     const waitForPrefetch = () =>
       new Promise<undefined>((resolve) => {
         wakePrefetch = () => resolve(undefined);
+        if (signal.aborted) wakePrefetch();
       });
     refillPrefetch = () => {
       fillPrefetch();
@@ -427,7 +439,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
                 version: submissionVersion,
               };
               draining = settlement;
-              void pipeline.drain().then(
+              void drainTranslations().then(
                 () => {
                   settlement.result = {};
                   wakePrefetch?.();
@@ -449,6 +461,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             ({ result }) =>
               !result.input ||
               result.input.signal.aborted ||
+              harnessPool.needsInput() ||
               pipeline.needsInput(
                 priorityOf(result),
                 result.input.work.trustedOnly,
@@ -469,9 +482,14 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
               await input.work.onAbort();
               continue;
             }
-            // 不等待整章准入；submit 仅因取消拒绝，结算与回调错误统一交给 drain。
             submissionVersion++;
-            void pipeline.submit(input.work, input.signal).catch(() => {});
+            // 只向空闲的整章槽位投递，不能等槽位而挡住后续优先级重排。
+            if (harnessPool.needsInput()) {
+              await harnessPool.submit(input.work, input.signal);
+            } else {
+              // 不等待整章准入；submit 仅因取消拒绝，结算与回调错误统一交给 drain。
+              void pipeline.submit(input.work, input.signal).catch(() => {});
+            }
           } finally {
             prefetched.delete(preparation);
           }
@@ -495,7 +513,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
             await result.input?.work.onAbort();
           }),
         );
-        await pipeline.drain();
+        await drainTranslations();
       }
     })()
       .catch((error: unknown) => {
@@ -539,24 +557,48 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       const secrets = 'key' in w ? [w.key] : [];
       const log = (msg: string) => appendLog(w.id, msg, 'info', secrets);
       log('正在启动翻译器');
-      const t = await createTranslator({
-        ...toTranslatorConfig(translatorId, w),
-        log,
-      });
+      const gpt = w as GptPipelineWorker;
+      const preset = isSakura ? undefined : findHarnessPresetGroup(gpt.preset);
+      if (preset) {
+        const { createHarnessMode } = await import(
+          '@/domain/translator/harness/HarnessMode'
+        );
+        if (workerStates.value.get(workerId) !== state) return;
+        const translate = createHarnessMode(
+          getHarnessModelPreset(preset, gpt.model),
+          gpt.key,
+          gpt.id,
+          log,
+        );
+        harnessPool.register(workerId, translate, {
+          concurrency: w.concurrency,
+          onActiveCountChange: (activeCount) => {
+            state.currentConcurrency = activeCount;
+          },
+        });
+        state.trusted = true;
+      } else {
+        const t = await createTranslator({
+          ...toTranslatorConfig(translatorId, w),
+          log,
+        });
 
-      if (workerStates.value.get(workerId) !== state) return;
+        if (workerStates.value.get(workerId) !== state) return;
 
-      state.trusted = t.trusted === true;
-      if (!t.trusted)
-        log(`翻译器仅可用于本地翻译：${t.untrustedReason ?? '未通过可信检查'}`);
+        state.trusted = t.trusted === true;
+        if (!t.trusted)
+          log(
+            `翻译器仅可用于本地翻译：${t.untrustedReason ?? '未通过可信检查'}`,
+          );
 
-      pipeline.registerTranslator(t, {
-        concurrency: w.concurrency,
-        onActiveCountChange: (activeCount) => {
-          state.currentConcurrency = activeCount;
-        },
-        id: w.id,
-      });
+        pipeline.registerTranslator(t, {
+          concurrency: w.concurrency,
+          onActiveCountChange: (activeCount) => {
+            state.currentConcurrency = activeCount;
+          },
+          id: w.id,
+        });
+      }
       log('翻译器已启动');
 
       runProcessLoop();
@@ -578,6 +620,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
     if (!state?.running) return;
 
     pipeline.unregisterTranslator(workerId);
+    harnessPool.unregister(workerId);
     appendLog(workerId, `翻译器已停止（${reason}）`);
 
     workerStates.value.set(workerId, { ...state, running: false });
@@ -595,6 +638,7 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       abortInitializations();
       processLoopAbortController?.abort();
       pipeline.dispose();
+      harnessPool.dispose();
     }
     runProcessLoop();
   };

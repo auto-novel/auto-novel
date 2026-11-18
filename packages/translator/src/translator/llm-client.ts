@@ -5,6 +5,8 @@ import type {
   FetchFunction,
   Message,
   Model,
+  ModelCost,
+  Usage,
 } from '@earendil-works/pi-ai';
 
 export type PiAiProtocol =
@@ -24,6 +26,8 @@ export interface PiAiCompletionRequest {
   model: string;
   messages: PiAiMessage[];
   requestParams?: Record<string, unknown>;
+  cost?: ModelCost;
+  onUsage?: (usage: Usage) => void;
   signal?: AbortSignal;
   fetch?: FetchFunction;
 }
@@ -32,6 +36,7 @@ export interface PiAiCompletionResult {
   text: string;
   reasoning?: string;
   finishReason?: string;
+  usage: Usage;
   inputTokens?: number;
   outputTokens?: number;
 }
@@ -74,6 +79,7 @@ export async function createPiAiCompletion(
     request.protocol,
     request.model,
     normalizeEndpoint(request.endpoint, request.protocol),
+    request.cost,
   );
   const messages: Message[] = request.messages.map((message) => {
     if (message.role === 'assistant') {
@@ -135,6 +141,7 @@ export async function createPiAiCompletion(
   });
 
   const result = await stream.result();
+  request.onUsage?.(result.usage);
   request.signal?.throwIfAborted();
   if (result.stopReason === 'aborted') {
     throw new DOMException(
@@ -199,6 +206,7 @@ export async function createPiAiCompletion(
     text,
     reasoning: reasoning || undefined,
     finishReason: result.stopReason,
+    usage: result.usage,
     inputTokens: result.usage.input,
     outputTokens: result.usage.output,
   };
@@ -208,6 +216,7 @@ function createModel(
   protocol: PiAiProtocol,
   id: string,
   baseUrl: string,
+  cost: ModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 ): Model<PiAiProtocol> {
   return {
     id,
@@ -216,7 +225,7 @@ function createModel(
     provider: 'auto-novel',
     baseUrl,
     input: ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost,
     // Required pi-ai metadata; effort is supplied explicitly by the profile.
     reasoning: false,
     contextWindow: 0,
