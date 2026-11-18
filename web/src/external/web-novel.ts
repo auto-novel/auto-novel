@@ -11,7 +11,7 @@ import {
   WebNovelCrawler,
 } from '@auto-novel/crawler';
 
-import { AddonApi, getAddon } from '@/external/addon';
+import { type AddonApi, getAddon } from '@/external/addon';
 import { checkIsMobile, lazy } from '@/util';
 
 import { compareVersion } from './addon-errors';

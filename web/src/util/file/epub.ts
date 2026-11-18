@@ -77,10 +77,6 @@ export class Epub extends BaseFile {
     return path.startsWith(packageDir) ? path.slice(packageDir.length) : path;
   }
 
-  private updateHref(oldHref: string, newHref: string) {
-    // TODO
-  }
-
   // ==============================
   // 读取文件内容
   // ==============================
@@ -290,34 +286,6 @@ export class Epub extends BaseFile {
   // ==============================
   // 将内容写入文件
   // ==============================
-
-  private fixHrefExtension() {
-    const getFileExtension = (path: string) => {
-      const match = path.match(/\.([a-zA-Z0-9]+)$/);
-      if (match) return match[1];
-      return '';
-    };
-
-    const mimeToExtensions: { [key: string]: string[] } = {
-      'image/gif': ['.gif'],
-      'image/jpeg': ['.jpg', '.jpeg', '.jpe', '.jif', '.jfif'],
-      'image/png': ['.png'],
-      'image/svg+xml': ['.svg'],
-      'image/webp': ['.webp'],
-    };
-    for (const item of this.items.values()) {
-      const mime = item.mediaType;
-      if (mime in mimeToExtensions) {
-        const extensions = mimeToExtensions[mime];
-        const ext = getFileExtension(item.href);
-        if (!extensions.includes(ext)) {
-          const newHref = item.href.replace(/\.([a-zA-Z0-9]+)$/, extensions[0]);
-          this.updateHref(item.href, newHref);
-          item.href = newHref;
-        }
-      }
-    }
-  }
 
   private updatePackage() {
     const packageDocNs = this.packageDoc.documentElement.namespaceURI;

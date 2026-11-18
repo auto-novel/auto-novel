@@ -16,7 +16,7 @@ export type ReaderParagraph =
   | undefined;
 
 export const buildParagraphs = (
-  gnid: GenericNovelId,
+  _gnid: GenericNovelId,
   chapter: ReaderChapter,
 ): ReaderParagraph[] => {
   const cc = useSettingStore().cc;

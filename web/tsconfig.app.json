@@ -1,25 +1,18 @@
 {
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
   "compilerOptions": {
-    "target": "ES2015",
-    "useDefineForClassFields": true,
-    "module": "ES2020",
-    "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": true,
-    "jsx": "preserve",
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "lib": ["DOM", "ES2022"],
-    "skipLibCheck": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "paths": {
       "@/*": ["./src/*"],
       "#build/ui": ["./node_modules/.nuxt-ui/ui"],
-      "#build/ui/*": ["./node_modules/.nuxt-ui/ui/*"]
+      "#build/ui/*": ["./node_modules/.nuxt-ui/ui/*"],
+      "vue": ["./node_modules/vue"],
+      "vue-router": ["./node_modules/vue-router"]
     },
-    "types": ["vite/client"]
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  }
 }

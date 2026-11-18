@@ -35,7 +35,7 @@ const query = (url: string) => {
 
 <template>
   <div
-    ref="container"
+    :ref="(el) => (container = (el as HTMLElement | null) ?? undefined)"
     class="relative h-56.25 overflow-hidden bg-border max-[600px]:h-50"
     :aria-busy="loading"
   >
