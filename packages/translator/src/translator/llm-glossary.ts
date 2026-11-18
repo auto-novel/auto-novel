@@ -1,8 +1,9 @@
+import { SHA256 } from 'crypto-es/lib/sha256';
 import { createTranslationCacheKey } from '@/cache';
 import { TranslationRejected } from '@/errors';
 import type { Glossary, PromptBuilder, TranslateRequest } from '@/types';
 import { OpenAiTranslator, type OpenAiTranslatorConfig } from './llm';
-import { createPiAiCompletion } from './llm-client';
+import { createPiAiCompletion, normalizeEndpoint } from './llm-client';
 import { resolveOpenAiProfile } from './llm-profiles';
 
 const kinds = new Set([
@@ -35,13 +36,21 @@ type Candidate = {
   important: true;
 };
 
+const MAX_SAMPLE_LENGTH = 12_000;
+
 /** 仅取本章有界样本，不额外抓取章节，也不修改原文。 */
 export function createGlossarySample(lines: readonly string[]): string[] {
   const sample: string[] = [];
+  let length = 2; // JSON 数组的方括号。
   for (const line of lines) {
     if (!line.trim() || line.startsWith('<图片>')) continue;
-    if (JSON.stringify([...sample, line]).length > 12_000) break;
+    const lineLength = JSON.stringify(line).length;
+    // 单行超出整个样本上限时，继续寻找后面的可用段落。
+    if (lineLength + 2 > MAX_SAMPLE_LENGTH) continue;
+    const nextLength = length + lineLength + Number(sample.length > 0);
+    if (nextLength > MAX_SAMPLE_LENGTH) break;
     sample.push(line);
+    length = nextLength;
   }
   return sample;
 }
@@ -161,9 +170,14 @@ export class GlossaryAwareOpenAiTranslator extends OpenAiTranslator {
       this.trusted,
       input.context,
     );
-    return key === undefined
-      ? undefined
-      : `glossary:v1:${profile.protocol}:${JSON.stringify(profile.requestParams)}:${key}`;
+    if (key === undefined) return undefined;
+    const identity = {
+      endpoint: normalizeEndpoint(this.config.endpoint, profile.protocol),
+      protocol: profile.protocol,
+      requestParams: profile.requestParams,
+      key,
+    };
+    return `glossary:v2:${SHA256(JSON.stringify(identity)).toString()}`;
   }
 
   override async translate(request: TranslateRequest): Promise<string[]> {
