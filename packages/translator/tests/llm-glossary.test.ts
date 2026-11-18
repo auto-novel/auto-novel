@@ -92,14 +92,17 @@ describe('自动关键术语筛选', () => {
     const input = Object.freeze([
       '',
       '<图片>image',
+      '"'.repeat(7000),
       'アルテ。',
       'x'.repeat(13000),
       '后文',
     ]);
     const sampled = createGlossarySample(input);
-    expect(sampled).toEqual(['アルテ。']);
+    expect(sampled).toEqual(['アルテ。', '后文']);
     expect(JSON.stringify(sampled).length).toBeLessThanOrEqual(12000);
-    expect(input).toHaveLength(5);
+    expect(input).toHaveLength(6);
+    const fullLine = 'x'.repeat(11996);
+    expect(createGlossarySample([fullLine, '超过总预算'])).toEqual([fullLine]);
     expect(readAutoGlossary('[]', sample)).toEqual({});
     expect(() => readAutoGlossary('not json', sample)).toThrow();
   });
@@ -193,5 +196,51 @@ describe('原生队列中的术语分析', () => {
       normal.getCacheKey?.({ lines: input.lines }),
     );
     expect(normal.getCacheKey?.(input)).not.toBe(high.getCacheKey?.(input));
+  });
+
+  it('切换同名模型的接口会重新分析，等效地址仍复用缓存', async () => {
+    const fetch = vi.fn(async (input: string) => {
+      const target =
+        new URL(input).hostname === 'api.example.test' ? '阿尔蒂' : '阿尔特';
+      return completion(JSON.stringify([candidate('アルテ', target)]));
+    });
+    vi.stubGlobal('fetch', fetch);
+    const entries = new Map<string, readonly string[]>();
+    const pipeline = new TranslationPipeline({
+      cache: {
+        get: async (key) => entries.get(key),
+        set: async (key, lines) => {
+          entries.set(key, [...lines]);
+        },
+      },
+    });
+    const analyze = async (endpoint: string) => {
+      pipeline.registerTranslator(
+        await createTranslator({ ...config, endpoint }),
+        {
+          id: 'gpt',
+        },
+      );
+      const result = await pipeline.translate({
+        lines: [JSON.stringify(sample)],
+        purpose: 'glossary',
+      });
+      expect(result.failed).toEqual([]);
+      return readAutoGlossary(result.lines[0], sample);
+    };
+    try {
+      expect(await analyze(config.endpoint)).toEqual({ アルテ: '阿尔蒂' });
+      expect(await analyze(`${config.endpoint}/v1/chat/completions`)).toEqual({
+        アルテ: '阿尔蒂',
+      });
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(await analyze('https://another.example.test')).toEqual({
+        アルテ: '阿尔特',
+      });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      pipeline.dispose();
+      await pipeline.drain();
+    }
   });
 });
