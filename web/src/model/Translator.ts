@@ -56,6 +56,8 @@ export interface TranslateJob {
 }
 
 export type TranslateJobRecord = TranslateJob & {
+  /** 本轮 GPT 重翻中已成功保存的正文章节。 */
+  completedChapterIds?: string[];
   progress?: {
     finished: number;
     error: number;
