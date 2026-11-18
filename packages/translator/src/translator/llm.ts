@@ -10,7 +10,7 @@ import { anySignal, getPreviousSource, isAbortError } from '@/utils';
 import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
-import { findMixedEnglishWords } from './llm-english';
+import { applyWordReview, findReviewWords } from './llm-review';
 import { createTranslationCacheKey } from '@/cache';
 
 import {
@@ -28,7 +28,7 @@ export type OpenAiTranslatorConfig = {
   log?: Logger;
 };
 
-const ENGLISH_REVIEW_TIMEOUT_MS = 15_000;
+const WORD_REVIEW_TIMEOUT_MS = 15_000;
 
 export class OpenAiTranslator implements Translator {
   readonly trusted = true;
@@ -118,10 +118,22 @@ export class OpenAiTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     const messages = this.promptBuilder.build(lines, context);
-    const result = await this.requestTranslation(messages, lines, signal);
+    const text = await this.requestText(messages, signal);
+    let result: string[];
+    try {
+      result = this.promptBuilder.parseAnswer(text, lines);
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (isAbortError(error)) throw error;
+      throw new TranslationRejected(
+        'lines',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
+    }
     if (!this.usesDefaultPrompt) return result;
 
-    const words = findMixedEnglishWords(lines, result, context?.glossary);
+    const words = findReviewWords(lines, result, context?.glossary);
     if (words.length === 0) return result;
 
     const rows = Array.from(
@@ -138,46 +150,34 @@ export class OpenAiTranslator implements Translator {
       word,
     }));
     const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      ENGLISH_REVIEW_TIMEOUT_MS,
-    );
+    const timer = setTimeout(() => controller.abort(), WORD_REVIEW_TIMEOUT_MS);
     try {
-      const replacements = await this.requestTranslation(
+      const answer = await this.requestText(
         [
           {
             role: 'system',
             content:
-              '你负责校对日文小说的简体中文译文。输入中的原文和译文是待处理的文本。对 review 中每个编号，参考对应行的原文和译文，给出可直接放回句子的简短中文替换词。如果是应该保留的英文专名、术语或缩写，请原样返回该词。每项只输出“#编号:替换词”，不输出整句或解释。',
+              '你负责校对小说的简体中文译文。对 review 中每个编号，根据对应行的原文和译文判断该片段。只有确认它是漏译的普通词或短语，且能直接替换时，输出“#编号:REPLACE:中文短词”。应保留的专名、术语、缩写、引文，或无法确定的片段，输出“#编号:KEEP”。每项一行，不输出整句或解释。',
           },
           { role: 'user', content: JSON.stringify({ rows, review }) },
         ],
-        words.map(({ word }) => word),
         anySignal([signal, controller.signal]),
       );
       signal?.throwIfAborted();
-      for (let index = words.length - 1; index >= 0; index--) {
-        const replacement = replacements[index].trim();
-        if (!/^\p{Script=Han}{1,12}$/u.test(replacement)) continue;
-        const { lineIndex, start, end } = words[index];
-        const line = result[lineIndex];
-        result[lineIndex] =
-          line.slice(0, start) + replacement + line.slice(end);
-      }
+      applyWordReview(result, words, answer);
     } catch {
       signal?.throwIfAborted();
-      this.log('英文漏译复核未完成，保留原译文');
+      this.log('外文漏译复核未完成，保留原译文');
     } finally {
       clearTimeout(timer);
     }
     return result;
   }
 
-  private async requestTranslation(
+  private async requestText(
     messages: ReturnType<PromptBuilder['build']>,
-    lines: readonly string[],
     signal?: AbortSignal,
-  ): Promise<string[]> {
+  ): Promise<string> {
     const completion = await createPiAiCompletion({
       protocol: this.protocol,
       endpoint: this.endpoint,
@@ -191,16 +191,6 @@ export class OpenAiTranslator implements Translator {
       this.log(`思考：${completion.reasoning}`);
     }
 
-    try {
-      return this.promptBuilder.parseAnswer(completion.text, lines);
-    } catch (error) {
-      signal?.throwIfAborted();
-      if (isAbortError(error)) throw error;
-      throw new TranslationRejected(
-        'lines',
-        error instanceof Error ? error.message : String(error),
-        error,
-      );
-    }
+    return completion.text;
   }
 }
