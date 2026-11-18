@@ -75,6 +75,24 @@ describe('GPT 文本保护', () => {
     ]);
   });
 
+  it.each([
+    ['（https://example.test/a）本文。', '（__AN_KEEP_0__）本文。'],
+    [
+      '(https://example.test/a_(b_(c)))か(https://example.test/日本語)本文。',
+      '(__AN_KEEP_0__)か(__AN_KEEP_1__)本文。',
+    ],
+    [
+      `<span title="a > b" data-value='x < y'>本文</span>`,
+      '__AN_KEEP_0__本文__AN_KEEP_1__',
+    ],
+  ])('仅保护完整的链接或标签，保留附近的正文：%s', (source, masked) => {
+    const text = prepareGptText([source]);
+    expect(text.lines).toEqual([masked]);
+    expect(text.restore([masked.replace('本文', '译文')])).toEqual([
+      source.replace('本文', '译文'),
+    ]);
+  });
+
   it('保护地址、标签、变量、格式符和转义符，逐字恢复并保持位置与空白', () => {
     const parts = [
       'https://example.test/a?x=$&',
