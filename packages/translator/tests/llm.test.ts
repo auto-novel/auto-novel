@@ -42,7 +42,7 @@ describe('OpenAiTranslator', () => {
       requests.push(JSON.parse(String(init.body)));
       return requests.length === 1
         ? reply('#1:他开始 viewing 展品，并用hands触摸它。\n#2:他走了。')
-        : reply('#1:查看\n#2:双手');
+        : reply('#1:REPLACE:查看\n#2:REPLACE:双手');
     });
     vi.stubGlobal('fetch', fetch);
     const translator = new OpenAiTranslator(config);
@@ -59,18 +59,93 @@ describe('OpenAiTranslator', () => {
     });
   });
 
-  it('原文和术语表中的英文、缩写、链接和代码不触发复核', async () => {
+  it.each([
+    [
+      '英文',
+      'He started viewing the exhibits.',
+      '他开始 viewing 展品了。',
+      '查看',
+      '他开始查看展品了。',
+    ],
+    [
+      '法文',
+      'Elle commence à goûter le dessert.',
+      '她开始 goûter 甜点。',
+      '品尝',
+      '她开始品尝甜点。',
+    ],
+    [
+      '韩文',
+      '그는 다시 달리기를 시작했다.',
+      '他开始 달리기 训练。',
+      '跑步',
+      '他开始跑步训练。',
+    ],
+    [
+      '俄文',
+      'Он начал читать книгу.',
+      '他开始 читать 这本书。',
+      '读',
+      '他开始读这本书。',
+    ],
+    ['德文', 'Er nahm ein Buch.', '他拿起一本 Buch。', '书', '他拿起一本书。'],
+    [
+      '西班牙文',
+      'Quiero volver a casa.',
+      '我想 volver a casa。',
+      '回家',
+      '我想回家。',
+    ],
+    [
+      '日文',
+      '彼は朝食を食べる。',
+      '他开始食べる早餐。',
+      '吃',
+      '他开始吃早餐。',
+    ],
+    [
+      '日文',
+      '彼はそれを取り戻す。',
+      '他想取り戻す它。',
+      '夺回',
+      '他想夺回它。',
+    ],
+    [
+      '阿拉伯文',
+      'بدأ يقرأ الكتاب.',
+      '他开始 يقرأ 这本书。',
+      '读',
+      '他开始读这本书。',
+    ],
+  ])(
+    '复核 %s 原文直接带进中文译文的普通词',
+    async (_language, source, draft, replacement, translated) => {
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce(reply(`#1:${draft}`))
+        .mockResolvedValueOnce(reply(`#1:REPLACE:${replacement}`));
+      vi.stubGlobal('fetch', fetch);
+      await expect(
+        attemptTranslation(new OpenAiTranslator(config), { lines: [source] }),
+      ).resolves.toEqual([translated]);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('术语表中的外文、专名拼写、缩写、链接和代码不触发复核', async () => {
     const lines = [
-      'この viewing 機能を開く。',
+      'Open it on your iPhone.',
       '星月を呼ぼう。',
       '体力が戻った。',
+      '그는 햇살을 불렀다.',
       'この記法を見せる。',
       'https://example.test/a',
     ];
     const translations = [
-      '请打开 viewing 功能。',
+      '请用 iPhone 打开。',
       '现在召唤 luna 试试。',
       '现在恢复 HP 数值。',
+      '他喊了一声 햇살 的名字。',
       '这是 `中文 viewing 中文` 示例。',
       'https://example.test/a',
     ];
@@ -84,35 +159,54 @@ describe('OpenAiTranslator', () => {
     await expect(
       attemptTranslation(translator, {
         lines,
-        context: { glossary: { 星月: 'luna' } },
+        context: { glossary: { 星月: 'luna', 햇살: '햇살' } },
       }),
     ).resolves.toEqual(translations);
     expect(fetch).toHaveBeenCalledOnce();
   });
 
-  it.each(['#1:viewing', '缺少编号', null])(
-    '复核无可用修正结果时接受原译：%s',
-    async (review) => {
-      const original = '他开始 viewing 展品了。';
-      const fetch = vi
-        .fn()
-        .mockResolvedValueOnce(reply(`#1:${original}`))
-        .mockImplementationOnce(async () =>
-          review === null
-            ? new Response(
-                JSON.stringify({ error: { message: 'unavailable' } }),
-                { status: 500 },
-              )
-            : reply(review),
-        );
-      vi.stubGlobal('fetch', fetch);
-      const translator = new OpenAiTranslator(config);
-      await expect(
-        attemptTranslation(translator, { lines: ['彼は展示品を見始めた。'] }),
-      ).resolves.toEqual([original]);
-      expect(fetch).toHaveBeenCalledTimes(2);
-    },
-  );
+  it.each([
+    '#1:KEEP',
+    '#1:保留',
+    '#1:REPLACE:查看展品。',
+    '#1:KEEP\n#1:REPLACE:查看',
+    '#2:REPLACE:查看',
+    '缺少编号',
+    null,
+  ])('复核无可用修正结果时接受原译：%s', async (review) => {
+    const original = '他开始 viewing 展品了。';
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(reply(`#1:${original}`))
+      .mockImplementationOnce(async () =>
+        review === null
+          ? new Response(
+              JSON.stringify({ error: { message: 'unavailable' } }),
+              { status: 500 },
+            )
+          : reply(review),
+      );
+    vi.stubGlobal('fetch', fetch);
+    const translator = new OpenAiTranslator(config);
+    await expect(
+      attemptTranslation(translator, { lines: ['彼は展示品を見始めた。'] }),
+    ).resolves.toEqual([original]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('一行中保留模型确认的专名，只改漏译的普通词', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(reply('#1:Alice 正在 viewing 展品。'))
+      .mockResolvedValueOnce(reply('#2:REPLACE:观看\n#1:KEEP'));
+    vi.stubGlobal('fetch', fetch);
+    await expect(
+      attemptTranslation(new OpenAiTranslator(config), {
+        lines: ['Alice is viewing the exhibits.'],
+      }),
+    ).resolves.toEqual(['Alice 正在观看展品。']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 
   it('复核请求超时后仍能返回第一次译文', async () => {
     vi.useFakeTimers();
