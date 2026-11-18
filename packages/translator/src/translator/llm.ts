@@ -7,7 +7,11 @@ import type {
 } from '@/types';
 import { getPreviousSource, isAbortError } from '@/utils';
 
-import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
+import {
+  createPiAiCompletion,
+  normalizeEndpoint,
+  type PiAiProtocol,
+} from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
 import { createTranslationCacheKey } from '@/cache';
@@ -58,6 +62,11 @@ export class OpenAiTranslator implements Translator {
       this.promptBuilder,
       this.trusted,
       context,
+      {
+        endpoint: normalizeEndpoint(this.endpoint, this.protocol),
+        protocol: this.protocol,
+        requestParams: this.profileParams,
+      },
     );
   }
 
