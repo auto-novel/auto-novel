@@ -13,7 +13,7 @@ const emit = defineEmits<{
 <template>
   <UButton
     type="button"
-    :color="checked ? type ?? 'success' : 'neutral'"
+    :color="checked ? (type ?? 'success') : 'neutral'"
     variant="subtle"
     :aria-pressed="checked"
     @click="emit('update:checked', !checked)"

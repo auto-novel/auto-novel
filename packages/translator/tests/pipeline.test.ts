@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TranslationPipeline } from '../src/pipeline/pipeline';
 import type { TranslateRequest, TranslationWork } from '../src/types';
 
@@ -16,7 +16,10 @@ function createPipeline(onSchedulingChange?: () => void) {
   return pipeline;
 }
 
-type Handlers = Pick<TranslationWork, 'onComplete' | 'onError' | 'onAbort'>;
+type Handlers = Pick<
+  TranslationWork,
+  'onComplete' | 'onError' | 'onAbort' | 'tracker'
+>;
 
 function work(
   input: string | string[],
@@ -100,8 +103,8 @@ describe('TranslationPipeline', () => {
   it('全局水位同时计算执行中和等待分段，相同优先级保持输入与分段顺序', async () => {
     const pipeline = createPipeline();
     const gates = Array.from({ length: 4 }, () => deferred<string[]>());
-    const translate = vi.fn(
-      () => gates[translate.mock.calls.length - 1].promise,
+    const translate = vi.fn<(request: TranslateRequest) => Promise<string[]>>(
+      (): Promise<string[]> => gates[translate.mock.calls.length - 1].promise,
     );
     pipeline.registerTranslator({ trusted: false, translate });
     let admitted = false;

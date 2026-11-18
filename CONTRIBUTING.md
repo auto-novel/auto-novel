@@ -19,11 +19,13 @@ docker compose up -d
 
 服务启动后，可通过以下地址访问：
 
-- Web：http://localhost:5000
-- API：http://localhost:5000/api
-- MongoDB：localhost:5001
-- Elasticsearch：localhost:5002
-- Redis：localhost:5003
+- Web：http://localhost:8100
+- API：http://localhost:8100/api
+- MongoDB：localhost:8103
+- Elasticsearch：localhost:8104
+- Redis：localhost:8105
+- API 直连：localhost:8101
+- PostgreSQL：localhost:8102
 
 ## 构建工作区包
 

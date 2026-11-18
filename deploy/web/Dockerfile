@@ -1,6 +1,7 @@
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV VP_GIT_HOOKS=0
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

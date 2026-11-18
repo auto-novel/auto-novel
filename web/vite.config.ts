@@ -1,14 +1,12 @@
-import ui from '@nuxt/ui/vite';
-// web-kit 导出 TS 源码；相对路径让 Vite 配置加载器一并转译，避免 Node 外部加载 node_modules 中的 TS。
-import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/src/ui/nuxt-ui.ts';
 import { htmlBootstrapPlugin } from '@novelia/web-kit/vite';
+import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { fileURLToPath, URL } from 'node:url';
-import { ProxyAgent } from 'proxy-agent';
 import Sonda from 'sonda/vite';
 import AutoImport from 'unplugin-auto-import/vite';
-import type { UserConfig } from 'vite';
-import { defineConfig, loadEnv } from 'vite';
+import { loadEnv } from 'vite';
+import { defineConfig } from 'vite-plus';
+import { webKitNuxtUiOptions } from './node_modules/@novelia/web-kit/src/ui/nuxt-ui';
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(
@@ -16,21 +14,38 @@ export default defineConfig(({ command, mode }) => {
     fileURLToPath(new URL('.', import.meta.url)),
     'VITE_',
   );
-  const isServe = command === 'serve';
   const isLocalApi = env.VITE_LOCAL_API === 'true';
-  const apiUrl = isLocalApi ? 'http://localhost:5000' : 'https://n.novelia.cc';
   const enableSonda = env.VITE_ENABLE_SONDA === 'true';
-  const config: UserConfig = {
+
+  return {
     define: {
       __AUTH_URL__: JSON.stringify(
-        isServe ? '/auth-proxy/' : 'https://auth.novelia.cc/',
+        command === 'serve' ? '/auth-proxy/' : 'https://auth.novelia.cc/',
       ),
       __BUILD_TIME__: JSON.stringify(
         env.VITE_BUILD_TIME || new Date().toISOString(),
       ),
       __COMMIT_SHA__: JSON.stringify(env.VITE_COMMIT_SHA || 'unknown'),
     },
+    plugins: [
+      htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),
+      vue(),
+      ui({
+        ...webKitNuxtUiOptions,
+        components: {
+          dts: 'src/components.d.ts',
+          dirs: ['src/**/components/**'],
+        },
+      }),
+      AutoImport({
+        dts: 'src/auto-imports.d.ts',
+        ignore: ['h'],
+        imports: ['vue', 'vue-router', 'pinia'],
+      }),
+      enableSonda && Sonda({ gzip: true, brotli: true }),
+    ],
     build: {
+      sourcemap: enableSonda,
       target: 'safari16',
       cssCodeSplit: false,
       rolldownOptions: {
@@ -69,7 +84,6 @@ export default defineConfig(({ command, mode }) => {
       exclude: ['@novelia/web-kit'],
     },
     server: {
-      allowedHosts: true,
       proxy: {
         '/auth-proxy/': {
           target: 'https://auth.novelia.cc',
@@ -77,18 +91,14 @@ export default defineConfig(({ command, mode }) => {
           rewrite: (path) => path.replace(/^\/auth-proxy/, ''),
         },
         '/api': {
-          target: apiUrl,
+          target: isLocalApi ? 'http://localhost:8100' : 'https://n.novelia.cc',
           changeOrigin: true,
-          bypass: (req, _res, _options) => {
+          bypass: (req) => {
             if (!isLocalApi && req.url && req.url.includes('/translate-v2/')) {
               console.log('检测到小说章节翻译请求，已拦截');
               return false;
             }
           },
-        },
-        '/files-temp': {
-          target: apiUrl,
-          changeOrigin: true,
         },
       },
     },
@@ -97,50 +107,9 @@ export default defineConfig(({ command, mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-    plugins: [
-      vue(),
-      ui({
-        ...webKitNuxtUiOptions,
-        // 统一生成 Nuxt UI 和本地组件声明。
-        components: {
-          dts: 'src/components.d.ts',
-          dirs: ['src/**/components/**'],
-        },
-      }),
-      htmlBootstrapPlugin({ analytics: 'G-QD8MZ90XFJ' }),
-      AutoImport({
-        dts: 'src/auto-imports.d.ts',
-        ignore: ['h'],
-        imports: ['vue', 'vue-router', 'pinia'],
-      }),
-    ],
+    test: {
+      // 各包独立缓存，避免并行测试共享工作区模块缓存文件。
+      fsModuleCachePath: 'node_modules/.vitest-cache',
+    },
   };
-
-  if (enableSonda) {
-    config.build!.sourcemap = true;
-    config.plugins!.push(
-      Sonda({
-        gzip: true,
-        brotli: true,
-      }),
-    );
-  }
-
-  // 注入代理能力以解决系统代理时的外网访问问题
-  // ProxyAgent 会自动使用系统代理设置，如果没有系统代理则直接连接目标服务器
-  const upstreamAgent = new ProxyAgent();
-  const proxy = config.server!.proxy!;
-  Object.entries(proxy).forEach(([key, proxyConfig]) => {
-    if (typeof proxyConfig === 'object') {
-      proxyConfig.agent = upstreamAgent;
-    } else {
-      proxy[key] = {
-        target: proxyConfig,
-        changeOrigin: true,
-        agent: upstreamAgent,
-      };
-    }
-  });
-
-  return config;
 });

@@ -95,7 +95,7 @@ const initFormValue = (
       profileId,
       profileValues: {
         ...defaultValues,
-        ...(profile?.values ?? {}),
+        ...profile?.values,
       },
     };
   }

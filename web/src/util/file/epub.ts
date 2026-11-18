@@ -214,9 +214,8 @@ export class Epub extends BaseFile {
   }
 
   private async parseFile(file: File) {
-    const { BlobReader, BlobWriter, ZipReader, TextWriter } = await import(
-      '@zip.js/zip.js'
-    );
+    const { BlobReader, BlobWriter, ZipReader, TextWriter } =
+      await import('@zip.js/zip.js');
     const reader = new ZipReader(new BlobReader(file));
     const entries = new Map(
       (await reader.getEntries()).map((obj) => [obj.filename, obj] as const),
@@ -308,9 +307,8 @@ export class Epub extends BaseFile {
     // this.fixHrefExtension();
     this.updatePackage();
 
-    const { BlobReader, BlobWriter, ZipWriter, TextReader } = await import(
-      '@zip.js/zip.js'
-    );
+    const { BlobReader, BlobWriter, ZipWriter, TextReader } =
+      await import('@zip.js/zip.js');
 
     const zipBlobWriter = new BlobWriter();
     const writer = new ZipWriter(zipBlobWriter);

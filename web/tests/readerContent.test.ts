@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createApp, nextTick, ref, type App } from 'vue';
 
 import ReaderContent from '../src/pages/reader/components/ReaderContent.vue';

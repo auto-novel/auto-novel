@@ -1,20 +1,27 @@
 {
   "name": "auto-novel",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
-  "packageManager": "pnpm@11.28.5",
-  "engines": {
-    "node": ">=22.13.0"
-  },
   "scripts": {
-    "dev": "pnpm dev:web",
-    "dev:web": "pnpm --stream --filter \"@auto-novel/web^...\" run build && pnpm --stream --parallel --filter \"@auto-novel/web...\" run dev",
-    "dev:admin": "pnpm --filter @auto-novel/admin dev",
-    "build": "pnpm --stream -r run build",
-    "test": "pnpm --stream -r --if-present run test"
+    "dev": "vp run dev:web",
+    "dev:web": "vp run --filter \"@auto-novel/web^...\" build && vp run --parallel --filter \"@auto-novel/web...\" dev",
+    "dev:admin": "vp run --filter @auto-novel/admin dev",
+    "build": "vp run -r build",
+    "typecheck": "vp run -r typecheck",
+    "test": "vp run -r test",
+    "test:unit": "vp run --filter @auto-novel/web --filter @auto-novel/admin --filter @auto-novel/translator --filter @auto-novel/daemon test && vp run @auto-novel/crawler#test:unit",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "prepare": "vp config"
   },
   "devDependencies": {
-    "prettier": "^3.9.6"
-  }
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": "^22.22.1 || ^24.11.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@11.28.5"
 }

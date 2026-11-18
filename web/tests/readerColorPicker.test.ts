@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import UModal from '@nuxt/ui/components/Modal.vue';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createApp, h, nextTick, ref, type App } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 

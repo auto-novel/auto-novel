@@ -31,15 +31,15 @@ export function getPreviousSource(
   return source;
 }
 
-export namespace RegexUtil {
+export const RegexUtil = (() => {
   const englishChars = /[a-z]|[A-Z]/;
-  export const hasEnglishChars = (str: string) => englishChars.test(str);
+  const hasEnglishChars = (str: string) => englishChars.test(str);
 
   const hanzi = /[\u4E00-\u9FAF]/;
-  export const hasHanzi = (str: string) => hanzi.test(str);
+  const hasHanzi = (str: string) => hanzi.test(str);
 
   const kanaChars = /[\u3041-\u3096]|[\u30A1-\u30FA]/;
-  export const hasKanaChars = (str: string) => kanaChars.test(str);
+  const hasKanaChars = (str: string) => kanaChars.test(str);
 
   // U+1100–U+11FF: Hangul Jamo
   // U+3130–U+318F: Hangul Compatibility Jamo
@@ -59,12 +59,14 @@ export namespace RegexUtil {
   const hangulSyllables = /[\uAC00-\uD7AF]/;
 
   // https://en.wikipedia.org/wiki/Hangul#Unicode
-  export const hasHangulChars = (str: string) =>
+  const hasHangulChars = (str: string) =>
     hangulSyllables.test(str) ||
     hangulJamo.test(str) ||
     hangulEnclosed.test(str) ||
     hangulHalfWidth.test(str);
-}
+
+  return { hasEnglishChars, hasHanzi, hasKanaChars, hasHangulChars };
+})();
 
 export const safeJson = <T extends object>(text: string) => {
   try {

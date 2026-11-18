@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { WorkPreparer } from '../src/domain/translator/prepare-work';
 import { buildChapterList } from '../src/domain/translator/tasks/chapter-preparation';

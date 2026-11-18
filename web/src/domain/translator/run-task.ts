@@ -38,7 +38,7 @@ export async function runTranslationTask(
   try {
     signal.throwIfAborted();
     const segmentLength =
-      config.id === 'sakura' ? config.segLength ?? 500 : 3500;
+      config.id === 'sakura' ? (config.segLength ?? 500) : 3500;
     const translator = await createSingleTaskTranslator(config, callbacks.log);
     signal.throwIfAborted();
     if (desc.type !== 'local') {
@@ -49,7 +49,7 @@ export async function runTranslationTask(
         callbacks.log(
           config.id === 'sakura' && segmentLength !== 500
             ? '分段长度不是500'
-            : translator.untrustedReason ?? '翻译器不可信，无法上传译文',
+            : (translator.untrustedReason ?? '翻译器不可信，无法上传译文'),
         );
         return 'uncomplete';
       }

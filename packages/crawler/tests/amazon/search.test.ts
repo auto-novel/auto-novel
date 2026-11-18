@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { search } from '@/amazon/search';
 

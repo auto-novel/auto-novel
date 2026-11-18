@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { effectScope, ref } from 'vue';
 import type { EffectScope } from 'vue';
+import type * as Vue from 'vue';
+import type * as TranslatorModule from '@auto-novel/translator';
 
 import type {
   PreparedUnit,
@@ -23,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('vue', async (importOriginal) => {
-  const vue = await importOriginal<typeof import('vue')>();
+  const vue = await importOriginal<typeof Vue>();
   return { ...vue, onUnmounted: vue.onScopeDispose };
 });
 
@@ -56,8 +58,7 @@ vi.mock('@/pages/workspace/useWorkspaceLog', () => ({
   }),
 }));
 vi.mock('@auto-novel/translator', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@auto-novel/translator')>();
+  const actual = await importOriginal<typeof TranslatorModule>();
   return {
     createTranslator: async (config: { trusted: boolean }) => ({
       trusted: config.trusted,

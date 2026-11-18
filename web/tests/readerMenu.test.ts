@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import UModal from '@nuxt/ui/components/Modal.vue';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
 
 import ReaderLayoutMobile from '../src/pages/reader/components/ReaderLayoutMobile.vue';

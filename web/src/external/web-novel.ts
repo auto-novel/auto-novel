@@ -134,7 +134,7 @@ const getCrawler = lazy(async () => {
 
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
-      const featVersion: string = addon.compat?.['tabFetch']?.['redirect'];
+      const featVersion = addon.compat?.['tabFetch']?.['redirect'];
       const result = featVersion
         ? compareVersion(addon.version, featVersion)
         : null;
@@ -206,7 +206,7 @@ const getCrawler = lazy(async () => {
             ? input.toString()
             : input.url;
 
-      let resp = await addon.tabFetch(
+      const resp = await addon.tabFetch(
         { tabUrl: 'https://www.alphapolis.co.jp', forceWaitForLoad: true },
         url,
         { ...init, headers },

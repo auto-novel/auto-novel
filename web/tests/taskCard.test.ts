@@ -1,12 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
+import type * as WebKit from '@novelia/web-kit';
 
 import { TaskState } from '../src/domain/translator/task-state';
 import TaskCard from '../src/pages/workspace/task/TaskCard.vue';
 
 vi.mock('@novelia/web-kit', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@novelia/web-kit')>()),
+  ...(await importOriginal<typeof WebKit>()),
   Toast: { info: vi.fn() },
 }));
 vi.mock('@/pages/workspace/task/ChapterGrid.vue', () => ({
