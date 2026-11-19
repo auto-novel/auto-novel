@@ -223,7 +223,7 @@ const createFileUrl = ({
       ? ''
       : (translationsMode === 'parallel' ? 'B' : 'Y') +
         translations.map((it) => it[0]).join(''),
-    title.replace(/[\/|\\:*?"<>]/g, ''),
+    title.replace(/[/|\\:*?"<>]/g, ''),
     type,
   ]
     .filter(Boolean)

@@ -1,19 +1,20 @@
 {
   "name": "@auto-novel/admin",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:remote": "cross-env VITE_API_MODE=remote vite",
-    "dev:local": "cross-env VITE_API_MODE=local vite",
-    "dev:native": "cross-env VITE_API_MODE=native vite",
-    "build": "vite build && vue-tsc -b --noEmit",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "dev": "vp dev",
+    "dev:remote": "cross-env VITE_LOCAL_API=false vp dev",
+    "dev:local": "cross-env VITE_LOCAL_API=true vp dev",
+    "build": "vp build && vue-tsc -b --noEmit",
+    "preview": "vp preview",
+    "test": "vp test run",
+    "typecheck": "vue-tsc -b --noEmit",
+    "lint": "vp lint src"
   },
   "dependencies": {
-    "@novelia/web-kit": "github:auto-novel/web-kit#726305d7c57e8686fe1f6a345749b95cf13480f3",
+    "@novelia/web-kit": "github:auto-novel/web-kit#6931266c093b98074e1ab49b88a5471aa2f20d78",
     "@nuxt/ui": "^4.12.0",
     "@vicons/material": "^0.13.0",
     "vue": "^3.5.41",
@@ -21,15 +22,15 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.153",
-    "@types/node": "^20.19.13",
+    "@types/node": "catalog:",
     "@vitejs/plugin-vue": "^6.0.6",
-    "@vue/tsconfig": "^0.8.1",
+    "@vue/tsconfig": "^0.9.1",
     "cross-env": "^10.1.0",
     "proxy-agent": "^8.0.1",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.2",
-    "vite": "^8.2.2",
-    "vitest": "^3.2.4",
-    "vue-tsc": "^2.2.12"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue-tsc": "^3.3.10"
   }
 }

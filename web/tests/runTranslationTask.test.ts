@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import { reactive } from 'vue';
+import type * as TranslatorModule from '@auto-novel/translator';
 import type { Translator } from '@auto-novel/translator';
 
 import { runTranslationTask } from '../src/domain/translator/run-task';
@@ -19,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@auto-novel/translator', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@auto-novel/translator')>()),
+  ...(await importOriginal<typeof TranslatorModule>()),
   createTranslator: mocks.createTranslator,
 }));
 vi.mock('@/external/youdao', () => ({

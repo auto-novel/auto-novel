@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { parseUrl } from '../src/util/web/url';
 
 function test_parse_url(providerId: string, benches: [string, string][]) {

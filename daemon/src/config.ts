@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'fs/promises';
 
-import { ProviderIdSchema } from '@auto-novel/crawler';
+import { ProviderConfigIdSchema } from '@/providers';
 import * as z from 'zod';
 import { HeaderSchema, ProxyConfigSchema } from '@/services';
 
@@ -16,7 +16,7 @@ export const ConfigSchema = z
     proxyDbPath: z.string().default('crawler-proxies.db'),
     defaultProxies: z.array(ProxyConfigSchema).default([]),
     providerConfig: z
-      .partialRecord(ProviderIdSchema, ProviderConfigSchema)
+      .partialRecord(ProviderConfigIdSchema, ProviderConfigSchema)
       .optional(),
   })
   .strict();

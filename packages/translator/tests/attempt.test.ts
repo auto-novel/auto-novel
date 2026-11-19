@@ -1,17 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   attemptTranslation,
   TRANSLATION_RETRIES,
 } from '../src/pipeline/attempt';
 import { TranslationRejected } from '../src/errors';
+import type { TranslateRequest } from '../src/types';
 
 const request = { lines: ['甲', '乙'] };
 
 describe('attemptTranslation', () => {
   it('行数始终不合时按次数重试并调用降级', async () => {
     const translate = vi.fn(async () => ['只有一行']);
-    const fallback = vi.fn(async ({ lines }) => lines.map((l) => `译${l}`));
+    const fallback = vi.fn(async ({ lines }: TranslateRequest) =>
+      lines.map((line) => `译${line}`),
+    );
     await expect(
       attemptTranslation({ trusted: false, translate, fallback }, request),
     ).resolves.toEqual(['译甲', '译乙']);
@@ -32,7 +35,7 @@ describe('attemptTranslation', () => {
     const translate = vi.fn(async () => {
       throw error;
     });
-    const fallback = vi.fn(async ({ lines }: { lines: string[] }) => lines);
+    const fallback = vi.fn(async ({ lines }: TranslateRequest) => lines);
     await expect(
       attemptTranslation({ trusted: false, translate, fallback }, request),
     ).rejects.toMatchObject({

@@ -78,7 +78,7 @@ const pixiv: Provider = {
       return `https://www.pixiv.net/novel/series/${novelId}`;
     }
   },
-  buildChapterUrl(novelId: string, chapterId: string): string {
+  buildChapterUrl(_novelId: string, chapterId: string): string {
     return `https://www.pixiv.net/novel/show.php?id=${chapterId}`;
   },
 };
@@ -106,7 +106,7 @@ const alphapolis: Provider = {
 
 // 弃用，为了兼容以前的小说暂时保留
 const novelism: Provider = {
-  parseUrl(url: string): string | undefined {
+  parseUrl(_url: string): string | undefined {
     return undefined;
   },
   buildNovelUrl(novelId: string): string {

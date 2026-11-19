@@ -64,7 +64,7 @@ export function validateImage(file: Pick<File, 'size' | 'type'>) {
 export function validLink(value: string) {
   const link = value.trim();
   if (!link) return true;
-  if (/[\r\n\x00\\]/.test(link)) return false;
+  if (/[\r\n\\]/.test(link) || link.includes('\0')) return false;
   if (link.startsWith('/')) return !link.startsWith('//');
   try {
     const url = new URL(link);

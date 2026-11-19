@@ -54,7 +54,7 @@ const previewFocalX = computed({
   get: () =>
     editing.value
       ? draftFocalX.value
-      : selected.value?.focalX ?? defaultBannerFocal,
+      : (selected.value?.focalX ?? defaultBannerFocal),
   set: (value: number) => {
     draftFocalX.value = value;
   },
@@ -63,7 +63,7 @@ const previewFocalY = computed({
   get: () =>
     editing.value
       ? draftFocalY.value
-      : selected.value?.focalY ?? defaultBannerFocal,
+      : (selected.value?.focalY ?? defaultBannerFocal),
   set: (value: number) => {
     draftFocalY.value = value;
   },

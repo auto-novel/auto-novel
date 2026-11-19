@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick, reactive, ref, type App } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { createApp, h, nextTick, reactive, type App } from 'vue';
 
 import ActionButton from '../src/components/ActionButton.vue';
 import ConfirmActionButton from '../src/components/ConfirmActionButton.vue';

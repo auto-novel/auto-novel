@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createOpenAiApi } from '../src/translator/sakura-client';
 import { SakuraTranslator } from '../src/translator/sakura';

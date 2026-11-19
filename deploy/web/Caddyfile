@@ -13,17 +13,17 @@
 
 	handle /api/v1/admin/* {
 		uri strip_prefix /api
-		reverse_proxy api:8080
+		reverse_proxy api:8101
 	}
 
 	handle /api/v1/banner {
 		uri strip_prefix /api
-		reverse_proxy api:8080
+		reverse_proxy api:8101
 	}
 
 	handle /api/v1/banner/* {
 		uri strip_prefix /api
-		reverse_proxy api:8080
+		reverse_proxy api:8101
 	}
 
 	handle {

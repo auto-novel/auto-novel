@@ -12,5 +12,5 @@ RUN go build -o api
 FROM alpine:3.24.2
 WORKDIR /app
 COPY --from=builder /app/api /app/api
-EXPOSE 8080
+EXPOSE 8101
 CMD ["./api"]

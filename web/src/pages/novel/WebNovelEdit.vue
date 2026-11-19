@@ -190,7 +190,7 @@ const requireLogin = useRequireLogin();
     <ActionButton
       size="xl"
       color="primary"
-      class="float"
+      class="fixed right-10 bottom-5 shadow-md"
       :action="requireLogin(submit)"
       variant="solid"
       :icon="UploadOutlined"

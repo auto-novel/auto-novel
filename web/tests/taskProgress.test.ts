@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 
@@ -23,6 +23,18 @@ describe('TaskProgress', () => {
       '共 8 章，成功 2 章，处理中 2 章，失败 1 章，等待 3 章',
     );
     expect(html).toContain('25%');
+    expect(html.match(/role="progressbar"/g)).toHaveLength(1);
+  });
+
+  it('renders an empty finished task as a full circle', async () => {
+    const html = await renderToString(
+      createSSRApp(TaskProgress, {
+        status: 'done',
+        progress: { total: 0, done: 0, translating: 0, error: 0, pending: 0 },
+      }),
+    );
+    expect(html).toContain('aria-valuenow="1"');
+    expect(html).toContain('100%');
   });
 
   it('handles an empty task without invalid percentages', async () => {

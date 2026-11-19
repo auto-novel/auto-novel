@@ -136,7 +136,6 @@ export class SegmentQueue {
     for (
       let i = 0;
       i < this.consumers.length && this.active.size < this.highWaterMark;
-
     ) {
       const consumer = this.consumers[i];
       const index = this.pending.findIndex(

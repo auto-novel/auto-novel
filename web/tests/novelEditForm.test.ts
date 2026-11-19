@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import {
   createApp,
   defineComponent,
@@ -52,9 +59,6 @@ vi.mock('@novelia/web-kit', () => ({
     error: vi.fn(),
     promise: (promise: Promise<unknown>) => promise,
   },
-}));
-vi.mock('naive-ui', () => ({
-  NImage: passthrough,
 }));
 vi.mock('@nuxt/ui/components/Badge.vue', () => ({ default: passthrough }));
 vi.mock('@nuxt/ui/components/PageHeader.vue', () => ({
