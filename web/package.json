@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "dev:remote": "cross-env VITE_LOCAL_API=false vp dev",
-    "dev:local": "cross-env VITE_LOCAL_API=true vp dev",
+    "dev:local": "vp dev --mode local-api",
     "build": "vp build && vue-tsc -b --noEmit",
     "preview": "vp preview",
     "lint": "vp lint src",
@@ -40,7 +39,6 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
-    "cross-env": "^10.1.0",
     "jsdom": "^26.1.0",
     "sonda": "^0.7.1",
     "tailwindcss": "^4.3.3",

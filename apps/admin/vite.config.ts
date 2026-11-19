@@ -11,7 +11,7 @@ export default defineConfig(({ command, mode }) => {
     fileURLToPath(new URL('.', import.meta.url)),
     'VITE_',
   );
-  const isLocalApi = env.VITE_LOCAL_API === 'true';
+  const isLocalApi = mode === 'local-api';
 
   return {
     base: '/admin/',
