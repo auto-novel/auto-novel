@@ -5,11 +5,12 @@ import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
 
 import ReaderLayoutMobile from '../src/pages/reader/components/ReaderLayoutMobile.vue';
 
+const settings = vi.hoisted(() => ({ clickArea: 'menu' }));
 vi.mock('@/stores', async () => {
   const { ref } = await import('vue');
   return {
     useReaderSettingStore: () => ({
-      readerSetting: ref({ clickArea: 'menu' }),
+      readerSetting: ref({ ...settings, enableClickAnimition: false }),
     }),
   };
 });
@@ -29,7 +30,9 @@ vi.mock('@nuxt/ui/components/Button.vue', async () => {
 let app: App;
 afterEach(() => {
   app?.unmount();
+  window.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 const flush = async () => {
   await nextTick();
@@ -47,7 +50,8 @@ const escape = async () => {
   await flush();
 };
 
-async function mount() {
+async function mount(clickArea = 'menu') {
+  settings.clickArea = clickArea;
   const loaded = ref(false);
   const modalOpen = ref(false);
   const host = document.createElement('div');
@@ -110,6 +114,97 @@ function expectModalAboveMenu(menu: HTMLElement) {
   ).toBeTruthy();
   expect(menu.style.pointerEvents).toBe('none');
 }
+
+const clickAt = (target: Element, fraction: number) => {
+  const event = new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    clientX: window.innerWidth * fraction,
+    clientY: window.innerHeight * fraction,
+  });
+  target.dispatchEvent(event);
+  return event;
+};
+
+describe('reader mobile click gestures', () => {
+  it.each(['up-down', 'none'])(
+    'ignores interactive content in %s mode',
+    async (mode) => {
+      await mount(mode);
+      const scrollBy = vi
+        .spyOn(window, 'scrollBy')
+        .mockImplementation(() => {});
+      const reader = document.querySelector<HTMLElement>('[data-reader]')!;
+      reader.insertAdjacentHTML(
+        'beforeend',
+        '<a><span data-interactive>链接</span></a>' +
+          '<button><span data-interactive>按钮</span></button>' +
+          '<details><summary><span data-interactive>插图</span></summary></details>' +
+          '<input data-interactive><select data-interactive></select>' +
+          '<textarea data-interactive></textarea>' +
+          '<label><span data-interactive>标签</span></label>' +
+          '<div contenteditable><span data-interactive>编辑</span></div>' +
+          '<div contenteditable="plaintext-only"><span data-interactive>纯文本编辑</span></div>' +
+          '<div role="button"><span data-interactive>自定义按钮</span></div>',
+      );
+      for (const target of reader.querySelectorAll('[data-interactive]')) {
+        expect(clickAt(target, 0.1).defaultPrevented).toBe(false);
+        expect(clickAt(target, 0.5).defaultPrevented).toBe(false);
+      }
+      await flush();
+      expect(scrollBy).not.toHaveBeenCalled();
+      expect(menuElement()).toBeNull();
+    },
+  );
+
+  it('ignores clicks while text is selected', async () => {
+    await mount('up-down');
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const reader = document.querySelector<HTMLElement>('[data-reader]')!;
+    const range = document.createRange();
+    range.selectNodeContents(reader);
+    window.getSelection()!.addRange(range);
+    expect(window.getSelection()!.toString()).toBe('正文');
+    clickAt(reader, 0.1);
+    clickAt(reader, 0.5);
+    await flush();
+    expect(scrollBy).not.toHaveBeenCalled();
+    expect(menuElement()).toBeNull();
+  });
+
+  it.each(['up-down', 'left-right'])(
+    'keeps ordinary text gestures in %s mode',
+    async (mode) => {
+      await mount(mode);
+      const scrollBy = vi
+        .spyOn(window, 'scrollBy')
+        .mockImplementation(() => {});
+      const reader = document.querySelector<HTMLElement>('[data-reader]')!;
+      // 折叠插图的正文仍可使用阅读手势，只有 summary 是交互控件。
+      reader.insertAdjacentHTML(
+        'beforeend',
+        '<details open><p>插图正文</p></details>',
+      );
+      const text = reader.querySelector('p')!;
+      const selection = window.getSelection()!;
+      selection.collapse(text, 0);
+      clickAt(text, 0.1);
+      clickAt(text, 0.9);
+      expect(scrollBy).toHaveBeenNthCalledWith(1, {
+        top: -0.8 * window.innerHeight,
+        behavior: 'instant',
+      });
+      expect(scrollBy).toHaveBeenNthCalledWith(2, {
+        top: 0.8 * window.innerHeight,
+        behavior: 'instant',
+      });
+      expect(menuElement()).toBeNull();
+      clickAt(text, 0.5);
+      await flush();
+      expect(menuElement()).not.toBeNull();
+    },
+  );
+});
 
 describe('reader mobile menu', () => {
   it.each(['目录', '设置'])(

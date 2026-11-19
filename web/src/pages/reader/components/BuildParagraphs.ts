@@ -85,7 +85,7 @@ export const buildParagraphs = (
           });
         }
       }
-      if (!hasAnyTranslation) {
+      if (!hasAnyTranslation && setting.mode === 'zh') {
         return merged;
       }
     } else {
