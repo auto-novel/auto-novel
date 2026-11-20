@@ -27,7 +27,17 @@ const { setting } = storeToRefs(settingStore);
 const store = useBookshelfLocalStore();
 const { volumes } = storeToRefs(store);
 
-store.loadVolumes();
+watch(
+  show,
+  (open) => {
+    if (open) {
+      void store.loadVolumes().catch(() => {
+        Toast.error(store.loadError ?? '加载本地小说失败');
+      });
+    }
+  },
+  { immediate: true },
+);
 
 const options = computed(() => {
   return [...Object.keys(props.options ?? {}), '批量删除'].map((it) => ({
