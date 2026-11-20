@@ -17,14 +17,21 @@ export default defineConfig(({ command, mode }) => {
     base: '/admin/',
     define: {
       __AUTH_URL__: JSON.stringify(
-        command === 'serve' ? '/auth-proxy/' : 'https://auth.novelia.cc/',
+        command === 'serve' ? '/auth-proxy/' : 'https://auth.novelia.cc',
       ),
       __BUILD_TIME__: JSON.stringify(
         env.VITE_BUILD_TIME || new Date().toISOString(),
       ),
       __COMMIT_SHA__: JSON.stringify(env.VITE_COMMIT_SHA || 'unknown'),
     },
-    plugins: [htmlBootstrapPlugin(), vue(), ui(webKitNuxtUiOptions)],
+    plugins: [
+      htmlBootstrapPlugin(),
+      vue(),
+      ui({
+        ...webKitNuxtUiOptions,
+        components: { dts: 'src/components.d.ts', dirs: [] },
+      }),
+    ],
     build: {
       target: 'safari16',
       cssCodeSplit: false,

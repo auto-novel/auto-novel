@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { createApp, nextTick, reactive, ref, type App } from 'vue';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { nextTick, reactive, ref } from 'vue';
 
 import Reader from '../src/pages/reader/Reader.vue';
 import type { ReaderChapter } from '../src/pages/reader/ReaderStore';
@@ -63,12 +64,9 @@ vi.mock('../src/pages/reader/components/CatalogModal.vue', () => ({
   default: empty,
 }));
 
-let app: App | undefined;
+enableAutoUnmount(afterEach);
 afterEach(() => {
-  app?.unmount();
-  app = undefined;
   document.body.replaceChildren();
-  vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
 const flush = async () => {
@@ -78,22 +76,24 @@ const flush = async () => {
 const chapter = (chapterId: string, nextId?: string): Result<ReaderChapter> =>
   Ok({ chapterId, nextId, titleJp: chapterId, paragraphs: ['text'] });
 
-async function mount() {
+async function mountReader() {
   readerSetting.value.pageTurnMode = 'scroll';
   vi.stubGlobal('scrollTo', vi.fn());
   mocks.loadChapter.mockImplementation((id: string) => ({
     type: 'sync',
     promiseOrValue: chapter(id, id === 'a' ? 'b' : undefined),
   }));
-  const host = document.createElement('div');
-  document.body.append(host);
-  app = createApp(Reader);
-  const vm = app.mount(host);
+  const wrapper = mount(Reader, { attachTo: document.body });
+  const vm = wrapper.vm;
   await flush();
-  return vm.$.setupState as {
-    navToChapter: (id: string) => Promise<void>;
-    chapterList: { chapterId: string; result?: Result<ReaderChapter> }[];
-  };
+  return (
+    vm.$ as typeof vm.$ & {
+      setupState: {
+        navToChapter: (id: string) => Promise<void>;
+        chapterList: { chapterId: string; result?: Result<ReaderChapter> }[];
+      };
+    }
+  ).setupState;
 }
 
 function preload() {
@@ -111,7 +111,7 @@ function preload() {
 
 describe('reader scroll loading', () => {
   it('appends the result while the current reading session is unchanged', async () => {
-    const state = await mount();
+    const state = await mountReader();
     const resolve = preload();
     resolve(chapter('b'));
     await flush();
@@ -119,7 +119,7 @@ describe('reader scroll loading', () => {
   });
 
   it('ignores a pending append after navigating away', async () => {
-    const state = await mount();
+    const state = await mountReader();
     const resolve = preload();
     await state.navToChapter('c');
     resolve(chapter('b'));
@@ -130,7 +130,7 @@ describe('reader scroll loading', () => {
   });
 
   it('does not overwrite a chapter with the same id from a new session', async () => {
-    const state = await mount();
+    const state = await mountReader();
     const resolve = preload();
     await state.navToChapter('b');
     resolve(Ok({ chapterId: 'b', titleJp: 'stale', paragraphs: [] }));
@@ -141,7 +141,7 @@ describe('reader scroll loading', () => {
   });
 
   it('ignores a pending append when switching to page mode', async () => {
-    const state = await mount();
+    const state = await mountReader();
     const resolve = preload();
     readerSetting.value.pageTurnMode = 'page';
     await flush();

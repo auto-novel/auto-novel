@@ -53,8 +53,8 @@ function touch(
 describe('useHorizontalSwipe', () => {
   let root: HTMLElement;
   let scope: ReturnType<typeof effectScope>;
-  let onSwipeLeft: ReturnType<typeof vi.fn>;
-  let onSwipeRight: ReturnType<typeof vi.fn>;
+  let onSwipeLeft: ReturnType<typeof vi.fn<() => void>>;
+  let onSwipeRight: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     root = element();

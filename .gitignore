@@ -21,6 +21,7 @@ sonda-report.html
 .vitest/
 web/src/auto-imports.d.ts
 web/src/components.d.ts
+apps/admin/src/components.d.ts
 
 # Server
 server/.gradle/

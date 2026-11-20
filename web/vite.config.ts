@@ -20,7 +20,7 @@ export default defineConfig(({ command, mode }) => {
   return {
     define: {
       __AUTH_URL__: JSON.stringify(
-        command === 'serve' ? '/auth-proxy/' : 'https://auth.novelia.cc/',
+        command === 'serve' ? '/auth-proxy/' : 'https://auth.novelia.cc',
       ),
       __BUILD_TIME__: JSON.stringify(
         env.VITE_BUILD_TIME || new Date().toISOString(),
@@ -108,6 +108,7 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     test: {
+      restoreMocks: true,
       // 各包独立缓存，避免并行测试共享工作区模块缓存文件。
       fsModuleCachePath: 'node_modules/.vitest-cache',
     },

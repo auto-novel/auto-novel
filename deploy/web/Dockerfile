@@ -14,7 +14,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 FROM deps AS builder
 WORKDIR /app
-ARG VITE_COMMIT_SHA=unknown
+ARG VITE_COMMIT_SHA
 ARG VITE_BUILD_TIME
 COPY packages/crawler/ ./packages/crawler/
 COPY packages/translator/ ./packages/translator/
@@ -26,5 +26,5 @@ RUN VITE_COMMIT_SHA="${VITE_COMMIT_SHA}" \
 
 FROM caddy:2.7.4
 COPY deploy/web/Caddyfile /etc/caddy/Caddyfile
-COPY --from=builder /app/web/dist /dist
-COPY --from=builder /app/apps/admin/dist /dist/admin
+COPY --from=builder /app/web/dist /web
+COPY --from=builder /app/apps/admin/dist /admin

@@ -59,64 +59,69 @@ vi.mock('@/pages/workspace/useWorkspaceLog', () => ({
 }));
 vi.mock('@auto-novel/translator', async (importOriginal) => {
   const actual = await importOriginal<typeof TranslatorModule>();
+  class TestPipeline {
+    private pending = new Map<TranslationWork, Promise<void>>();
+    constructor(
+      private options: ConstructorParameters<
+        typeof actual.TranslationPipeline
+      >[0],
+    ) {}
+    registerTranslator(_translator: Translator) {}
+    unregisterTranslator(_id: string) {}
+    dispose() {}
+    refreshScheduling() {}
+    needsInput(priority = Infinity, _trustedOnly = false) {
+      return (
+        [...this.pending.keys()].filter(
+          (work) => (work.getPriority?.() ?? 0) <= priority,
+        ).length < 2
+      );
+    }
+    async submit(work: TranslationWork, signal: AbortSignal) {
+      const submitting = this.execute(work, signal);
+      const settled = submitting
+        .catch(() => {})
+        .finally(() => {
+          this.pending.delete(work);
+          this.options?.onSchedulingChange?.();
+        });
+      this.pending.set(work, settled);
+      await submitting;
+    }
+    async drain() {
+      while (this.pending.size) await Promise.all(this.pending.values());
+      await mocks.drain?.();
+    }
+    private async execute(work: TranslationWork, signal: AbortSignal) {
+      mocks.submitted.push(work);
+      if (mocks.blockRemote && work.trustedOnly) {
+        await new Promise<void>((resolve) => {
+          if (signal.aborted) resolve();
+          else
+            signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+        await work.onAbort();
+        signal.throwIfAborted();
+      }
+      if (mocks.failMetadata && work.lines[0] === '元数据') {
+        await work.onError(new Error('metadata failed'));
+      } else {
+        await work.onComplete({ lines: ['译文'], failed: [] });
+      }
+    }
+  }
   return {
     createTranslator: async (config: { trusted: boolean }) => ({
       trusted: config.trusted,
       translate: mocks.translate,
     }),
-    TranslationPipeline: class {
-      private pending = new Map<TranslationWork, Promise<void>>();
-      constructor(
-        private options: ConstructorParameters<
-          typeof actual.TranslationPipeline
-        >[0],
-      ) {
-        if (mocks.translate) return new actual.TranslationPipeline(options);
-      }
-      registerTranslator(_translator: Translator) {}
-      unregisterTranslator(_id: string) {}
-      dispose() {}
-      refreshScheduling() {}
-      needsInput(priority = Infinity, _trustedOnly = false) {
-        return (
-          [...this.pending.keys()].filter(
-            (work) => (work.getPriority?.() ?? 0) <= priority,
-          ).length < 2
-        );
-      }
-      async submit(work: TranslationWork, signal: AbortSignal) {
-        const submitting = this.execute(work, signal);
-        const settled = submitting
-          .catch(() => {})
-          .finally(() => {
-            this.pending.delete(work);
-            this.options?.onSchedulingChange?.();
-          });
-        this.pending.set(work, settled);
-        await submitting;
-      }
-      async drain() {
-        while (this.pending.size) await Promise.all(this.pending.values());
-        await mocks.drain?.();
-      }
-      private async execute(work: TranslationWork, signal: AbortSignal) {
-        mocks.submitted.push(work);
-        if (mocks.blockRemote && work.trustedOnly) {
-          await new Promise<void>((resolve) => {
-            if (signal.aborted) resolve();
-            else
-              signal.addEventListener('abort', () => resolve(), { once: true });
-          });
-          await work.onAbort();
-          signal.throwIfAborted();
-        }
-        if (mocks.failMetadata && work.lines[0] === '元数据') {
-          await work.onError(new Error('metadata failed'));
-        } else {
-          await work.onComplete({ lines: ['译文'], failed: [] });
-        }
-      }
-    },
+    TranslationPipeline: vi.fn(function (
+      options: ConstructorParameters<typeof actual.TranslationPipeline>[0],
+    ) {
+      return mocks.translate
+        ? new actual.TranslationPipeline(options)
+        : new TestPipeline(options);
+    }),
   };
 });
 
@@ -177,7 +182,6 @@ afterEach(() => {
   mocks.failMetadata = false;
   mocks.drain = null;
   mocks.translate = null;
-  vi.restoreAllMocks();
 });
 
 function createRuntime(translatorId: 'sakura' | 'gpt' = 'sakura') {
