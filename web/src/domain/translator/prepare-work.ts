@@ -70,6 +70,7 @@ export class WorkPreparer {
     const abortUnit = () => unitController.abort(signal.reason);
     const releaseUnit = () => signal.removeEventListener('abort', abortUnit);
     let handedOff = false;
+    let finalizePreparation: ((cancelled: boolean) => void) | undefined;
     const setStatus = (status: UnitStatus) =>
       tracker.onUnitStatus(chapterId, status);
     const markError = () => setStatus('error');
@@ -129,6 +130,7 @@ export class WorkPreparer {
           this.task.prepareUnit(ref, context),
           unitSignal,
         );
+        finalizePreparation = prepared.finalize;
         unitSignal.throwIfAborted();
       } finally {
         // 超时仅覆盖原文准备，不限制后续翻译和保存耗时。
@@ -136,6 +138,43 @@ export class WorkPreparer {
       }
       signal.throwIfAborted();
       setStatus('translating');
+      if (prepared.purpose === 'glossary') {
+        tracker.onLog(`[${title}] 开始分析关键术语`);
+        handedOff = true;
+        let finished = false;
+        const finish = (cancelled: boolean) => {
+          if (finished) return;
+          finished = true;
+          prepared.finalize?.(cancelled);
+          markPending();
+          releaseUnit();
+        };
+        return {
+          lines: prepared.lines,
+          purpose: 'glossary',
+          onComplete: async (result) => {
+            try {
+              signal.throwIfAborted();
+              if (result.failed.length)
+                tracker.onLog('术语分析失败，继续正文翻译');
+              else await prepared.save(result.lines);
+            } catch (error) {
+              if (!signal.aborted)
+                tracker.onLog(`术语分析跳过：${String(error)}`);
+            } finally {
+              finish(signal.aborted);
+            }
+          },
+          onError: () => {
+            if (!signal.aborted) tracker.onLog('术语分析失败，继续正文翻译');
+            finish(signal.aborted);
+          },
+          onAbort: () => {
+            abortUnit();
+            finish(true);
+          },
+        };
+      }
       const save = async (lines: readonly string[]) => {
         signal.throwIfAborted();
         if (lines.length !== prepared.lines.length)
@@ -185,7 +224,10 @@ export class WorkPreparer {
       onError(error);
       return undefined;
     } finally {
-      if (!handedOff) releaseUnit();
+      if (!handedOff) {
+        finalizePreparation?.(true);
+        releaseUnit();
+      }
     }
   }
 }

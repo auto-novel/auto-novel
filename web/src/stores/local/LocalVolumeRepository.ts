@@ -30,6 +30,12 @@ export const createLocalVolumeStore = async () => {
       return value;
     });
 
+  const initializeGlossary = (
+    id: string,
+    glossary: Glossary,
+    beforeWrite?: () => void,
+  ) => dao.initializeGlossary(id, glossary, uuidv4(), beforeWrite);
+
   const updateReadAt = (id: string) =>
     dao.updateMetadata(id, (value) => {
       value.readAt = Date.now();
@@ -93,6 +99,7 @@ export const createLocalVolumeStore = async () => {
     createVolume: bind(createVolume),
     deleteVolume,
     updateGlossary,
+    initializeGlossary,
     updateReadAt,
     updateFavoredId,
     //
