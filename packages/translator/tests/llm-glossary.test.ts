@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createTranslator } from '../src/factory';
 import { TranslationPipeline } from '../src/pipeline/pipeline';
 import {
