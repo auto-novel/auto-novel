@@ -10,7 +10,6 @@
   --color-spoiler-ink: #ffffff;
 }
 
-/* 原生内容排版使用 web-kit 语义色，不依赖 Naive UI 的主题变量。 */
 @layer components {
   .content-table {
     @apply w-full border-separate border-spacing-0 bg-default text-left text-sm leading-[1.6] text-default;

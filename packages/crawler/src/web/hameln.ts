@@ -8,7 +8,7 @@ import {
   type WebNovelMetadata,
   type WebNovelProvider,
   type WebNovelTocItem,
-  WebNovelAttention,
+  type WebNovelAttention,
   WebNovelType,
   emptyPage,
 } from './types';

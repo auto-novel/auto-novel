@@ -1,4 +1,4 @@
-FROM node:25-bookworm AS deps
+FROM node:24-bookworm AS deps
 RUN npm install -g corepack@latest --force && corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -13,7 +13,7 @@ COPY daemon/ ./daemon/
 RUN pnpm --filter @auto-novel/daemon... build
 RUN pnpm --filter @auto-novel/daemon deploy --prod --legacy /out
 
-FROM node:25-bookworm-slim
+FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV CONFIG_PATH=/app/config.json

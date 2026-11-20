@@ -1,4 +1,3 @@
-import { isEqual } from 'lodash-es';
 import type {
   Glossary,
   LineRange,
@@ -47,6 +46,20 @@ export const createLineSegmenter = (
   };
 };
 
+const areLinesEqual = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((line, index) => line === b[index]);
+
+const areGlossariesEqual = (a: Glossary, b: Glossary): boolean => {
+  const keys = Object.keys(a);
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(b, key) && a[key] === b[key],
+    )
+  );
+};
+
 /** 组装分段，并根据原文、前文和术语表判定历史译文是否过期。 */
 export function assembleSegments(
   id: string,
@@ -77,9 +90,9 @@ export function assembleSegments(
 
       // 当前原文、前文原文和术语表一致才跳过。
       if (
-        isEqual(segLines, oldSegLines) &&
+        areLinesEqual(segLines, oldSegLines) &&
         previousSource === getPreviousSource(history.lines, start) &&
-        isEqual(segGlossary, oldSegGlossary)
+        areGlossariesEqual(segGlossary, oldSegGlossary)
       ) {
         expired = false;
       }

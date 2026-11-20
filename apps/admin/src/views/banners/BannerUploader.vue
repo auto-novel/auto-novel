@@ -172,7 +172,7 @@ async function upload() {
   try {
     // 校验整批文件，任何一张不通过都不上传。
     const invalid: PendingBanner[] = [];
-    for (const item of [...files.value]) {
+    for (const item of files.value.slice()) {
       if (disposed) return;
       item.error = '';
       if (item.uploaded) continue;
@@ -190,7 +190,7 @@ async function upload() {
         .join('；');
       return;
     }
-    for (const item of [...files.value]) {
+    for (const item of files.value.slice()) {
       if (disposed) break;
       item.error = '';
       try {

@@ -99,7 +99,7 @@ const popoverContent = computed(() => ({
 
 function processQueryWithLocaleAware(input: string): string {
   const cc = useSettingStore().cc;
-  const queries = input.split(/( |\||\+|\-|\")/);
+  const queries = input.split(/( |\||\+|-|")/);
   const result: string[] = [];
   for (const query of queries) {
     if (

@@ -1,9 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createSSRApp } from 'vue';
-import { renderToString } from 'vue/server-renderer';
+// @vitest-environment jsdom
+
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import TaskLink from '../src/pages/workspace/task/TaskLink.vue';
+
+enableAutoUnmount(afterEach);
 
 // 保留真实编解码，隔离统一入口中与链接渲染无关的鉴权客户端。
 vi.mock(
@@ -11,14 +14,13 @@ vi.mock(
   () => import('../src/domain/translator/tasks/task-descriptor'),
 );
 
-async function renderTaskLink(task: string) {
+async function mountTaskLink(task: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
   });
-  const app = createSSRApp(TaskLink, { task }).use(router);
   await router.push('/');
-  return renderToString(app);
+  return mount(TaskLink, { props: { task }, global: { plugins: [router] } });
 }
 
 describe('TaskLink', () => {
@@ -26,32 +28,37 @@ describe('TaskLink', () => {
     ['web/provider/novel', '/novel/provider/novel', 'web/provider/novel'],
     ['wenku/novel/volume', '/wenku/novel', 'wenku/novel'],
   ])('renders %s as a new-tab link', async (task, href, text) => {
-    const html = await renderTaskLink(task);
+    const wrapper = await mountTaskLink(task);
+    const link = wrapper.get('a');
 
-    expect(html).toContain(`href="${href}"`);
-    expect(html).toContain('target="_blank"');
-    expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain(text);
+    expect(link.attributes()).toMatchObject({
+      href,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+    });
+    expect(link.text()).toBe(text);
   });
 
   it('renders malformed persisted tasks without breaking the queue', async () => {
-    const html = await renderTaskLink('web/provider');
-    expect(html).toContain('无效任务：web/provider');
-    expect(html).not.toContain('href=');
+    const wrapper = await mountTaskLink('web/provider');
+    expect(wrapper.text()).toContain('无效任务：web/provider');
+    expect(wrapper.find('a').exists()).toBe(false);
   });
 
   it('renders a local task without a navigation link', async () => {
-    const html = await renderTaskLink('local/volume');
+    const wrapper = await mountTaskLink('local/volume');
 
-    expect(html).toContain('local');
-    expect(html).not.toContain('href=');
+    expect(wrapper.text()).toContain('local');
+    expect(wrapper.find('a').exists()).toBe(false);
   });
 
   it('preserves the chapter range and translation options', async () => {
-    const html = await renderTaskLink(
+    const wrapper = await mountTaskLink(
       'web/provider/novel?startIndex=2&endIndex=10&level=all&forceMetadata=true',
     );
 
-    expect(html).toContain('web/provider/novel [2,10) [全部章节/重翻目录]');
+    expect(wrapper.text()).toContain(
+      'web/provider/novel [2,10) [全部章节/重翻目录]',
+    );
   });
 });

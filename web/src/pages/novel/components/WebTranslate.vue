@@ -68,7 +68,9 @@ const importToWorkspace = () =>
 
 const files = computed(() => {
   const title =
-    setting.value.downloadFilenameType === 'jp' ? titleJp : titleZh ?? titleJp;
+    setting.value.downloadFilenameType === 'jp'
+      ? titleJp
+      : (titleZh ?? titleJp);
 
   const { mode, translationsMode, translations, type } =
     setting.value.downloadFormat;

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vite-plus/test';
 import { ProxyManager } from '@/services/proxy/manager.ts';
 import { ProxyStore } from '@/services/proxy/store.ts';
 

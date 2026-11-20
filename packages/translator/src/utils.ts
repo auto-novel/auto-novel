@@ -23,20 +23,23 @@ export function getPreviousSource(
   let source = '';
   for (let i = end - 1; i >= 0; i--) {
     source = lines[i] + (i < end - 1 ? '\n' : '') + source;
-    if (source.length >= maxLength) return source.slice(-maxLength);
+    if (source.length >= maxLength) {
+      // 截断点可能落在代理对中间，跳过残留的低代理项。
+      return source.slice(-maxLength).replace(/^[\uDC00-\uDFFF]/, '');
+    }
   }
   return source;
 }
 
-export namespace RegexUtil {
+export const RegexUtil = (() => {
   const englishChars = /[a-z]|[A-Z]/;
-  export const hasEnglishChars = (str: string) => englishChars.test(str);
+  const hasEnglishChars = (str: string) => englishChars.test(str);
 
   const hanzi = /[\u4E00-\u9FAF]/;
-  export const hasHanzi = (str: string) => hanzi.test(str);
+  const hasHanzi = (str: string) => hanzi.test(str);
 
   const kanaChars = /[\u3041-\u3096]|[\u30A1-\u30FA]/;
-  export const hasKanaChars = (str: string) => kanaChars.test(str);
+  const hasKanaChars = (str: string) => kanaChars.test(str);
 
   // U+1100–U+11FF: Hangul Jamo
   // U+3130–U+318F: Hangul Compatibility Jamo
@@ -56,12 +59,14 @@ export namespace RegexUtil {
   const hangulSyllables = /[\uAC00-\uD7AF]/;
 
   // https://en.wikipedia.org/wiki/Hangul#Unicode
-  export const hasHangulChars = (str: string) =>
+  const hasHangulChars = (str: string) =>
     hangulSyllables.test(str) ||
     hangulJamo.test(str) ||
     hangulEnclosed.test(str) ||
     hangulHalfWidth.test(str);
-}
+
+  return { hasEnglishChars, hasHanzi, hasKanaChars, hasHangulChars };
+})();
 
 export const safeJson = <T extends object>(text: string) => {
   try {
