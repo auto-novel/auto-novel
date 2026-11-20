@@ -11,6 +11,49 @@
 		file_server
 	}
 
+	# OpenCode Go 不接受网页跨域预检；只转发这一种官方请求。
+	handle /api/translator/opencode-go/chat/completions {
+		@chat {
+			method POST
+			header Content-Type application/json*
+			header_regexp goKey X-OpenCode-Key ^[!-~]+$
+			header_regexp session X-OpenCode-Session ^[a-zA-Z0-9_-]{1,128}$
+		}
+		route @chat {
+			vars goKey {http.request.header.X-OpenCode-Key}
+			request_header -X-OpenCode-Key
+			forward_auth server:8081 {
+				uri /translator/opencode-go/authorize?
+			}
+			request_body {
+				max_size 2MiB
+			}
+			rewrite * /inference/go/openai/v1/chat/completions?
+			reverse_proxy https://opencode.ai {
+				transport http {
+					response_header_timeout 10m
+					read_timeout 10m
+				}
+				header_up -*
+				header_up Host opencode.ai
+				header_up Content-Type application/json
+				header_up User-Agent AutoNovel/1.0
+				header_up Authorization "Bearer {http.vars.goKey}"
+				header_up X-OpenCode-Session {http.request.header.X-OpenCode-Session}
+				header_down -Set-Cookie
+				header_down -WWW-Authenticate
+				header_down Cache-Control no-store
+				header_down Content-Security-Policy "default-src 'none'; sandbox"
+				header_down X-Content-Type-Options nosniff
+				@redirect status 3xx
+				handle_response @redirect {
+					respond 502
+				}
+			}
+		}
+		respond 400
+	}
+
 	handle /api/v1/admin/* {
 		uri strip_prefix /api
 		reverse_proxy api:8101

@@ -1,4 +1,6 @@
 import api.*
+import api.plugins.RateLimitNames
+import api.plugins.authenticateDb
 import api.plugins.authentication
 import api.plugins.contentNegotiation
 import api.plugins.rateLimit
@@ -26,6 +28,7 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.request.*
 import io.ktor.server.resources.*
 import io.ktor.server.response.*
@@ -83,7 +86,11 @@ fun main() {
             routeUserFavoredWeb()
             routeUserFavoredWenku()
             routeUserReadHistoryWeb()
-            routeOpenCodeGo()
+            authenticateDb {
+                rateLimit(RateLimitNames.OpenCodeGo) {
+                    get("/translator/opencode-go/authorize") { call.respond(HttpStatusCode.NoContent) }
+                }
+            }
             //
             routeWebNovel()
             routeWenkuNovel()

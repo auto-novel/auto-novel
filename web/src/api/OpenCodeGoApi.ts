@@ -39,7 +39,6 @@ export const fetchOpenCodeGo: typeof fetch = async (input, init) => {
 
   // Authorization 由共享客户端填入本站登录凭据，不能使用 Go Key 覆盖。
   // 不转发 Cookie、SDK 元数据或调用方指定的地址/请求头。
-  let errorResponse: Response | undefined;
   try {
     return await client.post('translator/opencode-go/chat/completions', {
       headers: {
@@ -52,19 +51,16 @@ export const fetchOpenCodeGo: typeof fetch = async (input, init) => {
       redirect: 'error',
       credentials: 'omit',
       timeout: false,
-      hooks: {
-        afterResponse: [
-          ({ response }) => {
-            // ky 会消费 HTTPError 的正文。只为错误保留副本，成功的 SSE 不做 tee。
-            void errorResponse?.body?.cancel().catch(() => {});
-            errorResponse = response.ok ? undefined : response.clone();
-          },
-        ],
-      },
+      // 仅让 401 进入原站客户端的登录刷新流程，其余响应直接交给 SDK。
+      throwHttpErrors: (status) => status === 401,
     });
   } catch (error) {
-    // 共享客户端仍处理本站登录刷新。服务商状态码和正文交回翻译流水线。
-    if (isHTTPError(error)) return errorResponse ?? error.response;
-    throw error;
+    if (!isHTTPError(error)) throw error;
+    const body =
+      typeof error.data === 'string' ? error.data : JSON.stringify(error.data);
+    return new Response(body, {
+      status: error.response.status,
+      headers: error.response.headers,
+    });
   }
 };

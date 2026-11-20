@@ -87,35 +87,43 @@ it('翻译和逐行降级使用本站客户端、原提示词及同一个 OpenCo
   expect(sessions[0]).toEqual(sessions[1]);
 });
 
-it('返回上游的限流状态、错误正文和重试时间', async () => {
-  const { fetch } = config({ relayOpenCodeGo: true }) as {
-    fetch: typeof globalThis.fetch;
-  };
-  post.mockImplementation((_path, options) =>
-    ky.post('https://site.test/api/translator/opencode-go/chat/completions', {
-      ...options,
-      retry: 0,
-      fetch: async () =>
-        new Response('{"error":{"message":"rate limited"}}', {
-          status: 429,
-          headers: { 'retry-after': '30' },
-        }),
-    }),
-  );
-  const init = {
-    method: 'POST',
-    body: '{}',
-    headers: {
-      authorization: 'Bearer test-go-key',
-      'x-opencode-session': 'session-test',
-    },
-  };
-  const response = await fetch(endpoint + '/chat/completions', init);
-  expect(response.status).toBe(429);
-  expect(response.headers.get('retry-after')).toBe('30');
-  expect(await response.json()).toEqual({ error: { message: 'rate limited' } });
-  await expect(
-    fetch(endpoint, { ...init, signal: AbortSignal.abort() }),
-  ).rejects.toMatchObject({ name: 'AbortError' });
-  expect(post).toHaveBeenCalledTimes(1);
-});
+it.each([401, 429])(
+  '保留上游的 HTTP %i、错误正文和重试时间',
+  async (status) => {
+    const { fetch } = config({ relayOpenCodeGo: true }) as {
+      fetch: typeof globalThis.fetch;
+    };
+    post.mockImplementation((_path, options) =>
+      ky.post('https://site.test/api/translator/opencode-go/chat/completions', {
+        ...options,
+        retry: 0,
+        fetch: async () =>
+          new Response('{"error":{"message":"upstream error"}}', {
+            status,
+            headers: {
+              'content-type': 'application/json',
+              'retry-after': '30',
+            },
+          }),
+      }),
+    );
+    const init = {
+      method: 'POST',
+      body: '{}',
+      headers: {
+        authorization: 'Bearer test-go-key',
+        'x-opencode-session': 'session-test',
+      },
+    };
+    const response = await fetch(endpoint + '/chat/completions', init);
+    expect(response.status).toBe(status);
+    expect(response.headers.get('retry-after')).toBe('30');
+    expect(await response.json()).toEqual({
+      error: { message: 'upstream error' },
+    });
+    await expect(
+      fetch(endpoint, { ...init, signal: AbortSignal.abort() }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(post).toHaveBeenCalledTimes(1);
+  },
+);
