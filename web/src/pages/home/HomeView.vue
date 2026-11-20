@@ -248,7 +248,6 @@ const showQQModal = ref(false);
       >
         <b>{{ name }}</b>
         <br />
-        <!-- eslint-disable-next-line vue/no-v-html -->
         <span v-html="link" />
       </p>
     </template>

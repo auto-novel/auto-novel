@@ -175,7 +175,7 @@ const queueJobs = (type: 'gpt' | 'sakura') => {
             :ui="{ content: 'max-w-[calc(100vw-2rem)]' }"
             :title="`确定删除 ${
               selectedNovels.length === 1
-                ? selectedNovels[0].titleZh ?? selectedNovels[0].titleJp
+                ? (selectedNovels[0].titleZh ?? selectedNovels[0].titleJp)
                 : `${selectedNovels.length}本小说`
             }？`"
             v-model:open="showDeleteModal"

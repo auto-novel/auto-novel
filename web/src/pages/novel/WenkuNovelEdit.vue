@@ -210,7 +210,7 @@ const populateNovelFromAmazon = async (
           title: formValue.value.title ? formValue.value.title : novel.title,
           titleZh: formValue.value.titleZh
             ? formValue.value.titleZh
-            : novel.titleZh ?? '',
+            : (novel.titleZh ?? ''),
           cover: novel.volumes[0]?.cover,
           authors:
             formValue.value.authors.length > 0

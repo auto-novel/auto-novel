@@ -31,7 +31,7 @@ export async function translateLines(
   const translator = await createSingleTaskTranslator(config);
   signal?.throwIfAborted();
   const pipeline = new TranslationPipeline({
-    segmentLength: config.id === 'sakura' ? config.segLength ?? 500 : 3500,
+    segmentLength: config.id === 'sakura' ? (config.segLength ?? 500) : 3500,
   });
   try {
     pipeline.registerTranslator(translator);

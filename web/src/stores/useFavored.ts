@@ -24,7 +24,7 @@ export const useFavoredStore = defineStore(LSKey.Favored, () => {
   const { whoami } = storeToRefs(whoamiStore);
 
   const { data: remoteFavoredList } = useQuery({
-    enabled: whoami.value.isSignedIn,
+    enabled: () => whoami.value.isSignedIn,
     key: ['favored-list'],
     query: () => FavoredApi.listFavored(),
   });

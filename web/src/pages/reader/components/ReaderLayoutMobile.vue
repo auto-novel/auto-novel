@@ -37,6 +37,18 @@ const readerSettingStore = useReaderSettingStore();
 const { readerSetting } = storeToRefs(readerSettingStore);
 
 const onGlobalClick = (event: MouseEvent) => {
+  // 保留正文内控件的原生操作，选中文字时也不触发阅读手势。
+  if (
+    event.defaultPrevented ||
+    (event.target instanceof Element &&
+      event.target.closest(
+        'a, button, summary, input, select, textarea, label, audio, video, [role="button"], [role="link"], [role="textbox"], [contenteditable]:not([contenteditable="false"])',
+      )) ||
+    window.getSelection()?.toString()
+  ) {
+    return;
+  }
+
   const scrollBy = (y: number) => {
     window.scrollBy({
       top: y * window.innerHeight,

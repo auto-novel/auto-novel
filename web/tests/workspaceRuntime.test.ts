@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { effectScope, ref } from 'vue';
 import type { EffectScope } from 'vue';
+import type * as Vue from 'vue';
+import type * as TranslatorModule from '@auto-novel/translator';
 
 import type {
   PreparedUnit,
@@ -29,7 +31,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('vue', async (importOriginal) => {
-  const vue = await importOriginal<typeof import('vue')>();
+  const vue = await importOriginal<typeof Vue>();
   return { ...vue, onUnmounted: vue.onScopeDispose };
 });
 
@@ -62,66 +64,70 @@ vi.mock('@/pages/workspace/useWorkspaceLog', () => ({
   }),
 }));
 vi.mock('@auto-novel/translator', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@auto-novel/translator')>();
+  const actual = await importOriginal<typeof TranslatorModule>();
+  class TestPipeline {
+    private pending = new Map<TranslationWork, Promise<void>>();
+    constructor(
+      private options: ConstructorParameters<
+        typeof actual.TranslationPipeline
+      >[0],
+    ) {}
+    registerTranslator(_translator: Translator) {}
+    unregisterTranslator(_id: string) {}
+    dispose() {}
+    refreshScheduling() {}
+    needsInput(priority = Infinity, _trustedOnly = false) {
+      return (
+        [...this.pending.keys()].filter(
+          (work) => (work.getPriority?.() ?? 0) <= priority,
+        ).length < 2
+      );
+    }
+    async submit(work: TranslationWork, signal: AbortSignal) {
+      const submitting = this.execute(work, signal);
+      const settled = submitting
+        .catch(() => {})
+        .finally(() => {
+          this.pending.delete(work);
+          this.options?.onSchedulingChange?.();
+        });
+      this.pending.set(work, settled);
+      await submitting;
+    }
+    async drain() {
+      while (this.pending.size) await Promise.all(this.pending.values());
+      await mocks.drain?.();
+    }
+    private async execute(work: TranslationWork, signal: AbortSignal) {
+      mocks.submitted.push(work);
+      if (mocks.blockRemote && work.trustedOnly) {
+        await new Promise<void>((resolve) => {
+          if (signal.aborted) resolve();
+          else
+            signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+        await work.onAbort();
+        signal.throwIfAborted();
+      }
+      if (mocks.failMetadata && work.lines[0] === '元数据') {
+        await work.onError(new Error('metadata failed'));
+      } else {
+        await work.onComplete({ lines: ['译文'], failed: [] });
+      }
+    }
+  }
   return {
     createTranslator: async (config: { trusted: boolean }) => ({
       trusted: config.trusted,
       translate: mocks.translate,
     }),
-    TranslationPipeline: class {
-      private pending = new Map<TranslationWork, Promise<void>>();
-      constructor(
-        private options: ConstructorParameters<
-          typeof actual.TranslationPipeline
-        >[0],
-      ) {
-        if (mocks.translate) return new actual.TranslationPipeline(options);
-      }
-      registerTranslator(_translator: Translator) {}
-      unregisterTranslator(_id: string) {}
-      dispose() {}
-      refreshScheduling() {}
-      needsInput(priority = Infinity, _trustedOnly = false) {
-        return (
-          [...this.pending.keys()].filter(
-            (work) => (work.getPriority?.() ?? 0) <= priority,
-          ).length < 2
-        );
-      }
-      async submit(work: TranslationWork, signal: AbortSignal) {
-        const submitting = this.execute(work, signal);
-        const settled = submitting
-          .catch(() => {})
-          .finally(() => {
-            this.pending.delete(work);
-            this.options?.onSchedulingChange?.();
-          });
-        this.pending.set(work, settled);
-        await submitting;
-      }
-      async drain() {
-        while (this.pending.size) await Promise.all(this.pending.values());
-        await mocks.drain?.();
-      }
-      private async execute(work: TranslationWork, signal: AbortSignal) {
-        mocks.submitted.push(work);
-        if (mocks.blockRemote && work.trustedOnly) {
-          await new Promise<void>((resolve) => {
-            if (signal.aborted) resolve();
-            else
-              signal.addEventListener('abort', () => resolve(), { once: true });
-          });
-          await work.onAbort();
-          signal.throwIfAborted();
-        }
-        if (mocks.failMetadata && work.lines[0] === '元数据') {
-          await work.onError(new Error('metadata failed'));
-        } else {
-          await work.onComplete({ lines: ['译文'], failed: [] });
-        }
-      }
-    },
+    TranslationPipeline: vi.fn(function (
+      options: ConstructorParameters<typeof actual.TranslationPipeline>[0],
+    ) {
+      return mocks.translate
+        ? new actual.TranslationPipeline(options)
+        : new TestPipeline(options);
+    }),
   };
 });
 

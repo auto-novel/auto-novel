@@ -34,7 +34,10 @@ export type DomQueryResults = {
 export interface AddonApi {
   version: string;
 
-  compat: any;
+  compat: {
+    tabFetch?: { redirect?: string };
+    tab?: { domQuery?: { base?: string } };
+  };
   capabilities: AddonCapabilityManifest;
 
   ping(): Promise<string>;

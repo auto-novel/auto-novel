@@ -1,12 +1,16 @@
-import { describe, expect, it } from 'vitest';
-import { createSSRApp } from 'vue';
-import { renderToString } from 'vue/server-renderer';
+// @vitest-environment jsdom
+
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { nextTick, reactive } from 'vue';
 
 import { TaskState } from '../src/domain/translator/task-state';
 import ChapterGrid from '../src/pages/workspace/task/ChapterGrid.vue';
 
+enableAutoUnmount(afterEach);
+
 function createState(count = 1) {
-  const state = new TaskState();
+  const state = reactive(new TaskState());
   state.initialize(
     Array.from({ length: count }, (_, i) => ({
       kind: 'chapter' as const,
@@ -29,29 +33,36 @@ function prepare(state: TaskState, id: string) {
   return detail;
 }
 
-const render = (taskState: TaskState) =>
-  renderToString(createSSRApp(ChapterGrid, { taskState }));
-
 describe('chapter display regions', () => {
   it('shows translating units only when ready and preserves phase labels', async () => {
     const state = createState();
     state.updateStatus('0', 'translating');
-    expect(await render(state)).not.toContain('data-region=');
+    const wrapper = mount(ChapterGrid, { props: { taskState: state } });
+    expect(wrapper.find('[data-region]').exists()).toBe(false);
 
     const detail = prepare(state, '0');
-    const queuedHtml = await render(state);
-    expect(queuedHtml).toContain('data-region="translating"');
-    expect(queuedHtml).toContain('排队中');
+    await nextTick();
+    expect(wrapper.find('[data-region="translating"]').exists()).toBe(true);
+    expect(
+      wrapper.get('[data-chapter-id="0"]').attributes('aria-label'),
+    ).toContain('排队中');
     expect(state.chapters[0]!.status).toBe('translating');
 
     detail.onSegStart(0, 'worker');
-    expect(await render(state)).toContain('翻译中');
+    await nextTick();
+    expect(
+      wrapper.get('[data-chapter-id="0"]').attributes('aria-label'),
+    ).toContain('翻译中');
     detail.onSegComplete(0, ['译文']);
     detail.onSegComplete(1, ['后续译文']);
-    expect(await render(state)).toContain('保存中');
+    await nextTick();
+    expect(
+      wrapper.get('[data-chapter-id="0"]').attributes('aria-label'),
+    ).toContain('保存中');
 
     state.updateStatus('0', 'done');
-    expect(await render(state)).not.toContain('data-region=');
+    await nextTick();
+    expect(wrapper.find('[data-region]').exists()).toBe(false);
   });
 
   it('keeps completed translations visible after abort and leaves the paused group on resume', async () => {
@@ -64,22 +75,23 @@ describe('chapter display regions', () => {
     detail.onAbort();
     state.updateStatus(unit.chapterId, 'pending');
 
-    expect(state.isPausedUnit(unit)).toBe(true);
+    const wrapper = mount(ChapterGrid, { props: { taskState: state } });
     expect(detail.segments[0]!.translatedLines).toEqual(['译文']);
-    const html = await render(state);
-    expect(html).toContain('data-region="paused"');
-    expect(html).toContain('已暂停');
-    expect(html).toContain('已完成 1/2 段');
+    expect(wrapper.find('[data-region="paused"]').exists()).toBe(true);
+    expect(
+      wrapper.get('[data-chapter-id="0"]').attributes('aria-label'),
+    ).toContain('已暂停 · 已完成 1/2 段');
 
     state.updateStatus(unit.chapterId, 'translating');
-    expect(state.isPausedUnit(unit)).toBe(false);
-    const resumedHtml = await render(state);
-    expect(resumedHtml).not.toContain('data-region="paused"');
-    expect(resumedHtml).toContain('data-region="translating"');
-    expect(resumedHtml).toContain('已完成 1/2 段');
+    await nextTick();
+    expect(wrapper.find('[data-region="paused"]').exists()).toBe(false);
+    expect(wrapper.find('[data-region="translating"]').exists()).toBe(true);
+    expect(
+      wrapper.get('[data-chapter-id="0"]').attributes('aria-label'),
+    ).toContain('已完成 1/2 段');
   });
 
-  it('does not label untouched, queued or unready units as paused', async () => {
+  it('does not label untouched, queued or unready units as paused', () => {
     const state = createState(3);
     prepare(state, '1');
     const unready = state.getUnitDetails('2')!;
@@ -91,9 +103,8 @@ describe('chapter display regions', () => {
         error: null,
       },
     ];
-    for (const unit of state.units)
-      expect(state.isPausedUnit(unit)).toBe(false);
-    expect(await render(state)).not.toContain('data-region="paused"');
+    const wrapper = mount(ChapterGrid, { props: { taskState: state } });
+    expect(wrapper.find('[data-region="paused"]').exists()).toBe(false);
   });
 
   it('includes interrupted metadata and failed segments without changing task progress', async () => {
@@ -102,14 +113,18 @@ describe('chapter display regions', () => {
     const detail = prepare(state, metadata.chapterId);
     detail.onSegError(0, new Error('失败原因'));
 
-    expect(state.isPausedUnit(metadata)).toBe(true);
-    expect(await render(state)).toContain('小说信息 · 小说信息 · 已暂停');
+    const wrapper = mount(ChapterGrid, { props: { taskState: state } });
+    expect(
+      wrapper.get('[data-region="paused"] button').attributes('aria-label'),
+    ).toContain('小说信息 · 小说信息 · 已暂停');
     expect(state.progress).toEqual({ finished: 0, error: 0, total: 1 });
     state.updateStatus(metadata.chapterId, 'error');
-    expect(state.isPausedUnit(metadata)).toBe(false);
-    expect(await render(state)).toContain('data-region="error"');
+    await nextTick();
+    expect(wrapper.find('[data-region="paused"]').exists()).toBe(false);
+    expect(wrapper.find('[data-region="error"]').exists()).toBe(true);
     state.resetFailedUnits();
-    expect(state.isPausedUnit(metadata)).toBe(false);
+    await nextTick();
+    expect(wrapper.find('[data-region]').exists()).toBe(false);
   });
 
   it('limits paused previews to six items and offers expansion', async () => {
@@ -117,9 +132,14 @@ describe('chapter display regions', () => {
     for (const unit of state.chapters) {
       prepare(state, unit.chapterId).onSegComplete(0, ['译文']);
     }
-    const html = await render(state);
-    expect(html.match(/data-chapter-id=/g)).toHaveLength(6);
-    expect(html).toContain('查看全部 7 项');
-    expect(html).toContain('aria-expanded="false"');
+    const wrapper = mount(ChapterGrid, { props: { taskState: state } });
+    const toggle = wrapper.get('[aria-expanded]');
+    expect(wrapper.findAll('[data-chapter-id]')).toHaveLength(6);
+    expect(toggle.text()).toBe('查看全部 7 项');
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+
+    await toggle.trigger('click');
+    expect(wrapper.findAll('[data-chapter-id]')).toHaveLength(7);
+    expect(toggle.attributes('aria-expanded')).toBe('true');
   });
 });

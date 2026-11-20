@@ -14,7 +14,6 @@ export async function useOpenCC(locale: Locale) {
   if (locale === 'origin') {
     return defaultConverter;
   } else if (locale === 'zh-cn') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const opencc: any = await import('opencc-js');
     const ccLocale = opencc.Locale;
     return {
@@ -22,7 +21,6 @@ export async function useOpenCC(locale: Locale) {
       toData: (text: string) => text,
     };
   } else if (locale === 'zh-tw') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const opencc: any = await import('opencc-js');
     const ccLocale = opencc.Locale;
     const customDict = [

@@ -1,18 +1,27 @@
 // @vitest-environment jsdom
 import UModal from '@nuxt/ui/components/Modal.vue';
-import { afterEach, describe, expect, it } from 'vitest';
-import { createApp, h, nextTick, ref, type App } from 'vue';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
+import {
+  DOMWrapper,
+  enableAutoUnmount,
+  flushPromises,
+  mount as mountComponent,
+} from '@vue/test-utils';
+import { h, nextTick, ref } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import ReaderColorPicker from '../src/pages/reader/components/ReaderColorPicker.vue';
 
-let app: App;
-afterEach(() => {
-  app?.unmount();
-  document.body.replaceChildren();
+enableAutoUnmount((unmount) => {
+  afterEach(() => {
+    unmount();
+    document.body.replaceChildren();
+  });
 });
 const flush = async () => {
   await nextTick();
+  await flushPromises();
+  // Reka defers focus and body pointer-event cleanup to the next timer turn.
   await new Promise((resolve) => setTimeout(resolve, 0));
   await nextTick();
 };
@@ -21,58 +30,59 @@ async function mount() {
   const bodyColor = ref('#FFFFFF');
   const fontColor = ref('#000000');
   const modalOpen = ref(true);
-  const host = document.createElement('div');
-  document.body.append(host);
-  app = createApp(() =>
-    h(
-      UModal,
-      {
-        open: modalOpen.value,
-        title: '阅读设置',
-        'onUpdate:open': (open: boolean) => (modalOpen.value = open),
-      },
-      {
-        body: () =>
-          (
-            [
-              ['背景', bodyColor],
-              ['文字', fontColor],
-            ] as const
-          ).map(([label, color]) =>
-            h(ReaderColorPicker, {
-              label,
-              modelValue: color.value,
-              'onUpdate:modelValue': (value: string) => (color.value = value),
-            }),
-          ),
-      },
-    ),
-  );
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/', component: { render: () => null } }],
   });
-  app.use(router);
+  await router.push('/');
   await router.isReady();
-  app.mount(host);
+  mountComponent(
+    {
+      render: () =>
+        h(
+          UModal,
+          {
+            open: modalOpen.value,
+            title: '阅读设置',
+            'onUpdate:open': (open: boolean) => (modalOpen.value = open),
+          },
+          {
+            body: () =>
+              (
+                [
+                  ['背景', bodyColor],
+                  ['文字', fontColor],
+                ] as const
+              ).map(([label, color]) =>
+                h(ReaderColorPicker, {
+                  label,
+                  modelValue: color.value,
+                  'onUpdate:modelValue': (value: string) =>
+                    (color.value = value),
+                }),
+              ),
+          },
+        ),
+    },
+    { attachTo: document.body, global: { plugins: [router] } },
+  );
   await flush();
   return { bodyColor, fontColor, modalOpen };
 }
 
 async function openPicker(label: string) {
-  document
-    .querySelector<HTMLButtonElement>(`button[aria-label^="${label}："]`)!
-    .click();
+  await new DOMWrapper(
+    document.querySelector<HTMLButtonElement>(
+      `button[aria-label^="${label}："]`,
+    )!,
+  ).trigger('click');
   await flush();
   return document.querySelector<HTMLInputElement>(
     `input[aria-label="${label} HEX"]`,
   )!;
 }
 async function enter(input: HTMLInputElement, value: string) {
-  input.value = value;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  await nextTick();
-  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await new DOMWrapper(input).setValue(value);
   await flush();
 }
 async function escape() {

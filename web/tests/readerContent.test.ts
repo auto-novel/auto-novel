@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, nextTick, ref, type App } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { nextTick, ref } from 'vue';
 
 import ReaderContent from '../src/pages/reader/components/ReaderContent.vue';
 
@@ -37,15 +38,13 @@ vi.mock('@nuxt/ui/components/Link.vue', () => ({ default: passthrough }));
 vi.mock('@nuxt/ui/components/Separator.vue', () => ({ default: passthrough }));
 vi.mock('@nuxt/ui/components/Alert.vue', () => ({ default: passthrough }));
 
-let app: App | undefined;
+enableAutoUnmount(afterEach);
 afterEach(() => {
-  app?.unmount();
-  app = undefined;
   document.body.replaceChildren();
   vi.unstubAllGlobals();
 });
 
-async function mount(mode: string, initiallyDark = false) {
+async function mountReader(mode: string, initiallyDark = false) {
   readerSetting.value.theme = { mode, fontColor: '#123456' };
   let dark = initiallyDark;
   const media = new EventTarget();
@@ -56,27 +55,29 @@ async function mount(mode: string, initiallyDark = false) {
   const matchMedia = vi.fn(() => media as MediaQueryList);
   vi.stubGlobal('matchMedia', matchMedia);
 
-  const host = document.createElement('div');
-  document.body.append(host);
-  app = createApp(ReaderContent, {
-    gnid: { type: 'local', volumeId: 'test' },
-    chapterId: 'chapter-1',
-    chapter: {
+  const wrapper = mount(ReaderContent, {
+    attachTo: document.body,
+    props: {
+      gnid: { type: 'local', volumeId: 'test' },
       chapterId: 'chapter-1',
-      titleJp: '第一章',
-      paragraphs: ['本文'],
+      chapter: {
+        chapterId: 'chapter-1',
+        titleJp: '第一章',
+        paragraphs: ['本文'],
+      },
     },
   });
-  const vm = app.mount(host);
   await nextTick();
-  expect(host.querySelector('.chapter-content')?.textContent).toContain('本文');
+  expect(wrapper.get('.chapter-content').text()).toContain('本文');
+  const vm = wrapper.vm;
   expect(matchMedia).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
 
   // jsdom 不解析 CSS v-bind 的计算样式，读取实际组件生成样式所用的响应式值。
-  const state = vm.$.setupState as {
-    fontColor: string;
-    underlineColor: string;
-  };
+  const state = (
+    vm.$ as typeof vm.$ & {
+      setupState: { fontColor: string; underlineColor: string };
+    }
+  ).setupState;
   return {
     expectColor(color: string) {
       expect(state.fontColor).toBe(color);
@@ -99,7 +100,7 @@ describe('reader content theme', () => {
   it.each([false, true])(
     'follows system changes with initial prefers-dark=%s',
     async (initiallyDark) => {
-      const reader = await mount('system', initiallyDark);
+      const reader = await mountReader('system', initiallyDark);
       reader.expectColor(initiallyDark ? '#FFFFFF' : '#000000');
       await reader.setDark(!initiallyDark);
       reader.expectColor(initiallyDark ? '#000000' : '#FFFFFF');
@@ -113,7 +114,7 @@ describe('reader content theme', () => {
     ['dark', '#FFFFFF'],
     ['custom', '#123456'],
   ])('keeps %s colors when the system changes', async (mode, color) => {
-    const reader = await mount(mode);
+    const reader = await mountReader(mode);
     reader.expectColor(color);
     await reader.setDark(true);
     reader.expectColor(color);
