@@ -41,6 +41,9 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     }
 
     parts.push('仅翻译以下当前原文，注意要保留每一段开头的编号：');
+    parts.push(
+      '以 __AN_KEEP_ 开头的保护标记必须逐字保留，不要增删、改写或移动标签标记。',
+    );
     lines.forEach((line, i) => parts.push(`#${i + 1}:${line}`));
     if (lines.length === 1) {
       parts.push('原文到此为止'); // 防止乱编
