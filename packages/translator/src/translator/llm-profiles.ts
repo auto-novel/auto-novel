@@ -145,17 +145,6 @@ const responsesProfile = defineProfile({
   },
 });
 
-const openCodeGoProfile = defineProfile({
-  id: 'opencode-go',
-  apiFormat: 'openai',
-  label: 'OpenCode Go',
-  fields: reasoningFields,
-  buildRequestParams: (values) => {
-    const effort = resolveReasoningEffort(values);
-    return effort ? { reasoning_effort: effort } : {};
-  },
-});
-
 const anthropicProfile = defineProfile({
   id: 'anthropic',
   apiFormat: 'anthropic-messages',
@@ -207,7 +196,6 @@ const geminiProfile = defineProfile({
 export const openAiProfiles = [
   deepSeekProfile,
   openAiProfile,
-  openCodeGoProfile,
   responsesProfile,
   anthropicProfile,
   geminiProfile,

@@ -1,5 +1,5 @@
 import type { Glossary } from './Glossary';
-import { createOpenCodeGoFetch } from '@/api/OpenCodeGoApi';
+import { fetchOpenCodeGo, isOpenCodeGoEndpoint } from '@/api/OpenCodeGoApi';
 import type {
   OpenAiProfileSelection,
   TranslatorConfig,
@@ -21,6 +21,7 @@ export interface GptWorker {
 export interface GptPipelineWorker extends GptWorker {
   concurrency: number;
   profile?: OpenAiProfileSelection;
+  relayOpenCodeGo?: boolean;
 }
 
 export interface SakuraWorker {
@@ -46,9 +47,9 @@ export function toTranslatorConfig(
     key: gpt.key,
     model: gpt.model,
     profile: gpt.profile,
-    ...(gpt.profile?.id === 'opencode-go' && {
-      fetch: createOpenCodeGoFetch(),
-    }),
+    ...(gpt.relayOpenCodeGo === true &&
+      gpt.profile?.id === 'openai' &&
+      isOpenCodeGoEndpoint(gpt.endpoint) && { fetch: fetchOpenCodeGo }),
   };
 }
 

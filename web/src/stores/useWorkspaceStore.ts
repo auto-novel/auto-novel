@@ -129,7 +129,20 @@ const createGptWorkspaceStore = () =>
   });
 
 const createGptPipelineWorkspaceStore = () =>
-  createWorkspaceStore<GptPipelineWorker>(LSKey.WorkspaceGptPipeline, []);
+  createWorkspaceStore<GptPipelineWorker>(
+    LSKey.WorkspaceGptPipeline,
+    [],
+    (workspace) => {
+      // 兼容已使用过 OpenCode Go 独立预设的配置。
+      for (const worker of workspace.value.workers) {
+        const profileId: string | undefined = worker.profile?.id;
+        if (profileId === 'opencode-go') {
+          worker.profile = { id: 'openai', values: worker.profile?.values };
+          worker.relayOpenCodeGo = true;
+        }
+      }
+    },
+  );
 
 const createSakuraWorkspaceStore = () =>
   createWorkspaceStore<SakuraWorker>(

@@ -1,186 +1,121 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import ky from 'ky';
-
-import { createOpenCodeGoFetch } from '../src/api/OpenCodeGoApi';
-import { toTranslatorConfig } from '../src/model/Translator';
+import { createTranslator } from '@auto-novel/translator';
 import {
-  createTranslator,
-  OPEN_CODE_GO_ENDPOINT,
-} from '@auto-novel/translator';
+  toTranslatorConfig,
+  type GptPipelineWorker,
+} from '../src/model/Translator';
 
-const mocks = vi.hoisted(() => ({ post: vi.fn() }));
-vi.mock('../src/api/client', () => ({ client: { post: mocks.post } }));
+const post = vi.hoisted(() => vi.fn());
+vi.mock('../src/api/client', () => ({ client: { post } }));
+afterEach(() => post.mockReset());
 
-const url = `${OPEN_CODE_GO_ENDPOINT}/chat/completions`;
-const body = JSON.stringify({
+const endpoint = 'https://opencode.ai/inference/go/openai/v1';
+const worker: GptPipelineWorker = {
+  id: 'Go',
   model: 'deepseek-v4.1-flash',
-  messages: [{ role: 'user', content: 'source' }],
-  stream: true,
-});
-const init = {
-  method: 'POST',
-  headers: {
-    authorization: 'Bearer go-test-key',
-    'content-type': 'application/json',
-    'x-unrelated': 'do not forward',
-  },
-  body,
+  key: 'test-go-key',
+  concurrency: 1,
+  endpoint,
+  profile: { id: 'openai', values: { reasoning_effort: 'high' } },
 };
+const config = (changes: Partial<GptPipelineWorker>) =>
+  toTranslatorConfig('gpt', { ...worker, ...changes });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-  mocks.post.mockReset();
+it('只有用户开启中转并使用官方 Chat Completions 地址时才转发', () => {
+  expect(config({})).not.toHaveProperty('fetch');
+  expect(config({ relayOpenCodeGo: false })).not.toHaveProperty('fetch');
+  expect(
+    config({ relayOpenCodeGo: true, profile: { id: 'openai-responses' } }),
+  ).not.toHaveProperty('fetch');
+  for (const address of [
+    endpoint,
+    endpoint + '/chat/completions',
+    'https://opencode.ai/zen/go/v1',
+  ]) {
+    expect(config({ relayOpenCodeGo: true, endpoint: address })).toHaveProperty(
+      'fetch',
+    );
+  }
+  for (const address of [
+    'https://opencode.ai.evil.test/inference/go/openai/v1',
+    'https://opencode.ai/inference/openai/v1',
+    'http://opencode.ai/inference/go/openai/v1',
+    endpoint + '?key=x',
+    endpoint + '#fragment',
+    'https://user:pass@opencode.ai/inference/go/openai/v1',
+  ]) {
+    expect(
+      config({ relayOpenCodeGo: true, endpoint: address }),
+    ).not.toHaveProperty('fetch');
+  }
 });
 
-describe('OpenCode Go native relay', () => {
-  it('工作区配置通过原翻译器、原提示词和 SDK 完成同源转发', async () => {
-    mocks.post.mockImplementation(async (_path, options) => {
-      expect(JSON.parse(options.body)).toMatchObject({
-        model: 'deepseek-v4.1-flash',
-        reasoning_effort: 'high',
-        stream: true,
-      });
-      expect(options.headers['x-opencode-key']).toBe('go-test-key');
-      expect(options.headers['x-opencode-session']).toMatch(/^[a-f0-9-]{36}$/);
-      return new Response(
-        [
-          { choices: [{ index: 0, delta: { content: '#1:这是译文。' } }] },
-          { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
-          '[DONE]',
-        ]
-          .map(
-            (event) =>
-              `data: ${typeof event === 'string' ? event : JSON.stringify(event)}\n\n`,
-          )
-          .join(''),
-        { headers: { 'content-type': 'text/event-stream' } },
-      );
-    });
-    const translator = await createTranslator(
-      toTranslatorConfig('gpt', {
-        id: 'Go',
-        endpoint: OPEN_CODE_GO_ENDPOINT,
-        model: 'deepseek-v4.1-flash',
-        key: 'go-test-key',
-        concurrency: 48,
-        profile: { id: 'opencode-go', values: { reasoning_effort: 'high' } },
-      }),
-    );
-    expect(
-      await translator.translate({ lines: ['これは原文です。'], attempt: 0 }),
-    ).toEqual(['这是译文。']);
-    expect(mocks.post).toHaveBeenCalledTimes(1);
-  });
-
-  it('保存的手动配置由用户选择 Go 预设后才会中转', () => {
-    const worker = {
-      id: 'Go',
-      endpoint: OPEN_CODE_GO_ENDPOINT,
-      model: 'deepseek-v4.1-flash',
-      key: 'go-test-key',
-      concurrency: 1,
-    };
-    expect(toTranslatorConfig('gpt', worker)).not.toHaveProperty('fetch');
-    expect(
-      toTranslatorConfig('gpt', { ...worker, profile: { id: 'opencode-go' } }),
-    ).toHaveProperty('fetch');
-  });
-
-  it('只通过本站客户端发送 Go Key、稳定会话和原始正文，逐字返回 SSE', async () => {
-    const response = new Response('data: [DONE]\n\n', {
-      headers: { 'content-type': 'text/event-stream' },
-    });
-    mocks.post.mockResolvedValue(response);
-    const transport = createOpenCodeGoFetch();
-    expect(await transport(url, init)).toBe(response);
-    await transport(new Request(url, init));
-    const otherTransport = createOpenCodeGoFetch();
-    await otherTransport(url, init);
-    expect(mocks.post).toHaveBeenCalledTimes(3);
-    const [path, options] = mocks.post.mock.calls[0];
+it('翻译和逐行降级使用本站客户端、原提示词及同一个 OpenCode 会话', async () => {
+  const sessions: string[] = [];
+  post.mockImplementation(async (path, options) => {
     expect(path).toBe('translator/opencode-go/chat/completions');
     expect(options).toMatchObject({
-      body,
       redirect: 'error',
-      timeout: false,
+      credentials: 'omit',
       headers: {
         'content-type': 'application/json',
-        'x-opencode-key': 'go-test-key',
+        'x-opencode-key': worker.key,
+        'x-opencode-session': expect.stringMatching(/^[a-f0-9-]{36}$/),
       },
     });
-    expect(Object.keys(options.headers)).toEqual([
-      'content-type',
-      'x-opencode-key',
-      'x-opencode-session',
-    ]);
-    const session = options.headers['x-opencode-session'];
-    expect(session).toMatch(/^[a-f0-9-]{36}$/);
-    expect(mocks.post.mock.calls[1][1].headers['x-opencode-session']).toBe(
-      session,
-    );
-    expect(mocks.post.mock.calls[2][1].headers['x-opencode-session']).not.toBe(
-      session,
-    );
-  });
-
-  it('其他服务商和自定义网关沿用 fetch，不经过本站或附加 Go 信息', async () => {
-    const direct = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response());
-    const transport = createOpenCodeGoFetch();
-    for (const endpoint of [
-      'https://api.deepseek.com/v1/chat/completions',
-      'http://localhost:8080/v1/chat/completions',
-      'https://opencode.ai/inference/openai/v1/chat/completions',
-    ]) {
-      await transport(endpoint, init);
-      expect(direct).toHaveBeenLastCalledWith(endpoint, init);
-    }
-    expect(mocks.post).not.toHaveBeenCalled();
-  });
-
-  it('服务商错误状态和正文仍交给翻译器，网络错误保持原异常', async () => {
-    const response = new Response('{"error":{"message":"rate limited"}}', {
-      status: 429,
-      headers: { 'retry-after': '30' },
+    expect(options.headers).not.toHaveProperty('authorization');
+    expect(JSON.parse(options.body)).toMatchObject({
+      model: worker.model,
+      reasoning_effort: 'high',
+      stream: true,
+      messages: expect.arrayContaining([
+        expect.objectContaining({ role: 'user' }),
+      ]),
     });
-    mocks.post.mockImplementationOnce((_path, options) =>
-      ky.post('https://site.test/api/translator/opencode-go/chat/completions', {
-        ...options,
-        retry: 0,
-        fetch: async () => response,
-      }),
+    sessions.push(options.headers['x-opencode-session']);
+    return new Response(
+      'data: {"choices":[{"index":0,"delta":{"content":"#1:早上好。"}}]}\n\ndata: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } },
     );
-    const result = await createOpenCodeGoFetch()(url, init);
-    expect(result.status).toBe(429);
-    expect(result.headers.get('retry-after')).toBe('30');
-    expect(await result.text()).toContain('rate limited');
-    const networkError = new TypeError('offline');
-    mocks.post.mockRejectedValueOnce(networkError);
-    await expect(createOpenCodeGoFetch()(url, init)).rejects.toBe(networkError);
   });
+  const translator = await createTranslator(config({ relayOpenCodeGo: true }));
+  const request = { lines: ['おはようございます。'], attempt: 0 };
+  expect(await translator.translate(request)).toEqual(['早上好。']);
+  expect(await translator.fallback!(request)).toEqual(['早上好。']);
+  expect(sessions).toHaveLength(2);
+  expect(sessions[0]).toEqual(sessions[1]);
+});
 
-  it('运行中取消会传给同源请求；已取消和缺少 Key 的请求不发送', async () => {
-    const controller = new AbortController();
-    mocks.post.mockImplementation(
-      (_path, options) =>
-        new Promise((_resolve, reject) => {
-          options.signal.addEventListener('abort', () =>
-            reject(options.signal.reason),
-          );
-          controller.abort();
+it('返回上游的限流状态、错误正文和重试时间', async () => {
+  const { fetch } = config({ relayOpenCodeGo: true }) as {
+    fetch: typeof globalThis.fetch;
+  };
+  post.mockImplementation((_path, options) =>
+    ky.post('https://site.test/api/translator/opencode-go/chat/completions', {
+      ...options,
+      retry: 0,
+      fetch: async () =>
+        new Response('{"error":{"message":"rate limited"}}', {
+          status: 429,
+          headers: { 'retry-after': '30' },
         }),
-    );
-    await expect(
-      createOpenCodeGoFetch()(url, { ...init, signal: controller.signal }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    expect(mocks.post).toHaveBeenCalledTimes(1);
-    await expect(
-      createOpenCodeGoFetch()(url, { ...init, signal: controller.signal }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    await expect(
-      createOpenCodeGoFetch()(url, { ...init, headers: {} }),
-    ).rejects.toThrow(/Key/);
-    expect(mocks.post).toHaveBeenCalledTimes(1);
-  });
+    }),
+  );
+  const init = {
+    method: 'POST',
+    body: '{}',
+    headers: {
+      authorization: 'Bearer test-go-key',
+      'x-opencode-session': 'session-test',
+    },
+  };
+  const response = await fetch(endpoint + '/chat/completions', init);
+  expect(response.status).toBe(429);
+  expect(response.headers.get('retry-after')).toBe('30');
+  expect(await response.json()).toEqual({ error: { message: 'rate limited' } });
+  await expect(
+    fetch(endpoint, { ...init, signal: AbortSignal.abort() }),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+  expect(post).toHaveBeenCalledTimes(1);
 });
