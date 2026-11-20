@@ -9,7 +9,10 @@ import type {
   TranslationTask,
 } from '../src/domain/translator/tasks/task';
 import type { TranslationWork, Translator } from '@auto-novel/translator';
+import type { TranslateJobRecord } from '../src/model/Translator';
 import { useWorkspaceRuntime } from '../src/pages/workspace/useWorkspaceRuntime';
+import { addWorkspaceJob } from '../src/stores/workspaceJob';
+import { useLocalStorage } from '../src/util/useStorage';
 
 const mocks = vi.hoisted(() => ({
   appendLog: vi.fn(),
@@ -20,7 +23,10 @@ const mocks = vi.hoisted(() => ({
   failMetadata: false,
   drain: null as (() => Promise<void>) | null,
   translate: null as Translator['translate'] | null,
-  parseTask: vi.fn((desc: string) => ({ desc, params: {} })),
+  parseTask: vi.fn((desc: string) => ({
+    desc,
+    params: { level: new URLSearchParams(desc.split('?')[1]).get('level') },
+  })),
   clearCache: vi.fn<(storeName: string) => Promise<void>>(),
 }));
 
@@ -182,6 +188,8 @@ afterEach(() => {
   mocks.failMetadata = false;
   mocks.drain = null;
   mocks.translate = null;
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function createRuntime(translatorId: 'sakura' | 'gpt' = 'sakura') {
@@ -243,6 +251,90 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
+
+it('resumes a GPT retranslation after reopening without redoing saved chapters', async () => {
+  const job = {
+    task: 'local/novel?level=all',
+    description: '重翻小说',
+    createAt: 1,
+  };
+  const storageKey = 'workspace-gpt';
+  let stored: string | null = null;
+  vi.stubGlobal('window', {
+    localStorage: {
+      getItem: () => stored,
+      setItem: (_key: string, value: string) => (stored = value),
+    },
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
+  const openWorkspace = () => {
+    const scope = effectScope();
+    runtimeScopes.push(scope);
+    const storage = scope.run(() =>
+      useLocalStorage(storageKey, {
+        jobs: [{ ...job }] as TranslateJobRecord[],
+        workers: [{ id: 'trusted', trusted: true }],
+      }),
+    )!;
+    mocks.store = { ref: storage };
+    const runtime = scope.run(() => useWorkspaceRuntime('gpt'))!;
+    return { scope, storage, runtime };
+  };
+  const createRetranslation = () => {
+    const translation = task('local');
+    translation.chapters.push({
+      ...translation.chapters[0],
+      chapterId: '2',
+      order: 1,
+    });
+    mocks.tasks.set(job.task, translation);
+    return translation;
+  };
+
+  const first = createRetranslation();
+  const pendingSave = deferred<void>();
+  const firstSave = vi.fn(() => pendingSave.promise);
+  first.prepareUnit.mockResolvedValueOnce({
+    lines: ['第一章原文'],
+    glossary: {},
+    save: firstSave,
+  });
+  const session = openWorkspace();
+  await session.runtime.startWorker('trusted');
+  await vi.waitFor(() => {
+    expect(firstSave).toHaveBeenCalledOnce();
+    expect(first.chapterSave).toHaveBeenCalledOnce();
+    expect(JSON.parse(stored ?? '{}').jobs?.[0]).toMatchObject({
+      completedChapterIds: ['2'],
+      progress: { finished: 1, total: 2 },
+    });
+  });
+  session.scope.stop();
+  pendingSave.resolve();
+
+  const resumed = createRetranslation();
+  const reopened = openWorkspace();
+  await reopened.runtime.startWorker('trusted');
+  await vi.waitFor(() =>
+    expect(reopened.storage.value.jobs[0].finishAt).toBeDefined(),
+  );
+  expect(resumed.prepareUnit.mock.calls.map(([unit]) => unit)).toEqual([
+    { kind: 'chapter', chapterId: '1' },
+  ]);
+  expect(reopened.storage.value.jobs[0]).toMatchObject({
+    progress: { finished: 2, total: 2 },
+  });
+  expect(reopened.storage.value.jobs[0]).not.toHaveProperty(
+    'completedChapterIds',
+  );
+
+  const fresh = createRetranslation();
+  expect(
+    addWorkspaceJob(reopened.storage.value.jobs, { ...job, createAt: 2 }),
+  ).toBe(true);
+  await vi.waitFor(() => expect(fresh.chapterSave).toHaveBeenCalledTimes(2));
+});
 
 describe('workspace task version lifecycle', () => {
   it('cancels initialization when disposed without eagerly loading the next task', async () => {
