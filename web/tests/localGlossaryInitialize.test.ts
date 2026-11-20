@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBObjectStore } from 'fake-indexeddb';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import {
   createLocalVolumeDao,
   type LocalVolumeDao,
