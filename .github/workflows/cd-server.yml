@@ -46,8 +46,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - uses: actions/delete-package-versions@v5
+      - uses: dataaxiom/ghcr-cleanup-action@v1
         with:
-          package-name: ${{ env.IMAGE_NAME }}
-          package-type: 'container'
-          min-versions-to-keep: 1
+          owner: ${{ env.IMAGE_OWNER }}
+          package: ${{ env.IMAGE_NAME }}
+          exclude-tags: latest
+          keep-n-tagged: 1
+          delete-untagged: true

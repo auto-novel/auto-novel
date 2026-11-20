@@ -65,7 +65,7 @@ function normalize(title: string) {
     .replace(/\d+/g, (m) => m.padStart(2, '0')) // \d+ -> \d+
     .replace(/\[[^\]]*\]/g, '') // 移除 [..]
     .replace(/【[^】]*】/g, '') // 移除 【..】
-    .replace(/\([^\)]*\)/g, '') // 移除 (..)
+    .replace(/\([^)]*\)/g, '') // 移除 (..)
     .replace(/\s+/g, ''); // 去除空格
 }
 function sortJpVolumes(volumeJp: VolumeJpDto[]) {
@@ -212,12 +212,10 @@ function sortJpVolumes(volumeJp: VolumeJpDto[]) {
         最新出版于
         <XTime :time="novel.latestPublishAt * 1000" format="yyyy-MM-dd" />
       </p>
-      <!-- eslint-disable vue/no-v-html -->
       <p
         class="my-4 text-sm leading-[1.6] text-default first:mt-0 last:mb-0"
         v-html="novel.introduction.replace(/\n/g, '<br />')"
       />
-      <!-- eslint-enable vue/no-v-html -->
 
       <div class="flex flex-wrap gap-1">
         <router-link

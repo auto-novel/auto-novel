@@ -2,7 +2,7 @@
 import UScrollArea from '@nuxt/ui/components/ScrollArea.vue';
 import { KeyboardArrowDownRound } from '@vicons/material';
 import { useResizeObserver } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import type { TocChapter, TocItem } from './useChapterToc';
 
@@ -29,8 +29,9 @@ const emit = defineEmits<{
 const listRef = ref<{
   $el: HTMLElement;
   virtualizer?: {
+    scrollElement: HTMLElement | null;
     measure: () => void;
-    scrollToIndex: (index: number, options: { align: 'auto' }) => void;
+    scrollToIndex: (index: number, options: { align: 'center' }) => void;
   };
 }>();
 let initiallyPositioned = false;
@@ -43,28 +44,49 @@ const virtualOptions = computed(() => ({
   getItemKey: (index: number) => props.items[index]!.key,
 }));
 
+let positioningFrame: number | undefined;
+let disposed = false;
+const cancelPositioning = () => {
+  if (positioningFrame !== undefined) cancelAnimationFrame(positioningFrame);
+  positioningFrame = undefined;
+};
 const positionInitially = () => {
-  const list = listRef.value;
-  if (
-    initiallyPositioned ||
-    !list?.virtualizer ||
-    !list.$el.clientHeight ||
-    props.initialChapterId === undefined
-  ) {
+  cancelPositioning();
+  if (disposed || initiallyPositioned || props.initialChapterId === undefined)
     return;
-  }
-  const index = props.items.findIndex(
-    (item) =>
-      item.kind === 'chapter' && item.chapterId === props.initialChapterId,
-  );
-  if (index < 0) return;
-  list.virtualizer.scrollToIndex(index, { align: 'auto' });
-  initiallyPositioned = true;
+  // 组件 ref 可用时，虚拟列表不一定已绑定滚动元素或完成测量。
+  // 有限重试等待就绪，测量后的居中校正交给虚拟列表处理。
+  let attempts = 0;
+  const position = () => {
+    positioningFrame = undefined;
+    const list = listRef.value;
+    const index = props.items.findIndex(
+      (item) =>
+        item.kind === 'chapter' && item.chapterId === props.initialChapterId,
+    );
+    if (!list?.virtualizer || index < 0) return;
+    const root = list.$el;
+    if (root?.clientHeight && list.virtualizer.scrollElement === root) {
+      list.virtualizer.scrollToIndex(index, { align: 'center' });
+      initiallyPositioned = true;
+      return;
+    }
+    if (++attempts < 30) positioningFrame = requestAnimationFrame(position);
+  };
+  positioningFrame = requestAnimationFrame(position);
 };
 
-watch(listRef, () => {
-  initiallyPositioned = false;
-  positionInitially();
+watch(
+  listRef,
+  () => {
+    initiallyPositioned = false;
+    positionInitially();
+  },
+  { flush: 'post' },
+);
+onBeforeUnmount(() => {
+  disposed = true;
+  cancelPositioning();
 });
 watch(
   () => props.items,

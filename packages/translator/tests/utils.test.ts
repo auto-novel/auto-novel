@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { filterGlossaryForLines, getPreviousSource } from '../src/utils';
 import {
   isPassthroughLine,

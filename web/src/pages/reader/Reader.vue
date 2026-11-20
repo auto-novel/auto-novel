@@ -116,7 +116,11 @@ const updateChapter = (
   }
 };
 
+let chapterLoadVersion = 0;
+onScopeDispose(() => chapterLoadVersion++);
+
 const navToChapter = async (chapterId: string) => {
+  const loadVersion = ++chapterLoadVersion;
   targetChapterId.value = chapterId;
 
   const { type, promiseOrValue } = store.loadChapter(chapterId);
@@ -130,7 +134,7 @@ const navToChapter = async (chapterId: string) => {
     task?.error();
     throw error;
   }
-  if (chapterId !== targetChapterId.value) {
+  if (loadVersion !== chapterLoadVersion) {
     task?.finish();
     return;
   }
@@ -201,10 +205,17 @@ useScrollDetector((payload) => {
       if (chapterList.value.every((it) => it.chapterId !== id)) {
         chapterList.value.push({ chapterId: id });
 
+        const loadVersion = chapterLoadVersion;
         (async () => {
           const result = await store.loadChapter(id).promiseOrValue;
-          const chapter = chapterList.value.find((it) => it.chapterId === id)!;
-          chapter.result = result;
+          if (
+            loadVersion !== chapterLoadVersion ||
+            readerSetting.value.pageTurnMode !== 'scroll'
+          ) {
+            return;
+          }
+          const chapter = chapterList.value.find((it) => it.chapterId === id);
+          if (chapter) chapter.result = result;
         })();
       }
     }

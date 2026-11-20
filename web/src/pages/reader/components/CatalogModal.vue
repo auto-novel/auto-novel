@@ -110,32 +110,42 @@ const chapterTo = (chapter: TocChapter) => {
       </div>
     </template>
     <template #body>
-      <div v-if="!tocResult" role="status">
-        <span class="sr-only">正在加载章节目录…</span>
-        <div aria-hidden="true" class="divide-y divide-default">
-          <div v-for="index in 8" :key="index" class="py-3">
-            <USkeleton class="h-5" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
-            <USkeleton class="mt-2 h-4 w-1/2" />
+      <div class="h-[max(56px,calc(80dvh-200px))] overflow-hidden">
+        <div v-if="!tocResult" role="status">
+          <span class="sr-only">正在加载章节目录…</span>
+          <div aria-hidden="true">
+            <div v-for="index in 32" :key="index" class="min-h-14 px-3 py-1">
+              <div class="flex h-5 items-center">
+                <USkeleton class="h-4" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
+              </div>
+              <div class="flex h-5 items-center">
+                <USkeleton class="h-4 w-1/2" />
+              </div>
+              <div class="flex h-4 items-center">
+                <USkeleton class="h-3 w-1/4" />
+              </div>
+            </div>
           </div>
         </div>
+        <div v-else-if="!tocResult.ok" class="h-full overflow-y-auto">
+          <UAlert
+            color="error"
+            variant="soft"
+            title="加载错误"
+            :description="tocResult.error.message"
+          />
+        </div>
+        <ChapterTocList
+          v-else-if="show"
+          :items="visibleItems"
+          :chapter-to="chapterTo"
+          :current-chapter-id="chapterId"
+          :initial-chapter-id="chapterId"
+          class="h-full"
+          @toggle-section="toggleSection"
+          @select="emit('update:show', false)"
+        />
       </div>
-      <UAlert
-        v-else-if="!tocResult.ok"
-        color="error"
-        variant="soft"
-        title="加载错误"
-        :description="tocResult.error.message"
-      />
-      <ChapterTocList
-        v-else
-        :items="visibleItems"
-        :chapter-to="chapterTo"
-        :current-chapter-id="chapterId"
-        :initial-chapter-id="chapterId"
-        class="h-[max(56px,calc(80dvh-200px))]"
-        @toggle-section="toggleSection"
-        @select="emit('update:show', false)"
-      />
     </template>
   </UModal>
 </template>

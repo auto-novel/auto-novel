@@ -26,7 +26,6 @@ const imageFormatOptions = [
 const compressImage = async (blob: Blob) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  // eslint-disable-next-line compat/compat
   const img = await createImageBitmap(blob);
 
   const scaleRatioValue = Math.min(1, scaleRatio.value);

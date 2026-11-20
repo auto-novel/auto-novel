@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import { effectScope, nextTick, shallowRef } from 'vue';
 
 import { useHorizontalSwipe } from '../src/util/useHorizontalSwipe';
@@ -46,8 +53,8 @@ function touch(
 describe('useHorizontalSwipe', () => {
   let root: HTMLElement;
   let scope: ReturnType<typeof effectScope>;
-  let onSwipeLeft: ReturnType<typeof vi.fn>;
-  let onSwipeRight: ReturnType<typeof vi.fn>;
+  let onSwipeLeft: ReturnType<typeof vi.fn<() => void>>;
+  let onSwipeRight: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     root = element();

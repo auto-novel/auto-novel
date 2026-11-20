@@ -83,7 +83,7 @@ const compareRatio = computed(() =>
   Number.isFinite(props.compareAspect) &&
   props.compareAspect > 0
     ? props.compareAspect
-    : measuredCompareAspect.value ?? 16 / 9,
+    : (measuredCompareAspect.value ?? 16 / 9),
 );
 watch(
   () => props.compareBefore,

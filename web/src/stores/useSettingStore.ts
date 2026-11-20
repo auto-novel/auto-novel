@@ -100,7 +100,7 @@ export namespace Setting {
         setting.locale = 'origin';
       }
 
-      if ('isDark' in setting && typeof setting.isDark !== undefined) {
+      if ('isDark' in setting && typeof setting.isDark !== 'undefined') {
         if (setting.isDark === true) {
           setting.theme = 'dark';
         }
@@ -234,7 +234,6 @@ export namespace ReaderSetting {
     } else if ((setting.mode as unknown) === 'mix-reverse') {
       setting.mode = 'jp-zh';
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const theme = setting.theme as any;
     if (theme.isDark !== undefined) {
       if (theme.bodyColor === '#272727' && theme.fontColor === undefined) {
