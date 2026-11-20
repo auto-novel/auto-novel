@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { assembleSegments, createLineSegmenter } from '../src/pipeline/segment';
 import type { Glossary, TranslationHistory } from '../src/types';
 
@@ -85,16 +85,16 @@ describe('assembleSegments', () => {
     expect(segments[0].id).toBe(id);
     expect(segments[0].order).toBe(0);
     expect(segments[0].lines).toEqual(['hello', 'world']);
-    expect(segments[0].context.glossary).toEqual({});
-    expect(segments[0].context.expired).toBe(true);
-    expect(segments[0].context.history).toBeUndefined();
+    expect(segments[0].context?.glossary).toEqual({});
+    expect(segments[0].context?.expired).toBe(true);
+    expect(segments[0].context?.history).toBeUndefined();
 
     // 第二个段
     expect(segments[1].id).toBe(id);
     expect(segments[1].order).toBe(1);
     expect(segments[1].lines).toEqual(['foo']);
-    expect(segments[1].context.glossary).toEqual({});
-    expect(segments[1].context.expired).toBe(true);
+    expect(segments[1].context?.glossary).toEqual({});
+    expect(segments[1].context?.expired).toBe(true);
   });
 
   it('应过滤 glossary，只保留当前段行中出现的词条', () => {
@@ -110,13 +110,13 @@ describe('assembleSegments', () => {
     const segments = assembleSegments(id, lines, ranges, glossary);
 
     // 段0: ['hello world', 'foo bar'] => 包含 hello, world
-    expect(segments[0].context.glossary).toEqual({
+    expect(segments[0].context?.glossary).toEqual({
       hello: '你好',
       world: '世界',
     });
 
     // 段1: ['baz'] => 包含 baz
-    expect(segments[1].context.glossary).toEqual({
+    expect(segments[1].context?.glossary).toEqual({
       baz: '巴兹',
     });
   });
@@ -134,8 +134,8 @@ describe('assembleSegments', () => {
 
     const segments = assembleSegments(id, lines, ranges, glossary, history);
 
-    expect(segments[0].context.expired).toBe(false);
-    expect(segments[0].context.history).toEqual({
+    expect(segments[0].context?.expired).toBe(false);
+    expect(segments[0].context?.history).toEqual({
       lines: ['hello', 'world'],
       translatedLines: ['你好', '世界'],
       glossary: { hello: '你好' },
@@ -155,9 +155,9 @@ describe('assembleSegments', () => {
 
     const segments = assembleSegments(id, lines, ranges, glossary, history);
 
-    expect(segments[0].context.expired).toBe(true);
+    expect(segments[0].context?.expired).toBe(true);
     // history 仍然保留旧数据
-    expect(segments[0].context.history?.lines).toEqual(['hello', 'world']);
+    expect(segments[0].context?.history?.lines).toEqual(['hello', 'world']);
   });
 
   it('当前段未变但前文已变时，历史译文仍须过期', () => {
@@ -174,9 +174,9 @@ describe('assembleSegments', () => {
       history,
     );
 
-    expect(segment.context.previousSource).toBe('新前文');
-    expect(segment.context.expired).toBe(true);
-    expect(segment.context.history?.translatedLines).toEqual(['当前译文']);
+    expect(segment.context?.previousSource).toBe('新前文');
+    expect(segment.context?.expired).toBe(true);
+    expect(segment.context?.history?.translatedLines).toEqual(['当前译文']);
   });
 
   it('有 history 但术语表不一致时 expired 为 true', () => {
@@ -192,7 +192,7 @@ describe('assembleSegments', () => {
 
     const segments = assembleSegments(id, lines, ranges, glossary, history);
 
-    expect(segments[0].context.expired).toBe(true);
+    expect(segments[0].context?.expired).toBe(true);
   });
 
   it('history 的 glossary 过滤应基于当前段原文，而非历史原文', () => {
@@ -209,7 +209,7 @@ describe('assembleSegments', () => {
     const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     // 历史 glossary 被过滤为只包含当前段原文中出现的词条
-    expect(segments[0].context.history?.glossary).toEqual({
+    expect(segments[0].context?.history?.glossary).toEqual({
       hello: '你好',
       world: '世界',
     });
@@ -229,14 +229,14 @@ describe('assembleSegments', () => {
     const segments = assembleSegments(id, lines, ranges, glossary, history);
 
     // 段0: ['cat', 'dog'] => glossary 只有 cat, dog
-    expect(segments[0].context.glossary).toEqual({ cat: '猫', dog: '狗' });
-    expect(segments[0].context.history?.lines).toEqual(['cat', 'dog']);
-    expect(segments[0].context.history?.translatedLines).toEqual(['猫', '狗']);
+    expect(segments[0].context?.glossary).toEqual({ cat: '猫', dog: '狗' });
+    expect(segments[0].context?.history?.lines).toEqual(['cat', 'dog']);
+    expect(segments[0].context?.history?.translatedLines).toEqual(['猫', '狗']);
 
     // 段1: ['bird'] => glossary 只有 bird
-    expect(segments[1].context.glossary).toEqual({ bird: '鸟' });
-    expect(segments[1].context.history?.lines).toEqual(['bird']);
-    expect(segments[1].context.history?.translatedLines).toEqual(['鸟']);
+    expect(segments[1].context?.glossary).toEqual({ bird: '鸟' });
+    expect(segments[1].context?.history?.lines).toEqual(['bird']);
+    expect(segments[1].context?.history?.translatedLines).toEqual(['鸟']);
   });
 
   it('空行数组应返回空 Segment 数组', () => {

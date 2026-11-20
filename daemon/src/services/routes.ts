@@ -1,4 +1,4 @@
-import { PROVIDER_IDS } from '@auto-novel/crawler';
+import { ProviderIdSchema } from '@/providers';
 import * as z from 'zod';
 import Express, { Router } from 'express';
 import manifest from '@/package.json';
@@ -140,7 +140,7 @@ function normalizeQuery(query: Record<string, string | string[] | undefined>) {
   );
 }
 
-const providerIdSchema = z.enum(PROVIDER_IDS);
+const providerIdSchema = ProviderIdSchema;
 
 const metadataParamsSchema = z.object({
   providerId: providerIdSchema,

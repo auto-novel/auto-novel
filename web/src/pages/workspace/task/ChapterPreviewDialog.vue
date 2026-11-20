@@ -103,8 +103,7 @@ const onUpdateShow = (val: boolean) => {
         <template #description>
           <pre
             class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
-            >{{ chapterState.errorMessage }}</pre
-          >
+            >{{ chapterState.errorMessage }}</pre>
         </template>
       </UAlert>
       <div>
@@ -163,8 +162,7 @@ const onUpdateShow = (val: boolean) => {
         <template #description>
           <pre
             class="m-0 font-mono text-[13px]/[1.5] whitespace-pre-wrap break-all"
-            >{{ previewState.currentSegmentError }}</pre
-          >
+            >{{ previewState.currentSegmentError }}</pre>
         </template>
       </UAlert>
 

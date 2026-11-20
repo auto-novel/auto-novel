@@ -183,7 +183,7 @@
     <!-- Genieeのコールバック関数 -->
     <script>
       !(function (e) {
-        (e.readyBids = e.readyBids || { google: !1 }),
+        ((e.readyBids = e.readyBids || { google: !1 }),
           (e.readyBids.geniee = !1),
           (e.launchAdServer = e.launchAdServer
             ? function () {
@@ -203,7 +203,7 @@
                 e.googletag.cmd.push(function () {
                   googletag.pubads().refresh();
                 }));
-            });
+            }));
       })(window);
     </script>
 
@@ -244,13 +244,13 @@
     <script>
       (function (i, s, o, g, r, a, m) {
         i['GoogleAnalyticsObject'] = r;
-        (i[r] =
+        ((i[r] =
           i[r] ||
           function () {
             (i[r].q = i[r].q || []).push(arguments);
           }),
-          (i[r].l = 1 * new Date());
-        (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
+          (i[r].l = 1 * new Date()));
+        ((a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]));
         a.async = 1;
         a.src = g;
         m.parentNode.insertBefore(a, m);
@@ -860,7 +860,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=2266&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/2266",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/2266',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   ミステリー
                 </a>
@@ -868,7 +874,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1003&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1003",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1003',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   異世界
                 </a>
@@ -876,7 +888,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1039&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1039",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1039',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   TS
                 </a>
@@ -884,7 +902,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=251644&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/251644",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/251644',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   陸の孤島
                 </a>
@@ -892,7 +916,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1006&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1006",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1006',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   復讐
                 </a>
@@ -900,7 +930,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1329&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1329",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1329',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   どんでん返し
                 </a>
@@ -908,7 +944,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1162&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1162",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1162',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   恋愛
                 </a>
@@ -916,7 +958,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1093&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1093",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1093',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   年の差
                 </a>
@@ -924,7 +972,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=1161&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/1161",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/1161',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   デスゲーム
                 </a>
@@ -932,7 +986,13 @@
               <div class="c-tag">
                 <a
                   href="https://www.alphapolis.co.jp/novel/index?category_ids=110400&amp;tag_ids=287237&amp;ratings=4"
-                  onclick='$.ajax({type: "POST",url: "https://www.alphapolis.co.jp/novel/add_tag_counter/287237",dataType : "json"});'
+                  onclick="
+                    $.ajax({
+                      type: 'POST',
+                      url: 'https://www.alphapolis.co.jp/novel/add_tag_counter/287237',
+                      dataType: 'json',
+                    })
+                  "
                 >
                   時間制限×頭脳バトル
                 </a>

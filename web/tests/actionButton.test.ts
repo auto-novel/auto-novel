@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick, reactive, ref, type App } from 'vue';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { nextTick, reactive } from 'vue';
 
 import ActionButton from '../src/components/ActionButton.vue';
 import ConfirmActionButton from '../src/components/ConfirmActionButton.vue';
@@ -65,34 +66,8 @@ vi.mock('@nuxt/ui/components/Button.vue', async () => {
   };
 });
 
-const apps: App[] = [];
-function mount(
-  component: Parameters<typeof h>[0],
-  props: Record<string, unknown>,
-) {
-  const host = document.createElement('div');
-  document.body.append(host);
-  const app = createApp({ render: () => h(component, props) });
-  const onError = vi.fn();
-  app.config.errorHandler = onError;
-  app.mount(host);
-  apps.push(app);
-  return {
-    host,
-    onError,
-    click: (selector = 'button') =>
-      host.querySelector<HTMLButtonElement>(selector)!.click(),
-  };
-}
-const flush = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
-  await nextTick();
-};
+enableAutoUnmount(afterEach);
 afterEach(() => {
-  apps.splice(0).forEach((app) => app.unmount());
-  document.body.replaceChildren();
-  vi.clearAllMocks();
   session.whoami.isSignedIn = false;
 });
 
@@ -105,35 +80,31 @@ describe('ActionButton', () => {
           finish = resolve;
         }),
     );
-    const { host, click } = mount(ActionButton, {
-      action,
-      label: '保存',
-      color: 'primary',
+    const wrapper = mount(ActionButton, {
+      props: {
+        action,
+        label: '保存',
+        color: 'primary',
+      },
     });
     // Keep the shared group marker without overriding the button's default radius.
-    expect(host.querySelector('button')!.classList.contains('group')).toBe(
-      true,
-    );
-    expect(
-      host.querySelector('button')!.classList.contains('rounded-full'),
-    ).toBe(false);
-    click();
-    click();
+    expect(wrapper.get('button').classes()).toContain('group');
+    expect(wrapper.get('button').classes()).not.toContain('rounded-full');
+    void wrapper.get('button').trigger('click');
+    void wrapper.get('button').trigger('click');
     expect(action).toHaveBeenCalledTimes(1);
     await nextTick();
-    expect(host.querySelector('button')!.getAttribute('aria-busy')).toBe(
-      'true',
-    );
-    expect(host.querySelector('button')!.getAttribute('data-color')).toBe(
-      'primary',
-    );
+    expect(wrapper.get('button').attributes('aria-busy')).toBe('true');
+    expect(wrapper.get('button').attributes('data-color')).toBe('primary');
     finish();
-    await flush();
-    expect(host.querySelector('button')!.disabled).toBe(false);
-    click();
+    await flushPromises();
+    expect(wrapper.get<HTMLButtonElement>('button').element.disabled).toBe(
+      false,
+    );
+    void wrapper.get('button').trigger('click');
     expect(action).toHaveBeenCalledTimes(2);
     finish();
-    await flush();
+    await flushPromises();
   });
 
   it.each(['throw', 'reject'] as const)(
@@ -144,16 +115,22 @@ describe('ActionButton', () => {
         if (kind === 'throw') throw error;
         return Promise.reject(error);
       });
-      const { host, click, onError } = mount(ActionButton, { action });
-      click();
-      await flush();
+      const onError = vi.fn();
+      const wrapper = mount(ActionButton, {
+        props: { action },
+        global: { config: { errorHandler: onError } },
+      });
+      void wrapper.get('button').trigger('click');
+      await flushPromises();
       expect(onError).toHaveBeenCalledWith(
         error,
         expect.anything(),
         expect.anything(),
       );
       expect(mocks.error).not.toHaveBeenCalled();
-      expect(host.querySelector('button')!.disabled).toBe(false);
+      expect(wrapper.get<HTMLButtonElement>('button').element.disabled).toBe(
+        false,
+      );
     },
   );
 
@@ -161,9 +138,10 @@ describe('ActionButton', () => {
     'honors external blocking state %j',
     async (state) => {
       const action = vi.fn();
-      const { click } = mount(ActionButton, { action, ...state });
-      click();
-      await flush();
+      const wrapper = mount(ActionButton, { props: { action } });
+      await wrapper.setProps(state);
+      void wrapper.get('button').trigger('click');
+      await flushPromises();
       expect(action).not.toHaveBeenCalled();
     },
   );
@@ -190,28 +168,28 @@ describe('ConfirmActionButton', () => {
           finish = resolve;
         }),
     );
-    const { host, click } = mount(ConfirmActionButton, {
-      action,
-      label: '删除',
-      hint: '确定删除？',
-      color: 'error',
+    const wrapper = mount(ConfirmActionButton, {
+      props: {
+        action,
+        label: '删除',
+        hint: '确定删除？',
+        color: 'error',
+      },
     });
-    click();
+    void wrapper.get('button').trigger('click');
     await nextTick();
     expect(action).not.toHaveBeenCalled();
-    expect(host.querySelector('section')!.getAttribute('data-danger')).toBe(
-      'true',
-    );
-    click('.confirm');
-    click('.confirm');
-    click('.close');
+    expect(wrapper.get('section').attributes('data-danger')).toBe('true');
+    void wrapper.get('.confirm').trigger('click');
+    void wrapper.get('.confirm').trigger('click');
+    await wrapper.get('.close').trigger('click');
     await nextTick();
     expect(action).toHaveBeenCalledTimes(1);
     expect(action.mock.calls[0]).toHaveLength(1);
-    expect(host.querySelector('section')).not.toBeNull();
+    expect(wrapper.find('section').exists()).toBe(true);
     finish();
-    await flush();
-    expect(host.querySelector('section')).toBeNull();
+    await flushPromises();
+    expect(wrapper.find('section').exists()).toBe(false);
   });
 
   it('keeps the dialog open on false or error and allows retry', async () => {
@@ -220,21 +198,23 @@ describe('ConfirmActionButton', () => {
       .mockResolvedValueOnce(false)
       .mockRejectedValueOnce(new Error('失败'))
       .mockResolvedValueOnce(true);
-    const { host, click } = mount(ConfirmActionButton, {
-      action,
-      hint: '确定？',
+    const wrapper = mount(ConfirmActionButton, {
+      props: {
+        action,
+        hint: '确定？',
+      },
     });
-    click();
+    void wrapper.get('button').trigger('click');
     await nextTick();
-    click('.confirm');
-    await flush();
-    expect(host.querySelector('section')).not.toBeNull();
-    click('.confirm');
-    await flush();
+    void wrapper.get('.confirm').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('section').exists()).toBe(true);
+    void wrapper.get('.confirm').trigger('click');
+    await flushPromises();
     expect(mocks.error).toHaveBeenCalledExactlyOnceWith('失败');
-    expect(host.querySelector('section')).not.toBeNull();
-    click('.confirm');
-    await flush();
-    expect(host.querySelector('section')).toBeNull();
+    expect(wrapper.find('section').exists()).toBe(true);
+    void wrapper.get('.confirm').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('section').exists()).toBe(false);
   });
 });

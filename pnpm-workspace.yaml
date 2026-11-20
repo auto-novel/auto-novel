@@ -5,13 +5,17 @@ packages:
   - 'packages/*'
 
 allowBuilds:
-  '@google/genai': true
-  core-js: true
+  '@google/genai': false
+  core-js: false
   esbuild: true
   protobufjs: true
   vue-demi: true
 
-blockExoticSubdeps: false
+catalog:
+  '@types/node': ^24.12.2
+  vite-plus: 1.7.0
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  typescript: 6.0.3
 
-# 允许安装新发布的依赖，避免 pnpm 11 的默认 24 小时等待限制阻断 CI。
-minimumReleaseAge: 0
+overrides:
+  'vite@*': 'catalog:'

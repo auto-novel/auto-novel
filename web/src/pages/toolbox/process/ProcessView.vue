@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { Toast, getApiErrorMessage, XPage } from '@novelia/web-kit';
+import { Toast, getApiErrorMessage, XDropZone, XPage } from '@novelia/web-kit';
 import { DeleteOutlineOutlined, PlusOutlined } from '@vicons/material';
-import type { UploadCustomRequestOptions } from 'naive-ui';
+import { useFileDialog } from '@vueuse/core';
 
 import { useLocalVolumeStore } from '@/stores';
 import type { ParsedFile } from '@/util/file';
@@ -30,9 +30,11 @@ const loadFile = async (file: File) => {
   }
   try {
     const parsedFile = await parseFile(file, ['txt', 'epub']);
-    files.value.push(parsedFile);
-    files.value = [...files.value];
-    triggerRef(files);
+    if (files.value.some((it) => it.name === parsedFile.name)) {
+      Toast.warning('文件已经载入');
+      return;
+    }
+    files.value = [...files.value, parsedFile];
   } catch (e) {
     Toast.warning(`${e}`);
   }
@@ -40,12 +42,10 @@ const loadFile = async (file: File) => {
 
 const removeFile = (name: string) => {
   files.value = files.value.filter((it) => !(it.name === name));
-  triggerRef(files);
 };
 
 const clearFile = () => {
   files.value = [];
-  triggerRef(files);
 };
 
 const loadLocalFile = (volumeId: string) =>
@@ -59,18 +59,21 @@ const loadLocalFile = (volumeId: string) =>
     { error: (reason) => getApiErrorMessage(reason, '文件载入失败') },
   ).catch(() => {});
 
-const customRequest = ({
-  file,
-  onFinish,
-  onError,
-}: UploadCustomRequestOptions) => {
-  if (!file.file) return;
-  loadFile(file.file)
-    .then(onFinish)
-    .catch((err) => {
-      Toast.error('文件载入失败:' + err);
-      onError();
-    });
+const loadFiles = async (files: File[]) => {
+  for (const file of files) await loadFile(file);
+};
+
+const { open: openFiles, onChange } = useFileDialog({
+  accept: '.txt,.epub',
+  multiple: true,
+  reset: true,
+});
+onChange((files) => {
+  if (files) void loadFiles(Array.from(files));
+});
+
+const handleDropError = (error: unknown) => {
+  Toast.warning(`文件载入失败:读取拖拽目录失败\n${error}`);
 };
 
 const showListModal = ref(false);
@@ -81,19 +84,14 @@ const showListModal = ref(false);
     <UPageHeader title="小说处理" />
 
     <div class="flex flex-wrap gap-x-3 gap-y-2">
-      <div>
-        <n-upload
-          :show-file-list="false"
-          accept=".txt,.epub"
-          multiple
-          directory-dnd
-          :custom-request="customRequest"
-        >
-          <UButton :icon="PlusOutlined" color="neutral" variant="outline">
-            加载文件
-          </UButton>
-        </n-upload>
-      </div>
+      <UButton
+        :icon="PlusOutlined"
+        color="neutral"
+        variant="outline"
+        @click="openFiles()"
+      >
+        加载文件
+      </UButton>
 
       <UButton
         :icon="PlusOutlined"
@@ -148,5 +146,9 @@ const showListModal = ref(false);
       v-model:show="showListModal"
       @volume-loaded="loadLocalFile"
     />
+
+    <XDropZone directories @drop="loadFiles" @error="handleDropError">
+      拖拽文件到这里加载
+    </XDropZone>
   </XPage>
 </template>

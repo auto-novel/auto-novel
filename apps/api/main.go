@@ -97,8 +97,8 @@ func main() {
 		})
 	})
 
-	slog.Info("Listening on localhost:8080...")
-	if err := http.ListenAndServe(":8080", router); err != nil {
+	slog.Info("Listening on localhost:8101...")
+	if err := http.ListenAndServe(":8101", router); err != nil {
 		slog.Error("HTTP server failed", "error", err)
 		os.Exit(1)
 	}

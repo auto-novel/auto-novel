@@ -1,5 +1,5 @@
 import { uploadFile } from '@novelia/web-kit';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { createBannerApi } from './api';
 
 vi.mock('@novelia/web-kit', () => ({ uploadFile: vi.fn() }));

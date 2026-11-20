@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import type { TranslateJob, TranslateJobRecord } from '../src/model/Translator';
 import { addWorkspaceJob } from '../src/stores/workspaceJob';

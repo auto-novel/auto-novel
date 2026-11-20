@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTranslationCacheKey } from '../src/cache';
 import { TranslationPipeline } from '../src/pipeline/pipeline';
