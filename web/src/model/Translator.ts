@@ -1,4 +1,5 @@
 import type { Glossary } from './Glossary';
+import { createOpenCodeGoFetch } from '@/api/OpenCodeGoApi';
 import type {
   OpenAiProfileSelection,
   TranslatorConfig,
@@ -45,6 +46,9 @@ export function toTranslatorConfig(
     key: gpt.key,
     model: gpt.model,
     profile: gpt.profile,
+    ...(gpt.profile?.id === 'opencode-go' && {
+      fetch: createOpenCodeGoFetch(),
+    }),
   };
 }
 

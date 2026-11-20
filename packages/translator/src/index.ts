@@ -11,6 +11,10 @@ export type {
   OpenAiProfileSelection,
   ProfileValues,
 } from './translator/llm-profiles';
+export {
+  OPEN_CODE_GO_ENDPOINT,
+  isOpenCodeGoEndpoint,
+} from './translator/opencode-go';
 
 // 约定：自定义翻译器只需实现 Translator。
 export type {

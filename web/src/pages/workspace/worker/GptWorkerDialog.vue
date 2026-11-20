@@ -12,6 +12,8 @@ import type { GptPipelineWorker } from '@/model/Translator';
 import { useGptPipelineWorkspaceStore } from '@/stores';
 import {
   openAiProfiles,
+  OPEN_CODE_GO_ENDPOINT,
+  isOpenCodeGoEndpoint,
   parseOpenAiProfileSelection,
   type openAiProfileId,
   type OpenAiProfileSelection,
@@ -40,9 +42,10 @@ const DEFAULT_PROFILE_ID: openAiProfileId = 'deepseek';
 
 /**
  * 按接口格式自动填入默认端点：
- * Gemini 用谷歌兼容端点，Anthropic 用 DeepSeek 的 /anthropic，，默认 DeepSeek。
+ * 各预设使用对应兼容端点；手动输入和已保存的端点保持不变。
  */
 const defaultEndpoint = (profileId: openAiProfileId) => {
+  if (profileId === 'opencode-go') return OPEN_CODE_GO_ENDPOINT;
   if (profileId === 'gemini') return GEMINI_ENDPOINT;
   if (profileId === 'anthropic') return DEEPSEEK_ANTHROPIC_ENDPOINT;
   return DEEPSEEK_ENDPOINT;
@@ -117,6 +120,14 @@ const currentProfile = computed(() =>
   openAiProfiles.find((p) => p.id === formValue.value.profileId),
 );
 
+const usesOpenCodeGo = computed(
+  () => formValue.value.profileId === 'opencode-go',
+);
+const isOpenCodeGoAddress = computed(() =>
+  isOpenCodeGoEndpoint(formValue.value.endpoint),
+);
+const selectOpenCodeGo = () => onProfileChange('opencode-go');
+
 function defaultProfileValues(profileId: openAiProfileId): ProfileValues {
   const profile = openAiProfiles.find((p) => p.id === profileId);
   const values: ProfileValues = {};
@@ -158,10 +169,19 @@ const addFormValue = computed(() => ({
   keys: keyText.value,
 }));
 
-const validateForm = () =>
-  props.worker === undefined
-    ? validateGptWorkerBatch(addFormValue.value)
-    : validateGptWorker(formValue.value, otherWorkers.value);
+const validateForm = () => {
+  const errors =
+    props.worker === undefined
+      ? validateGptWorkerBatch(addFormValue.value)
+      : validateGptWorker(formValue.value, otherWorkers.value);
+  if (usesOpenCodeGo.value && !isOpenCodeGoAddress.value) {
+    errors.push({
+      name: 'endpoint',
+      message: '请填写 OpenCode Go 官方接口地址',
+    });
+  }
+  return errors;
+};
 
 const modelText = ref('');
 const keyText = ref('');
@@ -378,6 +398,22 @@ const verb = computed(() => (props.worker === undefined ? '添加' : '更新'));
             @update:model-value="onProfileChange"
           />
         </UFormField>
+
+        <UAlert
+          v-if="usesOpenCodeGo"
+          color="info"
+          variant="soft"
+          title="OpenCode Go"
+          description="需登录本站。翻译请求和 Go Key 经本站服务器转发给 OpenCode。"
+        />
+        <UButton
+          v-else-if="isOpenCodeGoAddress"
+          type="button"
+          variant="soft"
+          @click="selectOpenCodeGo"
+        >
+          改用 OpenCode Go 中转
+        </UButton>
 
         <template v-if="currentProfile?.fields.length">
           <UFormField

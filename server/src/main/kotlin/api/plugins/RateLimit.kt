@@ -6,12 +6,17 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 object RateLimitNames {
+    val OpenCodeGo = RateLimitName("opencode-go")
     val CreateSakuraJob = RateLimitName("create-sakura-job")
     val CreateWenkuNovel = RateLimitName("create-wenku-novel")
     val CreateWenkuVolume = RateLimitName("create-wenku-volume")
 }
 
 fun Application.rateLimit() = install(RateLimit) {
+    register(RateLimitNames.OpenCodeGo) {
+        rateLimiter(limit = 120, refillPeriod = 1.minutes)
+        requestKey { call -> call.user().id }
+    }
     register(RateLimitNames.CreateSakuraJob) {
         rateLimiter(limit = 5, refillPeriod = 1.minutes)
         requestKey { call -> call.user().id }

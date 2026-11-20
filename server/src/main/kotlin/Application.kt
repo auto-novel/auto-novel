@@ -83,6 +83,7 @@ fun main() {
             routeUserFavoredWeb()
             routeUserFavoredWenku()
             routeUserReadHistoryWeb()
+            routeOpenCodeGo()
             //
             routeWebNovel()
             routeWenkuNovel()

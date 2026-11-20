@@ -7,7 +7,11 @@ import type {
 } from '@/types';
 import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
 
-import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
+import {
+  createPiAiCompletion,
+  type PiAiCompletionRequest,
+  type PiAiProtocol,
+} from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
 import { createTranslationCacheKey } from '@/cache';
@@ -23,6 +27,7 @@ export type OpenAiTranslatorConfig = {
   model: string;
   /** 持久化数据未经类型校验，构造时统一校验一次。 */
   profile?: OpenAiProfileSelection;
+  fetch?: PiAiCompletionRequest['fetch'];
   promptBuilder?: PromptBuilder;
   log?: Logger;
 };
@@ -36,6 +41,7 @@ export class OpenAiTranslator implements Translator {
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
   private readonly sessionId = randomUUID();
+  private readonly fetch?: PiAiCompletionRequest['fetch'];
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
 
@@ -45,6 +51,7 @@ export class OpenAiTranslator implements Translator {
     const profile = resolveOpenAiProfile(config.profile);
     this.protocol = profile.protocol;
     this.model = config.model;
+    this.fetch = config.fetch;
     this.profileParams = profile.requestParams;
     this.reasoningEffort = profile.reasoningEffort;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
@@ -122,6 +129,7 @@ export class OpenAiTranslator implements Translator {
       messages,
       requestParams: this.profileParams,
       sessionId: this.sessionId,
+      fetch: this.fetch,
       signal,
     });
     if (completion.reasoning) {
