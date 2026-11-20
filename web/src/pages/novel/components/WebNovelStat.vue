@@ -40,7 +40,7 @@ const exactVisited = computed(() =>
 </script>
 
 <template>
-  <div class="metadata-stat flex flex-wrap items-center gap-2">
+  <div class="flex w-full flex-wrap items-center gap-2">
     <span class="text-default">
       {{ type }}
     </span>
@@ -73,10 +73,3 @@ const exactVisited = computed(() =>
     </UTooltip>
   </div>
 </template>
-
-<style scoped>
-.metadata-stat {
-  width: 100%;
-  flex-wrap: wrap;
-}
-</style>

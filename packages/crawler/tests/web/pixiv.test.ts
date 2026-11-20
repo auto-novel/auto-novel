@@ -1,4 +1,11 @@
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vite-plus/test';
 
 import { Pixiv } from '@/web/pixiv';
 import { client } from './utils';

@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 const audio = {
   loop: false,
@@ -11,7 +18,6 @@ const AudioMock = vi.fn(function () {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.clearAllMocks();
   audio.loop = false;
   audio.play.mockResolvedValue();
   vi.stubGlobal('Audio', AudioMock);

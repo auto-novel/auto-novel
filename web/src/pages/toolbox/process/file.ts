@@ -7,9 +7,8 @@ export namespace FileProcessor {
       const file = files[0];
       await downloadFile(file.name, await file.toBlob());
     } else {
-      const { BlobReader, BlobWriter, ZipWriter } = await import(
-        '@zip.js/zip.js'
-      );
+      const { BlobReader, BlobWriter, ZipWriter } =
+        await import('@zip.js/zip.js');
       const zipBlobWriter = new BlobWriter();
       const writer = new ZipWriter(zipBlobWriter);
       await Promise.all(

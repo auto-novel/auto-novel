@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-import { Toast, getApiErrorMessage, XPage, XTime } from '@novelia/web-kit';
+import {
+  Toast,
+  getApiErrorMessage,
+  XImage,
+  XPage,
+  XTime,
+} from '@novelia/web-kit';
 import {
   DeleteOutlineOutlined,
   KeyboardDoubleArrowDownOutlined,
@@ -204,7 +210,7 @@ const populateNovelFromAmazon = async (
           title: formValue.value.title ? formValue.value.title : novel.title,
           titleZh: formValue.value.titleZh
             ? formValue.value.titleZh
-            : novel.titleZh ?? '',
+            : (novel.titleZh ?? ''),
           cover: novel.volumes[0]?.cover,
           authors:
             formValue.value.authors.length > 0
@@ -396,7 +402,7 @@ const levelOptions = [
 
     <div class="mb-12 flex w-full flex-wrap gap-x-3 gap-y-2">
       <div v-if="isWideScreen">
-        <n-image
+        <XImage
           width="160"
           :src="
             formValue.cover
@@ -652,7 +658,7 @@ const levelOptions = [
               >
                 <div class="mt-0.5 shrink-0">
                   <div>
-                    <n-image
+                    <XImage
                       class="drag-trigger cursor-move! rounded-[2px]"
                       width="88"
                       :src="volume.cover"

@@ -2,7 +2,6 @@
 import CEmpty from '@/components/CEmpty.vue';
 import { XConfirmDialog, getApiErrorMessage, Toast } from '@novelia/web-kit';
 import {
-  DeleteOutlineOutlined,
   MoreVertOutlined,
   PlayArrowOutlined,
   PlusOutlined,

@@ -1,5 +1,5 @@
 import ky from 'ky';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createTranslator } from '../src/factory';
 import { OpenAiTranslator } from '../src/translator/llm';

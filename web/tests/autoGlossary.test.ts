@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { LocalTranslationTask } from '../src/domain/translator/tasks/local-task';
 import { WorkPreparer } from '../src/domain/translator/prepare-work';
 import type {

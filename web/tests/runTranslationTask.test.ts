@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import { reactive } from 'vue';
+import type * as TranslatorModule from '@auto-novel/translator';
 import type { Translator } from '@auto-novel/translator';
 
 import { runTranslationTask } from '../src/domain/translator/run-task';
@@ -19,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@auto-novel/translator', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@auto-novel/translator')>()),
+  ...(await importOriginal<typeof TranslatorModule>()),
   createTranslator: mocks.createTranslator,
 }));
 vi.mock('@/external/youdao', () => ({
@@ -78,13 +86,13 @@ function createTask(type: TranslationTask['type'] = 'web') {
   ];
   const task = {
     type,
-    initialized: false,
+    initialized: false as boolean,
     chapters: ['1', '2'].map((chapterId, order) => ({
       kind: 'chapter' as const,
       chapterId,
       title: `Chapter ${chapterId}`,
       order,
-      completed: false,
+      completed: false as boolean,
     })),
     metadataUnit: undefined as TranslationTask['metadataUnit'],
     initialize: vi.fn<TranslationTask['initialize']>(),

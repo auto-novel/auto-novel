@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { validateBannerConfig } from './bannerConfig';
 
 it.each(['', ' /novel ', 'https://example.com'])(

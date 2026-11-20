@@ -16,7 +16,7 @@ export type ReaderParagraph =
   | undefined;
 
 export const buildParagraphs = (
-  gnid: GenericNovelId,
+  _gnid: GenericNovelId,
   chapter: ReaderChapter,
 ): ReaderParagraph[] => {
   const cc = useSettingStore().cc;
@@ -85,7 +85,7 @@ export const buildParagraphs = (
           });
         }
       }
-      if (!hasAnyTranslation) {
+      if (!hasAnyTranslation && setting.mode === 'zh') {
         return merged;
       }
     } else {

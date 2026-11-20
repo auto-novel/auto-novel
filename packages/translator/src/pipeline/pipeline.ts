@@ -152,7 +152,7 @@ export class TranslationPipeline {
   /** 等待已投递输入全部结算；结算回调抛错时在这里上抛。 */
   async drain(): Promise<void> {
     while (this.pendingSettlements.size > 0) {
-      await Promise.all([...this.pendingSettlements]);
+      await Promise.all(this.pendingSettlements);
     }
     const error = this.settlementError;
     this.settlementError = undefined;

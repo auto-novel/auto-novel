@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ref } from 'vue';
 import type { Comment, CommentPage } from '@novelia/web-kit';
 
@@ -78,7 +78,6 @@ beforeEach(() => {
   whoami.value = { user: { id: 1 } };
   entries.length = 0;
   pending.length = 0;
-  vi.clearAllMocks();
   Object.values(mocks.api).forEach((fn) => fn.mockReset());
 });
 

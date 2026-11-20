@@ -4,7 +4,6 @@ import type {
   ListTextOption,
   ListValue,
 } from '@/components/list/types';
-import router from '@/router';
 import { parseWebListValueProvider } from '../list/option';
 
 export interface WebFavoredListOptions extends ListOptions {
