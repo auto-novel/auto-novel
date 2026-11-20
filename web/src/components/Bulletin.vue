@@ -8,10 +8,7 @@
 </template>
 
 <style>
-.notice p {
-  margin-top: 0.4em;
-  margin-bottom: 0em;
-}
+.notice p,
 .notice ul {
   margin-top: 0.4em;
   margin-bottom: 0em;

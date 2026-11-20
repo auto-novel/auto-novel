@@ -1,5 +1,5 @@
 import Express, { Router } from 'express';
-import { Providers } from '@auto-novel/crawler';
+import { getProviderFactory } from '@/providers';
 import ky from 'ky';
 import { ProxyAgent } from 'undici';
 
@@ -18,7 +18,7 @@ function getClientWithProxy(proxyUrl: string) {
 
 router.get('/metadata', async (req, res) => {
   const { providerId, novelId } = req.params as any;
-  const providerInitFn = Providers[providerId];
+  const providerInitFn = getProviderFactory(providerId);
   if (!providerInitFn) {
     res.status(400).send({ error: 'Unknown providerId' });
     return;
@@ -31,7 +31,7 @@ router.get('/metadata', async (req, res) => {
 
 router.get('/rank', async (req, res) => {
   const { providerId, novelId } = req.params as any;
-  const providerInitFn = Providers[providerId];
+  const providerInitFn = getProviderFactory(providerId);
   if (!providerInitFn) {
     res.status(400).send({ error: 'Unknown providerId' });
     return;
@@ -44,7 +44,7 @@ router.get('/rank', async (req, res) => {
 
 router.get('/:chapterId/chapter', async (req, res) => {
   const { providerId, novelId, chapterId } = req.params as any;
-  const providerInitFn = Providers[providerId];
+  const providerInitFn = getProviderFactory(providerId);
   if (!providerInitFn) {
     res.status(400).send({ error: 'Unknown providerId' });
     return;

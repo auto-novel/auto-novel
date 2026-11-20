@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { bannerFocalPosition, validateBannerFocal } from './bannerFocal';
 
 it('焦点尽量居中而不是直接当作 CSS 百分比', () => {

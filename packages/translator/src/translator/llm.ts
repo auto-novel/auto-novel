@@ -5,7 +5,7 @@ import type {
   TranslateRequest,
   Translator,
 } from '@/types';
-import { getPreviousSource, isAbortError } from '@/utils';
+import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
 
 import {
   createPiAiCompletion,
@@ -41,6 +41,7 @@ export class OpenAiTranslator implements Translator {
   private model: string;
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
+  private readonly sessionId = randomUUID();
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
 
@@ -131,6 +132,7 @@ export class OpenAiTranslator implements Translator {
           model: this.model,
           messages,
           requestParams: this.profileParams,
+          sessionId: this.sessionId,
           signal,
         });
         // 思考日志属于这次模型调用，不能按等待任务的数量重复输出。

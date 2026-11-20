@@ -33,10 +33,10 @@ const GENRE_IDS = {
   现代戏剧: 'drama',
   恐怖: 'horror',
   推理: 'mystery',
-  '散文·纪实': 'nonfiction',
-  '历史·时代·传奇': 'history',
-  '创作论·评论': 'criticism',
-  '诗·童话·其他': 'others',
+  散文·纪实: 'nonfiction',
+  历史·时代·传奇: 'history',
+  创作论·评论: 'criticism',
+  诗·童话·其他: 'others',
 } as const;
 
 const STATUS_IDS = {

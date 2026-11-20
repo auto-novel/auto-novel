@@ -11,6 +11,8 @@ on:
       - package.json
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - vite.config.ts
+      - daemon/**
       - web/**
       - apps/admin/**
       - packages/crawler/**
@@ -30,23 +32,29 @@ jobs:
     timeout-minutes: 30
 
     env:
-      HUSKY: '0'
+      VP_GIT_HOOKS: '0'
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Type-check and build
-        run: pnpm --stream --filter '@auto-novel/web...' --filter '@auto-novel/admin...' run build
+      - name: Lint workspace
+        run: pnpm exec vp lint
 
-      - name: Test
-        run: pnpm --filter @auto-novel/web test
+      - name: Type-check and build
+        run: pnpm build
+
+      - name: Type-check applications
+        run: pnpm typecheck
+
+      - name: Unit tests (without live crawler requests)
+        run: pnpm test:unit

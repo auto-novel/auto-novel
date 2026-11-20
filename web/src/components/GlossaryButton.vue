@@ -163,7 +163,7 @@ const importGlossary = () => {
   }
 };
 
-const downloadGlossaryAsJsonFile = async (ev: MouseEvent) => {
+const downloadGlossaryAsJsonFile = async () => {
   downloadFile(
     `${gnidHint.value ?? 'glossary'}.json`,
     new Blob([Glossary.toJson(glossary.value)], {

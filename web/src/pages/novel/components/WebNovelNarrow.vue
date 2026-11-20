@@ -1,15 +1,11 @@
 <script lang="ts" setup>
-import {
-  KeyboardArrowDownRound,
-  KeyboardArrowUpRound,
-  SortOutlined,
-} from '@vicons/material';
+import { KeyboardArrowDownRound } from '@vicons/material';
 
 import { subjectKeys } from '@/api/commentSubject';
+import type { TocChapter } from '@/components/useChapterToc';
+import { useChapterToc } from '@/components/useChapterToc';
 import type { WebNovelDto, WebNovelTocItemDto } from '@/model/WebNovel';
 import { useSettingStore } from '@/stores';
-import { useTocExpansion } from './UseTocExpansion';
-import { useLastReadChapter, useToc } from './UseWebNovel';
 
 const props = defineProps<{
   providerId: string;
@@ -20,27 +16,27 @@ const props = defineProps<{
 const settingStore = useSettingStore();
 const { setting } = storeToRefs(settingStore);
 
-const sortReverse = computed(() => setting.value.tocSortReverse);
-
-const defaultTocExpanded = computed(() => setting.value.tocExpandAll);
-
-const { toc } = useToc(props.novel);
-const { lastReadChapter } = useLastReadChapter(props.novel, toc);
-const startReadChapter = computed(() => {
-  if (lastReadChapter.value !== undefined) {
-    return lastReadChapter.value;
-  }
-  return toc.value.find((it) => it.chapterId !== undefined);
+const {
+  items,
+  visibleItems,
+  currentChapter: lastReadChapter,
+  hasSections,
+  isAnyExpanded,
+  toggleAll,
+  toggleSection,
+} = useChapterToc(() => props.novel.toc, {
+  defaultExpanded: () => setting.value.tocExpandAll,
+  currentChapterId: () => props.novel.lastReadChapterId,
+  sortReverse: () => setting.value.tocSortReverse,
 });
-
+const startReadChapter = computed(
+  () =>
+    lastReadChapter.value ??
+    items.value.find((item) => item.kind === 'chapter'),
+);
+const chapterTo = (chapter: TocChapter) =>
+  `/novel/${props.providerId}/${props.novelId}/${chapter.chapterId}`;
 const showCatalogDrawer = ref(false);
-
-const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
-  useTocExpansion(
-    toc,
-    defaultTocExpanded,
-    computed(() => props.novel.lastReadChapterId),
-  );
 </script>
 
 <template>
@@ -70,12 +66,9 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
   <template v-if="setting.tocCollapseInNarrowScreen">
     <ChapterTocItem
       v-if="startReadChapter !== undefined"
-      :provider-id="providerId"
-      :novel-id="novelId"
-      :toc-item="startReadChapter"
-      :last-read="novel.lastReadChapterId"
-      :is-separator="false"
-      :is-special-chapter="true"
+      :item="startReadChapter"
+      :to="chapterTo(startReadChapter)"
+      :current-chapter-id="novel.lastReadChapterId"
     />
     <div v-if="novel.toc.length > 1" class="flex justify-center">
       <UButton
@@ -91,30 +84,13 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     </div>
   </template>
   <template v-else>
-    <div class="mb-4 flex items-center justify-between">
-      <div class="flex-1"></div>
-      <UButton
-        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-        color="neutral"
-        v-if="hasSeparators"
-        size="sm"
-        variant="ghost"
-        class="mr-2 text-sm/4"
-        @click="toggleAll"
-      >
-        {{ isAnyExpanded ? '折叠' : '展开' }}
-      </UButton>
-      <UButton
-        :icon="SortOutlined"
-        color="neutral"
-        size="sm"
-        variant="ghost"
-        class="text-sm/4"
-        @click="setting.tocSortReverse = !setting.tocSortReverse"
-      >
-        {{ setting.tocSortReverse ? '倒序' : '正序' }}
-      </UButton>
-    </div>
+    <ChapterTocToolbar
+      v-model:reverse="setting.tocSortReverse"
+      :has-sections="hasSections"
+      :is-any-expanded="isAnyExpanded"
+      class="mb-4 justify-end"
+      @toggle-all="toggleAll"
+    />
     <UCard
       v-if="lastReadChapter !== undefined"
       variant="soft"
@@ -123,30 +99,19 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     >
       <b class="pl-1.5">上次读到:</b>
       <ChapterTocItem
-        :provider-id="providerId"
-        :novel-id="novelId"
-        :toc-item="lastReadChapter"
-        :last-read="novel.lastReadChapterId"
-        :is-separator="false"
-        :is-special-chapter="true"
+        :item="lastReadChapter"
+        :to="chapterTo(lastReadChapter)"
+        :current-chapter-id="novel.lastReadChapterId"
       />
     </UCard>
-    <UScrollArea>
-      <ChapterTocList
-        :toc-sections="tocSections"
-        v-model:expanded-names="expandedNames"
-        :last-read-chapter-id="novel.lastReadChapterId"
-        :default-scroll-key="lastReadChapter?.key"
-        :provider-id="providerId"
-        :novel-id="novelId"
-        :sort-reverse="sortReverse"
-        :mode="{
-          narrow: true,
-          modal: false,
-          collapse: false,
-        }"
-      />
-    </UScrollArea>
+    <!-- 整页滚动没有独立视口，不伪装成限高虚拟列表；各行按需跳过绘制。 -->
+    <ChapterTocList
+      :items="visibleItems"
+      :chapter-to="chapterTo"
+      :current-chapter-id="novel.lastReadChapterId"
+      :virtual="false"
+      @toggle-section="toggleSection"
+    />
   </template>
 
   <USlideover
@@ -162,47 +127,24 @@ const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
     }"
   >
     <template #actions>
-      <UButton
-        :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-        color="neutral"
-        v-if="hasSeparators"
-        size="sm"
-        variant="ghost"
-        class="mr-2 text-sm/4"
-        @click="toggleAll"
-      >
-        {{ isAnyExpanded ? '折叠' : '展开' }}
-      </UButton>
-      <UButton
-        :icon="SortOutlined"
-        color="neutral"
-        size="sm"
-        variant="ghost"
-        class="text-sm/4"
-        @click="setting.tocSortReverse = !setting.tocSortReverse"
-      >
-        {{ setting.tocSortReverse ? '倒序' : '正序' }}
-      </UButton>
+      <ChapterTocToolbar
+        v-model:reverse="setting.tocSortReverse"
+        :has-sections="hasSections"
+        :is-any-expanded="isAnyExpanded"
+        @toggle-all="toggleAll"
+      />
     </template>
 
     <template #body>
-      <div class="min-h-0 flex-1 py-4 pr-4 pl-2">
-        <ChapterTocList
-          :toc-sections="tocSections"
-          v-model:expanded-names="expandedNames"
-          :last-read-chapter-id="novel.lastReadChapterId"
-          :default-scroll-key="lastReadChapter?.key"
-          :provider-id="providerId"
-          :novel-id="novelId"
-          :sort-reverse="sortReverse"
-          :mode="{
-            narrow: true,
-            modal: false,
-            collapse: true,
-          }"
-          class="h-full"
-        />
-      </div>
+      <ChapterTocList
+        :items="visibleItems"
+        :chapter-to="chapterTo"
+        :current-chapter-id="novel.lastReadChapterId"
+        :initial-chapter-id="novel.lastReadChapterId"
+        class="min-h-0 flex-1"
+        padded
+        @toggle-section="toggleSection"
+      />
     </template>
   </USlideover>
 

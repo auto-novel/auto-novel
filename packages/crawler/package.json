@@ -2,39 +2,31 @@
   "name": "@auto-novel/crawler",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "license": "GPL-3.0-only",
+  "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "rslib build",
-    "dev": "rslib dev --watch",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "format": "prettier --write ."
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@rslib/core": "^0.18.6",
-    "@types/node": "^24.12.2",
-    "eslint": "^9.39.4",
-    "globals": "^16.5.0",
-    "prettier": "^3.8.3",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.58.2",
-    "vitest": "^4.1.4"
+    "build": "vp pack",
+    "dev": "vp pack --watch --no-clean",
+    "test": "vp test run",
+    "test:unit": "vp test run --exclude \"tests/web/**\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "ky": "^2.1.0",
-    "p-limit": "^7.2.0",
-    "zod": "^4.3.6"
+    "p-limit": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

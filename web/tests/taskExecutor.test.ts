@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { WorkPreparer } from '../src/domain/translator/prepare-work';
 import { buildChapterList } from '../src/domain/translator/tasks/chapter-preparation';
@@ -23,7 +23,7 @@ function createTask(type: TranslationTask['type']) {
         chapterId: '1',
         title: 'Chapter',
         order: 0,
-        completed: false,
+        completed: false as boolean,
       },
     ],
     initialize: vi.fn(),
