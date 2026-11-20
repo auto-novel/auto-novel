@@ -136,7 +136,10 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
   ): TranslationTask {
     if (!runtime.task) {
       const { desc, params } = TranslateTaskDescriptor.parse(taskDesc);
-      runtime.task = createTranslationTask(desc, translatorId, params);
+      runtime.task = createTranslationTask(desc, translatorId, params, {
+        autoGlossary: () =>
+          !isSakura && workerStore.ref.value.autoGlossary === true,
+      });
     }
     return runtime.task;
   }
@@ -148,7 +151,8 @@ export function useWorkspaceRuntime(translatorId: WorkspaceTranslatorId) {
       const runtime = taskRuntimes.get(job.task);
       if (!runtime) continue;
       const { task, state } = runtime;
-      if (!task?.initialized || !state || !canRunTask(task)) continue;
+      if (!task?.initialized || task.preparing || !state || !canRunTask(task))
+        continue;
       for (const unit of state.units) {
         if (unit.status === 'pending')
           yield { job, unit, state, task, runtime };

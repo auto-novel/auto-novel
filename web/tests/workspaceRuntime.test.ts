@@ -244,6 +244,18 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+it('术语分析中的书籍暂缓取正文，其他书籍继续执行', async () => {
+  const analyzing = Object.assign(task('local'), { preparing: true });
+  const ready = task('local');
+  const { runtime } = setupLifecycleRuntime({ analyzing, ready });
+  await runtime.startWorker('trusted');
+  await vi.waitFor(() => expect(ready.chapterSave).toHaveBeenCalledOnce());
+  expect(analyzing.prepareUnit).not.toHaveBeenCalled();
+  analyzing.preparing = false;
+  runtime.retryTask();
+  await vi.waitFor(() => expect(analyzing.chapterSave).toHaveBeenCalledOnce());
+});
+
 describe('workspace task version lifecycle', () => {
   it('cancels initialization when disposed without eagerly loading the next task', async () => {
     const active = task('local');
