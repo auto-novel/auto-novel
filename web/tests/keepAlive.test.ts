@@ -18,7 +18,6 @@ const AudioMock = vi.fn(function () {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.clearAllMocks();
   audio.loop = false;
   audio.play.mockResolvedValue();
   vi.stubGlobal('Audio', AudioMock);

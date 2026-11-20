@@ -23,7 +23,7 @@ function createTask(type: TranslationTask['type']) {
         chapterId: '1',
         title: 'Chapter',
         order: 0,
-        completed: false,
+        completed: false as boolean,
       },
     ],
     initialize: vi.fn(),

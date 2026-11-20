@@ -4,7 +4,7 @@
 	redir /admin /admin/ 308
 
 	handle_path /admin/* {
-		root * /dist/admin
+		root * /admin
 		try_files {path} /index.html
 		header /index.html Cache-Control "no-cache,no-store,max-age=0,must-revalidate"
 		header /assets/* Cache-Control "public, max-age=7776000"
@@ -27,7 +27,7 @@
 	}
 
 	handle {
-		root * /dist
+		root * /web
 		file_server
 		route {
 			try_files {path} /

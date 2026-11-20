@@ -86,13 +86,13 @@ function createTask(type: TranslationTask['type'] = 'web') {
   ];
   const task = {
     type,
-    initialized: false,
+    initialized: false as boolean,
     chapters: ['1', '2'].map((chapterId, order) => ({
       kind: 'chapter' as const,
       chapterId,
       title: `Chapter ${chapterId}`,
       order,
-      completed: false,
+      completed: false as boolean,
     })),
     metadataUnit: undefined as TranslationTask['metadataUnit'],
     initialize: vi.fn<TranslationTask['initialize']>(),

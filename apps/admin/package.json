@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "dev:remote": "cross-env VITE_LOCAL_API=false vp dev",
-    "dev:local": "cross-env VITE_LOCAL_API=true vp dev",
+    "dev:local": "vp dev --mode local-api",
     "build": "vp build && vue-tsc -b --noEmit",
     "preview": "vp preview",
     "test": "vp test run",
-    "typecheck": "vue-tsc -b --noEmit",
-    "lint": "vp lint src"
+    "typecheck": "vue-tsc -b --noEmit"
   },
   "dependencies": {
     "@novelia/web-kit": "github:auto-novel/web-kit#6931266c093b98074e1ab49b88a5471aa2f20d78",
@@ -25,7 +23,6 @@
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vue/tsconfig": "^0.9.1",
-    "cross-env": "^10.1.0",
     "proxy-agent": "^8.0.1",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",

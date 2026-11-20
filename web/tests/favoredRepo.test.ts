@@ -1,23 +1,30 @@
+import type * as PiniaColada from '@pinia/colada';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { ref } from 'vue';
 
 import { FavoredRepo } from '../src/stores/useFavored';
 
-const { favoriteWebNovel, favoriteWenkuNovel, invalidateQueries } = vi.hoisted(
-  () => ({
+const { favoriteWebNovel, favoriteWenkuNovel, invalidateQueries, listFavored } =
+  vi.hoisted(() => ({
     favoriteWebNovel: vi.fn(),
     favoriteWenkuNovel: vi.fn(),
     invalidateQueries: vi.fn(),
-  }),
-);
+    listFavored: vi.fn(),
+  }));
 vi.mock('@/api', () => ({
-  FavoredApi: { favoriteWebNovel, favoriteWenkuNovel },
+  FavoredApi: { favoriteWebNovel, favoriteWenkuNovel, listFavored },
 }));
-vi.mock('@pinia/colada', () => ({
-  useQuery: vi.fn(),
+vi.mock('@pinia/colada', async (importOriginal) => ({
+  ...(await importOriginal<typeof PiniaColada>()),
   useQueryCache: () => ({ invalidateQueries }),
 }));
-vi.mock('@/util', () => ({ useLocalStorage: vi.fn() }));
-vi.mock('../src/stores/useWhoamiStore', () => ({ useWhoamiStore: vi.fn() }));
+vi.mock('@/util', () => ({
+  useLocalStorage: (_key: string, defaults: object) => ref(defaults),
+}));
+const whoami = ref({ isSignedIn: false });
+vi.mock('../src/stores/useWhoamiStore', () => ({
+  useWhoamiStore: () => ({ whoami }),
+}));
 
 beforeEach(() => {
   favoriteWebNovel.mockReset().mockResolvedValue(undefined);

@@ -78,7 +78,6 @@ beforeEach(() => {
   whoami.value = { user: { id: 1 } };
   entries.length = 0;
   pending.length = 0;
-  vi.clearAllMocks();
   Object.values(mocks.api).forEach((fn) => fn.mockReset());
 });
 
