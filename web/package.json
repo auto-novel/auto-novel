@@ -38,11 +38,7 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.6.0",
     "@vue/tsconfig": "^0.9.1",
-<<<<<<< feat/local-glossary-initialize
-    "cross-env": "^10.1.0",
     "fake-indexeddb": "^6.2.8",
-=======
->>>>>>> main
     "jsdom": "^26.1.0",
     "sonda": "^0.7.1",
     "tailwindcss": "^4.3.3",
