@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { TaskLifecycle } from '../src/domain/translator/task-lifecycle';
 
 afterEach(() => vi.unstubAllGlobals());

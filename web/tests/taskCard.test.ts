@@ -1,11 +1,18 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createSSRApp } from 'vue';
-import { renderToString } from 'vue/server-renderer';
+// @vitest-environment jsdom
+
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import type * as WebKit from '@novelia/web-kit';
 
 import { TaskState } from '../src/domain/translator/task-state';
 import TaskCard from '../src/pages/workspace/task/TaskCard.vue';
 
-vi.mock('@novelia/web-kit', () => ({ Toast: { info: vi.fn() } }));
+enableAutoUnmount(afterEach);
+
+vi.mock('@novelia/web-kit', async (importOriginal) => ({
+  ...(await importOriginal<typeof WebKit>()),
+  Toast: { info: vi.fn() },
+}));
 vi.mock('@/pages/workspace/task/ChapterGrid.vue', () => ({
   default: { render: () => null },
 }));
@@ -22,7 +29,7 @@ vi.mock('@/pages/workspace/WorkspaceActionButton.vue', () => ({
 describe('TaskCard', () => {
   it.each([0, 1])(
     'shows metadata-only failure with %i completed chapters',
-    async (chapterCount) => {
+    (chapterCount) => {
       const taskState = new TaskState();
       taskState.initialize(
         Array.from({ length: chapterCount }, (_, order) => ({
@@ -36,17 +43,24 @@ describe('TaskCard', () => {
       );
       taskState.updateStatus(taskState.metadataUnit!.chapterId, 'error');
 
-      const html = await renderToString(
-        createSSRApp(TaskCard, {
+      const wrapper = mount(TaskCard, {
+        props: {
           job: { task: 'local/volume', description: '小说', createAt: 1 },
           taskState,
           canMoveTop: false,
           canMoveBottom: false,
-        }),
-      );
+        },
+        global: {
+          stubs: {
+            UCard: { template: '<div><slot name="header" /><slot /></div>' },
+          },
+        },
+      });
 
-      expect(html).toContain(`任务失败，共 ${chapterCount} 章`);
-      expect(html).not.toContain('等待中');
+      expect(
+        wrapper.get('[role="progressbar"]').attributes('aria-valuetext'),
+      ).toContain(`任务失败，共 ${chapterCount} 章`);
+      expect(wrapper.text()).not.toContain('等待中');
     },
   );
 });

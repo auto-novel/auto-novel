@@ -2,80 +2,43 @@
 import ULink from '@nuxt/ui/components/Link.vue';
 import { XTime } from '@novelia/web-kit';
 
-import type { ReadableTocItem } from '@/pages/novel/components/common';
+import type { TocChapter } from './useChapterToc';
 
-const props = defineProps<{
-  providerId: string;
-  novelId: string;
-  tocItem: ReadableTocItem;
-  lastRead?: string;
-  isSeparator: boolean;
-  isSpecialChapter?: boolean;
+defineProps<{
+  item: TocChapter;
+  to: string;
+  currentChapterId?: string;
 }>();
-
-const type = computed(() => {
-  const { tocItem, lastRead } = props;
-  if (tocItem.chapterId === undefined) {
-    return undefined;
-  } else {
-    const isLastReader =
-      lastRead !== undefined && tocItem.chapterId === lastRead;
-    if (isLastReader) {
-      return 'warning';
-    } else {
-      return 'success';
-    }
-  }
-});
 </script>
 
 <template>
-  <component
-    :is="!isSeparator ? ULink : 'div'"
-    :to="
-      !isSeparator
-        ? `/novel/${providerId}/${novelId}/${tocItem.chapterId}`
-        : undefined
-    "
-    class="toc group block w-[calc(100%-24px)]"
-    :class="
-      isSeparator
-        ? 'cursor-pointer px-1.5 py-0 text-[12px]'
-        : 'cursor-default px-3 py-1 text-[14px]'
-    "
+  <ULink
+    :to="to"
+    :aria-current="item.chapterId === currentChapterId ? 'location' : undefined"
+    class="toc group block min-h-14 w-full px-3 py-1 text-left text-[14px] break-words"
   >
-    <div
-      class="flex items-center justify-between"
-      :id="isSpecialChapter ? undefined : `chapterTocItem-${tocItem.chapterId}`"
+    <span
+      class="group-hover:underline"
+      :class="
+        item.chapterId === currentChapterId
+          ? 'text-warning'
+          : 'toc-title-visited text-success'
+      "
     >
-      <div>
-        <span
-          :class="{
-            'toc-title-visited': type !== undefined && type !== 'warning',
-            'group-hover:underline': type !== undefined,
-            'text-warning': type === 'warning',
-            'text-success': type === 'success',
-            'text-default': type === undefined,
-          }"
-        >
-          {{ tocItem.titleJp }}
-        </span>
-        <br />
-        <span class="text-muted">
-          {{ tocItem.titleZh }}
-        </span>
-        <br />
-        <span class="text-muted text-[12px]" v-if="!isSeparator">
-          [{{ tocItem.order }}]
-          <XTime
-            v-if="tocItem.createAt"
-            :time="tocItem.createAt * 1000"
-            format="yyyy-MM-dd HH:mm"
-          />
-        </span>
-      </div>
-    </div>
-  </component>
+      {{ item.titleJp }}
+    </span>
+    <br />
+    <span class="text-muted">{{ item.titleZh }}</span>
+    <br />
+    <span class="text-muted text-[12px]">
+      [{{ item.order }}]
+      <XTime
+        v-if="item.createAt"
+        :time="item.createAt * 1000"
+        format="yyyy-MM-dd HH:mm"
+      />
+    </span>
+  </ULink>
 </template>
 
 <style scoped>

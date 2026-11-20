@@ -5,7 +5,7 @@ import type {
   TranslateRequest,
   Translator,
 } from '@/types';
-import { getPreviousSource, isAbortError } from '@/utils';
+import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
 
 import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
@@ -44,6 +44,7 @@ export class OpenAiTranslator implements Translator {
   private model: string;
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
+  private readonly sessionId = randomUUID();
   private promptBuilder: PromptBuilder;
   // 只在同一分段的外层重试之间复用，不进入持久缓存。
   private partials = new WeakMap<readonly string[], PartialTranslation>();
@@ -234,6 +235,7 @@ export class OpenAiTranslator implements Translator {
       model: this.model,
       messages,
       requestParams: this.profileParams,
+      sessionId: this.sessionId,
       signal,
     });
     if (completion.reasoning) {

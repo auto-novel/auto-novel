@@ -1,21 +1,18 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2020",
-    "module": "ESNext",
-    "lib": ["dom", "ES2020"],
     "paths": {
       "@/*": ["./src/*"],
       "#build/ui": ["./node_modules/.nuxt-ui/ui"],
       "#build/ui/*": ["./node_modules/.nuxt-ui/ui/*"]
     },
+    "erasableSyntaxOnly": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
 }

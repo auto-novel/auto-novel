@@ -87,9 +87,8 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
 
       const repo = await useLocalVolumeStore();
 
-      const { BlobReader, BlobWriter, ZipWriter } = await import(
-        '@zip.js/zip.js'
-      );
+      const { BlobReader, BlobWriter, ZipWriter } =
+        await import('@zip.js/zip.js');
       const zipBlobWriter = new BlobWriter();
       const writer = new ZipWriter(zipBlobWriter);
 
@@ -121,9 +120,8 @@ export const useBookshelfLocalStore = defineStore('BookshelfLocal', {
     async downloadRawVolumes(ids: string[]) {
       const repo = await useLocalVolumeStore();
 
-      const { BlobReader, BlobWriter, ZipWriter } = await import(
-        '@zip.js/zip.js'
-      );
+      const { BlobReader, BlobWriter, ZipWriter } =
+        await import('@zip.js/zip.js');
       const zipBlobWriter = new BlobWriter();
       const writer = new ZipWriter(zipBlobWriter);
 

@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { useBookshelfLocalStore } from '../src/pages/bookshelf/BookshelfLocalStore';
 
@@ -18,7 +18,6 @@ beforeEach(() => {
   listVolume.mockReset();
   deleteVolume.mockReset().mockResolvedValue(undefined);
 });
-afterEach(() => vi.restoreAllMocks());
 
 describe('local bookshelf recovery', () => {
   it('retains existing data on failure and clears the error when retrying', async () => {

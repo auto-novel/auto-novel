@@ -1,14 +1,14 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
     "target": "esnext",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["../src/lib/*", "../src/app/*"]
-    }
+      "@/*": ["../src/*"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "include": [".", "../vitest.setup.ts"]
 }

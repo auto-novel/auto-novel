@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { objectPosition } from '../src/repos/useBanner';
 
@@ -6,9 +13,8 @@ const { list } = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('@/api', () => ({ BannerApi: { list } }));
 // 使用 web-kit 的真实存储实现，避免加载无关 UI 组件。
 vi.mock('@novelia/web-kit', async () => {
-  const { useLocalStorage } = await import(
-    '../node_modules/@novelia/web-kit/src/utils/storage'
-  );
+  const { useLocalStorage } =
+    await import('../node_modules/@novelia/web-kit/src/utils/storage');
   return { useLocalStorage };
 });
 

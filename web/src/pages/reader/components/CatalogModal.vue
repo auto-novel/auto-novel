@@ -1,219 +1,151 @@
 <script lang="ts" setup>
-import {
-  KeyboardArrowDownRound,
-  KeyboardArrowUpRound,
-  SortOutlined,
-} from '@vicons/material';
-
-import type { GenericNovelId } from '@/model/Common';
-import type { ReadableTocItem } from '@/pages/novel/components/common';
-import { useTocExpansion } from '@/pages/novel/components/UseTocExpansion';
-import { useIsWideScreen } from '@/pages/util';
+import type { TocChapter } from '@/components/useChapterToc';
+import { useChapterToc } from '@/components/useChapterToc';
+import { GenericNovelId } from '@/model/Common';
+import type { WebNovelTocItemDto } from '@/model/WebNovel';
 import { WebNovelRepo } from '@/repos';
 import { useLocalVolumeStore, useSettingStore } from '@/stores';
 import type { Result } from '@/util/result';
-import { Err, Ok, runCatching } from '@/util/result';
+import { runCatching } from '@/util/result';
 
 const props = defineProps<{
   show: boolean;
   gnid: GenericNovelId;
   chapterId: string;
 }>();
-
-const emit = defineEmits<{
-  'update:show': [boolean];
-}>();
-
-type TocItem = ReadableTocItem & {
-  key: number;
-};
-
-const tocResult = shallowRef<Result<TocItem[]>>();
-
+const emit = defineEmits<{ 'update:show': [boolean] }>();
+const { setting } = storeToRefs(useSettingStore());
+const tocResult = shallowRef<Result<WebNovelTocItemDto[]>>();
 const tocData = computed(() =>
   tocResult.value?.ok ? tocResult.value.value : undefined,
 );
-
-const tocNumber = computed(() => {
-  return tocData.value?.filter((it) => it.chapterId !== undefined).length;
+const {
+  items,
+  visibleItems,
+  hasSections,
+  isAnyExpanded,
+  toggleAll,
+  toggleSection,
+} = useChapterToc(tocData, {
+  defaultExpanded: () => setting.value.tocExpandAll,
+  currentChapterId: () => props.chapterId,
+  sortReverse: () => setting.value.tocSortReverse,
 });
+const chapterCount = computed(
+  () => items.value.filter((item) => item.kind === 'chapter').length,
+);
 
-const settingStore = useSettingStore();
-const { setting } = storeToRefs(settingStore);
-
-const sortReverse = computed(() => setting.value.tocSortReverse);
-
-const isWideScreen = useIsWideScreen();
-
-const defaultTocExpanded = computed(() => setting.value.tocExpandAll);
-
-const { expandedNames, hasSeparators, isAnyExpanded, toggleAll, tocSections } =
-  useTocExpansion(
-    tocData,
-    defaultTocExpanded,
-    computed(() => props.chapterId),
-  );
-
+let loadedFor: string | undefined;
 watch(
-  () => props.show,
-  async (show) => {
-    if (show) {
-      if (tocResult.value?.ok !== true) {
-        const getWebToc = async (providerId: string, novelId: string) => {
-          const { data: novel } = await WebNovelRepo.useWebNovel(
-            providerId,
-            novelId,
-          ).refresh();
-          if (novel) {
-            let order = 0;
-            const tocItems = novel.toc.map((it, index) => {
-              const tocItem = <TocItem>{
-                ...it,
-                key: index,
-                order: it.chapterId ? order : undefined,
-              };
-              if (it.chapterId) order += 1;
-              return tocItem;
-            });
-            return Ok(tocItems);
-          } else {
-            return Err('载入失败');
-          }
-        };
-
-        const getLocalToc = async (volumeId: string) => {
-          const repo = await useLocalVolumeStore();
-          const volume = await repo.getVolume(volumeId);
-          if (volume === undefined) throw Error('小说不存在');
-          return volume.toc.map(
-            (it, index) =>
-              <TocItem>{
-                titleJp: it.chapterId,
-                chapterId: it.chapterId,
-                key: index,
-              },
-          );
-        };
-
-        const gnid = props.gnid;
-        if (gnid.type === 'web') {
-          tocResult.value = await getWebToc(gnid.providerId, gnid.novelId);
-        } else if (gnid.type === 'wenku') {
-          throw '不支持文库';
-        } else {
-          tocResult.value = await runCatching(getLocalToc(gnid.volumeId));
-        }
-      }
+  [() => props.show, () => GenericNovelId.toString(props.gnid)],
+  async ([show, identity], _previous, onCleanup) => {
+    if (identity !== loadedFor) {
+      loadedFor = identity;
+      tocResult.value = undefined;
     }
+    if (!show || tocResult.value?.ok) return;
+    let active = true;
+    onCleanup(() => (active = false));
+    const gnid = props.gnid;
+    const result = await runCatching(
+      (async (): Promise<WebNovelTocItemDto[]> => {
+        if (gnid.type === 'web') {
+          const { data: novel } = await WebNovelRepo.useWebNovel(
+            gnid.providerId,
+            gnid.novelId,
+          ).refresh();
+          if (!novel) throw Error('载入失败');
+          return novel.toc;
+        }
+        if (gnid.type !== 'local') throw Error('不支持文库');
+        const repo = await useLocalVolumeStore();
+        const volume = await repo.getVolume(gnid.volumeId);
+        if (!volume) throw Error('小说不存在');
+        return volume.toc.map((item) => ({
+          titleJp: item.chapterId,
+          chapterId: item.chapterId,
+        }));
+      })(),
+    );
+    if (active) tocResult.value = result;
   },
   { immediate: true },
 );
 
-const currentKey = computed(() => {
-  return tocData.value?.find((it) => it.chapterId === props.chapterId)?.key;
-});
-
-const onTocItemClick = (item: ReadableTocItem) => {
-  if (item.chapterId !== undefined) {
-    emit('update:show', false);
+const chapterTo = (chapter: TocChapter) => {
+  const gnid = props.gnid;
+  if (gnid.type === 'web') {
+    return `/novel/${gnid.providerId}/${gnid.novelId}/${chapter.chapterId}`;
   }
+  if (gnid.type === 'local') {
+    return `/workspace/reader/${encodeURIComponent(gnid.volumeId)}/${encodeURIComponent(chapter.chapterId)}`;
+  }
+  return '';
 };
 </script>
 
 <template>
   <UModal
     :open="show"
-    @update:open="$emit('update:show', $event)"
+    @update:open="emit('update:show', $event)"
     class="w-150"
-    :ui="{ content: 'min-h-[30vh] max-h-[80vh] max-w-[calc(100vw-2rem)]' }"
+    :ui="{
+      content: 'min-h-[30vh] max-h-[80dvh] max-w-[calc(100vw-2rem)]',
+      body: 'overflow-hidden',
+    }"
   >
     <template #title>
-      <div class="flex items-baseline pr-2">
+      <div class="flex items-baseline gap-3 pr-2">
         <span>目录</span>
-        <span
-          class="ml-3 text-muted text-[12px]"
-          v-if="tocNumber !== undefined"
-        >
-          共{{ tocNumber }}章
+        <span v-if="tocData" class="text-muted text-[12px]">
+          共{{ chapterCount }}章
         </span>
         <div class="flex-1" />
-        <UButton
-          :icon="isAnyExpanded ? KeyboardArrowUpRound : KeyboardArrowDownRound"
-          color="neutral"
-          v-if="hasSeparators"
-          size="sm"
-          variant="ghost"
-          class="mr-2 text-sm/4"
-          @click="toggleAll"
-        >
-          {{ isAnyExpanded ? '折叠' : '展开' }}
-        </UButton>
-        <UButton
-          :icon="SortOutlined"
-          color="neutral"
-          size="sm"
-          variant="ghost"
-          class="text-sm/4"
-          @click="setting.tocSortReverse = !setting.tocSortReverse"
-        >
-          {{ setting.tocSortReverse ? '倒序' : '正序' }}
-        </UButton>
+        <ChapterTocToolbar
+          v-model:reverse="setting.tocSortReverse"
+          :has-sections="hasSections"
+          :is-any-expanded="isAnyExpanded"
+          @toggle-all="toggleAll"
+        />
       </div>
     </template>
-
     <template #body>
-      <template v-if="!tocResult">
-        <div role="status">
+      <div class="h-[max(56px,calc(80dvh-200px))] overflow-hidden">
+        <div v-if="!tocResult" role="status">
           <span class="sr-only">正在加载章节目录…</span>
-          <div aria-hidden="true" class="divide-y divide-default">
-            <div v-for="index in 8" :key="index" class="py-3">
-              <USkeleton class="h-5" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
-              <USkeleton class="mt-2 h-4 w-1/2" />
+          <div aria-hidden="true">
+            <div v-for="index in 32" :key="index" class="min-h-14 px-3 py-1">
+              <div class="flex h-5 items-center">
+                <USkeleton class="h-4" :class="index % 3 ? 'w-4/5' : 'w-3/5'" />
+              </div>
+              <div class="flex h-5 items-center">
+                <USkeleton class="h-4 w-1/2" />
+              </div>
+              <div class="flex h-4 items-center">
+                <USkeleton class="h-3 w-1/4" />
+              </div>
             </div>
           </div>
         </div>
-      </template>
-      <UAlert
-        color="error"
-        variant="soft"
-        v-else-if="!tocResult.ok"
-        title="加载错误"
-        :description="tocResult.error.message"
-      />
-      <template v-else>
+        <div v-else-if="!tocResult.ok" class="h-full overflow-y-auto">
+          <UAlert
+            color="error"
+            variant="soft"
+            title="加载错误"
+            :description="tocResult.error.message"
+          />
+        </div>
         <ChapterTocList
-          v-if="gnid.type === 'web' && tocSections"
-          :toc-sections="tocSections"
-          v-model:expanded-names="expandedNames"
-          :last-read-chapter-id="chapterId"
-          :default-scroll-key="currentKey"
-          :provider-id="gnid.providerId"
-          :novel-id="gnid.novelId"
-          :sort-reverse="sortReverse"
-          :mode="{
-            narrow: !isWideScreen,
-            modal: true,
-            collapse: false,
-          }"
-          @item-click="onTocItemClick"
+          v-else-if="show"
+          :items="visibleItems"
+          :chapter-to="chapterTo"
+          :current-chapter-id="chapterId"
+          :initial-chapter-id="chapterId"
+          class="h-full"
+          @toggle-section="toggleSection"
+          @select="emit('update:show', false)"
         />
-        <ChapterTocList
-          v-else-if="gnid.type === 'local' && tocSections"
-          :toc-sections="tocSections"
-          v-model:expanded-names="expandedNames"
-          :last-read-chapter-id="chapterId"
-          :default-scroll-key="currentKey"
-          :provider-id="gnid.volumeId"
-          :novel-id="gnid.volumeId"
-          :sort-reverse="sortReverse"
-          :mode="{
-            narrow: !isWideScreen,
-            modal: true,
-            collapse: false,
-          }"
-          @item-click="onTocItemClick"
-        />
-      </template>
+      </div>
     </template>
   </UModal>
 </template>

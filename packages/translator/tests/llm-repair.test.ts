@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   attemptTranslation,
@@ -304,7 +304,7 @@ describe('GPT 失败行修复', () => {
       '新译甲',
       '新译乙',
     ]);
-    expect(requests.at(-1)).toContain('#2:二番目');
+    expect(requests[requests.length - 1]).toContain('#2:二番目');
   });
 
   it('停止后不再请求修复，也不触发逐行降级', async () => {

@@ -107,15 +107,20 @@ const updateChapter = (
     prefix = `/workspace/reader/${encodeURIComponent(gnid.volumeId)}`;
   }
   currentChapterId.value = chapterId;
+  const path = `${prefix}/${gnid.type === 'local' ? encodeURIComponent(chapterId) : chapterId}`;
 
   if (replace) {
-    router.replace(`${prefix}/${chapterId}`);
+    router.replace(path);
   } else {
-    router.push(`${prefix}/${chapterId}`);
+    router.push(path);
   }
 };
 
+let chapterLoadVersion = 0;
+onScopeDispose(() => chapterLoadVersion++);
+
 const navToChapter = async (chapterId: string) => {
+  const loadVersion = ++chapterLoadVersion;
   targetChapterId.value = chapterId;
 
   const { type, promiseOrValue } = store.loadChapter(chapterId);
@@ -129,7 +134,7 @@ const navToChapter = async (chapterId: string) => {
     task?.error();
     throw error;
   }
-  if (chapterId !== targetChapterId.value) {
+  if (loadVersion !== chapterLoadVersion) {
     task?.finish();
     return;
   }
@@ -200,10 +205,17 @@ useScrollDetector((payload) => {
       if (chapterList.value.every((it) => it.chapterId !== id)) {
         chapterList.value.push({ chapterId: id });
 
+        const loadVersion = chapterLoadVersion;
         (async () => {
           const result = await store.loadChapter(id).promiseOrValue;
-          const chapter = chapterList.value.find((it) => it.chapterId === id)!;
-          chapter.result = result;
+          if (
+            loadVersion !== chapterLoadVersion ||
+            readerSetting.value.pageTurnMode !== 'scroll'
+          ) {
+            return;
+          }
+          const chapter = chapterList.value.find((it) => it.chapterId === id);
+          if (chapter) chapter.result = result;
         })();
       }
     }
@@ -277,7 +289,15 @@ const showSettingModal = ref(false);
 const showCatalogModal = ref(false);
 
 onKeyDown(['Enter'], (e) => {
-  if (showSettingModal.value) {
+  // 不拦截目录分卷按钮、章节链接等控件的原生键盘操作。
+  if (
+    showSettingModal.value ||
+    e.defaultPrevented ||
+    (e.target instanceof Element &&
+      e.target.closest(
+        'button, a, input, select, textarea, [contenteditable="true"]',
+      ))
+  ) {
     return;
   }
   showCatalogModal.value = !showCatalogModal.value;

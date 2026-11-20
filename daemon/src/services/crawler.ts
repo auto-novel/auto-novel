@@ -1,12 +1,16 @@
 import type {
   Page,
-  ProviderId,
-  RemoteChapter,
-  RemoteNovelListItem,
-  RemoteNovelMetadata,
+  WebNovelChapter as RemoteChapter,
+  WebNovelListItem as RemoteNovelListItem,
+  WebNovelMetadata as RemoteNovelMetadata,
   WebNovelProvider,
 } from '@auto-novel/crawler';
-import { Providers, PROVIDER_IDS } from '@auto-novel/crawler';
+import {
+  getProviderFactory,
+  PROVIDER_IDS,
+  ProviderConfigIdSchema,
+  type ProviderId,
+} from '@/providers';
 import {
   Impit,
   type HttpMethod,
@@ -17,7 +21,6 @@ import ky, { type Options } from 'ky';
 import { ProxyConfig, ProxyManager, type ProxyState } from './proxy';
 import z from 'zod';
 import { CookieJar } from 'tough-cookie';
-import { forEach } from 'lodash-es';
 
 type Fetcher = Options['fetch'];
 type ProviderHandler<T> = (provider: WebNovelProvider) => Promise<T>;
@@ -27,7 +30,7 @@ export const HeaderSchema = z.record(z.string(), z.string());
 export type HeaderArray = z.infer<typeof HeaderSchema>;
 
 export const HeadersByProviderConfigSchema = z.partialRecord(
-  z.enum(PROVIDER_IDS),
+  ProviderConfigIdSchema,
   HeaderSchema,
 );
 export type HeadersByProviderConfig = z.infer<
@@ -55,19 +58,18 @@ export class CrawlerService {
       followRedirects: true,
     };
 
-    const defaultHeaders = options?.headers?.['default'] ?? {};
-    forEach(options.headers, (headers, providerId) => {
-      if (providerId == 'default') {
-        return;
-      }
+    const defaultHeaders = options.headers?.default;
+    for (const providerId of PROVIDER_IDS) {
+      const headers = options.headers?.[providerId];
+      if (!defaultHeaders && !headers) continue;
       const finalHeader = {
         ...defaultHeaders,
-        ...(headers ?? {}),
+        ...headers,
       };
       console.debug('Setting initial headers for provider:', providerId);
       console.debug(finalHeader);
-      this.headers.set(providerId as ProviderId, finalHeader);
-    });
+      this.headers.set(providerId, finalHeader);
+    }
   }
 
   async getMetadata(
@@ -127,8 +129,8 @@ export class CrawlerService {
       proxyUrl,
       cookieJar,
       headers: {
-        ...(this.impitDefaults.headers ?? {}),
-        ...(headers ?? {}),
+        ...this.impitDefaults.headers,
+        ...headers,
       },
     });
 
@@ -181,7 +183,7 @@ export class CrawlerService {
   }
 
   private requireProvider(providerId: ProviderId) {
-    const providerInit = Providers[providerId];
+    const providerInit = getProviderFactory(providerId);
     if (!providerInit) {
       throw new Error(`Unknown providerId: ${providerId}`);
     }
