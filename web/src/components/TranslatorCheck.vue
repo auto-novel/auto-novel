@@ -5,6 +5,7 @@ const props = defineProps<{
   value: TranslatorId[];
   showOrder?: boolean;
   twoLine?: boolean;
+  variant?: 'list' | 'table';
 }>();
 const emit = defineEmits<{
   'update:value': [TranslatorId[]];
@@ -35,11 +36,12 @@ const calculateTranslatorOrderLabel = (id: TranslatorId) => {
     :model-value="value"
     :items="translationOptions"
     orientation="horizontal"
-    variant="table"
-    indicator="hidden"
+    :variant="variant ?? 'table'"
+    :indicator="variant === 'list' ? 'start' : 'hidden'"
     :ui="{
       fieldset: 'flex-wrap',
-      item: twoLine ? 'px-2 py-1 h-12 items-center' : 'px-2 py-1',
+      // 双行保持自然高度，避免固定高度和垂直居中改变第一行的位置。
+      item: variant === 'list' ? undefined : 'px-2 py-1',
     }"
     @update:model-value="updateValue"
   >

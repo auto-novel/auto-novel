@@ -1,1 +1,1 @@
-export * from './types.vue';
+export * from './types';

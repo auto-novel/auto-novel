@@ -10,6 +10,14 @@ const props = defineProps<{
 
 const open = ref(false);
 const closing = ref(false);
+const editorReady = ref(false);
+watch(open, () => {
+  editorReady.value = false;
+});
+const afterEnter = () => {
+  if (open.value) editorReady.value = true;
+};
+
 const glossaryCount = ref(Object.keys(props.glossary).length);
 
 // 术语表对象不是深层响应式的，就地修改不会引起引用变化，
@@ -60,15 +68,24 @@ const updateOpen = async (value: boolean) => {
       body: 'flex min-h-0 flex-col overflow-hidden p-0 sm:p-0',
     }"
     @update:open="updateOpen"
+    @after:enter="afterEnter"
   >
     <template #body>
       <NovelGlossaryEditor
-        v-if="open"
+        v-if="open && editorReady"
         ref="editorRef"
         :gnid="gnid"
         :value="glossary"
         @glossary-change="handleGlossaryChange"
       />
+      <div v-else-if="open" class="space-y-4 p-4 sm:p-6" role="status">
+        <p class="text-sm text-muted">正在加载术语表…</p>
+        <div aria-hidden="true" class="space-y-3">
+          <div class="h-8 rounded bg-elevated" />
+          <div class="h-8 rounded bg-elevated" />
+          <div class="h-8 rounded bg-elevated" />
+        </div>
+      </div>
     </template>
   </USlideover>
 </template>

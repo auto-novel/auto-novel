@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed, useId } from 'vue';
+import { computed } from 'vue';
 
-const shimmerId = useId();
+import { XProgressCircle } from '@novelia/web-kit';
 
 const props = defineProps<{
   status: 'done' | 'executing' | 'pending' | 'error';
@@ -25,10 +25,16 @@ const statusLabel = computed(
 );
 
 const segmentClasses = {
-  done: { fill: 'bg-success', ring: 'stroke-success' },
-  translating: { fill: 'bg-info', ring: 'stroke-info' },
-  error: { fill: 'bg-error', ring: 'stroke-error' },
+  done: 'bg-success',
+  translating: 'bg-info',
+  error: 'bg-error',
 };
+
+const segmentColors = {
+  done: 'success',
+  translating: 'info',
+  error: 'error',
+} as const;
 
 const progressDescription = computed(() => {
   const { total, done, error, translating, pending } = props.progress;
@@ -41,13 +47,10 @@ const emptyFinished = computed(
 );
 const progressSegments = computed(() => {
   const { total } = props.progress;
-  let offset = 0;
   return (['done', 'translating', 'error'] as const).map((status) => {
     let percentage = total > 0 ? (props.progress[status] / total) * 100 : 0;
     if (emptyFinished.value) percentage = status === 'done' ? 100 : 0;
-    const segment = { status, percentage, offset };
-    offset += percentage;
-    return segment;
+    return { status, percentage, color: segmentColors[status] };
   });
 });
 const filledPercentage = computed(() => {
@@ -98,76 +101,15 @@ const progressPercentage = computed(() => {
       :aria-valuetext="progressDescription"
       :title="progressDescription"
     >
-      <div class="hidden size-14 @min-[640px]:block">
-        <svg
-          class="block size-full"
-          viewBox="0 0 56 56"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <circle
-            class="fill-none stroke-default stroke-4"
-            cx="28"
-            cy="28"
-            r="23"
-          />
-          <circle
-            v-for="segment of progressSegments"
-            :key="segment.status"
-            :class="[
-              'origin-center -rotate-90 fill-none stroke-4',
-              'transition-[stroke-dasharray,stroke-dashoffset] duration-250 ease-[ease]',
-              'motion-reduce:transition-none',
-              segmentClasses[segment.status].ring,
-            ]"
-            cx="28"
-            cy="28"
-            r="23"
-            pathLength="100"
-            :stroke-dasharray="`${segment.percentage} ${100 - segment.percentage}`"
-            :stroke-dashoffset="-segment.offset"
-          />
-          <g v-if="status === 'executing'">
-            <defs>
-              <mask
-                :id="`${shimmerId}-mask`"
-                maskUnits="userSpaceOnUse"
-                x="0"
-                y="0"
-                width="56"
-                height="56"
-              >
-                <circle
-                  class="origin-center -rotate-90 fill-none stroke-4 transition-[stroke-dasharray] duration-250 ease-[ease] motion-reduce:transition-none"
-                  stroke="white"
-                  cx="28"
-                  cy="28"
-                  r="23"
-                  pathLength="100"
-                  :stroke-dasharray="`${filledPercentage} ${100 - filledPercentage}`"
-                />
-              </mask>
-            </defs>
-            <foreignObject
-              :mask="`url(#${shimmerId}-mask)`"
-              x="0"
-              y="0"
-              width="56"
-              height="56"
-            >
-              <div class="task-ring-shimmer size-full" />
-            </foreignObject>
-          </g>
-          <text
-            x="28"
-            y="28"
-            dy=".35em"
-            class="fill-(--ui-text) text-[11px] font-semibold [text-anchor:middle]"
-          >
-            {{ progressPercentage }}%
-          </text>
-        </svg>
-      </div>
+      <XProgressCircle
+        class="hidden @min-[640px]:block"
+        size="sm"
+        :percentage="progressPercentage"
+        :segments="progressSegments"
+        :running="status === 'executing'"
+        role="presentation"
+        aria-hidden="true"
+      />
       <div
         class="relative flex h-1 overflow-hidden rounded-xs bg-accented @min-[640px]:hidden"
         aria-hidden="true"
@@ -178,7 +120,7 @@ const progressPercentage = computed(() => {
           :class="[
             'h-full flex-none transition-[width] duration-250 ease-[ease]',
             'motion-reduce:transition-none',
-            segmentClasses[segment.status].fill,
+            segmentClasses[segment.status],
           ]"
           :style="{ width: `${segment.percentage}%` }"
         />
@@ -193,22 +135,6 @@ const progressPercentage = computed(() => {
 </template>
 
 <style scoped>
-.task-ring-shimmer {
-  background: conic-gradient(
-    transparent 0deg 240deg,
-    rgb(255 255 255 / 65%) 300deg,
-    transparent 360deg
-  );
-  animation: task-ring-flow 1.6s linear infinite;
-}
-@keyframes task-ring-flow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
 .task-progress-shimmer::after {
   content: '';
   position: absolute;
@@ -230,7 +156,6 @@ const progressPercentage = computed(() => {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .task-ring-shimmer,
   .task-progress-shimmer::after {
     display: none;
     animation: none;

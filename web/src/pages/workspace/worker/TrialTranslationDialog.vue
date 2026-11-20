@@ -537,8 +537,7 @@ const handleOpenChange = (open: boolean) => {
                     'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
                     'whitespace-pre-wrap [word-break:break-word]',
                   ]"
-                  >{{ error }}</pre
-                >
+                  >{{ error }}</pre>
               </template>
             </UAlert>
             <UAlert
@@ -555,8 +554,7 @@ const handleOpenChange = (open: boolean) => {
                     'm-0 max-h-30 overflow-auto font-mono text-xs/normal',
                     'whitespace-pre-wrap [word-break:break-word]',
                   ]"
-                  >{{ warning }}</pre
-                >
+                  >{{ warning }}</pre>
               </template>
             </UAlert>
             <div class="relative">

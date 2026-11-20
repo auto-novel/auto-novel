@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { useId } from 'vue';
-
 import { useIsWideScreen } from '@/pages/util';
 import { ReaderSetting, useReaderSettingStore } from '@/stores';
 import { checkIsMobile } from '@/util';
@@ -12,7 +10,6 @@ const tabs = [
 ];
 
 const open = defineModel<boolean>('open', { default: false });
-const popupTargetId = useId();
 const isMobile = checkIsMobile();
 const isWideScreen = useIsWideScreen(600);
 
@@ -40,16 +37,14 @@ const setIndentSize = (diff: number) => {
     title="阅读设置"
     class="w-150"
     :ui="{
-      content: 'max-w-[calc(100vw-2rem)] overflow-visible',
-      body: 'flex min-h-0 flex-col p-0 sm:p-0 overflow-visible',
+      content: 'max-w-[calc(100vw-2rem)]',
+      body: 'flex min-h-0 flex-col p-0 sm:p-0',
       title: 'sr-only',
       header: 'absolute top-0 right-0 z-10 p-0 sm:p-0 border-0',
     }"
   >
     <template #body>
       <div class="flex min-h-0 flex-1 flex-col">
-        <!-- 表单内置浮层放在弹窗内、滚动区外，避免跨库模态隔离和滚动裁剪。 -->
-        <div :id="popupTargetId" class="shrink-0" />
         <div class="max-h-[80dvh] min-h-0 flex-1 overflow-y-auto">
           <UTabs
             :items="tabs"
@@ -64,7 +59,11 @@ const setIndentSize = (diff: number) => {
           >
             <template #content>
               <div class="box-border flex w-full flex-col gap-y-3 p-5">
-                <c-action-wrapper title="语言">
+                <c-action-wrapper
+                  title="语言"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -75,8 +74,12 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="翻译">
-                  <div class="flex flex-wrap gap-x-4 gap-y-3">
+                <c-action-wrapper
+                  title="翻译"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
+                  <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
                     <URadioGroup
                       orientation="horizontal"
                       variant="table"
@@ -93,7 +96,12 @@ const setIndentSize = (diff: number) => {
                   </div>
                 </c-action-wrapper>
 
-                <c-action-wrapper v-if="isMobile" title="点按区域">
+                <c-action-wrapper
+                  v-if="isMobile"
+                  title="点按区域"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -104,7 +112,11 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="朗读语言">
+                <c-action-wrapper
+                  title="朗读语言"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -117,7 +129,11 @@ const setIndentSize = (diff: number) => {
                     :items="ReaderSetting.speakLanguagesOptions"
                   />
                 </c-action-wrapper>
-                <c-action-wrapper title="翻页模式">
+                <c-action-wrapper
+                  title="翻页模式"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -213,7 +229,11 @@ const setIndentSize = (diff: number) => {
 
             <template #appearance>
               <div class="flex w-full flex-col gap-y-3 p-5">
-                <c-action-wrapper title="字重">
+                <c-action-wrapper
+                  title="字重"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -277,7 +297,11 @@ const setIndentSize = (diff: number) => {
                   </span>
                 </c-action-wrapper>
 
-                <c-action-wrapper title="下划线">
+                <c-action-wrapper
+                  title="下划线"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <URadioGroup
                     orientation="horizontal"
                     variant="table"
@@ -288,7 +312,11 @@ const setIndentSize = (diff: number) => {
                   />
                 </c-action-wrapper>
 
-                <c-action-wrapper title="主题">
+                <c-action-wrapper
+                  title="主题"
+                  align="start"
+                  title-class="leading-[30px]"
+                >
                   <div class="flex flex-col gap-y-3">
                     <URadioGroup
                       orientation="horizontal"
@@ -324,24 +352,14 @@ const setIndentSize = (diff: number) => {
                       </URadioGroup>
                       <USeparator class="m-0" />
                       <div class="flex flex-wrap gap-x-3 gap-y-2">
-                        <n-color-picker
-                          :to="`#${popupTargetId}`"
-                          :modes="['hex']"
-                          :show-alpha="false"
-                          v-model:value="readerSetting.theme.bodyColor"
-                          class="w-[8.2em]!"
-                        >
-                          <template #label="color">背景：{{ color }}</template>
-                        </n-color-picker>
-                        <n-color-picker
-                          :to="`#${popupTargetId}`"
-                          :modes="['hex']"
-                          :show-alpha="false"
-                          v-model:value="readerSetting.theme.fontColor"
-                          class="w-[8.2em]!"
-                        >
-                          <template #label="color">文字：{{ color }}</template>
-                        </n-color-picker>
+                        <ReaderColorPicker
+                          label="背景"
+                          v-model="readerSetting.theme.bodyColor"
+                        />
+                        <ReaderColorPicker
+                          label="文字"
+                          v-model="readerSetting.theme.fontColor"
+                        />
                       </div>
                     </template>
                   </div>

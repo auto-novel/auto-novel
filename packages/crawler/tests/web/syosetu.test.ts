@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vite-plus/test';
 
 import { Syosetu } from '@/web/syosetu';
 import { WebNovelAttention, WebNovelType } from '@/web/types';

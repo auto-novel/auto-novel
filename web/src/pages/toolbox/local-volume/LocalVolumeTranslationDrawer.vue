@@ -133,7 +133,7 @@ const progressFilterFunc = computed(() => {
         :glossary="{}"
       />
       <USeparator class="mx-0 my-3" />
-      <c-action-wrapper title="状态">
+      <c-action-wrapper title="状态" align="start" title-class="leading-[26px]">
         <URadioGroup
           orientation="horizontal"
           variant="table"
@@ -145,7 +145,7 @@ const progressFilterFunc = computed(() => {
         />
       </c-action-wrapper>
 
-      <c-action-wrapper title="语言">
+      <c-action-wrapper title="语言" align="start" title-class="leading-[26px]">
         <URadioGroup
           orientation="horizontal"
           variant="table"

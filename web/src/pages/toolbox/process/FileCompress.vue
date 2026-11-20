@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import CEmpty from '@/components/CEmpty.vue';
 import { vHorizontalDrag } from '@/util/dragScroll';
-import { Toast } from '@novelia/web-kit';
-import { ImgComparisonSlider } from '@img-comparison-slider/vue';
+import { Toast, XImageCompare } from '@novelia/web-kit';
 
 import { Humanize } from '@/util';
 import type { Epub, ParsedFile } from '@/util/file';
@@ -27,7 +26,6 @@ const imageFormatOptions = [
 const compressImage = async (blob: Blob) => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  // eslint-disable-next-line compat/compat
   const img = await createImageBitmap(blob);
 
   const scaleRatioValue = Math.min(1, scaleRatio.value);
@@ -126,7 +124,9 @@ const toggleShowDetail = async () => {
 
 const showCompare = ref(false);
 const compareImages = ref({ old: '', new: '' });
+const comparePosition = ref(50);
 const showPreview = (image: EpubImage) => {
+  comparePosition.value = 50;
   showCompare.value = true;
   compareImages.value.old = image.uri;
   compareImages.value.new = image.uriCompressed;
@@ -135,7 +135,7 @@ const showPreview = (image: EpubImage) => {
 
 <template>
   <div class="flex flex-col gap-y-2">
-    <c-action-wrapper title="格式">
+    <c-action-wrapper title="格式" align="start" title-class="leading-[26px]">
       <URadioGroup
         orientation="horizontal"
         variant="table"
@@ -220,20 +220,16 @@ const showPreview = (image: EpubImage) => {
       :ui="{ content: 'w-auto max-w-[95vw]', title: 'sr-only' }"
     >
       <template #body>
-        <img-comparison-slider class="outline-none">
-          <!-- eslint-disable -->
-          <img
-            class="w-full max-h-[85vh]"
-            slot="first"
-            :src="compareImages.old"
-          />
-          <img
-            class="w-full max-h-[85vh]"
-            slot="second"
-            :src="compareImages.new"
-          />
-          <!-- eslint-enable -->
-        </img-comparison-slider>
+        <XImageCompare
+          v-model="comparePosition"
+          :before="compareImages.old"
+          :after="compareImages.new"
+          alt="EPUB 插图"
+          before-label="压缩前"
+          after-label="压缩后"
+          label="拖动对比压缩前后"
+          :ui="{ before: 'max-h-[calc(85vh-4rem)]' }"
+        />
       </template>
     </UModal>
   </div>

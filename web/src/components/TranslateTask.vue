@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Toast } from '@novelia/web-kit';
+import { Toast, XProgressCircle } from '@novelia/web-kit';
 
 import {
   runTranslationTask,
@@ -138,7 +138,11 @@ defineExpose({ startTask });
 <template>
   <c-task-card ref="cardRef" :title="title" :running="running">
     <div class="flex flex-none flex-col items-center gap-y-3">
-      <n-progress type="circle" :percentage="percentage" />
+      <XProgressCircle
+        size="lg"
+        :percentage="percentage"
+        aria-label="章节翻译进度"
+      />
       <span class="text-default">
         成功 {{ chapterFinished }}/{{ chapterTotal ?? '-' }}
         <br />

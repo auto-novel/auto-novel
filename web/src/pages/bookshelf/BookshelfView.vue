@@ -23,9 +23,9 @@ const favoredTitle = computed(() => {
   const title =
     props.favoredId === 'all'
       ? '全部收藏'
-      : favoredStore.favoreds[props.type].find(
+      : (favoredStore.favoreds[props.type].find(
           (it) => it.id === props.favoredId,
-        )?.title ?? '收藏夹';
+        )?.title ?? '收藏夹');
   return `${typeLabel}：${title}`;
 });
 
