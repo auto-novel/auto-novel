@@ -188,18 +188,21 @@ describe('OpenAiTranslator', () => {
           }),
         );
       vi.stubGlobal('fetch', fetch);
-      const receivedLimit = Promise.withResolvers<void>();
+      let resolveReceivedLimit!: () => void;
+      const receivedLimit = new Promise<void>((resolve) => {
+        resolveReceivedLimit = resolve;
+      });
       const translator = new OpenAiTranslator({
         endpoint: 'https://api.example.test',
         key: 'test-key',
         model: 'model-1',
         log: (message) => {
-          if (message.startsWith('收到 429')) receivedLimit.resolve();
+          if (message.startsWith('收到 429')) resolveReceivedLimit();
         },
       });
 
       const retry = attemptTranslation(translator, { lines: ['原文'] });
-      await receivedLimit.promise;
+      await receivedLimit;
       const concurrent = attemptTranslation(translator, { lines: ['另一行'] });
       const controller = new AbortController();
       const cancelled = expect(
