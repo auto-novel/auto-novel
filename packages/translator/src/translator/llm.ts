@@ -10,6 +10,7 @@ import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
 import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
+import { GptRateLimit } from './llm-rate-limit';
 import { createTranslationCacheKey } from '@/cache';
 
 import {
@@ -36,6 +37,7 @@ export class OpenAiTranslator implements Translator {
   private profileParams: Record<string, unknown>;
   private reasoningEffort: string;
   private readonly sessionId = randomUUID();
+  private readonly rateLimit: GptRateLimit;
   private promptBuilder: PromptBuilder;
   readonly log: Logger;
 
@@ -49,6 +51,7 @@ export class OpenAiTranslator implements Translator {
     this.reasoningEffort = profile.reasoningEffort;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
     this.log = config.log ?? (() => {});
+    this.rateLimit = new GptRateLimit(this.log);
     this.log(`请求思考强度：${this.reasoningEffort}`);
   }
 
@@ -113,6 +116,8 @@ export class OpenAiTranslator implements Translator {
     context?: SegmentContext,
     signal?: AbortSignal,
   ): Promise<string[]> {
+    // 已知的限流等待放在 SDK 调用前，避免占用单次请求的网络超时。
+    await this.rateLimit.wait(signal);
     const messages = this.promptBuilder.build(lines, context);
     const completion = await createPiAiCompletion({
       protocol: this.protocol,
@@ -123,6 +128,11 @@ export class OpenAiTranslator implements Translator {
       requestParams: this.profileParams,
       sessionId: this.sessionId,
       signal,
+      fetch: (input, init) =>
+        this.rateLimit.fetch(
+          () => globalThis.fetch(input, init),
+          init?.signal ?? signal,
+        ),
     });
     if (completion.reasoning) {
       this.log(`思考：${completion.reasoning}`);
