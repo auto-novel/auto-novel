@@ -4,6 +4,8 @@ import { KeyboardArrowDownRound } from '@vicons/material';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import { checkIsMobile } from '@/util';
+
 import type { TocChapter, TocItem } from './useChapterToc';
 
 const props = withDefaults(
@@ -38,6 +40,7 @@ let initiallyPositioned = false;
 
 const virtualOptions = computed(() => ({
   estimateSize: 76,
+  ...(checkIsMobile() ? {} : { overscan: 100 }),
   // 留白属于滚动内容，必须计入虚拟列表的偏移和总高度。
   paddingStart: props.padded ? 16 : 0,
   paddingEnd: 24,

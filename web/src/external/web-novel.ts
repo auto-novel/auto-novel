@@ -12,7 +12,7 @@ import {
 } from '@auto-novel/crawler';
 
 import { type AddonApi, getAddon } from '@/external/addon';
-import { checkIsMobile, lazy } from '@/util';
+import { lazy } from '@/util';
 
 import { compareVersion } from './addon-errors';
 
@@ -70,10 +70,8 @@ function mergeHeaders(
 }
 
 function fakeDesktopHeader(headers: Record<string, string>): void {
-  if (checkIsMobile()) {
-    headers['User-Agent'] = getFakeDesktopUA();
-    headers['Viewport-Width'] = '2560';
-  }
+  headers['User-Agent'] = getFakeDesktopUA();
+  headers['Viewport-Width'] = '2560';
 }
 
 let bypassHamelnR18: Promise<void> | undefined;
