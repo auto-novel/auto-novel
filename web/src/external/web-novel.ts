@@ -12,7 +12,7 @@ import {
 } from '@auto-novel/crawler';
 
 import { type AddonApi, getAddon } from '@/external/addon';
-import { lazy } from '@/util';
+import { checkIsMobile, lazy } from '@/util';
 
 import { compareVersion } from './addon-errors';
 
@@ -70,41 +70,32 @@ function mergeHeaders(
 }
 
 function fakeDesktopHeader(headers: Record<string, string>): void {
-  headers['User-Agent'] = getFakeDesktopUA();
-  headers['Viewport-Width'] = '2560';
+  if (checkIsMobile()) {
+    headers['User-Agent'] = getFakeDesktopUA();
+    headers['Viewport-Width'] = '2560';
+  }
 }
 
 let bypassHamelnR18: Promise<void> | undefined;
 const ensureBypassR18 = (addon: AddonApi) => {
   if (typeof addon?.cookiesPatch !== 'function') return true;
-  bypassHamelnR18 ??= addon
-    .cookiesPatch({
-      url: 'https://syosetu.org',
-      patches: {
-        over18: {
-          name: 'over18',
-          domain: 'syosetu.org',
-          value: 'off',
+  bypassHamelnR18 ??= Promise.all(
+    ['syosetu.org', 'h.syosetu.org'].map((domain) =>
+      addon.cookiesPatch({
+        url: `https://${domain}`,
+        patches: {
+          over18: {
+            name: 'over18',
+            domain,
+            value: 'off',
+          },
         },
-      },
-    })
+      }),
+    ),
+  )
+    .then(() => undefined)
     .catch((err) => {
       console.error('Failed to set over18 cookie for Hameln:', err);
-      bypassHamelnR18 = undefined;
-    });
-  bypassHamelnR18 ??= addon
-    .cookiesPatch({
-      url: 'https://h.syosetu.org',
-      patches: {
-        over18: {
-          name: 'over18',
-          domain: 'h.syosetu.org',
-          value: 'off',
-        },
-      },
-    })
-    .catch((err) => {
-      console.error('Failed to set over18 cookie for HamelnR18:', err);
       bypassHamelnR18 = undefined;
     });
   return bypassHamelnR18;
@@ -147,7 +138,9 @@ const getCrawler = lazy(async () => {
         input instanceof Request ? input.headers : {},
         init?.headers,
       );
-      fakeDesktopHeader(headers);
+      // Cloudflare clearance 绑定真实浏览器 UA，Hameln 必须保留标签页的原生请求头。
+      delete headers['user-agent'];
+      delete headers['viewport-width'];
 
       let reqUrl = new URL(
         input instanceof Request ? input.url : input.toString(),
