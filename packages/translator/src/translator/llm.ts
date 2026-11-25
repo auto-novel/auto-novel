@@ -5,11 +5,17 @@ import type {
   TranslateRequest,
   Translator,
 } from '@/types';
-import { getPreviousSource, isAbortError, randomUUID } from '@/utils';
+import {
+  anySignal,
+  getPreviousSource,
+  isAbortError,
+  randomUUID,
+} from '@/utils';
 
 import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
+import { applyWordReview, findReviewWords } from './llm-review';
 import { createTranslationCacheKey } from '@/cache';
 
 import {
@@ -27,6 +33,8 @@ export type OpenAiTranslatorConfig = {
   log?: Logger;
 };
 
+const WORD_REVIEW_TIMEOUT_MS = 15_000;
+
 export class OpenAiTranslator implements Translator {
   readonly trusted = true;
   private endpoint: string;
@@ -37,6 +45,7 @@ export class OpenAiTranslator implements Translator {
   private reasoningEffort: string;
   private readonly sessionId = randomUUID();
   private promptBuilder: PromptBuilder;
+  private readonly usesDefaultPrompt: boolean;
   readonly log: Logger;
 
   constructor(config: OpenAiTranslatorConfig) {
@@ -48,6 +57,7 @@ export class OpenAiTranslator implements Translator {
     this.profileParams = profile.requestParams;
     this.reasoningEffort = profile.reasoningEffort;
     this.promptBuilder = config.promptBuilder ?? createOpenAiPromptBuilder();
+    this.usesDefaultPrompt = config.promptBuilder === undefined;
     this.log = config.log ?? (() => {});
     this.log(`请求思考强度：${this.reasoningEffort}`);
   }
@@ -114,6 +124,66 @@ export class OpenAiTranslator implements Translator {
     signal?: AbortSignal,
   ): Promise<string[]> {
     const messages = this.promptBuilder.build(lines, context);
+    const text = await this.requestText(messages, signal);
+    let result: string[];
+    try {
+      result = this.promptBuilder.parseAnswer(text, lines);
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (isAbortError(error)) throw error;
+      throw new TranslationRejected(
+        'lines',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
+    }
+    if (!this.usesDefaultPrompt) return result;
+
+    const words = findReviewWords(lines, result, context?.glossary);
+    if (words.length === 0) return result;
+
+    const rows = Array.from(
+      new Set(words.map(({ lineIndex }) => lineIndex)),
+      (index) => ({
+        line: index + 1,
+        source: lines[index],
+        translation: result[index],
+      }),
+    );
+    const review = words.map(({ lineIndex, word }, index) => ({
+      id: index + 1,
+      line: lineIndex + 1,
+      word,
+    }));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), WORD_REVIEW_TIMEOUT_MS);
+    try {
+      const answer = await this.requestText(
+        [
+          {
+            role: 'system',
+            content:
+              '你负责校对小说的简体中文译文。对 review 中每个编号，根据对应行的原文和译文判断该片段。只有确认它是漏译的普通词或短语，且能直接替换时，输出“#编号:REPLACE:中文短词”。应保留的专名、术语、缩写、引文，或无法确定的片段，输出“#编号:KEEP”。每项一行，不输出整句或解释。',
+          },
+          { role: 'user', content: JSON.stringify({ rows, review }) },
+        ],
+        anySignal([signal, controller.signal]),
+      );
+      signal?.throwIfAborted();
+      applyWordReview(result, words, answer);
+    } catch {
+      signal?.throwIfAborted();
+      this.log('外文漏译复核未完成，保留原译文');
+    } finally {
+      clearTimeout(timer);
+    }
+    return result;
+  }
+
+  private async requestText(
+    messages: ReturnType<PromptBuilder['build']>,
+    signal?: AbortSignal,
+  ): Promise<string> {
     const completion = await createPiAiCompletion({
       protocol: this.protocol,
       endpoint: this.endpoint,
@@ -128,16 +198,6 @@ export class OpenAiTranslator implements Translator {
       this.log(`思考：${completion.reasoning}`);
     }
 
-    try {
-      return this.promptBuilder.parseAnswer(completion.text, lines);
-    } catch (error) {
-      signal?.throwIfAborted();
-      if (isAbortError(error)) throw error;
-      throw new TranslationRejected(
-        'lines',
-        error instanceof Error ? error.message : String(error),
-        error,
-      );
-    }
+    return completion.text;
   }
 }
