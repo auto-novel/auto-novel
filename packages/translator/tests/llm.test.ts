@@ -10,7 +10,10 @@ import {
 // OpenAiTranslator 业务翻译器测试
 // ============================================================
 describe('OpenAiTranslator', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
   const mockStreamResponse = (events: unknown[]) =>
     new Response(
@@ -125,7 +128,7 @@ describe('OpenAiTranslator', () => {
     expect(fallback).toHaveBeenCalledOnce();
   });
 
-  it.each([408, 429, 500])(
+  it.each([408, 500])(
     'HTTP %s 错误可重试，恢复后返回译文而不降级',
     async (status) => {
       const fetch = vi.fn(async () => {
@@ -153,6 +156,72 @@ describe('OpenAiTranslator', () => {
       ).resolves.toEqual(['译文']);
       expect(fetch).toHaveBeenCalledTimes(2);
       expect(fallback).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['秒数', '2', 2_000],
+    ['HTTP 日期', 'Mon, 19 Jan 2026 00:00:03 GMT', 3_000],
+    ['缺失', undefined, 1_000],
+    ['无效', '-1', 1_000],
+  ] as const)(
+    '429 的 Retry-After 为%s时，重试和并发请求均等待',
+    async (_, retryAfter, delay) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-19T00:00:00Z'));
+      const fetch = vi
+        .fn(async () =>
+          mockStreamResponse([
+            { choices: [{ index: 0, delta: { content: '#1:译文' } }] },
+            { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+          ]),
+        )
+        .mockResolvedValueOnce(
+          new Response('{"error":{"message":"rate limited"}}', {
+            status: 429,
+            headers: {
+              'content-type': 'application/json',
+              ...(retryAfter !== undefined
+                ? { 'Retry-After': retryAfter }
+                : {}),
+            },
+          }),
+        );
+      vi.stubGlobal('fetch', fetch);
+      let resolveReceivedLimit!: () => void;
+      const receivedLimit = new Promise<void>((resolve) => {
+        resolveReceivedLimit = resolve;
+      });
+      const translator = new OpenAiTranslator({
+        endpoint: 'https://api.example.test',
+        key: 'test-key',
+        model: 'model-1',
+        log: (message) => {
+          if (message.startsWith('收到 429')) resolveReceivedLimit();
+        },
+      });
+
+      const retry = attemptTranslation(translator, { lines: ['原文'] });
+      await receivedLimit;
+      const concurrent = attemptTranslation(translator, { lines: ['另一行'] });
+      const controller = new AbortController();
+      const cancelled = expect(
+        attemptTranslation(translator, {
+          lines: ['取消的行'],
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      controller.abort();
+      await cancelled;
+
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(fetch).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(Promise.all([retry, concurrent])).resolves.toEqual([
+        ['译文'],
+        ['译文'],
+      ]);
+      expect(fetch).toHaveBeenCalledTimes(3);
     },
   );
 
