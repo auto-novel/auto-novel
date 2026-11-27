@@ -76,29 +76,44 @@ function fakeDesktopHeader(headers: Record<string, string>): void {
   }
 }
 
-let bypassHamelnR18: Promise<void> | undefined;
+const r18CookieSites = [
+  {
+    hosts: ['nl.syosetu.com', 'novel18.syosetu.com'],
+    domain: '.syosetu.com',
+    name: 'over18',
+    value: 'yes',
+  },
+  {
+    hosts: ['syosetu.org', 'h.syosetu.org'],
+    domain: '.syosetu.org',
+    name: 'over18',
+    value: 'off',
+  },
+];
+
+let bypassR18CookiesCheck: Promise<void> | undefined;
 const ensureBypassR18 = (addon: AddonApi) => {
-  if (typeof addon?.cookiesPatch !== 'function') return true;
-  bypassHamelnR18 ??= Promise.all(
-    ['syosetu.org', 'h.syosetu.org'].map((domain) =>
-      addon.cookiesPatch({
-        url: `https://${domain}`,
-        patches: {
-          over18: {
-            name: 'over18',
-            domain,
-            value: 'off',
+  if (typeof addon.cookiesPatch !== 'function') return;
+
+  bypassR18CookiesCheck ??= Promise.allSettled(
+    r18CookieSites.flatMap(({ hosts, domain, name, value }) =>
+      hosts.map(async (host) =>
+        addon.cookiesPatch({
+          url: `https://${host}`,
+          patches: {
+            over18: { name, domain, value },
           },
-        },
-      }),
+        }),
+      ),
     ),
-  )
-    .then(() => undefined)
-    .catch((err) => {
-      console.error('Failed to set over18 cookie for Hameln:', err);
-      bypassHamelnR18 = undefined;
-    });
-  return bypassHamelnR18;
+  ).then((results) => {
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) {
+      console.error('Failed to set over18 cookie:', failure.reason);
+      bypassR18CookiesCheck = undefined;
+    }
+  });
+  return bypassR18CookiesCheck;
 };
 
 const getLastRedirectUrl = (source: unknown): string | undefined => {
@@ -120,6 +135,20 @@ const getCrawler = lazy(async () => {
   const addon = await getAddon();
 
   const client = ky.create({ fetch: addon.fetch.bind(addon) });
+
+  const syosetuClient = ky.create({
+    fetch: async (input: string | URL | Request, init?: RequestInit) => {
+      await ensureBypassR18(addon);
+      const headers = mergeHeaders(
+        input instanceof Request ? input.headers : {},
+        init?.headers,
+      );
+      delete headers['user-agent'];
+      delete headers['viewport-width'];
+
+      return addon.fetch(input, { ...init, headers });
+    },
+  });
 
   const hamelnClient = ky.create({
     fetch: async (input: string | URL | Request, init?: RequestInit) => {
@@ -213,7 +242,7 @@ const getCrawler = lazy(async () => {
     kakuyomu: () => new Kakuyomu(client),
     novelup: () => new Novelup(client),
     pixiv: () => new Pixiv(client),
-    syosetu: () => new Syosetu(client, { concurrency: 2 }),
+    syosetu: () => new Syosetu(syosetuClient, { concurrency: 2 }),
   });
 });
 
