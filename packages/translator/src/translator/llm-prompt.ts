@@ -1,6 +1,14 @@
 import type { PromptBuilder, SegmentContext } from '@/types';
 import { filterGlossaryForLines } from '@/utils';
 
+/** 编号仍能确定的有效行可留待下一次尝试复用。 */
+export class PartialGptAnswer extends Error {
+  constructor(readonly lines: readonly (string | undefined)[]) {
+    super('行编号缺失、重复或包含额外换行');
+    this.name = 'PartialGptAnswer';
+  }
+}
+
 export const createOpenAiPromptBuilder = (): PromptBuilder => {
   const build = (lines: readonly string[], context?: SegmentContext) => {
     const glossary = context?.glossary ?? {};
@@ -41,6 +49,9 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     }
 
     parts.push('仅翻译以下当前原文，注意要保留每一段开头的编号：');
+    parts.push(
+      '以 __AN_KEEP_ 开头的保护标记必须逐字保留，不要增删、改写或移动标签标记。',
+    );
     lines.forEach((line, i) => parts.push(`#${i + 1}:${line}`));
     if (lines.length === 1) {
       parts.push('原文到此为止'); // 防止乱编
@@ -55,26 +66,34 @@ export const createOpenAiPromptBuilder = (): PromptBuilder => {
     originalLines: readonly string[],
   ): string[] => {
     const lineContentMap = new Map<number, string>();
+    const invalid = new Set<number>();
+    let previous = 0;
 
     for (const line of answer.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
+      if (/^```\w*$/.test(trimmed)) continue;
 
       const match = trimmed.match(/^#(\d+)(?:[:：]|\s+)(.*)/);
       if (match) {
         const lineNum = parseInt(match[1]);
+        previous = lineNum;
+        if (lineNum < 1 || lineNum > originalLines.length) continue;
         const content = match[2];
+        if (lineContentMap.has(lineNum)) invalid.add(lineNum);
         lineContentMap.set(lineNum, content);
+      } else if (previous > 0) {
+        // 编号后的未编号续行无法安全合并，不悄悄丢掉这部分内容。
+        invalid.add(previous);
       }
     }
 
-    return originalLines.map((_, index) => {
-      const translated = lineContentMap.get(index + 1);
-      if (translated === undefined) {
-        throw new Error(`行数不匹配`);
-      }
-      return translated;
-    });
+    const lines = originalLines.map((_, index) =>
+      invalid.has(index + 1) ? undefined : lineContentMap.get(index + 1),
+    );
+    if (lines.some((line) => line === undefined))
+      throw new PartialGptAnswer(lines);
+    return lines as string[];
   };
 
   return { build, parseAnswer };
