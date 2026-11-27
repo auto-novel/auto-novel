@@ -1,6 +1,7 @@
 export type Glossary = Readonly<Record<string, string>>;
 
 export interface SegmentContext {
+  readonly purpose?: 'glossary';
   readonly glossary?: Glossary;
 
   /** 当前分段之前的原文，仅供理解上下文，不属于待翻译内容。 */
@@ -103,6 +104,8 @@ export interface SegmentTracker {
 
 /** 一篇完整原文；切分和队列背压由流水线负责，输入按只读借用。 */
 export interface TranslationInput {
+  /** GPT 本地术语分析单元；输出为一行结构化候选，仍走同一队列。 */
+  readonly purpose?: 'glossary';
   /** 调度和需求查询时反复读取，须同步、无副作用且开销小；越小越优先，同值按输入、分段顺序。 */
   readonly getPriority?: () => number;
   /** 只交给可信翻译器；缺省不限制，无匹配翻译器时等待，可取消。 */
