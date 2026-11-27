@@ -115,9 +115,12 @@ const updateWebNovelChapter = async (
     novelId,
     chapterId,
   );
-  const body = toChapterMutationBody(chapter);
   checkUpdateAllowed(options);
+  if (!chapter.paragraphs.some((paragraph) => paragraph.trim().length > 0)) {
+    throw new Error('爬取到的章节正文为空，已停止更新本章');
+  }
 
+  const body = toChapterMutationBody(chapter);
   if (!force) {
     await WebNovelRepo.createChapter(providerId, novelId, chapterId, body);
     return 'updated' as const;
