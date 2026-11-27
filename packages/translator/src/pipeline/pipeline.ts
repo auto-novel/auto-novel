@@ -182,6 +182,13 @@ export class TranslationPipeline {
       ranges,
       glossary ?? {},
       history,
+    ).map((segment) =>
+      input.purpose
+        ? {
+            ...segment,
+            context: { ...segment.context, purpose: input.purpose },
+          }
+        : segment,
     );
     tracker?.onSegmentsReady?.(segments);
     // 取消后不再向调用方转发分段事件，避免把取消记成分段失败。

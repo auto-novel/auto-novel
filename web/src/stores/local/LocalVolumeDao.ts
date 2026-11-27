@@ -70,6 +70,58 @@ export const createLocalVolumeDao = async () => {
     return value;
   };
 
+  /** 与章节写入互斥：仅初始化空表且尚无任何译文的本地小说。 */
+  const initializeGlossary = async (
+    id: string,
+    glossary: LocalVolumeMetadata['glossary'],
+    glossaryId: string,
+    beforeWrite?: () => void,
+  ) => {
+    const tx = db.transaction(['metadata', 'chapter'], 'readwrite');
+    try {
+      const metadata = await tx.objectStore('metadata').get(id);
+      let written = false;
+      if (
+        metadata &&
+        Object.keys(metadata.glossary ?? {}).length === 0 &&
+        Object.keys(glossary).length > 0
+      ) {
+        const hasTranslation = (value: object) =>
+          ['baidu', 'youdao', 'gpt', 'sakura'].some(
+            (key) => (value as Record<string, unknown>)[key] !== undefined,
+          );
+        let translated = metadata.toc.some(hasTranslation);
+        let cursor = translated
+          ? null
+          : await tx.objectStore('chapter').index('byVolumeId').openCursor(id);
+        while (cursor) {
+          if (hasTranslation(cursor.value)) {
+            translated = true;
+            break;
+          }
+          cursor = await cursor.continue();
+        }
+        beforeWrite?.();
+        if (!translated) {
+          metadata.glossary = { ...glossary };
+          metadata.glossaryId = glossaryId;
+          await tx.objectStore('metadata').put(metadata);
+          written = true;
+        }
+      }
+      await tx.done;
+      return { metadata, written };
+    } catch (error) {
+      try {
+        tx.abort();
+      } catch {
+        /* 事务可能已结束。 */
+      }
+      await tx.done.catch(() => {});
+      throw error;
+    }
+  };
+
   // File
   const getFile = (id: string) => db.get('file', id);
   const deleteFile = (id: string) => db.delete('file', id);
@@ -108,6 +160,7 @@ export const createLocalVolumeDao = async () => {
     deleteMetadata,
     createMetadata,
     updateMetadata,
+    initializeGlossary,
     //
     getFile,
     deleteFile,

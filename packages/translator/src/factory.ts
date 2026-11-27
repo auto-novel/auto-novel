@@ -1,9 +1,7 @@
 import type { Translator } from '@/types';
+import { GlossaryAwareOpenAiTranslator } from './translator/llm-glossary';
 
-import {
-  OpenAiTranslator,
-  type OpenAiTranslatorConfig,
-} from './translator/llm';
+import type { OpenAiTranslatorConfig } from './translator/llm';
 import {
   SakuraTranslator,
   type SakuraTranslatorConfig,
@@ -23,7 +21,7 @@ export function createTranslator(
 ): Promise<Translator> {
   switch (config.kind) {
     case 'openai':
-      return Promise.resolve(new OpenAiTranslator(config));
+      return Promise.resolve(new GlossaryAwareOpenAiTranslator(config));
     case 'sakura':
       return SakuraTranslator.create(config);
     case 'youdao':

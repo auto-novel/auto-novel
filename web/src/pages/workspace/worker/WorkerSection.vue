@@ -45,6 +45,18 @@ const workers = computed({
 });
 const showClearCacheDialog = ref(false);
 const clearingCache = ref(false);
+const autoGlossary = computed({
+  get: () => workerStore.ref.value.autoGlossary === true,
+  set: (value: boolean) => {
+    workerStore.ref.value.autoGlossary = value;
+  },
+});
+const writeAutoGlossary = computed({
+  get: () => workerStore.ref.value.writeAutoGlossary !== false,
+  set: (value: boolean) => {
+    workerStore.ref.value.writeAutoGlossary = value;
+  },
+});
 
 const clearCache = async () => {
   if (clearingCache.value) return;
@@ -119,6 +131,21 @@ const hasStoppedWorkers = computed(() =>
     </div>
   </div>
 
+  <USwitch
+    v-if="!isSakura"
+    v-model="autoGlossary"
+    class="mb-3"
+    label="开启自动术语表"
+    description="仅用于本地小说，自动分析关键术语供本次翻译使用。"
+  />
+  <USwitch
+    v-if="!isSakura"
+    v-model="writeAutoGlossary"
+    :disabled="!autoGlossary"
+    class="mb-3"
+    label="仅向空术语表自动写入关键术语"
+    description="仅在尚无译文的本地小说写入一次，避免使旧译文过期。"
+  />
   <CEmpty v-if="workers.length === 0" title="没有翻译器" />
   <VueDraggable
     v-else

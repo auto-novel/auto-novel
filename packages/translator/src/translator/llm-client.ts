@@ -239,7 +239,10 @@ function createModel(
   };
 }
 
-function normalizeEndpoint(endpoint: string, protocol: PiAiProtocol): string {
+export function normalizeEndpoint(
+  endpoint: string,
+  protocol: PiAiProtocol,
+): string {
   const url = new URL(endpoint);
   let pathname = url.pathname.replace(/\/+$/, '');
   if (protocol === 'anthropic-messages') {
