@@ -11,6 +11,7 @@ import { createPiAiCompletion, type PiAiProtocol } from './llm-client';
 import { TranslationRejected } from '@/errors';
 import { createOpenAiPromptBuilder } from './llm-prompt';
 import { createTranslationCacheKey } from '@/cache';
+import { prepareGptText } from './llm-text';
 
 import {
   resolveOpenAiProfile,
@@ -53,13 +54,15 @@ export class OpenAiTranslator implements Translator {
   }
 
   getCacheKey({ lines, context }: Pick<TranslateRequest, 'lines' | 'context'>) {
-    return createTranslationCacheKey(
+    const key = createTranslationCacheKey(
       this.model,
       lines,
       this.promptBuilder,
       this.trusted,
       context,
     );
+    // GPT 的保护/还原规则变化，不能复用旧版未经这些检查的缓存。
+    return key === undefined ? undefined : `gpt-text:v1:${key}`;
   }
 
   async translate({
@@ -67,13 +70,25 @@ export class OpenAiTranslator implements Translator {
     context,
     signal,
   }: TranslateRequest): Promise<string[]> {
-    if (lines.length === 0) return [];
+    signal?.throwIfAborted();
+    const text = prepareGptText(lines, context);
+    if (text.lines.length === 0) return [...lines];
 
-    const result = await this.translateLines(lines, context, signal);
-    if (result.every((line) => line.trim().length === 0)) {
-      throw new TranslationRejected('lines', '译文为空');
+    const result = await this.translateLines(text.lines, text.context, signal);
+    signal?.throwIfAborted();
+    try {
+      if (result.every((line) => line.trim().length === 0)) {
+        throw new TranslationRejected('lines', '译文为空');
+      }
+      return text.restore(result);
+    } catch (error) {
+      if (error instanceof TranslationRejected) throw error;
+      throw new TranslationRejected(
+        'lines',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
     }
-    return result;
   }
 
   /** 输出形状反复失败时串行逐行翻译，避免降级请求突破外层并发限制。 */
@@ -89,19 +104,24 @@ export class OpenAiTranslator implements Translator {
     const translatedLines: string[] = [];
     for (let index = 0; index < lines.length; index++) {
       signal?.throwIfAborted();
+      const text = prepareGptText([lines[index]], {
+        ...context,
+        previousSource: getPreviousSource(sourceLines, sourceOffset + index),
+      });
+      if (text.lines.length === 0) {
+        translatedLines.push(lines[index]);
+        continue;
+      }
       this.log(`逐行翻译第${index + 1}/${lines.length}行`);
       const result = await this.translateLines(
-        [lines[index]],
-        {
-          ...context,
-          previousSource: getPreviousSource(sourceLines, sourceOffset + index),
-        },
+        text.lines,
+        text.context,
         signal,
       );
       signal?.throwIfAborted();
       translatedLines.push(
         result.length === 1 && !/[\r\n]/.test(result[0])
-          ? result[0]
+          ? text.restore(result)[0]
           : lines[index],
       );
     }
